@@ -79,6 +79,9 @@ yarn upgrade <package-name>
 yarn install
 ```
 
+## Deployment
+Change "Build Command" in Render to `yarn install && yarn build && yarn tsc` and "Start Command" to `node dist/server/server.js`
+
 ## General Guidelines
 - Commit whenever you make a significant change
 - Push when you've finished a feature
