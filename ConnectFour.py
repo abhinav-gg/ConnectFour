@@ -32,7 +32,6 @@ class Game:
         self.draws = 0
 
     def check_wins(self, x, y):
-
         pass
 
     def run(self):
