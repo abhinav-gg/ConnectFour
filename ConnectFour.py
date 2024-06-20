@@ -32,7 +32,6 @@ class Game:
         self.draws = 0
 
     def check_wins(self, x, y):
-
         pass
 
     def run(self):
@@ -123,8 +122,6 @@ class Counter:
             return self.color[0].upper()
         else:
             return 'X'
-
-
 
 class AI:
     pass
