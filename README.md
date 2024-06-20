@@ -1,8 +1,6 @@
 # ConnectFour
-Open Source Python Web Connect Four!
+Closed Source Connect Four Online!
 
 ## Introduction:
 
-Fun Fact, Github Copilot wrote the entirety of AIConnectFour.py
-
-Also please help me ;)
+Django and React project

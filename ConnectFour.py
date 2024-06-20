@@ -124,7 +124,5 @@ class Counter:
         else:
             return 'X'
 
-
-
 class AI:
     pass
