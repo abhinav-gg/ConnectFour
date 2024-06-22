@@ -8,7 +8,7 @@ All Old Rubbish™ can be found in the `old_stuff` directory.
 .
 ├── server: server-side code
 ├── src: client-side code
-├── static: static files e.g. favicon
+├── public: static files e.g. images, fonts
 └── old_stuff: old python code. may be useful for reference
 ```
 
@@ -41,17 +41,18 @@ yarn install
 ```bash
 yarn dev
 ```
-2. Open `http://localhost:5173`
+2. Open [http://localhost:3000](http://localhost:3000)
 
 ### Backend (Express + TypeScript)
 1. Compile the TypeScript code using my script
 ```bash
 yarn run start
 ```
-2. Open `http://localhost:3000` (different port!)
+2. Open [http://localhost:3000](http://localhost:3000)
 
 ## Resources
-- [SvelteKit Docs](https://kit.svelte.dev/docs)
+- [React Docs](https://react.dev/reference/react)
+- [Next.js Docs](https://nextjs.org/docs)
 - [Express Docs](https://expressjs.com/en/4x/api.html)
 - [TypeScript Docs](https://www.typescriptlang.org/docs/)
 - [TailwindCSS Docs](https://tailwindcss.com/docs)

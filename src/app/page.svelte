@@ -93,6 +93,7 @@
               <tbody>
                 {#each Array(6) as _, j}
                   <tr class="w-full h-1/6">
+                    <!-- svelte-ignore a11y-click-events-have-key-events -->
                     <td
                       class="w-1/7 h-1/6 group-hover:bg-black/20 cursor-pointer relative"
                       on:click={() => {

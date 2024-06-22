@@ -1,17 +1,24 @@
-import { writable } from 'svelte/store';
-
 export enum CellState {
   Empty,
   Player1,
   Player2,
 }
 
-enum GameState {
+enum CurrentGameState {
   InProgress,
   Player1Win,
   Player2Win,
   Draw
 }
+
+type GameState = {
+  currentPlayer: number;
+  lowestCellIndices: number[];
+  grid: Grid;
+  lastMove: number[];
+  moves: number[];
+  update: (callback: (state: GameState) => GameState) => void;
+};
 
 type Grid = CellState[][];
 
@@ -23,14 +30,31 @@ export class Game {
     .map(() => Array(6).fill(CellState.Empty));
   private readonly _lastMove = [-1, -1];
   private readonly _moves: number[] = [];
+  private subscribers: ((state: GameState) => void)[] = [];
 
-  public gameState = writable({
+  public gameState: GameState = {
     currentPlayer: this._currentPlayer,
     lowestCellIndices: this._lowestCellIndices,
     grid: this._grid,
     lastMove: this._lastMove,
     moves: this._moves,
-  });
+    update: this.update.bind(this),
+  };
+
+  public subscribe(subscriber: (state: GameState) => void) {
+    this.subscribers.push(subscriber);
+  }
+
+  public update(callback: (state: GameState) => GameState) {
+    const newState = callback(this.gameState);
+    this.gameState = newState;
+    this.subscribers.forEach((subscriber) => subscriber(newState));
+  }
+
+  public setGameState(state: GameState) {
+    this.gameState = state;
+    this.subscribers.forEach((subscriber) => subscriber(state));
+  }
 
   constructor() { }
 
