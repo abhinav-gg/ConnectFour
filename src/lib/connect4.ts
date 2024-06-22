@@ -11,7 +11,7 @@ enum CurrentGameState {
   Draw
 }
 
-type GameState = {
+export type GameState = {
   currentPlayer: number;
   lowestCellIndices: number[];
   grid: Grid;
@@ -30,7 +30,7 @@ export class Game {
     .map(() => Array(6).fill(CellState.Empty));
   private readonly _lastMove = [-1, -1];
   private readonly _moves: number[] = [];
-  private subscribers: ((state: GameState) => void)[] = [];
+  private _subscribers: ((state: GameState) => void)[] = [];
 
   public gameState: GameState = {
     currentPlayer: this._currentPlayer,
@@ -42,18 +42,17 @@ export class Game {
   };
 
   public subscribe(subscriber: (state: GameState) => void) {
-    this.subscribers.push(subscriber);
+    this._subscribers.push(subscriber);
+  }
+
+  public unsubscribe(subscriber: (state: GameState) => void) {
+    this._subscribers = this._subscribers.filter((sub) => sub !== subscriber);
   }
 
   public update(callback: (state: GameState) => GameState) {
     const newState = callback(this.gameState);
     this.gameState = newState;
-    this.subscribers.forEach((subscriber) => subscriber(newState));
-  }
-
-  public setGameState(state: GameState) {
-    this.gameState = state;
-    this.subscribers.forEach((subscriber) => subscriber(state));
+    this._subscribers.forEach((subscriber) => subscriber(newState));
   }
 
   constructor() { }
