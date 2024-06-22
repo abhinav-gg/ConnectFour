@@ -6,22 +6,25 @@ All Old Rubbish™ can be found in the `old_stuff` directory.
 ## Directory Structure
 ```
 .
-├── server: server-side code
+├── server: python api server
 ├── src: client-side code
+│   ├── app: main app components
+│   ├── lib: utility functions
+│   ├── pages: routes
+|   └── components: reusable components
 ├── public: static files e.g. images, fonts
 └── old_stuff: old python code. may be useful for reference
 ```
 
 ## Config Files
 - `.gitignore`: configures ignored files and directories
-- `.npmrc`: some sort of NPM configuration. probably not important
-- `package.json`: dependencies and scripts
-- `postcss.config.js`: postcss configuration
+- `next.config.mjs`: Next.js configuration
+- `package.json`: js dependencies and scripts
+- `postcss.config.mjs`: postcss configuration
 - `README.md`: this file
-- `svelte.config.js`: SvelteKit configuration
-- `tailwind.config.js`: TailwindCSS configuration
+- `requirements.txt`: python dependencies
+- `tailwind.config.ts`: TailwindCSS configuration
 - `tsconfig.json`: TypeScript configuration
-- `vite.config.js`: Vite configuration
 - `yarn.lock`: auto-generated yarn lockfile (don't touch this!)
 
 ## Setup
@@ -29,59 +32,54 @@ All Old Rubbish™ can be found in the `old_stuff` directory.
 ```bash
 git clone https://github.com/abhinav-gg/connectfour.git
 ```
-2. Install dependencies
+2. Install React and Next.js dependencies
 ```bash
 cd connectfour
 yarn install
 ```
+If you don't have yarn installed, enable `corepack` then try again:
+```bash
+corepack enable
+```
+If that doesn't work, you probably need to [install Node.js](https://nodejs.org/en).
+
+3. Setup Python virtual environment
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+4. Install Python dependencies
+```bash
+pip install -r requirements.txt
+```
 
 ## Development
-### Frontend (SvelteKit)
+### Frontend (React)
 1. Start the development server
 ```bash
 yarn dev
 ```
 2. Open [http://localhost:3000](http://localhost:3000)
+3. Edit files in `./src` (the page should automatically reload)
 
-### Backend (Express + TypeScript)
-1. Compile the TypeScript code using my script
+### Python API
+1. Start the server
 ```bash
-yarn run start
+cd server
+uvicorn main:app --reload --port 3000
+```
+2. Edit files in `./server`
+
+### Next.js server
+1. Start the development server
+```bash
+yarn dev
 ```
 2. Open [http://localhost:3000](http://localhost:3000)
-
-## Resources
-- [React Docs](https://react.dev/reference/react)
-- [Next.js Docs](https://nextjs.org/docs)
-- [Express Docs](https://expressjs.com/en/4x/api.html)
-- [TypeScript Docs](https://www.typescriptlang.org/docs/)
-- [TailwindCSS Docs](https://tailwindcss.com/docs)
-- [Yarn Docs](https://yarnpkg.com/getting-started)
-
-## Managing Dependencies
-- Add a new dependency
-```bash
-yarn add <package-name>
-```
-- Remove a dependency
-```bash
-yarn remove <package-name>
-```
-- Update all dependencies
-```bash
-yarn upgrade
-```
-- Update a specific dependency
-```bash
-yarn upgrade <package-name>
-```
-- Install all dependencies
-```bash
-yarn install
-```
+3. Edit files in `./src/pages/api`
 
 ## Deployment
-Change "Build Command" in Render to `yarn install && yarn build && yarn tsc` and "Start Command" to `node dist/server/server.js`
+Change "Build Command" in Render to `yarn build` and "Start Command" to `yarn start & python server/main.py`
 
 ## General Guidelines
 - Commit whenever you make a significant change
