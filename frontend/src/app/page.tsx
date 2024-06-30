@@ -3,7 +3,8 @@
 import { CellState, Game, type GameState } from "@lib/connect4";
 import { useEffect, useState } from 'react';
 
-export default function Home() {
+function Home() {
+  console.log("Home");
   const sidebarItems = ["Play", "Puzzles", "Learn"];
 
   const players = [
@@ -141,3 +142,5 @@ export default function Home() {
     </main>
   );
 }
+
+export default Home;
