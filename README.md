@@ -1,7 +1,7 @@
 # ConnectFour
 Chess.com, but Game of the Mind!
-
-All Old Rubbish™ can be found in the `old_stuff` directory.
+=======
+Closed Source Connect Four Online!
 
 ## Directory Structure
 ```
@@ -87,3 +87,5 @@ Change "Build Command" in Render to `yarn build` and "Start Command" to `yarn st
 - Commit whenever you make a significant change
 - Push when you've finished a feature
 - I will try to figure out how branches work and update this README accordingly
+=======
+Django and React project
