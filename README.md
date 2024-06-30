@@ -7,7 +7,7 @@ All Old Rubbish™ can be found in the `old_stuff` directory.
 ```
 .
 ├── backend [Django]
-    ├── [List of all apps we need]
+|   ├── [List of all apps we need]
 ├── frontend [React / TS]
     ├── src: client-side code
     │   ├── app: main app components
