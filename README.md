@@ -28,6 +28,7 @@ Closed Source Connect Four Online!
 - `tsconfig.json`: TypeScript configuration
 - `yarn.lock`: auto-generated yarn lockfile (don't touch this!)
 
+<<<<<<< Updated upstream
 ## Setup
 1. Clone the repository
 ```bash
@@ -89,3 +90,5 @@ Change "Build Command" in Render to `yarn build` and "Start Command" to `yarn st
 - I will try to figure out how branches work and update this README accordingly
 =======
 Django and React project
+=======
+>>>>>>> Stashed changes
