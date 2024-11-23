@@ -38,8 +38,8 @@ export const setupGameEvents = (io: Server) => {
       const playerIndex = room.players.indexOf(socket.id);
       if (playerIndex === -1 || playerIndex !== room.currentTurn) return;
 
-      // Relay move to other player
-      socket.to(roomId).emit('moveMade', { col, player: playerIndex });
+      // Relay move to ALL clients in the room (including sender)
+      io.to(roomId).emit('moveMade', { col, player: playerIndex });
       
       // Update turn
       room.currentTurn = (room.currentTurn + 1) % 2;
@@ -47,10 +47,9 @@ export const setupGameEvents = (io: Server) => {
     });
 
     socket.on('disconnect', () => {
-      // Clean up rooms when players disconnect
       for (const [roomId, room] of state.rooms.entries()) {
         if (room.players.includes(socket.id)) {
-          socket.to(roomId).emit('playerDisconnected');
+          io.to(roomId).emit('playerDisconnected');
           state.rooms.delete(roomId);
         }
       }

@@ -26,35 +26,29 @@ Closed Source Connect Four Online!
 - `requirements.txt`: python dependencies
 - `tailwind.config.ts`: TailwindCSS configuration
 - `tsconfig.json`: TypeScript configuration
-- `yarn.lock`: auto-generated yarn lockfile (don't touch this!)
+
+Add a section here for development test v
+## Development
+1. Install dependencies
+```bash
+npm install
+```
+2. Start the development server
+```bash
+npm run start:all
+```
 
 <<<<<<< Updated upstream
-## Setup
+## Setup - Without Docker
 1. Clone the repository
 ```bash
 git clone https://github.com/abhinav-gg/connectfour.git
 ```
 2. Install React and Next.js dependencies
 ```bash
-cd frontend
-yarn install
-```
-If you don't have yarn installed, enable `corepack` then try again:
-```bash
-corepack enable
+npm install
 ```
 If that doesn't work, you probably need to [install Node.js](https://nodejs.org/en).
-
-3. Setup Python virtual environment
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-4. Install Python dependencies
-```bash
-cd backend
-pip install -r requirements.txt
-```
 
 ## Development
 ### Frontend (React)

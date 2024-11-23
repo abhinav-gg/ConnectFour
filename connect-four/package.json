@@ -3,27 +3,33 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "start:all": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
     "dev": "next dev",
+    "start:frontend": "next dev",
+    "start:backend": "cd api && npm run build && npm run dev",
     "build": "next build",
-    "start": "next start",
     "lint": "next lint",
     "server": "tsx api/server.ts"
   },
   "dependencies": {
-    "@types/express": "^5.0.0",
     "@types/socket.io": "^3.0.1",
     "express": "^4.21.1",
     "lucide-react": "^0.460.0",
     "next": "15.0.3",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
-    "react-use-websocket": "^4.11.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "concurrently": "^9.1.0",
+    "eslint": "9.15.0",
+    "eslint-config-next": "15.0.3",
+    "nodemon": "^3.1.7",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
