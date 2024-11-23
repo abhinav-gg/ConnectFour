@@ -1,8 +1,7 @@
+/// <reference types="@types/react" />
 'use client'
-import * as React from 'react'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Button } from "@/components/ui/button"
 import { Home, LogIn, RotateCcw, FileText, ChevronDown } from 'lucide-react'
 
 type Player = 1 | 2
@@ -48,7 +47,7 @@ export default function GameBoard() {
     const fallInterval = setInterval(() => {
       if (currentRow < targetRow) {
         currentRow++
-        setFallingPiece(prev => ({ ...prev!, row: currentRow }))
+        setFallingPiece((prev: { row: number, col: number, player: Player } | null) => ({ ...prev!, row: currentRow }))
       } else {
         clearInterval(fallInterval)
         setFallingPiece(null)
@@ -61,7 +60,7 @@ export default function GameBoard() {
         checkWinner(targetRow, col)
         setCurrentPlayer(currentPlayer === 1 ? 2 : 1)
       }
-    }, 100) // Slowed down the animation
+    }, 100)
   }
 
   const checkWinner = (row: number, col: number) => {
@@ -87,7 +86,7 @@ export default function GameBoard() {
       }
     }
 
-    if (board.every(row => row.every(cell => cell !== null))) {
+    if (board.every((row: any[]) => row.every((cell: null) => cell !== null))) {
       setGameOver(true)
     }
   }
@@ -157,18 +156,18 @@ export default function GameBoard() {
               </div>
 
               {/* Game grid */}
-              {board.map((row, rowIndex) => (
+              {board.map((row: any[], rowIndex: number) => (
                 <div key={rowIndex} className="flex">
-                  {row.map((cell, colIndex) => (
+                  {row.map((cell: number | null, colIndex: any) => (
                     <div
                       key={colIndex}
                       className="w-12 h-12 bg-blue-200 border border-blue-400 rounded-full m-1 flex items-center justify-center overflow-hidden"
                     >
-                      {(cell || (fallingPiece && fallingPiece.col === colIndex && fallingPiece.row === rowIndex)) && (
+                      {(cell !== null || (fallingPiece && fallingPiece.col === colIndex)) && (
                         <div
                           className={`w-10 h-10 rounded-full ${
                             (cell === 1 || (fallingPiece && fallingPiece.player === 1)) ? 'bg-red-500' : 'bg-yellow-400'
-                          } ${fallingPiece && fallingPiece.col === colIndex ? 'transition-transform duration-100' : ''}`}
+                          } transition-transform duration-100`}
                           style={{
                             transform: fallingPiece && fallingPiece.col === colIndex
                               ? `translateY(${(fallingPiece.row - rowIndex) * 100}%)`
@@ -196,14 +195,19 @@ export default function GameBoard() {
               </div>
             )}
             <div className="flex gap-4">
-              <Button onClick={() => setGameOver(false)} className="bg-orange-500 hover:bg-orange-600 text-white flex items-center">
+              <button
+                onClick={() => setGameOver(false)}
+                className="bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center px-4 py-2 rounded-md transition-colors duration-200"
+              >
                 <RotateCcw className="mr-2" />
                 New Game
-              </Button>
-              <Button className="bg-blue-500 hover:bg-blue-600 text-white flex items-center">
+              </button>
+              <button
+                className="bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center px-4 py-2 rounded-md transition-colors duration-200"
+              >
                 <FileText className="mr-2" />
                 Review Game
-              </Button>
+              </button>
             </div>
           </div>
         )}
