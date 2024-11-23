@@ -1,6 +1,6 @@
-/// <reference types="@types/react" />
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Home, LogIn, RotateCcw, FileText, ChevronDown } from 'lucide-react'
 
@@ -32,6 +32,11 @@ export default function GameBoard() {
   const dropPiece = (col: number) => {
     if (winner || fallingPiece || gameOver) return
 
+    // Play sound effect immediately
+    if (audioRef.current) {
+        audioRef.current.play()
+    }
+
     const newBoard = [...board]
     for (let row = ROWS - 1; row >= 0; row--) {
       if (!newBoard[row][col]) {
@@ -47,16 +52,13 @@ export default function GameBoard() {
     const fallInterval = setInterval(() => {
       if (currentRow < targetRow) {
         currentRow++
-        setFallingPiece((prev: { row: number, col: number, player: Player } | null) => ({ ...prev!, row: currentRow }))
+        setFallingPiece(prev => ({ ...prev!, row: currentRow }))
       } else {
         clearInterval(fallInterval)
         setFallingPiece(null)
         const newBoard = [...board]
         newBoard[targetRow][col] = currentPlayer
         setBoard(newBoard)
-        if (audioRef.current) {
-          audioRef.current.play()
-        }
         checkWinner(targetRow, col)
         setCurrentPlayer(currentPlayer === 1 ? 2 : 1)
       }
@@ -86,7 +88,7 @@ export default function GameBoard() {
       }
     }
 
-    if (board.every((row: any[]) => row.every((cell: null) => cell !== null))) {
+    if (board.every(row => row.every(cell => cell !== null))) {
       setGameOver(true)
     }
   }
@@ -110,15 +112,15 @@ export default function GameBoard() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-100 flex">
+    <div className="min-h-screen bg-gray-100 flex">
       {/* Dashboard */}
-      <div className="w-64 bg-blue-200 p-4 flex flex-col">
-        <h2 className="text-2xl font-bold text-blue-800 mb-4">Dashboard</h2>
-        <Link href="/" className="flex items-center text-blue-800 hover:text-blue-600 mb-2">
+      <div className="w-64 bg-white p-4 flex flex-col shadow-md">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h2>
+        <Link href="/" className="flex items-center text-gray-600 hover:text-gray-800 mb-2">
           <Home className="mr-2" />
           Home
         </Link>
-        <Link href="/login" className="flex items-center text-blue-800 hover:text-blue-600">
+        <Link href="/login" className="flex items-center text-gray-600 hover:text-gray-800">
           <LogIn className="mr-2" />
           Login
         </Link>
@@ -126,7 +128,7 @@ export default function GameBoard() {
 
       {/* Game Board */}
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <h1 className="text-4xl font-bold text-blue-800 mb-8">Connect Four</h1>
+        <h1 className="text-4xl font-bold text-gray-800 mb-8">Connect Four</h1>
         <div className="relative">
           {/* Chevron indicators */}
           <div className="absolute top-[-24px] left-0 right-0 flex justify-around">
@@ -140,7 +142,7 @@ export default function GameBoard() {
           </div>
 
           {/* Game board with invisible input areas */}
-          <div className="bg-blue-300 p-4 rounded-lg shadow-lg">
+          <div className="bg-blue-500 p-4 rounded-lg shadow-lg">
             <div className="relative">
               {/* Invisible input areas */}
               <div className="absolute top-0 left-0 right-0 bottom-0 flex">
@@ -156,22 +158,27 @@ export default function GameBoard() {
               </div>
 
               {/* Game grid */}
-              {board.map((row: any[], rowIndex: number) => (
+              {board.map((row, rowIndex) => (
                 <div key={rowIndex} className="flex">
-                  {row.map((cell: number | null, colIndex: any) => (
+                  {row.map((cell, colIndex) => (
                     <div
                       key={colIndex}
-                      className="w-12 h-12 bg-blue-200 border border-blue-400 rounded-full m-1 flex items-center justify-center overflow-hidden"
+                      className="w-12 h-12 bg-blue-300 border-2 border-blue-600 rounded-full m-1 flex items-center justify-center overflow-hidden"
                     >
-                      {(cell !== null || (fallingPiece && fallingPiece.col === colIndex)) && (
+                      {(cell !== null || (fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row)) && (
                         <div
                           className={`w-10 h-10 rounded-full ${
-                            (cell === 1 || (fallingPiece && fallingPiece.player === 1)) ? 'bg-red-500' : 'bg-yellow-400'
+                            cell !== null 
+                              ? (cell === 1 ? 'bg-red-500' : 'bg-yellow-400')
+                              : (fallingPiece?.player === 1 ? 'bg-red-500' : 'bg-yellow-400')
                           } transition-transform duration-100`}
                           style={{
-                            transform: fallingPiece && fallingPiece.col === colIndex
+                            transform: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
                               ? `translateY(${(fallingPiece.row - rowIndex) * 100}%)`
-                              : 'none'
+                              : 'none',
+                            opacity: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
+                              ? Math.max(0, 1 - (fallingPiece.row - rowIndex) * 0.2)
+                              : 1
                           }}
                         />
                       )}
