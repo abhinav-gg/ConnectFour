@@ -1,22 +1,48 @@
 import express from 'express';
+import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { setupGameEvents } from './events/gameEvents';
 import dotenv from 'dotenv';
+import { testDatabase } from './db/operations';
 
 // Load environment variables
 dotenv.config();
 
 // Express + Socket.IO setup
 const app = express();
+
+app.use(cors({
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    credentials: true
+}));
+app.use(express.json());
+
 const httpServer = createServer(app);
 
-app.get('/api/test-db', async (req, res) => {
+app.post('/api/test-db', async (req, res) => {
+  console.log('Received test-db request');
+  
   try {
-    // TODO: Implement database test
-    res.json({ status: 'Database test endpoint ready' });
-  } catch (error) {
-    res.status(500).json({ error: 'Database test failed' });
+    console.log('Calling testDatabase function...');
+    const result = await testDatabase();
+    console.log('Database operation successful:', result);
+    res.json({ status: 'Success', data: result });
+    
+  } catch (error: any) {
+    console.error('Database operation failed');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    
+    res.status(500).json({ 
+      error: 'Database test failed',
+      details: {
+        message: error.message,
+        type: error.constructor.name,
+        // Add any other relevant error details
+      }
+    });
   }
 });
 

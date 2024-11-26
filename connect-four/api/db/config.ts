@@ -1,13 +1,9 @@
 import { Pool } from 'pg';
 
-export const dbConfig = {
-  pool: new Pool({
-    connectionString: process.env.DATABASE_URL,
-    // CockroachDB specific settings
-    ssl: {
-      rejectUnauthorized: false, // Required for CockroachDB serverless
-    },
-    // Optional: Configure connection pool size
-    max: 25,
-  })
-};
+export const pool = new Pool({
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: parseInt(process.env.PGPORT || '5432'),
+});
