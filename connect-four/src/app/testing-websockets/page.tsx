@@ -34,7 +34,7 @@ export default function TestingWebsockets() {
     <div className="min-h-screen bg-gray-100">
       {!hasJoined ? (
         <div className="flex flex-col items-center justify-center min-h-screen">
-          <div className="bg-white p-8 rounded-lg shadow-md w-96">
+          <div className="bg-white p-8 rounded-lg shadow-md w-96 text-black">
             <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
             <div className="space-y-4">
               <input
