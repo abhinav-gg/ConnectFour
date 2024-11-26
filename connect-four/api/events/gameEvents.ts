@@ -18,7 +18,7 @@ export const setupGameEvents = (io: Server) => {
       const room = state.rooms.get(roomId) || { players: [], currentTurn: 0 };
       
       if (room.players.length >= 2) {
-        socket.emit('roomFull');
+        socket.emit('roomFull', { message: 'This game is full' });
         return;
       }
 
@@ -26,8 +26,16 @@ export const setupGameEvents = (io: Server) => {
       room.players.push(socket.id);
       state.rooms.set(roomId, room);
 
+      io.to(roomId).emit('playerJoined', {
+        playersCount: room.players.length,
+        playerNumber: room.players.length
+      });
+
       if (room.players.length === 2) {
-        io.to(roomId).emit('gameStart', { firstPlayer: room.players[0] });
+        io.to(roomId).emit('gameStart', { 
+          firstPlayer: room.players[0],
+          players: room.players
+        });
       }
     });
 
@@ -36,21 +44,41 @@ export const setupGameEvents = (io: Server) => {
       if (!room) return;
 
       const playerIndex = room.players.indexOf(socket.id);
-      if (playerIndex === -1 || playerIndex !== room.currentTurn) return;
+      const currentPlayer = playerIndex + 1;
 
-      // Relay move to ALL clients in the room (including sender)
-      io.to(roomId).emit('moveMade', { col, player: playerIndex });
+      if (playerIndex === -1 || currentPlayer !== (room.currentTurn + 1)) {
+        socket.emit('error', { 
+          message: 'Not your turn',
+          currentTurn: room.currentTurn + 1,
+          yourPlayer: currentPlayer
+        });
+        return;
+      }
+
+      io.to(roomId).emit('moveMade', { 
+        col, 
+        player: currentPlayer,
+        timestamp: new Date().toISOString()
+      });
       
-      // Update turn
-      room.currentTurn = (room.currentTurn + 1) % 2;
-      io.to(roomId).emit('turnChange', { currentPlayer: room.players[room.currentTurn] });
+      room.currentTurn = room.currentTurn === 0 ? 1 : 0;
+      state.rooms.set(roomId, room);
     });
 
     socket.on('disconnect', () => {
       for (const [roomId, room] of state.rooms.entries()) {
-        if (room.players.includes(socket.id)) {
-          io.to(roomId).emit('playerDisconnected');
-          state.rooms.delete(roomId);
+        const playerIndex = room.players.indexOf(socket.id);
+        if (playerIndex !== -1) {
+          room.players = room.players.filter(id => id !== socket.id);
+          
+          if (room.players.length === 0) {
+            state.rooms.delete(roomId);
+          } else {
+            io.to(roomId).emit('playerDisconnected', {
+              message: 'Other player disconnected',
+              playersCount: room.players.length
+            });
+          }
         }
       }
     });

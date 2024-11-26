@@ -6,7 +6,7 @@
     "start:all": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
     "dev": "next dev",
     "start:frontend": "next dev",
-    "start:backend": "cd api && npm run build && npm run dev",
+    "start:backend": "cd api && npm run dev",
     "build": "next build",
     "lint": "next lint",
     "server": "tsx api/server.ts"

@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { setupGameEvents } from './events/gameEvents';
 import dotenv from 'dotenv';
-import { testDatabase } from './db/operations';
+import { dbOperations } from './db/operations';
 
 // Load environment variables
 dotenv.config();
@@ -21,29 +21,41 @@ app.use(express.json());
 const httpServer = createServer(app);
 
 app.post('/api/test-db', async (req, res) => {
-  console.log('Received test-db request');
-  
-  try {
-    console.log('Calling testDatabase function...');
-    const result = await testDatabase();
-    console.log('Database operation successful:', result);
-    res.json({ status: 'Success', data: result });
+    const { username } = req.body;
     
-  } catch (error: any) {
-    console.error('Database operation failed');
-    console.error('Error type:', error.constructor.name);
-    console.error('Error message:', error.message);
-    console.error('Full error:', error);
-    
-    res.status(500).json({ 
-      error: 'Database test failed',
-      details: {
-        message: error.message,
-        type: error.constructor.name,
-        // Add any other relevant error details
-      }
-    });
-  }
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        const result = await dbOperations.createUser(username);
+        res.json({ status: 'Success', data: result });
+    } catch (error: any) {
+        console.error('Failed to create user:', error);
+        res.status(500).json({ 
+            error: 'Failed to create user',
+            details: {
+                message: error.message,
+                type: error.constructor.name
+            }
+        });
+    }
+});
+
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await dbOperations.getAllUsers();
+        res.json({ status: 'Success', data: users });
+    } catch (error: any) {
+        console.error('Failed to fetch users:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch users',
+            details: {
+                message: error.message,
+                type: error.constructor.name
+            }
+        });
+    }
 });
 
 const io = new SocketIOServer(httpServer, {

@@ -17,6 +17,12 @@ interface WebSocketGameBoardProps {
 
 const SOCKET_URL = 'http://localhost:3001'
 
+interface Move {
+  player: number;
+  column: number;
+  row: number;
+}
+
 export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) {
   const [board, setBoard] = useState<Cell[][]>(Array(ROWS).fill(null).map(() => Array(COLS).fill(null)))
   const [currentPlayer, setCurrentPlayer] = useState<Player>(1)
@@ -28,6 +34,9 @@ export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [playerNumber, setPlayerNumber] = useState<1 | 2 | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [moves, setMoves] = useState<Move[]>([]);
+  const [playersCount, setPlayersCount] = useState<number>(0);
+  const [gameStatus, setGameStatus] = useState<string>('Waiting for players...');
 
   useEffect(() => {
     if (!gameOver) {
@@ -56,25 +65,41 @@ export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) 
       newSocket.emit('joinGame', roomId);
     });
 
-    newSocket.on('connect_error', (error) => {
-      console.log('Socket connection error:', error);
-      setIsConnected(false);
-    });
-
-    newSocket.on('gameStart', ({ firstPlayer }) => {
-      setPlayerNumber(newSocket.id === firstPlayer ? 1 : 2);
-      resetGame();
-    });
-
-    newSocket.on('moveMade', ({ col, player }) => {
-      if (player !== playerNumber) {
-        console.log(`Received move from player ${player} on column ${col}`);
-        handleOpponentMove(col);
+    newSocket.on('playerJoined', ({ playersCount, playerNumber }) => {
+      setPlayersCount(playersCount);
+      if (playersCount === 1) {
+        setGameStatus('Waiting for opponent...');
       }
     });
 
-    newSocket.on('playerDisconnected', () => {
+    newSocket.on('roomFull', ({ message }) => {
+      setGameStatus('Room is full. Please try another room.');
+    });
+
+    newSocket.on('gameStart', ({ firstPlayer, players }) => {
+      setPlayerNumber(newSocket.id === firstPlayer ? 1 : 2);
+      setGameStatus('Game started!');
+      resetGame();
+    });
+
+    newSocket.on('playerDisconnected', ({ message, playersCount }) => {
+      setPlayersCount(playersCount);
+      setGameStatus('Opponent disconnected. Waiting for new player...');
       setGameOver(true);
+    });
+
+    newSocket.on('moveMade', ({ col, player }) => {
+      console.log(`Processing move from player ${player} on column ${col}`);
+      const newBoard = [...board];
+      for (let row = ROWS - 1; row >= 0; row--) {
+        if (!newBoard[row][col]) {
+          setMoves(prev => [...prev, { player, column: col, row }]);
+          setFallingPiece({ row: -1, col, player });
+          animatePieceFall(row, col, player);
+          setCurrentPlayer(player === 1 ? 2 : 1);
+          break;
+        }
+      }
     });
 
     return () => {
@@ -83,21 +108,28 @@ export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) 
   }, [roomId]);
 
   const dropPiece = (col: number) => {
-    if (winner || fallingPiece || gameOver || !isConnected || !playerNumber || currentPlayer !== playerNumber) return;
-
-    console.log(`Local player clicked column ${col}`);
-
-    if (audioRef.current) {
-      audioRef.current.play();
+    if (winner || 
+        fallingPiece || 
+        gameOver || 
+        !isConnected || 
+        !playerNumber || 
+        currentPlayer !== playerNumber) {
+      console.log('Move rejected:', { 
+        winner, 
+        fallingPiece, 
+        gameOver, 
+        isConnected, 
+        playerNumber, 
+        currentPlayer,
+        message: 'Not your turn'
+      });
+      return;
     }
 
-    socket?.emit('makeMove', { roomId, col });
-    
     const newBoard = [...board];
     for (let row = ROWS - 1; row >= 0; row--) {
       if (!newBoard[row][col]) {
-        setFallingPiece({ row: -1, col, player: playerNumber });
-        animatePieceFall(row, col);
+        socket?.emit('makeMove', { roomId, col });
         break;
       }
     }
@@ -106,61 +138,62 @@ export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) 
   const handleOpponentMove = (col: number) => {
     console.log(`Received opponent move on column ${col} via WebSocket`);
     
-    const newBoard = [...board]
+    const newBoard = [...board];
     for (let row = ROWS - 1; row >= 0; row--) {
       if (!newBoard[row][col]) {
-        setFallingPiece({ row: -1, col, player: currentPlayer === 1 ? 2 : 1 })
-        animatePieceFall(row, col)
-        break
+        const opponentPlayer = playerNumber === 1 ? 2 : 1;
+        setMoves(prev => [...prev, { player: opponentPlayer, column: col, row }]);
+        setFallingPiece({ row: -1, col, player: opponentPlayer });
+        animatePieceFall(row, col, opponentPlayer);
+        break;
       }
     }
-  }
+  };
 
-  const animatePieceFall = (targetRow: number, col: number) => {
-    let currentRow = -1
+  const animatePieceFall = (targetRow: number, col: number, player: Player) => {
+    let currentRow = -1;
     const fallInterval = setInterval(() => {
       if (currentRow < targetRow) {
-        currentRow++
-        setFallingPiece(prev => ({ ...prev!, row: currentRow }))
+        currentRow++;
+        setFallingPiece(prev => ({ ...prev!, row: currentRow, player }));
       } else {
-        clearInterval(fallInterval)
-        setFallingPiece(null)
-        const newBoard = [...board]
-        newBoard[targetRow][col] = currentPlayer
-        setBoard(newBoard)
-        checkWinner(targetRow, col)
-        setCurrentPlayer(currentPlayer === 1 ? 2 : 1)
+        clearInterval(fallInterval);
+        setFallingPiece(null);
+        const newBoard = [...board];
+        newBoard[targetRow][col] = player;
+        setBoard(newBoard);
+        checkWinner(targetRow, col, player);
       }
-    }, 100)
-  }
+    }, 100);
+  };
 
-  const checkWinner = (row: number, col: number) => {
+  const checkWinner = (row: number, col: number, player: Player) => {
     const directions = [
       [0, 1], [1, 0], [1, 1], [1, -1]
-    ]
+    ];
 
     for (const [dx, dy] of directions) {
-      let count = 1
+      let count = 1;
       for (const factor of [-1, 1]) {
-        let r = row + factor * dx
-        let c = col + factor * dy
-        while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === currentPlayer) {
-          count++
-          r += factor * dx
-          c += factor * dy
+        let r = row + factor * dx;
+        let c = col + factor * dy;
+        while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+          count++;
+          r += factor * dx;
+          c += factor * dy;
         }
       }
       if (count >= 4) {
-        setWinner(currentPlayer)
-        setGameOver(true)
-        return
+        setWinner(player);
+        setGameOver(true);
+        return;
       }
     }
 
     if (board.every(row => row.every(cell => cell !== null))) {
-      setGameOver(true)
+      setGameOver(true);
     }
-  }
+  };
 
   const resetGame = useCallback(() => {
     setBoard(Array(ROWS).fill(null).map(() => Array(COLS).fill(null)))
@@ -202,10 +235,18 @@ export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) 
       {/* Game Board */}
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <h1 className="text-4xl font-bold text-gray-800 mb-8">Connect Four (WebSocket)</h1>
+        
+        {/* Game Status */}
+        <div className="mb-4 text-lg font-semibold text-gray-700">
+          {gameStatus}
+        </div>
+        
         <div className="mb-4 text-sm">
           {playerNumber && <span className="mr-4">You are Player {playerNumber}</span>}
           {currentPlayer === playerNumber && <span className="text-green-500">Your turn!</span>}
+          <span className="ml-4">Players: {playersCount}/2</span>
         </div>
+
         <div className="relative">
           {/* Chevron indicators */}
           <div className="absolute top-[-24px] left-0 right-0 flex justify-around">
@@ -242,10 +283,12 @@ export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) 
                       key={colIndex}
                       className="w-12 h-12 bg-blue-300 border-2 border-blue-600 rounded-full m-1 flex items-center justify-center overflow-hidden"
                     >
-                      {(cell !== null || (fallingPiece && fallingPiece.col === colIndex)) && (
+                      {(cell !== null || (fallingPiece && fallingPiece.col === colIndex && fallingPiece.row === rowIndex)) && (
                         <div
                           className={`w-10 h-10 rounded-full ${
-                            (cell === 1 || (fallingPiece && fallingPiece.player === 1)) ? 'bg-red-500' : 'bg-yellow-400'
+                            (cell === 1 || (fallingPiece && fallingPiece.col === colIndex && fallingPiece.row === rowIndex && fallingPiece.player === 1)) 
+                              ? 'bg-red-500' 
+                              : 'bg-yellow-400'
                           } transition-transform duration-100`}
                           style={{
                             transform: fallingPiece && fallingPiece.col === colIndex
@@ -290,6 +333,20 @@ export default function WebSocketGameBoard({ roomId }: WebSocketGameBoardProps) 
             </div>
           </div>
         )}
+      </div>
+
+      {/* Move History */}
+      <div className="w-64 bg-white p-4 flex flex-col shadow-md">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Move History</h2>
+        <div className="overflow-y-auto max-h-[600px]">
+          {moves.map((move, index) => (
+            <div key={index} className={`p-2 mb-1 rounded ${
+              move.player === playerNumber ? 'bg-blue-100' : 'bg-gray-100'
+            }`}>
+              Player {move.player}: Column {move.column + 1}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
