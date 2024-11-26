@@ -2,14 +2,27 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { setupGameEvents } from './events/gameEvents';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Express + Socket.IO setup
 const app = express();
 const httpServer = createServer(app);
 
+app.get('/api/test-db', async (req, res) => {
+  try {
+    // TODO: Implement database test
+    res.json({ status: 'Database test endpoint ready' });
+  } catch (error) {
+    res.status(500).json({ error: 'Database test failed' });
+  }
+});
+
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
   },
