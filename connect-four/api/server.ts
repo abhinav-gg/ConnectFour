@@ -13,6 +13,10 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+app.get('/', (req, res) => {
+  res.send('Backend is running!')
+})
+
 app.use(cors({
     origin: process.env.CLIENT_URL || "http://localhost:3000",
     credentials: true
