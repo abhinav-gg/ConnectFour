@@ -9,13 +9,19 @@ import { dbOperations } from './db/operations';
 // Load environment variables
 dotenv.config();
 
+// Define port once
+const port = process.env.port || 3001;
+
 // Express + Socket.IO setup
 const app = express();
-const port = process.env.PORT || 3001;
+
+// Log the port being used
+console.log('Attempting to use port:', port);
+console.log('Environment port:', process.env.port);
 
 app.get('/', (req, res) => {
-  res.send('Backend is running!')
-})
+  res.send(`Backend is running on port ${port}!`)
+});
 
 app.use(cors({
     origin: process.env.CLIENT_URL || "http://localhost:3000",
@@ -97,7 +103,7 @@ io.on('connection', (socket) => {
 
 setupGameEvents(io);
 
-const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Use the single port constant
+httpServer.listen(Number(port), '0.0.0.0', () => {
+  console.log(`Server running on port ${port}`);
 });
