@@ -216,20 +216,20 @@ export default function GameWithHistory() {
                         key={colIndex}
                         className="w-12 h-12 bg-blue-300 border-2 border-blue-600 rounded-full m-1 flex items-center justify-center overflow-hidden"
                       >
-                        {cell !== null && (
+                        {(cell !== null || (fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row)) && (
                           <div
                             className={`w-10 h-10 rounded-full ${
-                              cell === 1 ? 'bg-red-500' : 'bg-yellow-400'
-                            }`}
-                          />
-                        )}
-                        {fallingPiece && fallingPiece.col === colIndex && (
-                          <div
-                            className={`w-10 h-10 rounded-full ${
-                              fallingPiece.player === 1 ? 'bg-red-500' : 'bg-yellow-400'
-                            } transition-transform duration-100 absolute`}
+                              cell !== null 
+                                ? (cell === 1 ? 'bg-red-500' : 'bg-yellow-400')
+                                : (fallingPiece?.player === 1 ? 'bg-red-500' : 'bg-yellow-400')
+                            } transition-transform duration-100`}
                             style={{
-                              transform: `translateY(${(fallingPiece.row - rowIndex) * 100}%)`
+                              transform: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
+                                ? `translateY(${(fallingPiece.row - rowIndex) * 100}%)`
+                                : 'none',
+                              opacity: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
+                                ? Math.max(0, 1 - (fallingPiece.row - rowIndex) * 0.2)
+                                : 1
                             }}
                           />
                         )}

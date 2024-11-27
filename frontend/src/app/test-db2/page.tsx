@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { config } from '@/config/env';
 
 interface User {
     id: string;
@@ -16,7 +17,7 @@ export default function TestDB2() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://localhost:3001/api/users')
+        fetch(`${config.backendUrl}/api/users`)
             .then(res => res.json())
             .then(data => {
                 setUsers(data.data);

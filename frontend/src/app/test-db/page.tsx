@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { config } from '@/config/env';
 
 export default function TestDB() {
     const [username, setUsername] = useState('');
@@ -9,7 +10,7 @@ export default function TestDB() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const response = await fetch('http://localhost:3001/api/test-db', {
+            const response = await fetch(`${config.backendUrl}/api/test-db`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

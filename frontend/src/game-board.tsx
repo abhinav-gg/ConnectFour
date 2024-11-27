@@ -2,15 +2,37 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Home, LogIn, RotateCcw, FileText, ChevronDown } from 'lucide-react'
+import { Home, LogIn, RotateCcw, FileText, ChevronDown, ArrowLeft } from 'lucide-react'
+import { Socket } from 'socket.io-client';
 
 type Player = 1 | 2
 type Cell = Player | null
+type Move = { player: Player; col: number }
 
 const ROWS = 6
 const COLS = 7
 
-export default function GameBoard() {
+interface GameBoardProps {
+  socket: Socket | null;
+  playerNumber: number | null;
+  isConnected: boolean;
+  playersCount: number;
+  gameStatus: string;
+  roomId: string;
+  onMove: (col: number) => void;
+  moves: Array<{ player: number; column: number; row: number; }>;
+}
+
+export default function GameBoard({ 
+  socket, 
+  playerNumber, 
+  isConnected, 
+  playersCount, 
+  gameStatus, 
+  roomId, 
+  onMove,
+  moves: externalMoves = []
+}: GameBoardProps) {
   const [board, setBoard] = useState<Cell[][]>(Array(ROWS).fill(null).map(() => Array(COLS).fill(null)))
   const [currentPlayer, setCurrentPlayer] = useState<Player>(1)
   const [winner, setWinner] = useState<Player | null>(null)
@@ -18,6 +40,8 @@ export default function GameBoard() {
   const [fallingPiece, setFallingPiece] = useState<{ row: number, col: number, player: Player } | null>(null)
   const [gameOver, setGameOver] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [moves, setMoves] = useState<Move[]>([])
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1)
 
   useEffect(() => {
     if (!gameOver) {
@@ -29,21 +53,83 @@ export default function GameBoard() {
     audioRef.current = new Audio('/drop-sound.mp3')
   }, [])
 
-  const dropPiece = (col: number) => {
-    if (winner || fallingPiece || gameOver) return
-
-    // Play sound effect immediately
-    if (audioRef.current) {
-        audioRef.current.play()
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isConnected) return; // Don't handle keyboard navigation in websocket mode
+      
+      switch (event.key) {
+        case 'ArrowUp':
+          goToMove(0)
+          break
+        case 'ArrowDown':
+          returnToPresent()
+          break
+        case 'ArrowLeft':
+          if (currentMoveIndex > 0) {
+            goToMove(currentMoveIndex - 1)
+          }
+          break
+        case 'ArrowRight':
+          if (currentMoveIndex < moves.length - 1) {
+            goToMove(currentMoveIndex + 1)
+          }
+          break
+      }
     }
 
-    const newBoard = [...board]
-    for (let row = ROWS - 1; row >= 0; row--) {
-      if (!newBoard[row][col]) {
-        setFallingPiece({ row: -1, col, player: currentPlayer })
-        animatePieceFall(row, col)
-        break
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentMoveIndex, moves, isConnected])
+
+  const dropPiece = (col: number) => {
+    if (winner || 
+        fallingPiece || 
+        gameOver || 
+        (!isConnected && currentMoveIndex !== moves.length - 1)) return
+
+    if (isConnected) {
+      if (!playerNumber || currentPlayer !== playerNumber) return;
+      onMove?.(col);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.play()
       }
+
+      const newBoard = [...board]
+      for (let row = ROWS - 1; row >= 0; row--) {
+        if (!newBoard[row][col]) {
+          setFallingPiece({ row: -1, col, player: currentPlayer })
+          const newMoves = [...moves, { player: currentPlayer, col }]
+          setMoves(newMoves)
+          setCurrentMoveIndex(newMoves.length - 1)
+          animatePieceFall(row, col)
+          break
+        }
+      }
+    }
+  }
+
+  const goToMove = (index: number) => {
+    if (isConnected) return;
+    
+    const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
+    for (let i = 0; i <= index; i++) {
+      const move = moves[i]
+      for (let row = ROWS - 1; row >= 0; row--) {
+        if (!newBoard[row][move.col]) {
+          newBoard[row][move.col] = move.player
+          break
+        }
+      }
+    }
+    setBoard(newBoard)
+    setCurrentPlayer((index + 1) % 2 === 0 ? 2 : 1)
+    setCurrentMoveIndex(index)
+  }
+
+  const returnToPresent = () => {
+    if (!isConnected) {
+      goToMove(moves.length - 1)
     }
   }
 
@@ -99,6 +185,10 @@ export default function GameBoard() {
     setWinner(null)
     setFallingPiece(null)
     setGameOver(false)
+    if (!isConnected) {
+      setMoves([])
+      setCurrentMoveIndex(-1)
+    }
   }
 
   const handleColumnHover = (col: number) => {
@@ -219,6 +309,28 @@ export default function GameBoard() {
           </div>
         )}
       </div>
+
+      {/* Move History Panel - Only show in non-websocket mode */}
+      {!isConnected && (
+        <div className="w-64 bg-white p-4 flex flex-col shadow-md overflow-y-auto">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Move History</h2>
+          <div className="flex flex-wrap gap-2">
+            {moves.map((move, index) => (
+              <button
+                key={index}
+                onClick={() => goToMove(index)}
+                className={`w-8 h-8 rounded-full text-white font-bold ${
+                  move.player === 1 ? 'bg-red-500' : 'bg-yellow-400'
+                } ${
+                  index === currentMoveIndex ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                }`}
+              >
+                {move.col + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
