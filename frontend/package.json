@@ -3,12 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start:all": "concurrently \"npm run start:frontend\" \"npm run start:backend\"",
     "dev": "next dev",
-    "start:frontend": "next dev",
-    "start:backend": "cd ../backend && tsc && node dist/server.js",
     "build": "next build",
-    "lint": "next lint"
+    "lint": "next lint",
+    "start": "next start"
   },
   "dependencies": {
     "@types/cors": "^2.8.17",
