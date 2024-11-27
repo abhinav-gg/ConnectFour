@@ -11,6 +11,7 @@ dotenv.config();
 
 // Express + Socket.IO setup
 const app = express();
+const port = process.env.PORT || 3001;
 
 app.use(cors({
     origin: process.env.CLIENT_URL || "http://localhost:3000",
@@ -19,6 +20,14 @@ app.use(cors({
 app.use(express.json());
 
 const httpServer = createServer(app);
+
+app.head('/health', (req, res) => {
+  res.status(200).end();
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
 
 app.post('/api/test-db', async (req, res) => {
     const { username } = req.body;
