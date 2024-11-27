@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import GameBoard from '@/game-board';
 import io, { Socket } from 'socket.io-client';
 import { config } from '@/config/env';
+import GameBoard from '@/game-board';
 
 export default function TestingWebsockets() {
   const [roomId, setRoomId] = useState('');
@@ -38,6 +38,8 @@ export default function TestingWebsockets() {
       setPlayersCount(playersCount);
       if (playersCount === 1) {
         setGameStatus('Waiting for opponent...');
+      } else if (playersCount === 2) {
+        setGameStatus('Game ready to start!');
       }
     });
 
@@ -45,12 +47,12 @@ export default function TestingWebsockets() {
       setGameStatus('Room is full. Please try another room.');
     });
 
-    newSocket.on('gameStart', ({ firstPlayer, players }) => {
+    newSocket.on('gameStart', ({ firstPlayer }) => {
       setPlayerNumber(newSocket.id === firstPlayer ? 1 : 2);
       setGameStatus('Game started!');
     });
 
-    newSocket.on('playerDisconnected', ({ message, playersCount }) => {
+    newSocket.on('playerDisconnected', ({ playersCount }) => {
       setPlayersCount(playersCount);
       setGameStatus('Opponent disconnected. Waiting for new player...');
     });
@@ -101,16 +103,26 @@ export default function TestingWebsockets() {
           </div>
         </div>
       ) : (
-        <GameBoard
-          socket={socket}
-          playerNumber={playerNumber}
-          isConnected={isConnected}
-          playersCount={playersCount}
-          gameStatus={gameStatus}
-          roomId={roomId}
-          onMove={handleMove}
-          moves={moves}
-        />
+        <div className="p-4">
+          <div className="mb-4 text-center">
+            <h2 className="text-xl font-semibold">Room: {roomId}</h2>
+            <p className="text-gray-600">{gameStatus}</p>
+            {playerNumber && (
+              <p className="text-blue-600">You are Player {playerNumber}</p>
+            )}
+          </div>
+          
+          <GameBoard
+            socket={socket}
+            playerNumber={playerNumber}
+            isConnected={isConnected}
+            playersCount={playersCount}
+            gameStatus={gameStatus}
+            roomId={roomId}
+            onMove={handleMove}
+            moves={moves}
+          />
+        </div>
       )}
     </div>
   );
