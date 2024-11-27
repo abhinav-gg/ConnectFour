@@ -39,8 +39,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-app.post('/api/test-db', async (req, res) => {
-    const { username } = req.body;
+app.post('/api/test-db', async (req: express.Request, res: any) => {
+    const { username } = req.body as { username: string };
     
     if (!username) {
         return res.status(400).json({ error: 'Username is required' });
@@ -48,10 +48,10 @@ app.post('/api/test-db', async (req, res) => {
 
     try {
         const result = await dbOperations.createUser(username);
-        res.json({ status: 'Success', data: result });
+        return res.json({ status: 'Success', data: result });
     } catch (error: any) {
         console.error('Failed to create user:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             error: 'Failed to create user',
             details: {
                 message: error.message,
