@@ -10,7 +10,7 @@ import { dbOperations } from './db/operations';
 dotenv.config();
 
 // Define port once
-const port = process.env.port || 3001;
+const port = process.env.PORT || 3001;
 
 // Express + Socket.IO setup
 const app = express();
