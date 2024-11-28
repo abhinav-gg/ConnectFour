@@ -192,6 +192,10 @@ export default function GameBoard({
     }
   }
 
+  const testDotEnv = () => {
+    console.log(process.env.NEXT_PUBLIC_BACKEND_URL);
+  }
+
   const handleColumnLeave = () => {
     setHighlightedColumn(null)
   }
