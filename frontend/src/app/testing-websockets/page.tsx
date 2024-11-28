@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import io, { Socket } from 'socket.io-client';
-import { config } from '@/config/env';
+import { getConfig } from '@/config/env';
 import GameBoard from '@/game-board';
 
 export default function TestingWebsockets() {
@@ -16,7 +16,8 @@ export default function TestingWebsockets() {
   const [moves, setMoves] = useState<Array<{ player: number; column: number; row: number; }>>([]);
 
   useEffect(() => {
-    const newSocket = io(config.backendUrl, {
+    const backendUrl = getConfig().backendUrl;
+    const newSocket = io(backendUrl, {
       withCredentials: true,
       transports: ['polling', 'websocket'],
       reconnectionDelay: 1000,

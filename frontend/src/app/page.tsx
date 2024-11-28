@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import GameBoard from '@/game-board';
-import { config } from '@/config/env';
+import { getConfig } from '@/config/env';
 
 export default function Home() {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -15,7 +15,7 @@ export default function Home() {
   const [moves, setMoves] = useState<Array<{ player: number; column: number; row: number }>>([]);
 
   useEffect(() => {
-    const newSocket = io(config.backendUrl);
+    const newSocket = io(getConfig().backendUrl);
 
     newSocket.on('connect', () => {
       setIsConnected(true);
