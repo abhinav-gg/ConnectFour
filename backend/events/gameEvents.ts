@@ -1,5 +1,5 @@
 import expressWs from "express-ws";
-import { Room } from "$/types";
+import { Room } from "../types";
 import type { WebSocket as WSocket } from "ws";
 import { randomUUID, type UUID } from "crypto";
 
@@ -13,6 +13,20 @@ const state: GameState = {
 
 const SocketIDs = new Map<UUID, WSocket>();
 
+function sendToRoom(roomId: string, event: string, data: any) {
+  const room = state.rooms.get(roomId);
+  if (!room) return;
+
+  const wsData = JSON.stringify({ event, data });
+
+  for (const playerId of room.players) {
+    const socket = SocketIDs.get(playerId);
+    if (socket) {
+      socket.send(wsData);
+    }
+  }
+}
+
 export const setupGameEvents = (xws: expressWs.Instance) => {
   const app = xws.app;
 
@@ -25,20 +39,20 @@ export const setupGameEvents = (xws: expressWs.Instance) => {
       const room = state.rooms.get(roomId) || { players: [], currentTurn: 0 };
 
       if (room.players.length >= 2) {
-        ws.emit('roomFull', { message: 'This game is full' });
+        ws.send(JSON.stringify({ event: 'roomFull', data: { message: 'This game is full' } }));
         return;
       }
 
       room.players.push(id);
       state.rooms.set(roomId, room);
 
-      app.to(roomId).emit('playerJoined', {
+      sendToRoom(roomId, 'playerJoined', {
         playersCount: room.players.length,
         playerNumber: room.players.length
       });
 
       if (room.players.length === 2) {
-        app.to(roomId).emit('gameStart', {
+        sendToRoom(roomId, 'gameStart', {
           firstPlayer: room.players[0],
           players: room.players
         });
@@ -49,7 +63,7 @@ export const setupGameEvents = (xws: expressWs.Instance) => {
       const room = state.rooms.get(roomId);
       if (!room) return;
 
-      const playerIndex = room.players.indexOf(ws.id);
+      const playerIndex = room.players.indexOf(id);
       const currentPlayer = playerIndex + 1;
 
       if (playerIndex === -1 || currentPlayer !== (room.currentTurn + 1)) {
@@ -61,7 +75,7 @@ export const setupGameEvents = (xws: expressWs.Instance) => {
         return;
       }
 
-      app.to(roomId).emit('moveMade', {
+      sendToRoom(roomId, 'moveMade', {
         col,
         player: currentPlayer,
         timestamp: new Date().toISOString()
@@ -76,14 +90,14 @@ export const setupGameEvents = (xws: expressWs.Instance) => {
       SocketIDs.delete(id);
 
       for (const [roomId, room] of state.rooms.entries()) {
-        const playerIndex = room.players.indexOf(ws.id);
+        const playerIndex = room.players.indexOf(id);
         if (playerIndex !== -1) {
-          room.players = room.players.filter(id => id !== ws.id);
+          room.players = room.players.filter(id => id !== id);
 
           if (room.players.length === 0) {
             state.rooms.delete(roomId);
           } else {
-            app.to(roomId).emit('playerDisconnected', {
+            sendToRoom(roomId, 'playerDisconnected', {
               message: 'Other player disconnected',
               playersCount: room.players.length
             });

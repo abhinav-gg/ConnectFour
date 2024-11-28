@@ -1,12 +1,9 @@
+import { dbOperations } from './db/operations.js';
+import { setupGameEvents } from './events/gameEvents';
+import cors from 'cors';
+import dotenv from 'dotenv';
 import express from 'express';
 import expressWs from 'express-ws';
-import type { WebSocket as WSocket } from 'ws';
-import { type UUID } from 'crypto';
-import cors from 'cors';
-import { setupGameEvents } from '$/events/gameEvents';
-import dotenv from 'dotenv';
-import { dbOperations } from '$/db/operations';
-import type { Room, RoomID } from '$/types';
 
 dotenv.config();
 
