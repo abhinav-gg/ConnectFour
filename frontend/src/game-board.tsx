@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { Socket } from 'socket.io-client'
 import { RotateCcw, ChevronDown, ArrowLeft } from 'lucide-react'
 import Dashboard from '@/components/dashboard'
@@ -23,7 +23,8 @@ interface GameBoardProps {
   moves: Array<{ player: number; column: number; row: number }>;
 }
 
-export default function GameBoard({
+// Create a wrapper component for the game content
+function GameBoardContent({
   socket,
   playerNumber,
   isConnected,
@@ -346,4 +347,17 @@ export default function GameBoard({
       </div>
     </div>
   )
+}
+
+// Main GameBoard component that adds the Suspense boundary
+export default function GameBoard(props: GameBoardProps) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <div className="text-2xl font-bold text-gray-800">Loading...</div>
+      </div>
+    }>
+      <GameBoardContent {...props} />
+    </Suspense>
+  );
 }
