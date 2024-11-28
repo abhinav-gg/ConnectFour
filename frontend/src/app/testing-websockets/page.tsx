@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { getConfig } from '@/config/env';
 import GameBoard from '@/game-board';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function TestingWebsockets() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [roomId, setRoomId] = useState('');
   const [hasJoined, setHasJoined] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -67,10 +70,18 @@ export default function TestingWebsockets() {
     };
   }, [roomId, hasJoined]);
 
+  // Check for room parameter in URL
+  useEffect(() => {
+    const roomFromUrl = searchParams.get('room');
+    if (roomFromUrl) {
+      setRoomId(roomFromUrl);
+      setHasJoined(true);
+    }
+  }, [searchParams]);
+
   const handleJoinRoom = () => {
     if (roomId.trim()) {
-      setHasJoined(true);
-      socket?.emit('joinGame', roomId);
+      router.push(`/testing-websockets?room=${roomId.trim()}`);
     }
   };
 
