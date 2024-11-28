@@ -16,15 +16,12 @@ export const getConfig = () => {
                 ''
   };
 
-  // Debug logging
-  if (process.env.NODE_ENV === 'development') {
-    console.debug('Config values:', {
+  console.log('Config values:', {
       'window.__NEXT_DATA__?.props?.pageProps?.backendUrl': window.__NEXT_DATA__?.props?.pageProps?.backendUrl,
       'process.env.NEXT_PUBLIC_BACKEND_URL': process.env.NEXT_PUBLIC_BACKEND_URL,
       'window.NEXT_PUBLIC_BACKEND_URL': window.NEXT_PUBLIC_BACKEND_URL,
       'final backendUrl': config.backendUrl
-    });
-  }
+  });
 
   return config;
 }
