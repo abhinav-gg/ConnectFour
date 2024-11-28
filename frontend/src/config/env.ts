@@ -23,6 +23,10 @@ export const getConfig = () => {
       'final backendUrl': config.backendUrl
   });
 
+  console.log('Test values:', {
+    'process.env.TEST': process.env.TEST,
+  });
+
   return config;
 }
 
