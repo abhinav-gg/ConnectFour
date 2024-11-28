@@ -1,15 +1,14 @@
-import { dbOperations } from './db/operations.js';
-import { setupGameEvents } from './events/gameEvents';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import expressWs from 'express-ws';
+import { dbOperations } from './db/operations.js';
+import { setupGameEvents } from './events/gameEvents';
 
 dotenv.config();
 
 const port = process.env.PORT || 3001;
-const expressWsObj = expressWs(express());
-const app = expressWsObj.app;
+const { app } = expressWs(express());
 
 console.log('Attempting to use port:', port);
 console.log('Environment port:', process.env.port);
@@ -70,7 +69,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-setupGameEvents(expressWsObj);
+setupGameEvents(app);
 
 app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);

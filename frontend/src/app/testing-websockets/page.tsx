@@ -1,14 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import io, { Socket } from 'socket.io-client';
 import { getConfig } from '@/config/env';
 import GameBoard from '@/game-board';
+import { useEffect, useState } from 'react';
+
+type PlayerJoined = {
+  event: 'playerJoined';
+  data: { playersCount: number; };
+};
+
+type RoomFull = {
+  event: 'roomFull';
+};
+
+type GameStart = {
+  event: 'gameStart';
+  data: { firstPlayer: string; };
+};
+
+type PlayerDisconnected = {
+  event: 'playerDisconnected';
+  data: { playersCount: number; };
+};
+
+type MoveMade = {
+  event: 'moveMade';
+  data: { player: number; col: number; row: number; };
+};
+
+type Message = PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
 
 export default function TestingWebsockets() {
   const [roomId, setRoomId] = useState('');
   const [hasJoined, setHasJoined] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [playersCount, setPlayersCount] = useState(0);
@@ -17,50 +42,47 @@ export default function TestingWebsockets() {
 
   useEffect(() => {
     const backendUrl = getConfig().backendUrl;
-    const newSocket = io(backendUrl, {
-      withCredentials: true,
-      transports: ['polling', 'websocket'],
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-      autoConnect: true
-    });
+    const newSocket = new WebSocket(backendUrl);
+    const userID = localStorage.getItem('userID') || crypto.randomUUID();
 
     setSocket(newSocket);
 
-    newSocket.on('connect', () => {
-      console.log('Client Socket.IO connected!');
+    newSocket.onopen = () => {
+      console.log('WebSocket connected!');
       setIsConnected(true);
       if (hasJoined) {
-        newSocket.emit('joinGame', roomId);
+        newSocket.send(JSON.stringify({ event: 'joinGame', data: { roomId, userID } }));
       }
-    });
+    };
 
-    newSocket.on('playerJoined', ({ playersCount, playerNumber }) => {
-      setPlayersCount(playersCount);
-      if (playersCount === 1) {
-        setGameStatus('Waiting for opponent...');
-      } else if (playersCount === 2) {
-        setGameStatus('Game ready to start!');
+    newSocket.onmessage = (event) => {
+      const data = JSON.parse(event.data) as Message;
+      console.log(data);
+      switch (data.event) {
+        case 'playerJoined':
+          setPlayersCount(data.data.playersCount);
+          if (data.data.playersCount === 1) {
+            setGameStatus('Waiting for opponent...');
+          } else if (data.data.playersCount === 2) {
+            setGameStatus('Game ready to start!');
+          }
+          break;
+        case 'roomFull':
+          setGameStatus('Room is full. Please try another room.');
+          break;
+        case 'gameStart':
+          setPlayerNumber(userID === data.data.firstPlayer ? 1 : 2);
+          setGameStatus('Game started!');
+          break;
+        case 'playerDisconnected':
+          setPlayersCount(data.data.playersCount);
+          setGameStatus('Opponent disconnected. Waiting for new player...');
+          break;
+        case 'moveMade':
+          setMoves(prev => [...prev, { player: data.data.player, column: data.data.col, row: data.data.row }]);
+          break;
       }
-    });
-
-    newSocket.on('roomFull', ({ message }) => {
-      setGameStatus('Room is full. Please try another room.');
-    });
-
-    newSocket.on('gameStart', ({ firstPlayer }) => {
-      setPlayerNumber(newSocket.id === firstPlayer ? 1 : 2);
-      setGameStatus('Game started!');
-    });
-
-    newSocket.on('playerDisconnected', ({ playersCount }) => {
-      setPlayersCount(playersCount);
-      setGameStatus('Opponent disconnected. Waiting for new player...');
-    });
-
-    newSocket.on('moveMade', ({ col, player, row }) => {
-      setMoves(prev => [...prev, { player, column: col, row }]);
-    });
+    };
 
     return () => {
       newSocket.close();
@@ -70,13 +92,13 @@ export default function TestingWebsockets() {
   const handleJoinRoom = () => {
     if (roomId.trim()) {
       setHasJoined(true);
-      socket?.emit('joinGame', roomId);
+      socket?.send(JSON.stringify({ event: 'joinGame', data: { roomId } }));
     }
   };
 
   const handleMove = (col: number) => {
     if (socket && playerNumber) {
-      socket.emit('makeMove', { roomId, col });
+      socket.send(JSON.stringify({ event: 'makeMove', data: { roomId, col } }));
     }
   };
 
@@ -112,7 +134,7 @@ export default function TestingWebsockets() {
               <p className="text-blue-600">You are Player {playerNumber}</p>
             )}
           </div>
-          
+
           <GameBoard
             socket={socket}
             playerNumber={playerNumber}

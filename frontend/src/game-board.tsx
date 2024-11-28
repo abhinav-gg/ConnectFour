@@ -1,26 +1,25 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { Socket } from 'socket.io-client'
-import Link from 'next/link'
-import { Home, LogIn, RotateCcw, FileText, ChevronDown, ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Home, LogIn, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
-type Player = 1 | 2
-type Cell = Player | null
-type Move = { player: Player; col: number }
+type Player = 1 | 2;
+type Cell = Player | null;
+type Move = { player: Player; col: number; };
 
-const ROWS = 6
-const COLS = 7
+const ROWS = 6;
+const COLS = 7;
 
 interface GameBoardProps {
-  socket: Socket | null;
+  socket: WebSocket | null;
   playerNumber: number | null;
   isConnected: boolean;
   playersCount: number;
   gameStatus: string;
   roomId: string;
   onMove: (col: number) => void;
-  moves: Array<{ player: number; column: number; row: number }>;
+  moves: Array<{ player: number; column: number; row: number; }>;
 }
 
 export default function GameBoard({
@@ -33,48 +32,48 @@ export default function GameBoard({
   onMove,
   moves: externalMoves = []
 }: GameBoardProps) {
-  const [board, setBoard] = useState<Cell[][]>(Array(ROWS).fill(null).map(() => Array(COLS).fill(null)))
-  const [currentPlayer, setCurrentPlayer] = useState<Player>(1)
-  const [winner, setWinner] = useState<Player | null>(null)
-  const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null)
-  const [fallingPiece, setFallingPiece] = useState<{ row: number, col: number, player: Player } | null>(null)
-  const [gameOver, setGameOver] = useState(false)
-  const [moves, setMoves] = useState<Move[]>([])
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [board, setBoard] = useState<Cell[][]>(Array(ROWS).fill(null).map(() => Array(COLS).fill(null)));
+  const [currentPlayer, setCurrentPlayer] = useState<Player>(1);
+  const [winner, setWinner] = useState<Player | null>(null);
+  const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null);
+  const [fallingPiece, setFallingPiece] = useState<{ row: number, col: number, player: Player; } | null>(null);
+  const [gameOver, setGameOver] = useState(false);
+  const [moves, setMoves] = useState<Move[]>([]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    audioRef.current = new Audio('/drop-sound.mp3')
-  }, [])
+    audioRef.current = new Audio('/drop-sound.mp3');
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       switch (event.key) {
         case 'ArrowUp':
-          goToMove(0)
-          break
+          goToMove(0);
+          break;
         case 'ArrowDown':
-          returnToPresent()
-          break
+          returnToPresent();
+          break;
         case 'ArrowLeft':
           if (currentMoveIndex > 0) {
-            goToMove(currentMoveIndex - 1)
+            goToMove(currentMoveIndex - 1);
           }
-          break
+          break;
         case 'ArrowRight':
           if (currentMoveIndex < moves.length - 1) {
-            goToMove(currentMoveIndex + 1)
+            goToMove(currentMoveIndex + 1);
           }
-          break
+          break;
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [currentMoveIndex, moves])
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentMoveIndex, moves]);
 
   const checkWinner = (row: number, col: number, currentBoard: Cell[][]) => {
     const directions = [
@@ -92,10 +91,10 @@ export default function GameBoard({
       for (const factor of [-1, 1]) {
         let r = row + factor * dx;
         let c = col + factor * dy;
-        
+
         while (
-          r >= 0 && r < ROWS && 
-          c >= 0 && c < COLS && 
+          r >= 0 && r < ROWS &&
+          c >= 0 && c < COLS &&
           currentBoard[r][c] === currentPlayerValue
         ) {
           count++;
@@ -103,7 +102,7 @@ export default function GameBoard({
           c += factor * dy;
         }
       }
-      
+
       if (count >= 4) {
         setWinner(currentPlayerValue);
         setGameOver(true);
@@ -123,20 +122,20 @@ export default function GameBoard({
   useEffect(() => {
     if (isConnected && externalMoves?.length > 0) {
       const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
-      
+
       externalMoves.forEach(({ player, column, row }) => {
         const col = typeof column === 'number' ? column : parseInt(column);
         let targetRow = ROWS - 1;
         while (targetRow >= 0 && newBoard[targetRow][col] !== null) {
           targetRow--;
         }
-        
+
         if (targetRow >= 0) {
           newBoard[targetRow][col] = player as Player;
           checkWinner(targetRow, col, newBoard);
         }
       });
-      
+
       setBoard(newBoard);
       setCurrentPlayer(externalMoves.length % 2 === 0 ? 1 : 2);
     }
@@ -144,13 +143,13 @@ export default function GameBoard({
 
   const dropPiece = (col: number) => {
     if (winner || fallingPiece || gameOver || currentPlayer !== playerNumber) return;
-    
+
     // Find the lowest empty row in the selected column
     let targetRow = ROWS - 1;
     while (targetRow >= 0 && board[targetRow][col] !== null) {
       targetRow--;
     }
-    
+
     if (targetRow >= 0) {
       setFallingPiece({ row: -1, col, player: currentPlayer });
       animatePieceFall(targetRow, col);
@@ -159,69 +158,69 @@ export default function GameBoard({
   };
 
   const animatePieceFall = (targetRow: number, col: number) => {
-    let currentRow = -1
+    let currentRow = -1;
     const fallInterval = setInterval(() => {
       if (currentRow < targetRow) {
-        currentRow++
-        setFallingPiece(prev => ({ ...prev!, row: currentRow }))
+        currentRow++;
+        setFallingPiece(prev => ({ ...prev!, row: currentRow }));
       } else {
-        clearInterval(fallInterval)
-        setFallingPiece(null)
-        const newBoard = [...board]
-        newBoard[targetRow][col] = currentPlayer
-        setBoard(newBoard)
-        checkWinner(targetRow, col, newBoard)
-        setCurrentPlayer(currentPlayer === 1 ? 2 : 1)
+        clearInterval(fallInterval);
+        setFallingPiece(null);
+        const newBoard = [...board];
+        newBoard[targetRow][col] = currentPlayer;
+        setBoard(newBoard);
+        checkWinner(targetRow, col, newBoard);
+        setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
       }
-    }, 100)
-  }
+    }, 100);
+  };
 
   const resetGame = () => {
-    setBoard(Array(ROWS).fill(null).map(() => Array(COLS).fill(null)))
-    setCurrentPlayer(1)
-    setWinner(null)
-    setFallingPiece(null)
-    setGameOver(false)
-    setMoves([])
-    setCurrentMoveIndex(-1)
-  }
+    setBoard(Array(ROWS).fill(null).map(() => Array(COLS).fill(null)));
+    setCurrentPlayer(1);
+    setWinner(null);
+    setFallingPiece(null);
+    setGameOver(false);
+    setMoves([]);
+    setCurrentMoveIndex(-1);
+  };
 
   const handleColumnHover = (col: number) => {
     if (!gameOver && !fallingPiece && currentMoveIndex === moves.length - 1) {
-      setHighlightedColumn(col)
+      setHighlightedColumn(col);
     }
-  }
+  };
 
   const testDotEnv = () => {
     console.log(process.env.NEXT_PUBLIC_BACKEND_URL);
-  }
+  };
 
   const handleColumnLeave = () => {
-    setHighlightedColumn(null)
-  }
+    setHighlightedColumn(null);
+  };
 
   const goToMove = (index: number) => {
-    const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
+    const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
     for (let i = 0; i <= index; i++) {
-      const move = moves[i]
+      const move = moves[i];
       for (let row = ROWS - 1; row >= 0; row--) {
         if (!newBoard[row][move.col]) {
-          newBoard[row][move.col] = move.player
-          break
+          newBoard[row][move.col] = move.player;
+          break;
         }
       }
     }
-    setBoard(newBoard)
+    setBoard(newBoard);
     // debug
     console.log(`current index: ${index}`);
     console.log(`setting player to ${(index + 1) % 2 === 0 ? 2 : 1}`);
-    setCurrentPlayer((index + 1) % 2 === 0 ? 2 : 1)
-    setCurrentMoveIndex(index)
-  }
+    setCurrentPlayer((index + 1) % 2 === 0 ? 2 : 1);
+    setCurrentMoveIndex(index);
+  };
 
   const returnToPresent = () => {
-    goToMove(moves.length - 1)
-  }
+    goToMove(moves.length - 1);
+  };
 
   const playAgain = () => {
     window.location.reload();
@@ -356,5 +355,5 @@ export default function GameBoard({
         )}
       </div>
     </div>
-  )
+  );
 }

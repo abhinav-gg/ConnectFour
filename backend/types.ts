@@ -6,3 +6,15 @@ export type Room = {
 };
 
 export type RoomID = string;
+
+export type JoinGame = {
+  event: 'joinGame';
+  data: { roomId: RoomID; userID: UUID; };
+};
+
+export type MakeMove = {
+  event: 'makeMove';
+  data: { roomId: RoomID; col: number; };
+};
+
+export type Message = JoinGame | MakeMove;
