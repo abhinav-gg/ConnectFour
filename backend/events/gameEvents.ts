@@ -98,6 +98,7 @@ export const setupGameEvents = (app: expressWs.Application) => {
           sendToRoom(roomId, 'moveMade', {
             col,
             player: currentPlayer,
+            userId: id,
             timestamp: new Date().toISOString()
           })
 

@@ -1,7 +1,6 @@
 {
     "name": "connect-four-api",
     "version": "1.0.0",
-    "type": "module",
     "scripts": {
         "dev": "npx tsc && node dist/server.js",
         "build": "tsc -p tsconfig.json",
