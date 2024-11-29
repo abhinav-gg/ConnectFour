@@ -9,7 +9,7 @@ export type RoomID = string;
 
 export type JoinGame = {
   event: 'joinGame';
-  data: { roomId: RoomID; userID: UUID; };
+  data: { roomId: RoomID; userId: UUID; };
 };
 
 export type MakeMove = {
@@ -18,3 +18,7 @@ export type MakeMove = {
 };
 
 export type Message = JoinGame | MakeMove;
+
+export type GameState = {
+  rooms: Map<string, Room>;
+};

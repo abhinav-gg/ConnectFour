@@ -1,8 +1,7 @@
 'use client';
 
-import { getConfig } from '@/config/env';
 import GameBoard from '@/game-board';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type PlayerJoined = {
   event: 'playerJoined';
@@ -41,19 +40,18 @@ export default function TestingWebsockets() {
   const [moves, setMoves] = useState<Array<{ player: number; column: number; row: number; }>>([]);
 
   useEffect(() => {
-    const backendUrl = getConfig().backendUrl;
+    const backendUrl = "ws://localhost:3001/ws"; // getConfig().backendUrl;
     const newSocket = new WebSocket(backendUrl);
-    const userID = localStorage.getItem('userID') || crypto.randomUUID();
+    const userId = localStorage.getItem('userId') || crypto.randomUUID();
+    localStorage.setItem('userId', userId);
 
-    setSocket(newSocket);
 
     newSocket.onopen = () => {
       console.log('WebSocket connected!');
       setIsConnected(true);
-      if (hasJoined) {
-        newSocket.send(JSON.stringify({ event: 'joinGame', data: { roomId, userID } }));
-      }
     };
+
+    setSocket(newSocket);
 
     newSocket.onmessage = (event) => {
       const data = JSON.parse(event.data) as Message;
@@ -71,7 +69,7 @@ export default function TestingWebsockets() {
           setGameStatus('Room is full. Please try another room.');
           break;
         case 'gameStart':
-          setPlayerNumber(userID === data.data.firstPlayer ? 1 : 2);
+          setPlayerNumber(userId === data.data.firstPlayer ? 1 : 2);
           setGameStatus('Game started!');
           break;
         case 'playerDisconnected':
@@ -87,20 +85,31 @@ export default function TestingWebsockets() {
     return () => {
       newSocket.close();
     };
-  }, [roomId, hasJoined]);
+  }, []);
 
   const handleJoinRoom = () => {
-    if (roomId.trim()) {
+    const currentRoomId = inputRef.current?.value || '';
+    console.log('Joining room:', currentRoomId);
+    setRoomId(currentRoomId);
+
+    console.log(currentRoomId.trim(), isConnected, socket);
+    if (currentRoomId.trim() && isConnected && socket) {
       setHasJoined(true);
-      socket?.send(JSON.stringify({ event: 'joinGame', data: { roomId } }));
+      const userId = localStorage.getItem('userId');
+
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ event: 'joinGame', data: { roomId: currentRoomId, userId } }));
+      }
     }
   };
 
   const handleMove = (col: number) => {
-    if (socket && playerNumber) {
+    if (socket && playerNumber && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ event: 'makeMove', data: { roomId, col } }));
     }
   };
+
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -111,8 +120,8 @@ export default function TestingWebsockets() {
             <div className="space-y-4">
               <input
                 type="text"
-                value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
+                ref={inputRef}
+                defaultValue={roomId}
                 placeholder="Enter Room ID"
                 className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

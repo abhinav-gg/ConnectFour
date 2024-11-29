@@ -1,17 +1,14 @@
 import { type UUID } from "crypto";
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
-import { Message, Room } from "../types";
-
-interface GameState {
-  rooms: Map<string, Room>;
-}
+import type { Message, Room, GameState } from "../types";
 
 const state: GameState = {
   rooms: new Map()
 };
 
 const SocketIDs = new Map<UUID, WSocket>();
+const IDToSocket = new Map<WSocket, UUID>();
 
 function sendToRoom(roomId: string, event: string, data: any) {
   const room = state.rooms.get(roomId);
@@ -29,9 +26,7 @@ function sendToRoom(roomId: string, event: string, data: any) {
 
 export const setupGameEvents = (app: expressWs.Application) => {
   app.ws('/ws', (ws, req) => {
-    const socket = ws as WSocket;
-    // const id: UUID = randomUUID();
-    SocketIDs.set(id, socket);
+    console.log('Client connected');
 
     ws.on('message', (message) => {
       const data: Message = JSON.parse(message.toString());
@@ -40,15 +35,28 @@ export const setupGameEvents = (app: expressWs.Application) => {
       switch (data.event) {
         case 'joinGame': {
           const roomId = data.data.roomId;
-          const room = state.rooms.get(roomId) || { players: [] };
+          const userId = data.data.userId;
+
+          if (!roomId || !userId) {
+            ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid data' } }));
+            return;
+          }
+
+          SocketIDs.set(userId, ws); // TODO allow for multiple sockets per user (?)
+          IDToSocket.set(ws, userId);
+
+          const roomExists = state.rooms.has(roomId);
+          const room = state.rooms.get(roomId) || { players: [], currentTurn: 0 };
+          if (!roomExists) {
+            state.rooms.set(roomId, room);
+          }
 
           if (room.players.length >= 2) {
             ws.send(JSON.stringify({ event: 'roomFull', data: { message: 'This game is full' } }));
             return;
           }
-
-          room.players.push(id);
-          state.rooms.set(roomId, room);
+          room.players.push(userId);
+          state.rooms.set(roomId, room); // update room
 
           sendToRoom(roomId, 'playerJoined', {
             playersCount: room.players.length,
@@ -68,6 +76,9 @@ export const setupGameEvents = (app: expressWs.Application) => {
           const { roomId, col } = data.data;
           const room = state.rooms.get(roomId);
           if (!room) return;
+
+          const id = IDToSocket.get(ws);
+          if (!id) return;
 
           const playerIndex = room.players.indexOf(id);
           const currentPlayer = playerIndex + 1;
@@ -101,22 +112,27 @@ export const setupGameEvents = (app: expressWs.Application) => {
       }
     });
 
-    ws.on('disconnect', () => {
-      console.log('Client disconnected:', id);
-      SocketIDs.delete(id);
+    ws.on('close', () => {
+      const sid = IDToSocket.get(ws);
+      console.log('Client disconnected:', sid);
+      IDToSocket.delete(ws);
 
-      for (const [roomId, room] of state.rooms.entries()) {
-        const playerIndex = room.players.indexOf(id);
-        if (playerIndex !== -1) {
-          room.players = room.players.filter(id => id !== id);
+      if (sid) {
+        SocketIDs.delete(sid);
 
-          if (room.players.length === 0) {
-            state.rooms.delete(roomId);
-          } else {
-            sendToRoom(roomId, 'playerDisconnected', {
-              message: 'Other player disconnected',
-              playersCount: room.players.length
-            });
+        for (const [roomId, room] of state.rooms.entries()) {
+          const playerIndex = room.players.indexOf(sid);
+          if (playerIndex !== -1) {
+            room.players = room.players.filter(id => id !== sid);
+
+            if (room.players.length === 0) {
+              state.rooms.delete(roomId);
+            } else {
+              sendToRoom(roomId, 'playerDisconnected', {
+                message: 'Other player disconnected',
+                playersCount: room.players.length
+              });
+            }
           }
         }
       }
