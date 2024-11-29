@@ -40,7 +40,7 @@ export default function NotFound() {
     // Delay showing content to sync with logo animation
     setTimeout(() => setShowContent(true), 500)
 
-    let startTime = Date.now()
+    const startTime = Date.now()
     const timer = setInterval(() => {
       const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000)
       const newCount = 10 - elapsedSeconds
