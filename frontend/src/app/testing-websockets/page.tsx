@@ -124,11 +124,6 @@ export default function TestingWebsockets() {
                 defaultValue={roomId}
                 placeholder="Enter Room ID"
                 className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleJoinRoom();
-                  }
-                }}
               />
               <button
                 onClick={handleJoinRoom}
@@ -159,15 +154,6 @@ export default function TestingWebsockets() {
             onMove={handleMove}
             moves={moves}
           />
-
-          {gameStatus === 'Game Over' && (
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition-colors"
-            >
-              New Game
-            </button>
-          )}
         </div>
       )}
     </div>
