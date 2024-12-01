@@ -4,6 +4,10 @@ import express from 'express';
 import expressWs from 'express-ws';
 import { dbOperations } from './db/operations.js';
 import { setupGameEvents } from './events/gameEvents';
+import { UserRoutes } from './auth/userRoutes';
+import { AuthService } from './auth/services/authService';
+import { UserService } from './auth/services/userService';
+
 
 dotenv.config();
 
@@ -70,6 +74,11 @@ app.get('/api/users', async (req, res) => {
 });
 
 setupGameEvents(app);
+
+const authService = new AuthService();
+const userService = new UserService();
+const userRoutes = new UserRoutes(authService, userService);
+app.use('/auth', userRoutes.getRouter());
 
 app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);

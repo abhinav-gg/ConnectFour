@@ -54,6 +54,25 @@ CREATE TABLE IF NOT EXISTS game_schema.events (
     created_by UUID REFERENCES game_schema.users(id)
 );
 
+-- Games table
+CREATE TABLE IF NOT EXISTS game_schema.games (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    player1_id UUID NOT NULL REFERENCES game_schema.users(id),
+    player2_id UUID NOT NULL REFERENCES game_schema.users(id),
+    moves TEXT,  -- Store the game moves as a string
+    time_control_minutes INT NOT NULL,
+    time_control_increment INT NOT NULL,
+    started_at TIMESTAMP NOT NULL DEFAULT current_timestamp(),
+    winner_id UUID REFERENCES game_schema.users(id),
+    created_at TIMESTAMP DEFAULT current_timestamp(),
+    updated_at TIMESTAMP DEFAULT current_timestamp()
+);
+
+-- Add the update trigger for games table
+CREATE TRIGGER update_games_updated_at
+    BEFORE UPDATE ON game_schema.games
+    FOR EACH ROW
+    EXECUTE FUNCTION game_schema.update_updated_at_column(); 
 -- CockroachDB specific trigger for updated_at
 CREATE OR REPLACE FUNCTION game_schema.update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -71,4 +90,4 @@ CREATE TRIGGER update_users_updated_at
 CREATE TRIGGER update_events_updated_at
     BEFORE UPDATE ON game_schema.events
     FOR EACH ROW
-    EXECUTE FUNCTION game_schema.update_updated_at_column(); 
+    EXECUTE FUNCTION game_schema.update_updated_at_column();
