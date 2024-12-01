@@ -4,7 +4,7 @@ import { User } from '@/models/User';
 import { UserService } from './userService';
 
 export class AuthService {
-  private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+  private readonly JWT_SECRET = process.env.JWT_SECRET;
   private readonly JWT_EXPIRES_IN = '24h';
   private readonly userService: UserService;
 
@@ -12,7 +12,7 @@ export class AuthService {
     this.userService = userService;
   }
 
-  private hashPassword(password: string): string {
+  public hashPassword(password: string): string {
     return crypto
       .createHash('sha256')
       .update(password)
@@ -20,6 +20,9 @@ export class AuthService {
   }
 
   private generateToken(userId: string): string {
+    if (!this.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not defined');
+    }
     return jwt.sign({ userId }, this.JWT_SECRET, {
       expiresIn: this.JWT_EXPIRES_IN
     });
@@ -38,7 +41,7 @@ export class AuthService {
       password: hashedPassword
     });
 
-    const token = this.generateToken(user.id);
-    return { token, user };
+    const token = this.generateToken(user.rows[0].id);
+    return { token, user: user.rows[0] };
   }
 }

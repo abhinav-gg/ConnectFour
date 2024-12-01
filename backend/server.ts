@@ -75,8 +75,8 @@ app.get('/api/users', async (req, res) => {
 
 setupGameEvents(app);
 
-const authService = new AuthService();
 const userService = new UserService();
+const authService = new AuthService(userService);
 const userRoutes = new UserRoutes(authService, userService);
 app.use('/auth', userRoutes.getRouter());
 
