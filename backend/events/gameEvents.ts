@@ -1,7 +1,7 @@
 import { type UUID } from "crypto";
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
-import type { Message, Room, GameState } from "../types";
+import type { Message, Room, GameState } from "../types/types";
 
 const state: GameState = {
   rooms: new Map()
