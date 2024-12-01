@@ -1,35 +1,27 @@
-import express from 'express';
 import cors from 'cors';
-import { createServer } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
-import { setupGameEvents } from './events/gameEvents';
 import dotenv from 'dotenv';
-import { dbOperations } from './db/operations';
+import express from 'express';
+import expressWs from 'express-ws';
+import { dbOperations } from './db/operations.js';
+import { setupGameEvents } from './events/gameEvents';
 
-// Load environment variables
 dotenv.config();
 
-// Define port once
 const port = process.env.PORT || 3001;
+const { app } = expressWs(express());
 
-// Express + Socket.IO setup
-const app = express();
-
-// Log the port being used
 console.log('Attempting to use port:', port);
 console.log('Environment port:', process.env.port);
 
 app.get('/', (req, res) => {
-  res.send(`Backend is running on port ${port}!`)
+  res.send(`Backend is running on port ${port}!`);
 });
 
 app.use(cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
-    credentials: true
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  credentials: true
 }));
 app.use(express.json());
-
-const httpServer = createServer(app);
 
 app.head('/health', (req, res) => {
   res.status(200).end();
@@ -40,70 +32,45 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/api/test-db', async (req: express.Request, res: any) => {
-    const { username } = req.body as { username: string };
-    
-    if (!username) {
-        return res.status(400).json({ error: 'Username is required' });
-    }
+  const { username } = req.body as { username: string; };
 
-    try {
-        const result = await dbOperations.createUser(username);
-        return res.json({ status: 'Success', data: result });
-    } catch (error: any) {
-        console.error('Failed to create user:', error);
-        return res.status(500).json({ 
-            error: 'Failed to create user',
-            details: {
-                message: error.message,
-                type: error.constructor.name
-            }
-        });
-    }
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  try {
+    const result = await dbOperations.createUser(username);
+    return res.json({ status: 'Success', data: result });
+  } catch (error: any) {
+    console.error('Failed to create user:', error);
+    return res.status(500).json({
+      error: 'Failed to create user',
+      details: {
+        message: error.message,
+        type: error.constructor.name
+      }
+    });
+  }
 });
 
 app.get('/api/users', async (req, res) => {
-    try {
-        const users = await dbOperations.getAllUsers();
-        res.json({ status: 'Success', data: users });
-    } catch (error: any) {
-        console.error('Failed to fetch users:', error);
-        res.status(500).json({ 
-            error: 'Failed to fetch users',
-            details: {
-                message: error.message,
-                type: error.constructor.name
-            }
-        });
-    }
+  try {
+    const users = await dbOperations.getAllUsers();
+    res.json({ status: 'Success', data: users });
+  } catch (error: any) {
+    console.error('Failed to fetch users:', error);
+    res.status(500).json({
+      error: 'Failed to fetch users',
+      details: {
+        message: error.message,
+        type: error.constructor.name
+      }
+    });
+  }
 });
 
-const io = new SocketIOServer(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
-    methods: ["GET", "POST"],
-    credentials: true
-  },
-  transports: ['polling', 'websocket'],
-  allowEIO3: true,
-  pingTimeout: 60000
-});
+setupGameEvents(app);
 
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
-  socket.on('joinGame', (roomId) => {
-    console.log(`Client ${socket.id} joining room ${roomId}`);
-    socket.join(roomId);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-});
-
-setupGameEvents(io);
-
-// Use the single port constant
-httpServer.listen(Number(port), '0.0.0.0', () => {
+app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
 });
