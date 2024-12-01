@@ -14,12 +14,16 @@ interface CreateUserDto {
   updated_at?: Date;
 }
 
+interface QueryResult<T> {
+  rows: T[];
+}
+
 export class UserService {
   private authService: AuthService;
   private db: typeof dbOperations;
 
   constructor() {
-    this.authService = new AuthService();
+    this.authService = new AuthService(this);
     this.db = dbOperations;
   }
 
@@ -45,8 +49,8 @@ export class UserService {
       WHERE u.email = $1
       GROUP BY u.id`;
 
-    const result = await this.db.query(query, [email]);
-    return result.rows[0] || null;
+    const result = await this.db.query<User>(query, [email]);
+    return result[0] || null;
   }
 
   async create(userData: Partial<Omit<User, "id" | "tags">> & { username: string; email: string; password: string }): Promise<User> {
@@ -58,8 +62,8 @@ export class UserService {
       VALUES ($1, $2, $3)
       RETURNING *`;
 
-    const result = await this.db.query(query, [username, email, hashedPassword]);
-    return result.rows[0];
+    const result = await this.db.query<User>(query, [username, email, hashedPassword]);
+    return result[0];
   }
 
   async addTag(userId: string, tagName: string): Promise<void> {
@@ -97,6 +101,14 @@ export class UserService {
   }
 
   async createUser(userData: { email: string; password: string; name: string }) {
-    return await User.create(userData);
+    const hashedPassword = await this.authService.hashPassword(userData.password);
+    
+    const query = `
+      INSERT INTO game_schema.users (username, email, password_hash)
+      VALUES ($1, $2, $3)
+      RETURNING *`;
+
+    const result = await this.db.query<QueryResult<User>>(query, [userData.name, userData.email, hashedPassword]);
+    return result[0];
   }
 }

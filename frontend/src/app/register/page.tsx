@@ -2,33 +2,59 @@
 
 import Link from 'next/link'
 import { Home, LogIn } from 'lucide-react'
+import Dashboard from '@/components/dashboard'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Register() {
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter()
+  const [error, setError] = useState('')
+  
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Handle registration logic here
-    console.log('Registration submitted')
+    const formData = new FormData(e.currentTarget)
+    
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.get('username'),
+          email: formData.get('email'),
+          password: formData.get('password'),
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.message || 'Registration failed')
+      }
+
+      const data = await response.json()
+      // Store token if needed
+      localStorage.setItem('token', data.token)
+      router.push('/login')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    }
   }
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      {/* Dashboard */}
-      <div className="w-64 bg-white p-4 flex flex-col shadow-md">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h2>
-        <Link href="/" className="flex items-center text-gray-600 hover:text-gray-800 mb-2">
-          <Home className="mr-2" />
-          Home
-        </Link>
-        <Link href="/login" className="flex items-center text-gray-600 hover:text-gray-800">
-          <LogIn className="mr-2" />
-          Login
-        </Link>
-      </div>
+      
+      <Dashboard />
 
       {/* Registration Form */}
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Register</h1>
+          {error && (
+            <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
