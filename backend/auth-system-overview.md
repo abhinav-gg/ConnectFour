@@ -61,7 +61,7 @@ An authentication system is like a nightclub's security system (of course this i
 ## Core Components
 
 ### 1. User Model
-\```typescript
+```typescript
 interface User {
   id: string;
   email: string;
@@ -70,10 +70,10 @@ interface User {
   created_at: Date;
   last_login?: Date;
 }
-\```
+```
 
 ### 2. Database Tables
-\```sql
+```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP
 );
-\```
+```
 
 ## Authentication Flows
 
@@ -93,7 +93,7 @@ CREATE TABLE users (
    - Verify required fields
 
 2. **Security Steps**
-\```typescript
+```typescript
 // 1. Hash password
 const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -106,7 +106,7 @@ const user = await db.users.create({
 
 // 3. Generate token
 const token = jwt.sign({ userId: user.id }, JWT_SECRET);
-\```
+```
 
 ### Login Process
 1. **Verification Steps**
@@ -115,7 +115,7 @@ const token = jwt.sign({ userId: user.id }, JWT_SECRET);
    - Generate new JWT token
 
 2. **Code Flow**
-\```typescript
+```typescript
 async function login(email: string, password: string) {
   // Find user
   const user = await db.users.findOne({ email });
@@ -130,7 +130,7 @@ async function login(email: string, password: string) {
   
   return { user, token };
 }
-\```
+```
 
 ## Security Considerations
 
@@ -151,7 +151,7 @@ async function login(email: string, password: string) {
 - Avoid AI slop on the backend
 
 ### Route Protection
-\```typescript
+```typescript
 const protectRoute = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split('Bearer ')[1];
@@ -165,21 +165,21 @@ const protectRoute = async (req, res, next) => {
     res.status(401).json({ error: 'Authentication failed' });
   }
 };
-\```
+```
 
 ## Implementation Details
 
 ### Error Handling
-\```typescript
+```typescript
 class AuthError extends Error {
   constructor(message: string, public statusCode = 401) {
     super(message);
   }
 }
-\```
+```
 
 ### Database Interactions
-\```typescript
+```typescript
 class UserRepository {
   async findByEmail(email: string) {
     return await this.db.query(
@@ -195,7 +195,7 @@ class UserRepository {
     );
   }
 }
-\```
+```
 
 ## Best Practices
 
@@ -218,7 +218,7 @@ class UserRepository {
 
 ## Testing
 
-\```typescript
+```typescript
 describe('AuthService', () => {
   it('should register new user', async () => {
     const userData = {
@@ -232,7 +232,7 @@ describe('AuthService', () => {
     expect(result.token).toBeDefined();
   });
 });
-\```
+```
 
 ## Maintenance
 
