@@ -40,11 +40,7 @@ export default function GameBoard({
   const [gameOver, setGameOver] = useState(false);
   const [moves, setMoves] = useState<Move[]>([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    audioRef.current = new Audio('/drop-sound.mp3');
-  }, []);
+  const audioRef = useRef<HTMLAudioElement[]>([]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -123,7 +119,7 @@ export default function GameBoard({
     if (isConnected && externalMoves?.length > 0) {
       const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
 
-      externalMoves.forEach(({ player, column, row }) => {
+      externalMoves.forEach(({ player, column, row }, index) => {
         const col = typeof column === 'number' ? column : parseInt(column);
         let targetRow = ROWS - 1;
         while (targetRow >= 0 && newBoard[targetRow][col] !== null) {
@@ -131,12 +127,20 @@ export default function GameBoard({
         }
 
         if (targetRow >= 0) {
-          newBoard[targetRow][col] = player as Player;
-          checkWinner(targetRow, col, newBoard);
+          if (index === externalMoves.length - 1) {
+            setFallingPiece({ row: -1, col, player: player as Player });
+            animatePieceFall(targetRow, col);
+          } else {
+            newBoard[targetRow][col] = player as Player;
+          }
         }
       });
 
-      setBoard(newBoard);
+      if (externalMoves.length > 1) {
+        const newBoardWithoutLastMove = [...newBoard];
+        setBoard(newBoardWithoutLastMove);
+      }
+
       setCurrentPlayer(externalMoves.length % 2 === 0 ? 1 : 2);
     }
   }, [isConnected, externalMoves]);
@@ -158,6 +162,7 @@ export default function GameBoard({
   };
 
   const animatePieceFall = (targetRow: number, col: number) => {
+    playDropSound();
     let currentRow = -1;
     const fallInterval = setInterval(() => {
       if (currentRow < targetRow) {
@@ -224,6 +229,19 @@ export default function GameBoard({
 
   const playAgain = () => {
     window.location.reload();
+  };
+
+  const playDropSound = () => {
+    try {
+      // Create new Audio instance for each play
+      const audio = new Audio('/drop-sound.mp3');
+      audio.volume = 0.5; // Optional: lower volume
+      audio.play().catch(error => {
+        console.log('Audio playback failed:', error);
+      });
+    } catch (error) {
+      console.log('Audio creation failed:', error);
+    }
   };
 
   return (

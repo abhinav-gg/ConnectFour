@@ -2,6 +2,7 @@
 
 import GameBoard from '@/game-board';
 import { useEffect, useRef, useState } from 'react';
+import { getConfig } from '@/config/env';
 
 type PlayerJoined = {
   event: 'playerJoined';
@@ -38,24 +39,48 @@ export default function TestingWebsockets() {
   const [playersCount, setPlayersCount] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
   const [moves, setMoves] = useState<Array<{ player: number; column: number; row: number; }>>([]);
+  const userIdRef = useRef(crypto.randomUUID());
 
   useEffect(() => {
-    const backendUrl = "ws://localhost:3001/ws"; // getConfig().backendUrl;
-    const newSocket = new WebSocket(backendUrl);
-    const userId = localStorage.getItem('userId') || crypto.randomUUID();
-    localStorage.setItem('userId', userId);
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+    
+    if (roomFromUrl) {
+      console.log('Found room in URL:', roomFromUrl);
+      setRoomId(roomFromUrl);
+      if (inputRef.current) {
+        inputRef.current.value = roomFromUrl;
+      }
+    }
+  }, []); 
 
+  useEffect(() => {
+    const backendUrl = getConfig().websocketUrl;
+    const newSocket = new WebSocket(backendUrl);
+    console.log('Connection established with userId:', userIdRef.current);
 
     newSocket.onopen = () => {
       console.log('WebSocket connected!');
       setIsConnected(true);
+      
+      const params = new URLSearchParams(window.location.search);
+      const roomFromUrl = params.get('room');
+      if (roomFromUrl) {
+        console.log('Auto-joining room:', roomFromUrl);
+        setHasJoined(true);
+        newSocket.send(JSON.stringify({ 
+          event: 'joinGame', 
+          data: { roomId: roomFromUrl, userId: userIdRef.current } 
+        }));
+      }
     };
 
     setSocket(newSocket);
 
     newSocket.onmessage = (event) => {
       const data = JSON.parse(event.data) as Message;
-      console.log(data);
+      console.log('Received message:', data);
+
       switch (data.event) {
         case 'playerJoined':
           setPlayersCount(data.data.playersCount);
@@ -69,7 +94,12 @@ export default function TestingWebsockets() {
           setGameStatus('Room is full. Please try another room.');
           break;
         case 'gameStart':
-          setPlayerNumber(userId === data.data.firstPlayer ? 1 : 2);
+          console.log('Game Start - comparing IDs:', {
+            firstPlayer: data.data.firstPlayer,
+            myUserId: userIdRef.current,
+            willBe: data.data.firstPlayer === userIdRef.current ? 'Player 1' : 'Player 2'
+          });
+          setPlayerNumber(data.data.firstPlayer === userIdRef.current ? 1 : 2);
           setGameStatus('Game started!');
           break;
         case 'playerDisconnected':
@@ -77,7 +107,11 @@ export default function TestingWebsockets() {
           setGameStatus('Opponent disconnected. Waiting for new player...');
           break;
         case 'moveMade':
-          setMoves(prev => [...prev, { player: data.data.player, column: data.data.col, row: data.data.row }]);
+          setMoves(prev => [...prev, { 
+            player: data.data.player, 
+            column: data.data.col, 
+            row: data.data.row 
+          }]);
           break;
       }
     };
@@ -90,15 +124,20 @@ export default function TestingWebsockets() {
   const handleJoinRoom = () => {
     const currentRoomId = inputRef.current?.value || '';
     console.log('Joining room:', currentRoomId);
+    
+    const url = new URL(window.location.href);
+    url.searchParams.set('room', currentRoomId);
+    window.history.pushState({}, '', url);
+
     setRoomId(currentRoomId);
 
-    console.log(currentRoomId.trim(), isConnected, socket);
     if (currentRoomId.trim() && isConnected && socket) {
       setHasJoined(true);
-      const userId = localStorage.getItem('userId');
-
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ event: 'joinGame', data: { roomId: currentRoomId, userId } }));
+        socket.send(JSON.stringify({ 
+          event: 'joinGame', 
+          data: { roomId: currentRoomId, userId: userIdRef.current } 
+        }));
       }
     }
   };
@@ -124,6 +163,11 @@ export default function TestingWebsockets() {
                 defaultValue={roomId}
                 placeholder="Enter Room ID"
                 className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleJoinRoom();
+                  }
+                }}
               />
               <button
                 onClick={handleJoinRoom}

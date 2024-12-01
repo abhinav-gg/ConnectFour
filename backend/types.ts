@@ -17,7 +17,12 @@ export type MakeMove = {
   data: { roomId: RoomID; col: number; };
 };
 
-export type Message = JoinGame | MakeMove;
+export type EndGame = {
+  event: 'endGame';
+  data: { roomId: RoomID; };
+};
+
+export type Message = JoinGame | MakeMove | EndGame;
 
 export type GameState = {
   rooms: Map<string, Room>;

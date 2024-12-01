@@ -24,6 +24,23 @@ function sendToRoom(roomId: string, event: string, data: any) {
   }
 }
 
+function handleGameEnd(roomId: string) {
+  const room = state.rooms.get(roomId);
+  if (!room) return;
+
+  // Reset room to initial state
+  room.currentTurn = 0;
+  room.players = [];
+  
+  // Keep the players but notify them of reset
+  sendToRoom(roomId, 'gameReset', {
+    message: 'Game ended. Room has been reset.',
+    playersCount: room.players.length
+  });
+
+  state.rooms.set(roomId, room);
+}
+
 export const setupGameEvents = (app: expressWs.Application) => {
   app.ws('/ws', (ws, req) => {
     console.log('Client connected');
@@ -103,6 +120,12 @@ export const setupGameEvents = (app: expressWs.Application) => {
 
           room.currentTurn = room.currentTurn === 0 ? 1 : 0;
           state.rooms.set(roomId, room);
+          break;
+        }
+
+        case 'endGame': {
+          const { roomId } = data.data;
+          handleGameEnd(roomId);
           break;
         }
 

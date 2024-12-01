@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 declare global {
   interface Window {
     NEXT_PUBLIC_BACKEND_URL?: string;
+    NEXT_PUBLIC_WEBSOCKET_URL?: string;
   }
 }
 
@@ -13,7 +14,11 @@ export const getConfig = () => {
     backendUrl: window.__NEXT_DATA__?.props?.pageProps?.backendUrl || 
                 process.env.NEXT_PUBLIC_BACKEND_URL || 
                 window.NEXT_PUBLIC_BACKEND_URL ||
-                ''
+                '',
+    websocketUrl: window.__NEXT_DATA__?.props?.pageProps?.websocketUrl || 
+                   process.env.NEXT_PUBLIC_WEBSOCKET_URL || 
+                   window.NEXT_PUBLIC_WEBSOCKET_URL ||
+                   ''
   };
 
   console.log('Config values:', {
