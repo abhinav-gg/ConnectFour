@@ -1,6 +1,15 @@
 -- Create the schema
 CREATE SCHEMA IF NOT EXISTS game_schema;
 
+-- CockroachDB specific trigger for updated_at
+CREATE OR REPLACE FUNCTION game_schema.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = current_timestamp();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Users table
 CREATE TABLE IF NOT EXISTS game_schema.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -73,14 +82,6 @@ CREATE TRIGGER update_games_updated_at
     BEFORE UPDATE ON game_schema.games
     FOR EACH ROW
     EXECUTE FUNCTION game_schema.update_updated_at_column(); 
--- CockroachDB specific trigger for updated_at
-CREATE OR REPLACE FUNCTION game_schema.update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = current_timestamp();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON game_schema.users
@@ -91,3 +92,26 @@ CREATE TRIGGER update_events_updated_at
     BEFORE UPDATE ON game_schema.events
     FOR EACH ROW
     EXECUTE FUNCTION game_schema.update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS puzzles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_solution STRING NOT NULL,
+    starting_point STRING NOT NULL,
+    predicted_rating INT,
+    created_at TIMESTAMP DEFAULT current_timestamp(),
+    updated_at TIMESTAMP DEFAULT current_timestamp()
+);
+
+-- Create the same updated_at trigger for puzzles table
+CREATE TRIGGER update_puzzles_updated_at
+    BEFORE UPDATE ON puzzles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column(); 
+
+-- Relational table for Events and Games
+CREATE TABLE IF NOT EXISTS game_schema.event_games (
+    event_id UUID REFERENCES game_schema.events(id),
+    game_id UUID REFERENCES game_schema.games(id),
+    created_at TIMESTAMP DEFAULT current_timestamp(),
+    PRIMARY KEY (event_id, game_id)
+);
