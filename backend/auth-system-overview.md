@@ -10,6 +10,7 @@
 
 ## Overview
 
+```
 backend/
 ├── src/
 │   ├── auth/
@@ -49,8 +50,9 @@ backend/
 │   │   └── index.ts                    # Shared TypeScript types
 │   │
 │   └── app.ts                          # Express app setup
+```
 
-An authentication system is like a nightclub's security system:
+An authentication system is like a nightclub's security system (of course this is helpful for you):
 - **Registration** = Getting a membership card
 - **Login** = Showing your membership card
 - **JWT Token** = Getting a wristband to move around freely
@@ -144,6 +146,10 @@ async function login(email: string, password: string) {
 - Include minimal payload data
 - Implement token refresh strategy
 
+### Artifical Intelligence
+- Never use AI-generated code for security-critical services
+- Avoid AI slop on the backend
+
 ### Route Protection
 \```typescript
 const protectRoute = async (req, res, next) => {
@@ -208,6 +214,7 @@ class UserRepository {
    - Implement CORS properly
    - Set secure cookie flags
    - Regular security audits
+   - No AI slop
 
 ## Testing
 
