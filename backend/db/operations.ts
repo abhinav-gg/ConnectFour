@@ -1,6 +1,6 @@
 import { Client } from 'pg';
 import dotenv from 'dotenv';
-import { User } from './models/User';
+import { User } from '@/models/User';
 
 // Load .env from project root
 dotenv.config();
@@ -45,11 +45,22 @@ class DatabaseOperations {
             await client.end();
         }
     }
+
+    async query<T>(queryText: string, params?: any[]): Promise<T[]> {
+        const client = await this.getClient();
+        try {
+            const result = await client.query(queryText, params);
+            return result.rows;
+        } finally {
+            await client.end();
+        }
+    }
 }
 
 const databaseOps = new DatabaseOperations();
 
 export const dbOperations = {
+    query: databaseOps.query.bind(databaseOps),
     createUser: databaseOps.createUser.bind(databaseOps),
     getAllUsers: databaseOps.getAllUsers.bind(databaseOps),
     // ... other operations
