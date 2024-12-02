@@ -95,7 +95,7 @@ CREATE TABLE users (
 2. **Security Steps**
 ```typescript
 // 1. Hash password
-const hashedPassword = await bcrypt.hash(password, 10);
+const hashedPassword = await argon2.hash(password);
 
 // 2. Save user
 const user = await db.users.create({
@@ -122,7 +122,7 @@ async function login(email: string, password: string) {
   if (!user) throw new AuthError('User not found');
 
   // Verify password
-  const isValid = await bcrypt.compare(password, user.password_hash);
+  const isValid = await argon2.verify(user.password_hash, password);
   if (!isValid) throw new AuthError('Invalid password');
 
   // Generate token
@@ -136,9 +136,13 @@ async function login(email: string, password: string) {
 
 ### Password Security
 - Never store plain text passwords
-- Use bcrypt for hashing
+- Use Argon2 for hashing
 - Implement password strength requirements
-- Add salt rounds for extra security
+  - follow [owasp guidelines](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#implement-proper-password-strength-controls)
+  - min 8 characters
+  - no restrictions on special characters, upper/lower case, numbers etc.
+  - max length 1024 characters to prevent long-password DoS
+
 
 ### Token Security
 - Short expiration times (24h typical)
