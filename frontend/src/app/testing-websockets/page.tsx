@@ -1,6 +1,6 @@
 'use client';
 
-import GameBoard from '@/game-board';
+import GameBoard from '@/components/game-board';
 import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 
