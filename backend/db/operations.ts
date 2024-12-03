@@ -1,56 +1,246 @@
-import { Client } from 'pg';
+import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
-import { User } from './models/User';
+import { User } from '@/models/User';
+import * as DBError from './errors';
 
 // Load .env from project root
-dotenv.config();
+dotenv.config({ path: "../../.env" });
 
 class DatabaseOperations {
-    private async getClient() {
-        const client = new Client({
-            connectionString: process.env.DATABASE_URL,
-            application_name: "connect_four_app"
-        });
-        await client.connect();
-        return client;
+  client: PoolClient | null = null;
+
+  private async getClient(): Promise<PoolClient> {
+    const pool = new Pool({
+      connectionString: process.env.DB_URL,
+      application_name: "con4"
+    });
+
+    if (!this.client) {
+      this.client = await pool.connect();
     }
 
-    async createUser(username: string): Promise<User> {
-        const client = await this.getClient();
-        try {
-            const email = `${username.toLowerCase()}_${Date.now()}@example.com`;
-            const password_hash = `dummy_hash_${Date.now()}`;
+    return this.client;
+  }
 
-            const result = await client.query(
-                `INSERT INTO users (username, email, password_hash) 
-                 VALUES ($1, $2, $3) 
-                 RETURNING id, username, email, created_at`,
-                [username, email, password_hash]
-            );
-
-            return result.rows[0];
-        } finally {
-            await client.end();
-        }
+  async __getAllUsers(): Promise<User[]> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        'SELECT id, username, email, created_at, email_verified, updated_at, last_login FROM users ORDER BY created_at DESC'
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
     }
+  }
 
-    async getAllUsers(): Promise<User[]> {
-        const client = await this.getClient();
-        try {
-            const result = await client.query(
-                'SELECT id, username, email, created_at, updated_at, last_login FROM users ORDER BY created_at DESC'
-            );
-            return result.rows;
-        } finally {
-            await client.end();
-        }
+  async createUser(
+    username: string,
+    email: string,
+    passwordHash: string,
+  ): Promise<User> {
+    const client = await this.getClient();
+    try {
+      await client.query('BEGIN');
+
+      // todo move to dedicated "check..." functions
+      const userCheckResult = await client.query(
+        `SELECT id FROM users WHERE username = $1`,
+        [username]
+      );
+
+      if (userCheckResult.rows.length > 0) {
+        throw new DBError.UsernameExists();
+      }
+
+      const emailCheckResult = await client.query(
+        `SELECT id FROM users WHERE email = $1`,
+        [email]
+      );
+
+      if (emailCheckResult.rows.length > 0) {
+        throw new DBError.EmailExists();
+      }
+      // -------------------------------------------
+
+      const result = await client.query(
+        `INSERT INTO users (username, email, password_hash, created_at, updated_at)
+                 VALUES ($1, $2, $3, NOW(), NOW())
+                 RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
+        [username, email, passwordHash]
+      );
+
+      await client.query('COMMIT');
+
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Failed to create user');
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
     }
+  }
+
+  async recordUserLogin(id: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `UPDATE users
+                 SET last_login = NOW()
+                 WHERE id = $1`,
+        [id]
+      );
+    } catch (error) {
+      console.error('Failed to record user login:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getUserByUsername(username: string): Promise<User> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id, username, email, email_verified, created_at, updated_at, last_login
+                 FROM users
+                 WHERE username = $1`,
+        [username]
+      );
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch user by username:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id, username, email, email_verified, created_at, updated_at, last_login
+                 FROM users
+                 WHERE email = $1`,
+        [email]
+      );
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch user by email:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+
+  // allow login by username or email
+
+  async getPasswordHashByUsername(username: string): Promise<string> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT password_hash
+                 FROM users
+                 WHERE username = $1`,
+        [username]
+      );
+
+      return result.rows[0]?.password_hash ?? "";
+    } catch (error) {
+      console.error('Failed to fetch password hash by username:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getPasswordHashByEmail(email: string): Promise<string> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT password_hash
+                 FROM users
+                 WHERE email = $1`,
+        [email]
+      );
+
+      return result.rows[0]?.password_hash ?? "";
+    } catch (error) {
+      console.error('Failed to fetch password hash by email:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getIDByUsername(username: string): Promise<string> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id
+                 FROM users
+                 WHERE username = $1`,
+        [username]
+      );
+
+      return result.rows[0]?.id ?? "";
+    } catch (error) {
+      console.error('Failed to fetch id by username:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getIDByEmail(email: string): Promise<string> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id
+                 FROM users
+                 WHERE email = $1`,
+        [email]
+      );
+
+      return result.rows[0]?.id ?? "";
+    } catch (error) {
+      console.error('Failed to fetch id by email:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
 }
 
 const databaseOps = new DatabaseOperations();
 
 export const dbOperations = {
-    createUser: databaseOps.createUser.bind(databaseOps),
-    getAllUsers: databaseOps.getAllUsers.bind(databaseOps),
-    // ... other operations
+  // deprecated, remove ASAP
+  __getAllUsers: databaseOps.__getAllUsers.bind(databaseOps),
+  // new
+  createUser: databaseOps.createUser.bind(databaseOps),
+  recordUserLogin: databaseOps.recordUserLogin.bind(databaseOps),
+  getUserByUsername: databaseOps.getUserByUsername.bind(databaseOps),
+  getUserByEmail: databaseOps.getUserByEmail.bind(databaseOps),
+  getPasswordHashByUsername: databaseOps.getPasswordHashByUsername.bind(databaseOps),
+  getPasswordHashByEmail: databaseOps.getPasswordHashByEmail.bind(databaseOps),
+  getIDByUsername: databaseOps.getIDByUsername.bind(databaseOps),
+  getIDByEmail: databaseOps.getIDByEmail.bind(databaseOps),
 };

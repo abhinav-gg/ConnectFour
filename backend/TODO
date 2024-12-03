@@ -1,0 +1,39 @@
+backend/
+├── src/
+│   ├── auth/
+│   │   ├── middleware/
+│   │   │   ├── authMiddleware.ts       # JWT verification, role checks
+│   │   │   └── validateRequest.ts      # Request validation
+│   │   ├── controllers/
+│   │   │   └── authController.ts       # Login, register, password reset logic
+│   │   ├── services/
+│   │   │   ├── authService.ts          # JWT creation, password hashing
+│   │   │   └── emailService.ts         # Email verification, password reset emails
+│   │   └── routes/
+│   │       └── authRoutes.ts           # Auth-related route definitions
+│   │
+│   ├── users/
+│   │   ├── controllers/
+│   │   │   └── userController.ts       # User CRUD operations
+│   │   ├── services/
+│   │   │   └── userService.ts          # User business logic
+│   │   ├── models/
+│   │   │   └── userModel.ts            # User type definitions
+│   │   └── routes/
+│   │       └── userRoutes.ts           # User-related route definitions
+│   │
+│   ├── db/
+│   │   ├── connection.ts               # Database connection setup
+│   │   └── repositories/
+│   │       └── userRepository.ts       # Database queries for users
+│   │
+│   ├── utils/
+│   │   ├── errors/
+│   │   │   └── customErrors.ts         # Custom error classes
+│   │   ├── constants.ts                # App constants
+│   │   └── validation.ts               # Input validation helpers
+│   │
+│   ├── types/
+│   │   └── index.ts                    # Shared TypeScript types
+│   │
+│   └── app.ts                          # Express app setup

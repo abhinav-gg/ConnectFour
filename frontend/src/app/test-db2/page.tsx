@@ -17,7 +17,7 @@ export default function TestDB2() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`${getConfig().backendUrl}/api/users`)
+        fetch(`${getConfig().backendUrl}/api/test-db/users`)
             .then(res => res.json())
             .then(data => {
                 setUsers(data.data);

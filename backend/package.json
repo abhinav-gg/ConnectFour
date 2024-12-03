@@ -4,21 +4,31 @@
     "scripts": {
         "dev": "npx tsc && node dist/server.js",
         "build": "tsc -p tsconfig.json",
-        "watch": "node dist/server.js"
+        "watch": "node dist/server.js",
+        "lint": "eslint ."
     },
     "dependencies": {
         "@types/express-ws": "^3.0.5",
+        "@types/jsonwebtoken": "^9.0.7",
+        "@types/nodemailer": "^6.4.17",
+        "argon2": "^0.41.1",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",
         "express": "^4.21.1",
         "express-ws": "^5.0.2",
-        "pg": "^8.11.3"
+        "jsonwebtoken": "^9.0.2",
+        "nodemailer": "^6.9.16",
+        "pg": "^8.11.3",
+        "zod": "^3.23.8"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.0",
         "@types/node": "^20",
         "@types/pg": "^8.10.9",
+        "@typescript-eslint/eslint-plugin": "^8.16.0",
+        "@typescript-eslint/parser": "^8.16.0",
+        "eslint": "^8.57.1",
         "typescript": "^5"
     },
     "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
