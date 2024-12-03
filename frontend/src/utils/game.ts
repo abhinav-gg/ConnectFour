@@ -20,6 +20,11 @@ export class GameState {
     this.moves = []
   }
 
+  evaluate(): number {
+    // Only evaluate actual wins, not threats
+    return 0
+  }
+
   checkWinner(row: number, col: number): boolean {
     const directions = [
       [0, 1],  // horizontal
