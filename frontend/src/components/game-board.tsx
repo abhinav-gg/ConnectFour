@@ -1,7 +1,7 @@
 'use client';
 
+import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, Home, LogIn, RotateCcw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { GameState, type Player } from '@/utils/game';
 
 interface GameBoardProps {
@@ -15,17 +15,10 @@ interface GameBoardProps {
   moves: Array<{ player: number; column: number; row: number; }>;
 }
 
-export default function GameBoard({
-  socket,
-  playerNumber,
-  isConnected,
-  playersCount,
-  gameStatus,
-  roomId,
-  onMove,
-  moves: externalMoves = []
-}: GameBoardProps) {
-  const [gameState] = useState(() => new GameState())
+const GameBoard = forwardRef((props: GameBoardProps, ref) => {
+  const initialGameState = new GameState();
+
+  const [gameState, setGameState] = useState(initialGameState);
   const [fallingPiece, setFallingPiece] = useState<{ row: number, col: number, player: Player } | null>(null)
   const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null)
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1)
@@ -63,12 +56,12 @@ export default function GameBoard({
   }, [currentMoveIndex, gameState.moves])
 
   useEffect(() => {
-    if (isConnected && externalMoves?.length > 0) {
+    if (props.isConnected && props.moves?.length > 0) {
       const newGameState = new GameState()
       
-      externalMoves.forEach(({ player, column, row }, index) => {
+      props.moves.forEach(({ player, column, row }, index) => {
         const col = typeof column === 'number' ? column : parseInt(column)
-        if (index === externalMoves.length - 1) {
+        if (index === props.moves.length - 1) {
           setFallingPiece({ row: -1, col, player: player as Player })
           animatePieceFall(row, col)
         } else {
@@ -79,18 +72,18 @@ export default function GameBoard({
       // Update game state
       Object.assign(gameState, newGameState)
     }
-  }, [isConnected, externalMoves])
+  }, [props.isConnected, props.moves])
 
   const dropPiece = (col: number) => {
     if (gameState.winner || fallingPiece || gameState.gameOver || 
         currentMoveIndex !== gameState.moves.length - 1 || 
-        gameState.currentPlayer !== playerNumber) return
+        gameState.currentPlayer !== props.playerNumber) return
 
     const targetRow = gameState.getAvailableRow(col)
     if (targetRow >= 0) {
       setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
       animatePieceFall(targetRow, col)
-      onMove(col)
+      props.onMove(col)
     }
   }
 
@@ -242,4 +235,6 @@ export default function GameBoard({
       </div>
     </div>
   )
-}
+})
+
+export default GameBoard

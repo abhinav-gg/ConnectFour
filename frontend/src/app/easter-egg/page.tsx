@@ -70,26 +70,18 @@ const EasterEggPage = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <h1 className="text-4xl font-bold pr-4 pl-4 text-center" style={{ fontFamily: 'Lobster, cursive' }}>
-        {text}
+      <h1 className="text-4xl font-bold pr-4 pl-4 text-center mb-4" style={{ fontFamily: 'Lobster, cursive' }}>
+        <TypewriterText text={fullText} delay={50} />
       </h1>
       <div className="space-y-3">
-            <Link 
-              href="/" 
-              className="inline-flex items-center px-6 py-3 border border-transparent text-lg font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-            >
-              <Home className="mr-2" />
-              <TypewriterText text="Go to Homepage" delay={50} />
-            </Link>
-            <br/>
-            <p className="text-white text-xl">
-              <TypewriterText 
-                text={`Redirecting in ${countdown} seconds...`}
-                key={countdown}
-                delay={25}
-              />
-            </p>
-        </div>
+        <p className="text-black text-xl">
+          <TypewriterText 
+            text={`Redirecting in ${countdown} seconds...`}
+            key={countdown}
+            delay={25}
+          />
+        </p>
+      </div>
     </div>
   );
 };
