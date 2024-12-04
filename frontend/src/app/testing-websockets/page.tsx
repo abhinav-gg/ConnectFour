@@ -3,6 +3,10 @@
 import GameBoard from '@/components/game-board';
 import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
+import Dashboard from '@/components/dashboard';
+import MoveHistory from '@/components/history';
+import Analysis from '@/components/analysis';
+import { GameState, type Player } from '@/utils/game';
 
 type PlayerJoined = {
   event: 'playerJoined';
@@ -40,6 +44,13 @@ export default function TestingWebsockets() {
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
   const [moves, setMoves] = useState<Array<{ player: number; column: number; row: number; }>>([]);
   const userIdRef = useRef(crypto.randomUUID());
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  const [gameState] = useState(() => new GameState());
+  const [analysisData, setAnalysisData] = useState({
+    evaluation: 0,
+    explanation: "Game is currently even",
+    alternativeMoves: []
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -150,56 +161,79 @@ export default function TestingWebsockets() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const goToMove = (index: number) => {
+    const newBoard = gameState.getBoardAtMove(index);
+    Object.assign(gameState.board, newBoard);
+    gameState.currentPlayer = (index + 1) % 2 === 0 ? 2 : 1;
+    setCurrentMoveIndex(index);
+  };
+
+  const returnToPresent = () => {
+    goToMove(gameState.moves.length - 1);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      {!hasJoined ? (
-        <div className="flex flex-col items-center justify-center min-h-screen">
-          <div className="bg-white p-8 rounded-lg shadow-md w-96">
-            <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
-            <div className="space-y-4">
-              <input
-                type="text"
-                ref={inputRef}
-                defaultValue={roomId}
-                placeholder="Enter Room ID"
-                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleJoinRoom();
-                  }
-                }}
-              />
-              <button
-                onClick={handleJoinRoom}
-                className="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 transition-colors"
-              >
-                Join Room
-              </button>
+    <div className="min-h-screen bg-gray-100 flex">
+      <Dashboard />
+      <div className="flex-1 p-4">
+        {!hasJoined ? (
+          <div className="flex flex-col items-center justify-center min-h-screen">
+            <div className="bg-white p-8 rounded-lg shadow-md w-96">
+              <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  ref={inputRef}
+                  defaultValue={roomId}
+                  placeholder="Enter Room ID"
+                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleJoinRoom();
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleJoinRoom}
+                  className="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  Join Room
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="p-4">
-          <div className="mb-4 text-center">
+        ) : (
+          <div className="flex flex-col items-center">
             <h2 className="text-xl font-semibold">Room: {roomId}</h2>
             <p className="text-gray-600">{gameStatus}</p>
             {playerNumber && (
               <p className="text-blue-600">You are Player {playerNumber}</p>
             )}
+            <GameBoard
+              socket={socket}
+              playerNumber={playerNumber}
+              isConnected={isConnected}
+              playersCount={playersCount}
+              gameStatus={gameStatus}
+              roomId={roomId}
+              onMove={handleMove}
+              moves={moves}
+            />
+            <MoveHistory
+              gameState={gameState}
+              currentMoveIndex={currentMoveIndex}
+              goToMove={goToMove}
+              returnToPresent={returnToPresent}
+            />
+            <Analysis
+              currentPlayer={gameState.currentPlayer}
+              evaluation={analysisData.evaluation}
+              explanation={analysisData.explanation}
+              alternativeMoves={analysisData.alternativeMoves}
+            />
           </div>
-
-          <GameBoard
-            socket={socket}
-            playerNumber={playerNumber}
-            isConnected={isConnected}
-            playersCount={playersCount}
-            gameStatus={gameStatus}
-            roomId={roomId}
-            onMove={handleMove}
-            moves={moves}
-          />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

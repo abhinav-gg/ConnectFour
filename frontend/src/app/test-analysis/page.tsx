@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Home, LogIn, RotateCcw, FileText, ChevronDown, ArrowLeft } from 'lucide-react'
 import Analysis from '@/components/analysis'
 import { analyzePosition } from '@/utils/analysis'
+import Dashboard from '@/components/dashboard'
 
 type Player = 1 | 2
 type Cell = Player | null
@@ -179,18 +180,7 @@ export default function GameWithHistory() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      {/* Dashboard */}
-      <div className="w-64 bg-white p-4 flex flex-col shadow-md">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h2>
-        <Link href="/" className="flex items-center text-gray-600 hover:text-gray-800 mb-2">
-          <Home className="mr-2" />
-          Home
-        </Link>
-        <Link href="/login" className="flex items-center text-gray-600 hover:text-gray-800">
-          <LogIn className="mr-2" />
-          Login
-        </Link>
-      </div>
+      <Dashboard />
 
       {/* Game Board */}
       <div className="flex-1 flex items-center justify-center p-4">

@@ -1,10 +1,8 @@
 'use client';
 
 import { ArrowLeft, ChevronDown, Home, LogIn, RotateCcw } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { GameState, type Player, generateAnalysis } from '@/utils/game';
-import Analysis from '@/components/analysis';
+import { GameState, type Player } from '@/utils/game';
 
 interface GameBoardProps {
   socket: WebSocket | null;
@@ -99,18 +97,21 @@ export default function GameBoard({
   const animatePieceFall = (targetRow: number, col: number) => {
     playDropSound()
     let currentRow = -1
-    const fallInterval = setInterval(() => {
+
+    const fall = () => {
       if (currentRow < targetRow) {
         currentRow++
         setFallingPiece(prev => ({ ...prev!, row: currentRow }))
+        requestAnimationFrame(fall)
       } else {
-        clearInterval(fallInterval)
         setFallingPiece(null)
         gameState.makeMove(col)
         setCurrentMoveIndex(gameState.moves.length - 1)
-        //setAnalysisData(generateAnalysis(gameState.board, gameState.currentPlayer))
+        // Optionally, you can call a function to update analysis data here
       }
-    }, 100)
+    }
+
+    fall()
   }
 
   const handleColumnHover = (col: number) => {
@@ -152,23 +153,9 @@ export default function GameBoard({
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      {/* Dashboard */}
-      <div className="w-64 bg-white p-4 flex flex-col shadow-md">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h2>
-        <Link href="/" className="flex items-center text-gray-600 hover:text-gray-800 mb-2">
-          <Home className="mr-2" />
-          Home
-        </Link>
-        <Link href="/login" className="flex items-center text-gray-600 hover:text-gray-800">
-          <LogIn className="mr-2" />
-          Login
-        </Link>
-      </div>
-
       {/* Game Board */}
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="flex flex-col items-center">
-          <h1 className="text-4xl font-bold text-gray-800 mb-8">Connect Four with History</h1>
           <div className="relative">
             {/* Chevron indicators */}
             <div className="absolute top-[-24px] left-0 right-0 flex justify-around">
@@ -252,42 +239,6 @@ export default function GameBoard({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Move History Panel */}
-      <div className="w-80 bg-white p-4 flex flex-col shadow-md overflow-y-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Move History</h2>
-        <div className="flex flex-wrap gap-2 mb-6">
-          {gameState.moves.map((move, index) => (
-            <button
-              key={index}
-              onClick={() => goToMove(index)}
-              className={`w-8 h-8 rounded-full text-white font-bold ${
-                move.player === 1 ? 'bg-red-500' : 'bg-yellow-400'
-              } ${
-                index === currentMoveIndex ? 'ring-2 ring-blue-500 ring-offset-2' : ''
-              }`}
-            >
-              {move.col + 1}
-            </button>
-          ))}
-        </div>
-        {currentMoveIndex !== gameState.moves.length - 1 && (
-          <button
-            onClick={returnToPresent}
-            className="mt-4 mb-6 bg-green-500 hover:bg-green-600 text-white flex items-center justify-center px-4 py-2 rounded-md transition-colors duration-200"
-          >
-            <ArrowLeft className="mr-2" />
-            Return to Present
-          </button>
-        )}
-
-        <Analysis
-          currentPlayer={gameState.currentPlayer}
-          evaluation={analysisData.evaluation}
-          explanation={analysisData.explanation}
-          alternativeMoves={analysisData.alternativeMoves}
-        />
       </div>
     </div>
   )
