@@ -3,39 +3,70 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { RotateCcw, FileText, ChevronDown } from 'lucide-react'
 import { GameState, Player, Move } from '@/utils/game'
+import { eventEmitter } from '@/utils/eventEmitter'
 
 const ROWS = 6
 const COLS = 7
 
-
-export default function SinglePlayerGameboard() {
-  const gameState = useRef(new GameState()).current
+// add Props interface with ref=GameState referene
+interface SinglePlayerGameboardProps {
+  ref: GameState;
+}
+export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps) {
+  const gameState = props.ref;
+  const [updateCount, setUpdateCount] = useState(0);  
   const [fallingPiece, setFallingPiece] = useState<{ row: number; col: number; player: Player } | null>(null)
   const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
 
   useEffect(() => {
     audioRef.current = new Audio('/drop-sound.mp3')
   }, [])
 
+  useEffect(() => {
+    const handleBoardUpdate = (data: { row: number; col: number; player: Player }) => {
+      console.log('Board updated:', data);
+      const { row, col, player } = data;
+      setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
+      animatePieceFall(row, col)
+      // You can also trigger animations or other UI updates here
+    };
+
+    const handleGameEnd = (winner: number | null) => {
+      // Handle game end logic, e.g., show a message
+      console.log('Game ended. Winner:', winner);
+    };
+
+    const handleBoardSet = () => {
+      setUpdateCount(prev => prev + 1);
+    };
+
+    eventEmitter.on('boardUpdated', handleBoardUpdate);
+    eventEmitter.on('gameEnded', handleGameEnd);
+    eventEmitter.on('boardSet', handleBoardSet);
+
+    // Cleanup subscriptions on component unmount
+    return () => {
+      eventEmitter.off('boardUpdated', handleBoardUpdate);
+      eventEmitter.off('gameEnded', handleGameEnd);
+      eventEmitter.off('boardSet', handleBoardSet);
+    };
+  }, []);
+
   const dropPiece = (col: number) => {
+
     if (gameState.gameOver || fallingPiece) return
 
     if (audioRef.current) {
       audioRef.current.play()
     }
 
-    const { row, success } = gameState.makeMove(col)
-
-    if (success) {
-      setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
-      animatePieceFall(row, col)
-    }
+    gameState.makeMove(col)
   }
 
   const animatePieceFall = (targetRow: number, col: number) => {
     let currentRow = -1
-
     const fall = () => {
       if (currentRow < targetRow) {
         currentRow++
@@ -64,7 +95,9 @@ export default function SinglePlayerGameboard() {
   }
 
   const handleColumnHover = (col: number) => {
-    if (!gameState.gameOver && !fallingPiece) {
+    if (!gameState.gameOver && !fallingPiece 
+      && (gameState.currentMoveIndex == gameState.getMoves().length - 1)
+    ) {
       setHighlightedColumn(col)
     }
   }
@@ -105,7 +138,7 @@ export default function SinglePlayerGameboard() {
               </div>
 
               {/* Game grid */}
-              {gameState.board.map((row, rowIndex) => (
+              {gameState.getBoard().map((row, rowIndex) => (
                 <div key={rowIndex} className="flex">
                   {row.map((cell, colIndex) => (
                     <div
@@ -117,7 +150,7 @@ export default function SinglePlayerGameboard() {
                           className={`w-10 h-10 rounded-full ${
                             cell !== null 
                               ? (cell === 1 ? 'bg-red-500' : 'bg-yellow-400')
-                              : (fallingPiece?.player === 1 ? 'bg-red-500' : 'bg-yellow-400')
+                              : (fallingPiece?.player === 1 ? 'bg-yellow-500' : 'bg-red-400')
                           } transition-transform duration-100`}
                           style={{
                             transform: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
