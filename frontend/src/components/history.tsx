@@ -30,7 +30,7 @@ export default function MoveHistory({
 
   const goToMove = (index: number) => {
 
-    console.log(index, gameState.currentMoveIndex, gameState.getMoves().length-1)
+    //console.log(index, gameState.currentMoveIndex, gameState.getMoves().length-1)
     if (index == gameState.currentMoveIndex) return;
 
     const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
@@ -54,7 +54,7 @@ export default function MoveHistory({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      console.log("Key pressed:", event.key);
+      //console.log("Key pressed:", event.key);
       switch (event.key) {
         case 'ArrowUp':
           goToMove(0)

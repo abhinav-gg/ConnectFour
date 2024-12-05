@@ -19,14 +19,10 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
   const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-
+  
   useEffect(() => {
     audioRef.current = new Audio('/drop-sound.mp3')
-  }, [])
-
-  useEffect(() => {
     const handleBoardUpdate = (data: { row: number; col: number; player: Player }) => {
-      console.log('Board updated:', data);
       const { row, col, player } = data;
       setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
       animatePieceFall(row, col)
