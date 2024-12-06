@@ -52,7 +52,7 @@ export class GameState {
     return this.board
   }
 
-  setBoard = (board: Cell[][], silent:Boolean = false) => {
+  setBoard = (board: Cell[][], silent:boolean = false) => {
     // avoid use at all costs
     if (!silent)
       eventEmitter.emit('boardSet', { row: -1, col: -1, player: this.currentPlayer });
@@ -71,7 +71,7 @@ export class GameState {
         this.board[row][move.col] = move.player
       }
     }
-    let lastCol = this.moves[this.moves.length - 1].col;
+    const lastCol = this.moves.length > 0 ? this.moves[this.moves.length - 1].col : -1;
     eventEmitter.emit('boardSet', { row: -1, col: lastCol, player: this.currentPlayer });
   }
 
@@ -127,8 +127,8 @@ export class GameState {
   }
 
   makeMove(col: number): { row: number; success: boolean } {
+    
     const targetRow = this.getAvailableRow(col)
-
     // ensure that the board reflects all the moves made i.e. not in history view
     // count non-empty cells in board
     let nonEmptyCells = 0;

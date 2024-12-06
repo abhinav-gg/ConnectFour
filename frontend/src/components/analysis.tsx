@@ -63,7 +63,7 @@ export default function GameAnalysis({
   });
 
   return (
-    <div className="bg-white p-4 rounded-full shadow-lg flex flex-col items-center justify-center overflow-hidden">
+    <div className="bg-white p-4 rounded-lg shadow-lg items-center justify-center overflow-hidden">
       <h2 className="text-xl font-bold mb-2">Analysis</h2>
       <div className="mb-4">
         <h3 className="font-semibold">Current Evaluation:</h3>
@@ -80,7 +80,7 @@ export default function GameAnalysis({
         <ul className="space-y-2">
           {sortedMoves.map((move: any, index: number) => (
             <li key={index} className="flex justify-between items-center">
-              <span>Column {move.column + 1}</span>
+              <span>Column {move.column + 1}:   </span>
               <span className={anal.results.evaluation > 0 ? 'text-red-500' : 'text-yellow-500'}>
                 {formatEvaluation(move.evaluation)}
               </span>

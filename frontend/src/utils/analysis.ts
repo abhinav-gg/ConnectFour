@@ -100,10 +100,10 @@ export class Analysis {
     }
 
     // use currentIndex to get relevant board and player
-    let currentPlayer = 1 + (this.gameState.currentMoveIndex % 2)
+    const currentPlayer = 1 + (this.gameState.currentMoveIndex % 2)
 
     // select the board up until currentMoveIndex
-    let board = this.gameState.getBoard()
+    const board = this.gameState.getBoard()
 
     const moves = MOVE_ORDER.filter(col => board[0][col] === null)
     
@@ -129,8 +129,8 @@ export class Analysis {
     if (Math.abs(evaluation) > 1000) {  // If it's a forced mate
       const movesToMate = Math.ceil(INFINITY / Math.abs(evaluation))
       explanation = evaluation > 0 ? 
-        `Red wins in ${movesToMate} moves` : 
-        `Yellow wins in ${movesToMate} moves`
+        `Red wins in ${movesToMate-1} moves` : 
+        `Yellow wins in ${movesToMate-1} moves`
     } else if (evaluation > 0) {
       explanation = "Advantage for Red"
     } else if (evaluation < 0) {

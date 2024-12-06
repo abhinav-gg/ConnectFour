@@ -6,11 +6,9 @@ import { GameState, type Player, type Move } from '@/utils/game';
 import { eventEmitter } from '@/utils/eventEmitter'
 
 interface GameBoardProps {
-  socket: WebSocket | null;
   playerNumber: number | null;
   isConnected: boolean;
   playersCount: number;
-  gameStatus: string;
   roomId: string;
   onMove: (col: number) => void;
   ref: GameState;
@@ -19,6 +17,7 @@ interface GameBoardProps {
 export default function GameBoard (props: GameBoardProps)  {
   const [fallingPiece, setFallingPiece] = useState<{ row: number, col: number, player: Player } | null>(null)
   const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null)
+  const [updateCount, setUpdateCount] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const gameState = props.ref
   const websocketMove = props.onMove
@@ -33,11 +32,17 @@ export default function GameBoard (props: GameBoardProps)  {
 
     };
 
+    const handleBoardSet = () => {
+      setUpdateCount(prev => prev + 1);
+    }
+
     eventEmitter.on('boardUpdated', handleBoardUpdate);
+    eventEmitter.on('boardSet', handleBoardSet);
     // Cleanup subscriptions on component unmount
-    return () => {
+    return (() => {
       eventEmitter.off('boardUpdated', handleBoardUpdate);
-    };
+      eventEmitter.off('boardSet', handleBoardSet);
+    });
   });
 
   useEffect(() => {
@@ -100,7 +105,10 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   const handleColumnHover = (col: number) => {
-    if (gameState.currentPlayer != props.playerNumber) {
+    if (gameState.currentPlayer != props.playerNumber 
+      || gameState.gameOver || fallingPiece
+      || gameState.currentMoveIndex != gameState.getMoves().length - 1
+    ) {
       setHighlightedColumn(null)
       return
     }
@@ -122,10 +130,8 @@ export default function GameBoard (props: GameBoardProps)  {
       const audio = new Audio('/drop-sound.mp3')
       audio.volume = 0.5
       audio.play().catch(error => {
-        console.log('Audio playback failed:', error)
       })
     } catch (error) {
-      console.log('Audio creation failed:', error)
     }
   }
 
@@ -157,8 +163,10 @@ export default function GameBoard (props: GameBoardProps)  {
                       key={`input-${colIndex}`}
                       className="flex-1 cursor-pointer"
                       onClick={() => {
-                        websocketMove(colIndex);
-                        setHighlightedColumn(null)
+                        handleColumnHover(colIndex)
+                        if (highlightedColumn !== null) {
+                          websocketMove(highlightedColumn);
+                        }
                       }}
                       onMouseEnter={() => handleColumnHover(colIndex)}
                       onMouseLeave={handleColumnLeave}

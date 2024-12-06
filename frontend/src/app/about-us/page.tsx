@@ -4,10 +4,11 @@ import React from 'react'
 import Link from 'next/link'
 import SinglePlayerGameboard from '@/components/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
+import { GameState } from '@/utils/game'
 
 export default function AboutUs() {
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8 flex">
+    <div className="lex min-h-screen bg-gray-100 flex">
       <Dashboard />
       <div className="flex-1 flex flex-col items-center pr-4 pl-7">
         <h1 className="text-4xl font-bold text-center mb-12">About Connect Four</h1>
@@ -30,7 +31,7 @@ export default function AboutUs() {
         <br />
         <div className="flex flex-col items-center mb-12">
           <h2 className="text-2xl font-semibold mb-4 text-center">Try it out!</h2>
-          <SinglePlayerGameboard />
+          <SinglePlayerGameboard ref={new GameState()}/>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
@@ -53,6 +54,7 @@ export default function AboutUs() {
             Back to Home
           </Link>
         </div>
+        <br/><br/><br/>
       </div>
     </div>
   )

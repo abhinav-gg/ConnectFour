@@ -9,7 +9,7 @@ import { Analysis } from '@/utils/analysis'
 import { GameState } from '@/utils/game'
 
 export default function AnalysisPage() {
-    let gameBoardRef = useRef<GameState>();
+    const gameBoardRef = useRef<GameState>();
     gameBoardRef.current = new GameState();
 
   return (
@@ -18,10 +18,13 @@ export default function AnalysisPage() {
       <div className="flex-1 flex items-center justify-center p-4">
         <SinglePlayerGameboard ref={gameBoardRef.current} />
       </div>
-      <div className="flex-1 items-center justify-center">
+      <div className="flex-1 items-center justify-center h-full">
+        <div className="p-4">
         <MoveHistory ref={gameBoardRef.current} />
-
+        </div><br/><br/>
+        <div className="p-4">
         <GameAnalysis analysis={new Analysis(gameBoardRef.current)} />
+        </div>
       </div>
     </div>
   )

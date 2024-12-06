@@ -16,20 +16,13 @@ export default function MoveHistory({
   const gameState = ref;
   const [updateCount, setUpdateCount] = useState(0); 
 
-  const handleBoardUpdate: (data: { row: number; col: number; player: Player }) => void = (data) => {
-    // Update the state or perform actions based on the board update
-    goToMove(gameState.getMoves().length - 1);
-    setUpdateCount(prev => prev + 1);
-  };
-
-  eventEmitter.on('boardUpdated', handleBoardUpdate);
-
   const returnToPresent = () => {
-    goToMove(gameState.getMoves().length - 1)
+    if (gameState.currentMoveIndex >= 0)
+      goToMove(gameState.getMoves().length - 1)
   }
 
   const goToMove = (index: number) => {
-    console.log(index, gameState.currentMoveIndex)
+    //console.log(index, gameState.currentMoveIndex, gameState.getMoves().length - 1)
     if (index == gameState.currentMoveIndex) return;
     gameState.currentPlayer = index % 2 === 0 ? 2 : 1;
     gameState.currentMoveIndex = index;
@@ -38,8 +31,16 @@ export default function MoveHistory({
   }
 
   useEffect(() => {
+
+    const handleBoardUpdate = () => {
+      returnToPresent();
+      setUpdateCount(prev => prev + 1);
+    };
+  
+    eventEmitter.on('boardUpdated', handleBoardUpdate);  
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      //console.log("Key pressed:", event.key);
+
       switch (event.key) {
         case 'ArrowUp':
           goToMove(0)
@@ -58,6 +59,11 @@ export default function MoveHistory({
           }
           break
       }
+
+      return (() => {
+        eventEmitter.off('boardUpdated', handleBoardUpdate);  
+      });
+
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -68,7 +74,7 @@ export default function MoveHistory({
   }, [gameState.getMoves()]);
 
   return (
-    <div className="bg-white p-4 rounded-full shadow-lg flex flex-col items-center justify-center overflow-hidden">
+    <div className="bg-white p-4 rounded-lg shadow-lg items-center justify-center overflow-hidden">
       <h2 className="text-xl font-bold text-gray-800 mb-2">Move History</h2>
       <div className="flex flex-wrap gap-2 mb-4">
         {gameState?.getMoves()?.map((move, index) => (

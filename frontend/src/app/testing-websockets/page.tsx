@@ -8,6 +8,7 @@ import MoveHistory from '@/components/history';
 import GameAnalysis from '@/components/analysis';
 import { GameState, Player } from '@/utils/game';
 import { Analysis } from '@/utils/analysis';
+import { propagateServerField } from 'next/dist/server/lib/render-server';
 
 type PlayerJoined = {
   event: 'playerJoined';
@@ -44,7 +45,8 @@ export default function TestingWebsockets() {
   const [playersCount, setPlayersCount] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
   const userIdRef = useRef(crypto.randomUUID());
-  let gameBoardRef = useRef<GameState>();
+  const statusTextRef = useRef<HTMLParagraphElement>(null);
+  const gameBoardRef = useRef<GameState>();
   gameBoardRef.current = new GameState();
 
   useEffect(() => {
@@ -101,16 +103,25 @@ export default function TestingWebsockets() {
           setGameStatus('Opponent disconnected. Waiting for new player...');
           break;
         case 'moveMade':
-          if (data.data.player !== gameBoardRef.current?.currentPlayer) {
-            throw new Error('Received move from wrong player');
+          const gameState = gameBoardRef.current;
+          if (gameState) {
+              const index = gameState.getMoves().length-1;
+              gameState.currentPlayer = index % 2 === 0 ? 2 : 1;
+              gameState.currentMoveIndex = index;
+              gameState.constructFromMoves();
+              gameState.makeMove( 
+                data.data.col, 
+              );
+              // There is no way to store this as of right now
+              // if (statusTextRef.current) {
+              //   console.log (gameState.currentPlayer, playerNumber);
+              //   statusTextRef.current.textContent = (gameState.currentPlayer === playerNumber ? 'Your' : "Opponent's") + '  turn...';
+              // }
           }
-          gameBoardRef.current?.makeMove( 
-            data.data.col, 
-          );
-          break;
+        break;
       }
     };
-
+    
     return () => {
       newSocket.close();
     };
@@ -138,20 +149,37 @@ export default function TestingWebsockets() {
   };
 
   const handleMove = (col: number) => {
-    console.log("Move made:", col);
+    const currentGameBoard = gameBoardRef.current;
+    if (!currentGameBoard) return; // Ensure gameBoardRef.current is not undefined
+
+    if (currentGameBoard.gameOver || currentGameBoard.currentMoveIndex !== currentGameBoard.getMoves().length - 1) {
+      console.log("Error")
+    }
+
     if (socket && playerNumber && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ event: 'makeMove', data: { roomId, col } }));
     }
+
   };
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const BOARD = <GameBoard
+  playerNumber={playerNumber}
+  isConnected={isConnected}
+  playersCount={playersCount}
+  roomId={roomId}
+  onMove={handleMove}
+  ref={gameBoardRef.current}
+/>;
+  const HISTORY = <MoveHistory ref={gameBoardRef.current} />;
+  const ANALYSIS = <GameAnalysis analysis={new Analysis(gameBoardRef.current)} />;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="flex min-h-screen bg-gray-100">
       <Dashboard />
-      <div className="flex-1 p-4">
+      <div className="flex-1 flex flex-col">
         {!hasJoined ? (
-          <div className="flex flex-col items-center justify-center min-h-screen">
+          <div className="flex items-center justify-center w-full h-1/2">
             <div className="bg-white p-8 rounded-lg shadow-md w-96">
               <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
               <div className="space-y-4">
@@ -177,29 +205,24 @@ export default function TestingWebsockets() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center">
+        <div className="flex w-full">
+          <div className="flex-1 flex flex-col items-center">
             <h2 className="text-xl font-semibold">Room: {roomId}</h2>
             <p className="text-gray-600">{gameStatus}</p>
             {playerNumber && (
               <p className="text-blue-600">You are Player {playerNumber}</p>
             )}
-            <GameBoard
-              socket={socket}
-              playerNumber={playerNumber}
-              isConnected={isConnected}
-              playersCount={playersCount}
-              gameStatus={gameStatus}
-              roomId={roomId}
-              onMove={handleMove}
-              ref={gameBoardRef.current}
-            />
-            <MoveHistory
-              ref={gameBoardRef.current}
-            />
-            <GameAnalysis
-              analysis={new Analysis(gameBoardRef.current)}
-            />
+            { BOARD }
           </div>
+          <div className="w-1/3 flex flex-col items-center justify-center">
+            <div className="p-4 w-full">
+              { HISTORY }
+            </div><br/><br/>
+            <div className="p-4 w-full">
+              { ANALYSIS }
+            </div>
+          </div>
+        </div>
         )}
       </div>
     </div>
