@@ -48,19 +48,6 @@ export default function TestingWebsockets() {
   gameBoardRef.current = new GameState();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const roomFromUrl = params.get('room');
-    
-    if (roomFromUrl) {
-      console.log('Found room in URL:', roomFromUrl);
-      setRoomId(roomFromUrl);
-      if (inputRef.current) {
-        inputRef.current.value = roomFromUrl;
-      }
-    }
-  }, []); 
-
-  useEffect(() => {
     const backendUrl = getConfig().websocketUrl;
     const newSocket = new WebSocket(backendUrl);
     console.log('Connection established with userId:', userIdRef.current);
@@ -74,6 +61,7 @@ export default function TestingWebsockets() {
       if (roomFromUrl) {
         console.log('Auto-joining room:', roomFromUrl);
         setHasJoined(true);
+        setRoomId(roomFromUrl);
         newSocket.send(JSON.stringify({ 
           event: 'joinGame', 
           data: { roomId: roomFromUrl, userId: userIdRef.current } 
@@ -113,10 +101,12 @@ export default function TestingWebsockets() {
           setGameStatus('Opponent disconnected. Waiting for new player...');
           break;
         case 'moveMade':
-          gameBoardRef.current?.addMove({ 
-            player: data.data.player, 
-            col: data.data.col, 
-          });
+          if (data.data.player !== gameBoardRef.current?.currentPlayer) {
+            throw new Error('Received move from wrong player');
+          }
+          gameBoardRef.current?.makeMove( 
+            data.data.col, 
+          );
           break;
       }
     };
@@ -148,6 +138,7 @@ export default function TestingWebsockets() {
   };
 
   const handleMove = (col: number) => {
+    console.log("Move made:", col);
     if (socket && playerNumber && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ event: 'makeMove', data: { roomId, col } }));
     }
@@ -199,6 +190,7 @@ export default function TestingWebsockets() {
               playersCount={playersCount}
               gameStatus={gameStatus}
               roomId={roomId}
+              onMove={handleMove}
               ref={gameBoardRef.current}
             />
             <MoveHistory

@@ -3,6 +3,7 @@
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, Home, LogIn, RotateCcw } from 'lucide-react';
 import { GameState, type Player, type Move } from '@/utils/game';
+import { eventEmitter } from '@/utils/eventEmitter'
 
 interface GameBoardProps {
   socket: WebSocket | null;
@@ -11,6 +12,7 @@ interface GameBoardProps {
   playersCount: number;
   gameStatus: string;
   roomId: string;
+  onMove: (col: number) => void;
   ref: GameState;
 }
 
@@ -19,7 +21,25 @@ export default function GameBoard (props: GameBoardProps)  {
   const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const gameState = props.ref
+  const websocketMove = props.onMove
   
+
+  useEffect(() => {
+
+    const handleBoardUpdate = (data: { row: number; col: number; player: Player }) => {
+      const { row, col, player } = data;
+      setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
+      animatePieceFall(row, col)
+
+    };
+
+    eventEmitter.on('boardUpdated', handleBoardUpdate);
+    // Cleanup subscriptions on component unmount
+    return () => {
+      eventEmitter.off('boardUpdated', handleBoardUpdate);
+    };
+  });
+
   useEffect(() => {
     audioRef.current = new Audio('/drop-sound.mp3')
     if (props.isConnected && gameState.getMoves().length > 0) {
@@ -28,7 +48,7 @@ export default function GameBoard (props: GameBoardProps)  {
       gameState.getMoves().forEach(({ player, col }, index) => {
         if (index === gameState.getMoves().length - 1) {
           setFallingPiece({ row: -1, col, player: player as Player })
-          animatePieceFall(row, col)
+          animatePieceFall(2, col)
         } else {
           newGameState.makeMove(col)
         }
@@ -37,7 +57,7 @@ export default function GameBoard (props: GameBoardProps)  {
       // Update game state
       Object.assign(gameState, newGameState)
     }
-  }, [props.isConnected, props.moves])
+  }, [props.isConnected])
 
   const dropPiece = (col: number) => {
 
@@ -80,6 +100,10 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   const handleColumnHover = (col: number) => {
+    if (gameState.currentPlayer != props.playerNumber) {
+      setHighlightedColumn(null)
+      return
+    }
     if (!gameState.gameOver && !fallingPiece && gameState.currentMoveIndex === gameState.getMoves().length - 1) {
       setHighlightedColumn(col)
     }
@@ -87,17 +111,6 @@ export default function GameBoard (props: GameBoardProps)  {
 
   const handleColumnLeave = () => {
     setHighlightedColumn(null)
-  }
-
-  const goToMove = (index: number) => {
-    const newBoard = gameState.getBoardAtMove(index)
-    gameState.setBoard(newBoard)
-    gameState.currentPlayer = (index + 1) % 2 === 0 ? 2 : 1
-    setCurrentMoveIndex(index)
-  }
-
-  const returnToPresent = () => {
-    goToMove(gameState.getMoves().length - 1)
   }
 
   const playAgain = () => {
@@ -127,7 +140,7 @@ export default function GameBoard (props: GameBoardProps)  {
               {Array(7).fill(null).map((_, colIndex) => (
                 <div key={`chevron-${colIndex}`} className="w-12 flex justify-center">
                   {highlightedColumn === colIndex && !gameState.gameOver && !fallingPiece && 
-                   currentMoveIndex === gameState.getMoves().length - 1 && (
+                   gameState.currentMoveIndex === gameState.getMoves().length - 1 && (
                     <ChevronDown className="text-orange-500 animate-bounce" />
                   )}
                 </div>
@@ -143,7 +156,10 @@ export default function GameBoard (props: GameBoardProps)  {
                     <div
                       key={`input-${colIndex}`}
                       className="flex-1 cursor-pointer"
-                      onClick={() => dropPiece(colIndex)}
+                      onClick={() => {
+                        websocketMove(colIndex);
+                        setHighlightedColumn(null)
+                      }}
                       onMouseEnter={() => handleColumnHover(colIndex)}
                       onMouseLeave={handleColumnLeave}
                     />
@@ -163,7 +179,7 @@ export default function GameBoard (props: GameBoardProps)  {
                             className={`w-10 h-10 rounded-full ${
                               cell !== null 
                                 ? (cell === 1 ? 'bg-red-500' : 'bg-yellow-400')
-                                : (fallingPiece?.player === 1 ? 'bg-red-500' : 'bg-yellow-400')
+                                : (fallingPiece?.player === 2 ? 'bg-red-500' : 'bg-yellow-400')
                             } transition-transform duration-100`}
                             style={{
                               transform: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
