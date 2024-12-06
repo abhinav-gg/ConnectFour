@@ -1,3 +1,5 @@
+import { eventEmitter } from './eventEmitter';
+
 export type Player = 1 | 2
 export type Cell = Player | null
 export type Move = { player: Player; col: number }
@@ -5,16 +7,22 @@ export type Move = { player: Player; col: number }
 export const ROWS = 6
 export const COLS = 7
 
+export function removeEventListener(listener: EventListener) {
+  // remove listener from the event
+}
+
 export class GameState {
-  board: Cell[][]
   currentPlayer: Player
+  currentMoveIndex: number
   winner: Player | null
   gameOver: boolean
-  moves: Move[]
+  private board: Cell[][]
+  private moves: Move[]
 
   constructor() {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
     this.currentPlayer = 1
+    this.currentMoveIndex = -1 // used for animation synchronization
     this.winner = null
     this.gameOver = false
     this.moves = []
@@ -23,6 +31,48 @@ export class GameState {
   evaluate(): number {
     // Only evaluate actual wins, not threats
     return 0
+  }
+
+  getMoves = (): Move[] => {
+    return this.moves
+  }
+
+  getMove = (index: number): Move | null => {
+    return this.moves[index] || null
+  }
+
+  addMove = (move: Move) => {
+    // add move to moves
+    this.moves.push(move)
+    // emit boardUpdated event
+    eventEmitter.emit('boardUpdated', { row: -1, col: move.col, player: this.currentPlayer });
+  }
+
+  getBoard = (): Cell[][] => {
+    return this.board
+  }
+
+  setBoard = (board: Cell[][], silent:boolean = false) => {
+    // avoid use at all costs
+    if (!silent)
+      eventEmitter.emit('boardSet', { row: -1, col: -1, player: this.currentPlayer });
+    this.board = board
+  }
+
+  constructFromMoves (){
+    this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
+    for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex+1); i++) {
+      const move = this.moves[i]
+      let row = ROWS - 1
+      while (row >= 0 && this.board[row][move.col] !== null) {
+        row--
+      }
+      if (row >= 0) {
+        this.board[row][move.col] = move.player
+      }
+    }
+    const lastCol = this.moves.length > 0 ? this.moves[this.moves.length - 1].col : -1;
+    eventEmitter.emit('boardSet', { row: -1, col: lastCol, player: this.currentPlayer });
   }
 
   checkWinner(row: number, col: number): boolean {
@@ -77,13 +127,32 @@ export class GameState {
   }
 
   makeMove(col: number): { row: number; success: boolean } {
+    
     const targetRow = this.getAvailableRow(col)
+    // ensure that the board reflects all the moves made i.e. not in history view
+    // count non-empty cells in board
+    let nonEmptyCells = 0;
+    for (let i = 0; i < ROWS; i++) {
+      for (let j = 0; j < COLS; j++) {
+        if (this.board[i][j] !== null) {
+          nonEmptyCells++;
+        }
+      }
+    }
+    if (nonEmptyCells < this.moves.length) {
+      return { row: -1, success: false }
+    }
     
     if (targetRow >= 0) {
       this.board[targetRow][col] = this.currentPlayer
       this.moves.push({ player: this.currentPlayer, col })
       this.checkWinner(targetRow, col)
       this.currentPlayer = this.currentPlayer === 1 ? 2 : 1
+
+      // Call boardUpdated event!
+      this.currentMoveIndex ++;
+      eventEmitter.emit('boardUpdated', { row: targetRow, col, player: this.currentPlayer });
+      
       return { row: targetRow, success: true }
     }
     
@@ -136,6 +205,13 @@ export class GameState {
     // Game is still ongoing
     this.gameOver = false
     this.winner = null
+  }
+
+  // Call this method when the game ends
+  endGame(winner: Player | null) {
+    this.gameOver = true;
+    this.winner = winner;
+    eventEmitter.emit('gameEnded', winner);
   }
 }
 

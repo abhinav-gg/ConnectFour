@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Home, LogIn, RotateCcw, FileText, ChevronDown, ArrowLeft } from 'lucide-react'
+import Analysis from '@/components/analysis'
+import { analyzePosition } from '@/utils/analysis'
+import Dashboard from '@/components/dashboard'
 
 type Player = 1 | 2
 type Cell = Player | null
@@ -21,6 +24,15 @@ export default function GameWithHistory() {
   const [moves, setMoves] = useState<Move[]>([])
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [analysisData, setAnalysisData] = useState<{
+    evaluation: number;
+    explanation: string;
+    alternativeMoves: Array<{ column: number; evaluation: number }>;
+  }>({
+    evaluation: 0,
+    explanation: "Game is starting",
+    alternativeMoves: []
+  })
 
   useEffect(() => {
     audioRef.current = new Audio('/drop-sound.mp3')
@@ -89,6 +101,8 @@ export default function GameWithHistory() {
         setBoard(newBoard)
         checkWinner(targetRow, col)
         setCurrentPlayer(currentPlayer === 1 ? 2 : 1)
+
+        setAnalysisData(analyzePosition(newBoard, currentPlayer))
       }
     }, 100)
   }
@@ -153,8 +167,11 @@ export default function GameWithHistory() {
       }
     }
     setBoard(newBoard)
-    setCurrentPlayer((index + 1) % 2 === 0 ? 2 : 1)
+    const nextPlayer = (index + 1) % 2 === 0 ? 2 : 1
+    setCurrentPlayer(nextPlayer)
     setCurrentMoveIndex(index)
+
+    setAnalysisData(analyzePosition(newBoard, nextPlayer))
   }
 
   const returnToPresent = () => {
@@ -163,18 +180,7 @@ export default function GameWithHistory() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      {/* Dashboard */}
-      <div className="w-64 bg-white p-4 flex flex-col shadow-md">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h2>
-        <Link href="/" className="flex items-center text-gray-600 hover:text-gray-800 mb-2">
-          <Home className="mr-2" />
-          Home
-        </Link>
-        <Link href="/login" className="flex items-center text-gray-600 hover:text-gray-800">
-          <LogIn className="mr-2" />
-          Login
-        </Link>
-      </div>
+      <Dashboard />
 
       {/* Game Board */}
       <div className="flex-1 flex items-center justify-center p-4">
@@ -273,9 +279,9 @@ export default function GameWithHistory() {
       </div>
 
       {/* Move History Panel */}
-      <div className="w-64 bg-white p-4 flex flex-col shadow-md overflow-y-auto">
+      <div className="w-80 bg-white p-4 flex flex-col shadow-md overflow-y-auto">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Move History</h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-6">
           {moves.map((move, index) => (
             <button
               key={index}
@@ -293,12 +299,19 @@ export default function GameWithHistory() {
         {currentMoveIndex !== moves.length - 1 && (
           <button
             onClick={returnToPresent}
-            className="mt-4 bg-green-500 hover:bg-green-600 text-white flex items-center justify-center px-4 py-2 rounded-md transition-colors duration-200"
+            className="mt-4 mb-6 bg-green-500 hover:bg-green-600 text-white flex items-center justify-center px-4 py-2 rounded-md transition-colors duration-200"
           >
             <ArrowLeft className="mr-2" />
             Return to Present
           </button>
         )}
+
+        <Analysis
+          currentPlayer={currentPlayer}
+          evaluation={analysisData.evaluation}
+          explanation={analysisData.explanation}
+          alternativeMoves={analysisData.alternativeMoves}
+        />
       </div>
     </div>
   )
