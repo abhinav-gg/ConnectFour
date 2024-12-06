@@ -29,26 +29,11 @@ export default function MoveHistory({
   }
 
   const goToMove = (index: number) => {
-
-    //console.log(index, gameState.currentMoveIndex, gameState.getMoves().length-1)
+    console.log(index, gameState.currentMoveIndex)
     if (index == gameState.currentMoveIndex) return;
-
-    const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    for (let i = 0; i <= index; i++) {
-      const move = gameState.getMove(i);
-      if (move) {
-        const { player, col } = move;
-        for (let row = ROWS - 1; row >= 0; row--) {
-          if (!newBoard[row][col]) {
-            newBoard[row][col] = player;
-            break;
-          }
-        }
-      }
-    }
-    gameState.setBoard(newBoard)
-    gameState.currentPlayer = (index + 1) % 2 === 0 ? 2 : 1
+    gameState.currentPlayer = index % 2 === 0 ? 2 : 1;
     gameState.currentMoveIndex = index;
+    gameState.constructFromMoves();
     setUpdateCount(prev => prev + 1);
   }
 

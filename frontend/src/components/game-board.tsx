@@ -2,7 +2,7 @@
 
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, Home, LogIn, RotateCcw } from 'lucide-react';
-import { GameState, type Player } from '@/utils/game';
+import { GameState, type Player, type Move } from '@/utils/game';
 
 interface GameBoardProps {
   socket: WebSocket | null;
@@ -11,57 +11,22 @@ interface GameBoardProps {
   playersCount: number;
   gameStatus: string;
   roomId: string;
-  onMove: (col: number) => void;
-  moves: Array<{ player: number; column: number; row: number; }>;
+  ref: GameState;
 }
 
-const GameBoard = forwardRef((props: GameBoardProps, ref) => {
-  const initialGameState = new GameState();
-
-  const [gameState, setGameState] = useState(initialGameState);
+export default function GameBoard (props: GameBoardProps)  {
   const [fallingPiece, setFallingPiece] = useState<{ row: number, col: number, player: Player } | null>(null)
   const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null)
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1)
-  const audioRef = useRef<HTMLAudioElement[]>([])
-  const [analysisData, setAnalysisData] = useState({
-    evaluation: 0,
-    explanation: "Game is currently even",
-    alternativeMoves: []
-  })
-
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const gameState = props.ref
+  
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case 'ArrowUp':
-          goToMove(0)
-          break
-        case 'ArrowDown':
-          returnToPresent()
-          break
-        case 'ArrowLeft':
-          if (currentMoveIndex > 0) {
-            goToMove(currentMoveIndex - 1)
-          }
-          break
-        case 'ArrowRight':
-          if (currentMoveIndex < gameState.moves.length - 1) {
-            goToMove(currentMoveIndex + 1)
-          }
-          break
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentMoveIndex, gameState.moves])
-
-  useEffect(() => {
-    if (props.isConnected && props.moves?.length > 0) {
+    audioRef.current = new Audio('/drop-sound.mp3')
+    if (props.isConnected && gameState.getMoves().length > 0) {
       const newGameState = new GameState()
       
-      props.moves.forEach(({ player, column, row }, index) => {
-        const col = typeof column === 'number' ? column : parseInt(column)
-        if (index === props.moves.length - 1) {
+      gameState.getMoves().forEach(({ player, col }, index) => {
+        if (index === gameState.getMoves().length - 1) {
           setFallingPiece({ row: -1, col, player: player as Player })
           animatePieceFall(row, col)
         } else {
@@ -75,22 +40,18 @@ const GameBoard = forwardRef((props: GameBoardProps, ref) => {
   }, [props.isConnected, props.moves])
 
   const dropPiece = (col: number) => {
-    if (gameState.winner || fallingPiece || gameState.gameOver || 
-        currentMoveIndex !== gameState.moves.length - 1 || 
-        gameState.currentPlayer !== props.playerNumber) return
 
-    const targetRow = gameState.getAvailableRow(col)
-    if (targetRow >= 0) {
-      setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
-      animatePieceFall(targetRow, col)
-      props.onMove(col)
+    if (gameState.gameOver || fallingPiece) return
+
+    if (audioRef.current) {
+      audioRef.current.play()
     }
+
+    gameState.makeMove(col)
   }
 
   const animatePieceFall = (targetRow: number, col: number) => {
-    playDropSound()
     let currentRow = -1
-
     const fall = () => {
       if (currentRow < targetRow) {
         currentRow++
@@ -98,17 +59,28 @@ const GameBoard = forwardRef((props: GameBoardProps, ref) => {
         requestAnimationFrame(fall)
       } else {
         setFallingPiece(null)
-        gameState.makeMove(col)
-        setCurrentMoveIndex(gameState.moves.length - 1)
-        // Optionally, you can call a function to update analysis data here
       }
-    }
+    };
 
-    fall()
+    // Adjust the speed of the fall animation
+    const fallSpeed = 10; 
+    const fallInterval = 1000 / fallSpeed; // Adjust the interval
+
+    const slowFall = () => {
+      if (currentRow < targetRow) {
+        currentRow++;
+        setFallingPiece(prev => ({ ...prev!, row: currentRow }));
+        setTimeout(slowFall, fallInterval); // Use setTimeout to control the speed
+      } else {
+        setFallingPiece(null);
+      }
+    };
+
+    slowFall() // Start the slow fall animation
   }
 
   const handleColumnHover = (col: number) => {
-    if (!gameState.gameOver && !fallingPiece && currentMoveIndex === gameState.moves.length - 1) {
+    if (!gameState.gameOver && !fallingPiece && gameState.currentMoveIndex === gameState.getMoves().length - 1) {
       setHighlightedColumn(col)
     }
   }
@@ -119,13 +91,13 @@ const GameBoard = forwardRef((props: GameBoardProps, ref) => {
 
   const goToMove = (index: number) => {
     const newBoard = gameState.getBoardAtMove(index)
-    Object.assign(gameState.board, newBoard)
+    gameState.setBoard(newBoard)
     gameState.currentPlayer = (index + 1) % 2 === 0 ? 2 : 1
     setCurrentMoveIndex(index)
   }
 
   const returnToPresent = () => {
-    goToMove(gameState.moves.length - 1)
+    goToMove(gameState.getMoves().length - 1)
   }
 
   const playAgain = () => {
@@ -155,7 +127,7 @@ const GameBoard = forwardRef((props: GameBoardProps, ref) => {
               {Array(7).fill(null).map((_, colIndex) => (
                 <div key={`chevron-${colIndex}`} className="w-12 flex justify-center">
                   {highlightedColumn === colIndex && !gameState.gameOver && !fallingPiece && 
-                   currentMoveIndex === gameState.moves.length - 1 && (
+                   currentMoveIndex === gameState.getMoves().length - 1 && (
                     <ChevronDown className="text-orange-500 animate-bounce" />
                   )}
                 </div>
@@ -179,7 +151,7 @@ const GameBoard = forwardRef((props: GameBoardProps, ref) => {
                 </div>
 
                 {/* Game grid */}
-                {gameState.board.map((row, rowIndex) => (
+                {gameState.getBoard().map((row, rowIndex) => (
                   <div key={rowIndex} className="flex">
                     {row.map((cell, colIndex) => (
                       <div
@@ -235,6 +207,4 @@ const GameBoard = forwardRef((props: GameBoardProps, ref) => {
       </div>
     </div>
   )
-})
-
-export default GameBoard
+}

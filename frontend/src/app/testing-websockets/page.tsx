@@ -5,8 +5,9 @@ import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/history';
-import Analysis from '@/components/analysis';
-import { GameState, type Player } from '@/utils/game';
+import GameAnalysis from '@/components/analysis';
+import { GameState, Player } from '@/utils/game';
+import { Analysis } from '@/utils/analysis';
 
 type PlayerJoined = {
   event: 'playerJoined';
@@ -29,7 +30,7 @@ type PlayerDisconnected = {
 
 type MoveMade = {
   event: 'moveMade';
-  data: { player: number; col: number; row: number; };
+  data: { player: Player; col: number; };
 };
 
 type Message = PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
@@ -42,15 +43,9 @@ export default function TestingWebsockets() {
   const [isConnected, setIsConnected] = useState(false);
   const [playersCount, setPlayersCount] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
-  const [moves, setMoves] = useState<Array<{ player: number; column: number; row: number; }>>([]);
   const userIdRef = useRef(crypto.randomUUID());
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
-  const [gameState] = useState(() => new GameState());
-  const [analysisData, setAnalysisData] = useState({
-    evaluation: 0,
-    explanation: "Game is currently even",
-    alternativeMoves: []
-  });
+  let gameBoardRef = useRef<GameState>();
+  gameBoardRef.current = new GameState();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -118,11 +113,10 @@ export default function TestingWebsockets() {
           setGameStatus('Opponent disconnected. Waiting for new player...');
           break;
         case 'moveMade':
-          setMoves(prev => [...prev, { 
+          gameBoardRef.current?.addMove({ 
             player: data.data.player, 
-            column: data.data.col, 
-            row: data.data.row 
-          }]);
+            col: data.data.col, 
+          });
           break;
       }
     };
@@ -160,17 +154,6 @@ export default function TestingWebsockets() {
   };
 
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const goToMove = (index: number) => {
-    const newBoard = gameState.getBoardAtMove(index);
-    Object.assign(gameState.board, newBoard);
-    gameState.currentPlayer = (index + 1) % 2 === 0 ? 2 : 1;
-    setCurrentMoveIndex(index);
-  };
-
-  const returnToPresent = () => {
-    goToMove(gameState.moves.length - 1);
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
@@ -216,20 +199,13 @@ export default function TestingWebsockets() {
               playersCount={playersCount}
               gameStatus={gameStatus}
               roomId={roomId}
-              onMove={handleMove}
-              moves={moves}
+              ref={gameBoardRef.current}
             />
             <MoveHistory
-              gameState={gameState}
-              currentMoveIndex={currentMoveIndex}
-              goToMove={goToMove}
-              returnToPresent={returnToPresent}
+              ref={gameBoardRef.current}
             />
-            <Analysis
-              currentPlayer={gameState.currentPlayer}
-              evaluation={analysisData.evaluation}
-              explanation={analysisData.explanation}
-              alternativeMoves={analysisData.alternativeMoves}
+            <GameAnalysis
+              analysis={new Analysis(gameBoardRef.current)}
             />
           </div>
         )}

@@ -9,7 +9,6 @@ import { GameState } from '@/utils/game'
 interface AnalysisHistoryProps {
   analysis: Analysis
 }
-
 export default function GameAnalysis({
   analysis,
 }: AnalysisHistoryProps){
@@ -19,6 +18,7 @@ export default function GameAnalysis({
 
   const handleBoardUpdate: (data: { row: number; col: number; player: Player }) => void = (data) => {
     // Update the state or perform actions based on the board update
+    console.log("Call analyzePosition")
     anal.analyzePosition()
     setUpdateCount(prev => prev + 1);
   };
@@ -53,10 +53,12 @@ export default function GameAnalysis({
 
   useEffect(() => {
     eventEmitter.on('boardUpdated', handleBoardUpdate);
+    eventEmitter.on('boardSet', handleBoardUpdate);
 
     // Cleanup subscriptions on component unmount
     return () => {
       eventEmitter.off('boardUpdated', handleBoardUpdate);
+      eventEmitter.off('boardSet', handleBoardUpdate);
     };
   });
 

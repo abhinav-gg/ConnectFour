@@ -41,13 +41,38 @@ export class GameState {
     return this.moves[index] || null
   }
 
+  addMove = (move: Move) => {
+    // add move to moves
+    this.moves.push(move)
+    // emit boardUpdated event
+    eventEmitter.emit('boardUpdated', { row: -1, col: move.col, player: this.currentPlayer });
+  }
+
   getBoard = (): Cell[][] => {
     return this.board
   }
 
-  setBoard = (board: Cell[][]) => {
-    eventEmitter.emit('boardSet', { row: -1, col: -1, player: this.currentPlayer });
+  setBoard = (board: Cell[][], silent:Boolean = false) => {
+    // avoid use at all costs
+    if (!silent)
+      eventEmitter.emit('boardSet', { row: -1, col: -1, player: this.currentPlayer });
     this.board = board
+  }
+
+  constructFromMoves (){
+    this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
+    for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex+1); i++) {
+      const move = this.moves[i]
+      let row = ROWS - 1
+      while (row >= 0 && this.board[row][move.col] !== null) {
+        row--
+      }
+      if (row >= 0) {
+        this.board[row][move.col] = move.player
+      }
+    }
+    let lastCol = this.moves[this.moves.length - 1].col;
+    eventEmitter.emit('boardSet', { row: -1, col: lastCol, player: this.currentPlayer });
   }
 
   checkWinner(row: number, col: number): boolean {

@@ -178,7 +178,7 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
             )}
             <div className="flex gap-4">
               <button
-                onClick={window.location.reload}
+                onClick={() => {window.location.reload()}}
                 className="bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center px-4 py-2 rounded-md transition-colors duration-200"
               >
                 <RotateCcw className="mr-2" />

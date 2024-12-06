@@ -41,19 +41,19 @@ export class Analysis {
     suggestion: boolean
   ): number {
 
-    const gameState = new GameState()
-    gameState.setBoard(board)
-    gameState.checkGameOver()
+    const GS = new GameState()
+    GS.setBoard(board, true)
+    GS.checkGameOver()
 
-    if (gameState.gameOver) {
-      if (gameState.winner === 1) return INFINITY / depth  // Divide by depth for mate distance
-      if (gameState.winner === 2) return -INFINITY / depth
+    if (GS.gameOver) {
+      if (GS.winner === 1) return INFINITY / depth  // Divide by depth for mate distance
+      if (GS.winner === 2) return -INFINITY / depth
       return 0  // Draw
     }
 
 
     if (depth >= (suggestion ? MAX_SUGGESTED_DEPTH : MAX_DEPTH)) {
-      const evalScore = gameState.evaluate()
+      const evalScore = GS.evaluate()
       //console.log(`Max depth reached. Static evaluation: ${evalScore}`)
       return evalScore
     }
@@ -95,7 +95,6 @@ export class Analysis {
 
   analyzePosition() {
     
-    console.log(this.gameState.currentMoveIndex)
     if (this.gameState.currentMoveIndex < 1) {
       return { evaluation: 0, explanation: "Begin Game", alternativeMoves: [] }
     }
@@ -109,7 +108,6 @@ export class Analysis {
     const moves = MOVE_ORDER.filter(col => board[0][col] === null)
     
     // Clone board for initial evaluation
-
     // REMEMBER: minimax starts at depth 1
 
     const boardCopy = board.map(row => [...row])
@@ -138,7 +136,7 @@ export class Analysis {
     } else if (evaluation < 0) {
       explanation = "Advantage for Yellow"
     }
-    console.log(evaluation, explanation, alternativeMoves)
+
     this.results = { evaluation, explanation, alternativeMoves };
   }
 }
