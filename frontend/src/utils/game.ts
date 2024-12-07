@@ -174,6 +174,10 @@ export class GameState {
     return newBoard
   }
 
+  exportMoves(): string {
+    return this.moves.map(({ player, col }) => col).join('')
+  }
+
   reset(): void {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
     this.currentPlayer = 1
