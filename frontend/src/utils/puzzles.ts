@@ -15,6 +15,9 @@ export class Puzzle {
     constructor(puzStr: String) {
         this.puzStr = puzStr;
         this.gameState = new game.GameState();
+
+
+        // ai proposition:
         for (let i = 0; i < this.puzStr.length; i++) {
             if (this.puzStr[i] === '(') {
                 let j = i + 1;
