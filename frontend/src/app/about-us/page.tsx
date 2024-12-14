@@ -44,7 +44,7 @@ export default function AboutUs() {
           <div>
             <h2 className="text-2xl font-semibold mb-4">About My Co-founder</h2>
             <p>
-              [Your co-founder's introduction goes here. Write about their background, skills, and what they bring to the project.]
+                be me. CS and engineering student. also into law, specifically cybersecurity law. trying to be the perfect blend of nerd and aspiring solicitor. join law society for the ✨vibes✨. doing take-home CTF puzzles like it's a speedrun. tfw could complete all three puzzles but worried it’s “too much”. advent of code enjoyer, but secretly miss bubble tea. tfw Chatime isn't walking distance anymore. hear owl at night. decide to photograph it. owl never shows up. tfw it’s like a cryptid now. at least I'm getting a project done with a friend. tfw programming a web app but also wondering if copyright law will let me reboot a legal AI project. absolutely no one else is doing "Connect Four data storage optimization". tfw niche is life
             </p>
           </div>
         </div>

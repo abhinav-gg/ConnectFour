@@ -127,6 +127,20 @@ app.post('/api/test-db/login', async (req: express.Request, res: any) => {
   }
 });
 
+app.post('/api/openings', async (req, res) => {
+  const { position } = req.body;
+  console.log('Position:', position);
+  try {
+    const openings = await dbOperations.GetOpening(position.toString());
+    res.json({ status: 'Success', data: openings });
+  } catch (error: any) {
+    console.error('Failed to fetch openings:', error);
+    res.status(500).json({
+      error: 'Failed to fetch openings'
+    });
+  }
+});
+
 app.get('/api/allopenings', async (req, res) => {
   try {
     const openings = await dbOperations.getAllOpenings1();

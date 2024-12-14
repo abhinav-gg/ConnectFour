@@ -60,6 +60,13 @@ CREATE TABLE IF NOT EXISTS game_schema.events (
     created_by UUID REFERENCES game_schema.users(id)
 );
 
+-- Create Opening table
+CREATE TABLE IF NOT EXISTS game_schema.TimeControl (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    base_time INT NOT NULL,
+    increment INT NOT NULL,
+    disadvantage INT
+);
 -- Games table
 CREATE TABLE IF NOT EXISTS game_schema.games (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -113,27 +120,21 @@ CREATE TABLE IF NOT EXISTS game_schema.event_games (
     PRIMARY KEY (event_id, game_id)
 );
 
+
 -- Create the publicOpenings database
-CREATE DATABASE publicOpenings;
-
--- Create a read-only user for public access
-GRANT CONNECT ON DATABASE publicOpenings TO readonly_user;
-
--- Create the table for storing openings
-CREATE TABLE IF NOT EXISTS publicOpenings.openings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    position STRING UNIQUE NOT NULL,
-    title STRING NOT NULL,
-    description TEXT
-);
+CREATE DATABASE IF NOT EXISTS openings;
 
 -- Grant select permission to the readonly_user on the openings table
-GRANT SELECT ON publicOpenings.openings TO readonly_user;
+GRANT SELECT ON openings.openings TO readonly_user;
 
--- Create TimeControl table
-CREATE TABLE IF NOT EXISTS game_schema.TimeControl (
+CREATE TABLE IF NOT EXISTS openings.OpeningDescription (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    base_time INT NOT NULL,
-    increment INT NOT NULL,
-    disadvantage INT
+    description TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS openings.Opening (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    position STRING UNIQUE NOT NULL,
+    opening_description_id UUID REFERENCES game_schema.OpeningDescription(id)
+);
+

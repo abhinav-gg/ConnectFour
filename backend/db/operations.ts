@@ -108,6 +108,49 @@ class OpeningOperations {
     }
     return {"status": "Success"};
   }
+
+  async CreateOpening(position: String, description: String): Promise<any> {
+    const client = await this.getAdminClient();
+    try {
+        // Insert into TimeControl table
+        
+        const descriptionId = await client.query(
+          `INSERT INTO OpeningDescription (id, description) VALUES (gen_random_uuid(), $1) RETURNING id`,
+          [description]
+        );
+        await client.query(
+            `INSERT INTO Opening (id, position, opening_description_id) VALUES (gen_random_uuid(), $1, $2)`,
+            [position, descriptionId.rows[0].id]
+        );
+
+    } catch (error) {
+        console.error('Failed to make opening:', error);
+        throw error;
+    } finally {
+        client.release();
+        this.client = null;
+    }
+    return {"status": "Success"};
+  }
+
+  async GetOpening(position: String): Promise<any> {
+    const client = await this.getPublicClient();
+    let result;
+    try {
+      result = await client.query(`SELECT description from OpeningDescription 
+                                    INNER JOIN Opening ON Opening.opening_description_id = OpeningDescription.id
+                                    WHERE Opening.position = '${position}';`);
+    
+    } catch (error) {
+      console.error('Failed to fetch opening:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+    console.log(result.rows);
+    return result.rows[0]?.description || '# Unknown Opening';
+  }
 }
 
 class UserOperations {
@@ -352,4 +395,5 @@ export const dbOperations = {
   writeOpening1: openingOps.WriteData1.bind(openingOps),
   getAllOpenings2: openingOps.GetAllData2.bind(openingOps),
   writeOpening2: openingOps.WriteData2.bind(openingOps),
+  GetOpening: openingOps.GetOpening.bind(openingOps),
 };

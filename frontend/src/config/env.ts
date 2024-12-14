@@ -18,7 +18,7 @@ export const getConfig = () => {
     websocketUrl: window.__NEXT_DATA__?.props?.pageProps?.websocketUrl || 
                    process.env.NEXT_PUBLIC_WEBSOCKET_URL || 
                    window.NEXT_PUBLIC_WEBSOCKET_URL ||
-                   ''
+                   '',
   };
 
   console.log('Config values:', {
