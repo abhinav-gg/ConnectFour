@@ -16,9 +16,6 @@ CREATE TABLE IF NOT EXISTS game_schema.users (
     username STRING(50) NOT NULL,
     email STRING(255) NOT NULL,
     password_hash STRING(255) NOT NULL,
-    rapid_elo INT DEFAULT 1000,
-    blitz_elo INT DEFAULT 1000,
-    bullet_elo INT DEFAULT 1000,
     created_at TIMESTAMP DEFAULT current_timestamp(),
     updated_at TIMESTAMP DEFAULT current_timestamp(),
     last_login TIMESTAMP,
@@ -63,6 +60,13 @@ CREATE TABLE IF NOT EXISTS game_schema.events (
     created_by UUID REFERENCES game_schema.users(id)
 );
 
+-- Create Opening table
+CREATE TABLE IF NOT EXISTS game_schema.TimeControl (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    base_time INT NOT NULL,
+    increment INT NOT NULL,
+    disadvantage INT
+);
 -- Games table
 CREATE TABLE IF NOT EXISTS game_schema.games (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -115,3 +119,22 @@ CREATE TABLE IF NOT EXISTS game_schema.event_games (
     created_at TIMESTAMP DEFAULT current_timestamp(),
     PRIMARY KEY (event_id, game_id)
 );
+
+
+-- Create the publicOpenings database
+CREATE DATABASE IF NOT EXISTS openings;
+
+-- Grant select permission to the readonly_user on the openings table
+GRANT SELECT ON openings.openings TO readonly_user;
+
+CREATE TABLE IF NOT EXISTS openings.OpeningDescription (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    description TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS openings.Opening (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    position STRING UNIQUE NOT NULL,
+    opening_description_id UUID REFERENCES game_schema.OpeningDescription(id)
+);
+

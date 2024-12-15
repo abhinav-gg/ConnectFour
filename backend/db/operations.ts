@@ -2,11 +2,13 @@ import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import { User } from '@/models/User';
 import * as DBError from './errors';
+import { OpeningOperations } from './dbOpenings';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
 
-class DatabaseOperations {
+
+class UserOperations {
   client: PoolClient | null = null;
 
   private async getClient(): Promise<PoolClient> {
@@ -229,7 +231,8 @@ class DatabaseOperations {
   }
 }
 
-const databaseOps = new DatabaseOperations();
+const databaseOps = new UserOperations();
+const openingOps = new OpeningOperations();
 
 export const dbOperations = {
   // deprecated, remove ASAP
@@ -243,4 +246,9 @@ export const dbOperations = {
   getPasswordHashByEmail: databaseOps.getPasswordHashByEmail.bind(databaseOps),
   getIDByUsername: databaseOps.getIDByUsername.bind(databaseOps),
   getIDByEmail: databaseOps.getIDByEmail.bind(databaseOps),
+  getAllOpenings1: openingOps.GetAllData1.bind(openingOps),
+  writeOpening1: openingOps.WriteData1.bind(openingOps),
+  getAllOpenings2: openingOps.GetAllData2.bind(openingOps),
+  writeOpening2: openingOps.WriteData2.bind(openingOps),
+  GetOpening: openingOps.GetOpening.bind(openingOps),
 };

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Home, LogIn, BarChart2, PlayCircle, Info } from 'lucide-react'
+import { Home, LogIn, BarChart2, PlayCircle, Info, Book } from 'lucide-react'
 import MainLogo from './mainlogo'
 
 export default function Dashboard() {
@@ -23,6 +23,11 @@ export default function Dashboard() {
         <Link href="/test-analysis" className="flex items-center text-gray-600 hover:text-gray-800">
           <BarChart2 className="mr-2" />
           Analysis
+        </Link>
+
+        <Link href="/openings" className="flex items-center text-gray-600 hover:text-gray-800">
+          <Book className="mr-2" />
+          Opening Book
         </Link>
         
         <Link href="/testing-websockets" className="flex items-center text-gray-600 hover:text-gray-800">
