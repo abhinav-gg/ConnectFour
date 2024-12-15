@@ -4,15 +4,6 @@ import React, { useState, useEffect } from 'react'
 
 type CellColor = 'red' | 'yellow' | 'dark-blue' | 'black' | 'empty'
 
-interface LogoTemplateProps {
-  rows?: number
-  cols?: number
-  initialColor?: CellColor
-  onUpdate?: (grid: CellColor[][]) => void
-  isStatic?: boolean
-  colorList?: CellColor[]
-}
-
 const colorClasses: Record<CellColor, string> = {
   'red': 'bg-red-500',
   'yellow': 'bg-yellow-400',
@@ -21,14 +12,13 @@ const colorClasses: Record<CellColor, string> = {
   'empty': 'bg-white'
 }
 
-export default function LogoTemplate({
-  rows = 6,
-  cols = 7,
-  initialColor = 'empty',
-  onUpdate,
-  isStatic = false,
-  colorList
-}: LogoTemplateProps) {
+export default function LogoTemplate() {
+  const rows = 6;
+  const cols = 7;
+  const initialColor: CellColor = 'empty';
+  const isStatic = false;
+  const colorList: CellColor[] = [];
+
   const [grid, setGrid] = useState<CellColor[][]>(() => {
     if (colorList) {
       const newGrid: CellColor[][] = []
@@ -49,7 +39,7 @@ export default function LogoTemplate({
   const [exportedColors, setExportedColors] = useState<string>('')
 
   useEffect(() => {
-    if (colorList) {
+    if (colorList.length > 0) {
       const newGrid: CellColor[][] = []
       let colorIndex = 0
       for (let i = 0; i < rows; i++) {
@@ -67,8 +57,7 @@ export default function LogoTemplate({
   useEffect(() => {
     const flatColors = grid.flat()
     setExportedColors(flatColors.join(', '))
-    onUpdate?.(grid)
-  }, [grid, onUpdate])
+  }, [grid])
 
   const handleCellClick = (row: number, col: number) => {
     if (isStatic) return
