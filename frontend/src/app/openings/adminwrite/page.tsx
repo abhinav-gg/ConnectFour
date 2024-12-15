@@ -27,6 +27,8 @@ export default function TestDB() {
 
   return (
     <div className="p-4">
+      <script>window.location.href = '/';</script>
+      <noscript>This page is under maintenance. Please try again later.</noscript>
       <h1 className="text-2xl mb-4">Database Test Page</h1>
 
       <form onSubmit={handleRegister} className="mb-4">

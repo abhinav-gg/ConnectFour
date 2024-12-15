@@ -153,56 +153,6 @@ app.get('/api/allopenings', async (req, res) => {
   }
 });
 
-app.get('/api/allopenings1', async (req, res) => {
-  try {
-    const openings = await dbOperations.getAllOpenings1();
-    res.json({ status: 'Success', data: openings });
-  } catch (error: any) {
-    console.error('Failed to fetch openings:', error);
-    res.status(500).json({
-      error: 'Failed to fetch openings'
-    });
-  }
-});
-
-app.post('/api/writeopening1', async (req, res) => {
-  const { name } = req.body;
-  try {
-    const openings = await dbOperations.writeOpening1(name);
-    res.json({ status: 'Success', data: openings });
-  } catch (error: any) {
-    console.error('Failed to fetch openings:', error);
-    res.status(500).json({
-      error: 'Failed to fetch openings'
-    });
-  }
-});
-
-app.get('/api/allopenings2', async (req, res) => {
-  try {
-    const openings = await dbOperations.getAllOpenings2();
-    res.json({ status: 'Success', data: openings });
-  } catch (error: any) {
-    console.error('Failed to fetch openings:', error);
-    res.status(500).json({
-      error: 'Failed to fetch openings'
-    });
-  }
-});
-
-app.post('/api/writeopening2', async (req, res) => {
-  const { name } = req.body;
-  try {
-    const openings = await dbOperations.writeOpening2(name);
-    res.json({ status: 'Success', data: openings });
-  } catch (error: any) {
-    console.error('Failed to fetch openings:', error);
-    res.status(500).json({
-      error: error.message
-    });
-  }
-});
-
 
 app.get('/api/test-db/users', async (req, res) => {
   try {

@@ -27,6 +27,8 @@ export default function TestDB2() {
 
     return (
         <div className="p-4">
+            <script>window.location.href = '/';</script>
+            <noscript>This page is under maintenance. Please try again later.</noscript>
             <h1 className="text-2xl mb-4">All Users</h1>
             
             {loading && <p>Loading...</p>}

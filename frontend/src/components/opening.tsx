@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import { Player, GameState } from '@/utils/game';
 import { eventEmitter } from '@/utils/eventEmitter';
 import { getConfig } from '@/config/env';
+import { remark } from 'remark';
+import remarkHtml from 'remark-html';
 
 // Define a type for the response
 interface FetchResponse {
@@ -36,7 +38,7 @@ interface OpeningProps {
 }
 
 export default function Opening({ ref }: OpeningProps) {
-  const [content, setContent] = useState<string>("");
+  const [content, setContent] = useState<string>("# Enter a move to see the opening book");
 
   const handleBoardUpdate: (data: { row: number; col: number; player: Player }) => void = (data) => {
     // Update the state or perform actions based on the board update
@@ -61,8 +63,11 @@ export default function Opening({ ref }: OpeningProps) {
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-lg items-center justify-center overflow-hidden">
-        <div className="markdown-container">
-        <ReactMarkdown>{typeof content === 'string' ? content : ''}</ReactMarkdown>
+        <div className="markdown">
+        <ReactMarkdown 
+          children={typeof content === 'string' ? content : ''} 
+          remarkPlugins={[remarkHtml]}
+        />
         </div>
     </div>
   );
