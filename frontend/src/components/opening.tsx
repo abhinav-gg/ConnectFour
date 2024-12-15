@@ -42,7 +42,9 @@ export default function Opening({ ref }: OpeningProps) {
   const handleBoardUpdate: (data: { row: number; col: number; player: Player }) => void = (data) => {
     // Update the state or perform actions based on the board update
     console.log("Call OpeningBook")
-    fetchMarkdownContent(ref.getMoves().map(({ col }) => col.toString()).join(''))
+    // add a slide to ref.currentMoveIndex
+    let relevantMoves = ref.getMoves().slice(0, ref.currentMoveIndex+1).map(({ col }) => col.toString()).join('')
+    fetchMarkdownContent(relevantMoves)
       .then((data: string) => {
         console.log(data);
         setContent(data);
