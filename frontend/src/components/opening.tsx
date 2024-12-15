@@ -38,7 +38,7 @@ interface OpeningProps {
 }
 
 export default function Opening({ ref }: OpeningProps) {
-  const [content, setContent] = useState<string>("# Enter a move to see the opening book");
+  const [content, setContent] = useState<String>("# Enter a move to see the opening book");
 
   const handleBoardUpdate: (data: { row: number; col: number; player: Player }) => void = (data) => {
     // Update the state or perform actions based on the board update
