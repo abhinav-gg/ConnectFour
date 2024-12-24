@@ -43,7 +43,7 @@ export default function Opening({ ref }: OpeningProps) {
     // Update the state or perform actions based on the board update
     console.log("Call OpeningBook")
     // add a slide to ref.currentMoveIndex
-    let relevantMoves = ref.getMoves().slice(0, ref.currentMoveIndex+1).map(({ col }) => col.toString()).join('')
+    const relevantMoves = ref.getMoves().slice(0, ref.currentMoveIndex+1).map(({ col }) => col.toString()).join('')
     fetchMarkdownContent(relevantMoves)
       .then((data: string) => {
         console.log(data);

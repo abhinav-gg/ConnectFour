@@ -16,6 +16,9 @@ export class GameState {
   currentMoveIndex: number
   winner: Player | null
   gameOver: boolean
+  /**
+   * array of rows, each row is an array of cells
+   */
   private board: Cell[][]
   private moves: Move[]
 
@@ -28,9 +31,67 @@ export class GameState {
     this.moves = []
   }
 
+  getControlOfZugzwang(): Player|null {
+    const heights = Array(COLS).fill(0)
+    const otherPlayer = this.currentPlayer === 1 ? 2 : 1
+    for (let col = 0; col < COLS; col++) {
+      heights[col] = this.getAvailableRow(col)
+      if (heights[col] === -1) {
+        continue
+      }
+      if (checkWinner(this.board, heights[col], col, otherPlayer)) {
+        heights[col] = -1
+      }
+    }
+    const parities = heights.filter((height) => (height!==-1)).map((height) => height % 2)
+    if (parities.length === 1) {
+      return null
+    }
+    else if (parities.every((i) => (i === 1)) || parities.every((i) => (i === 0))) {
+      return otherPlayer
+    } 
+    else if (parities.length < 4) {
+      return this.currentPlayer
+    }
+    return null
+  }
+
   evaluate(): number {
-    // Only evaluate actual wins, not threats
-    return 0
+    let score = 0;
+    const modifier = 2 * this.currentPlayer - 3
+    const y = this.getControlOfZugzwang()
+    if (y) {
+      score = 2 * y - 3;
+    }
+    let winner;
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (this.board[row][col] !== null) {
+          continue
+        }
+        winner = checkWinner(this.board, row, col, 1)
+        if (winner) {
+          if (row % 2 === 0) {
+            score += 1
+          }
+          else {
+            score += 0.5
+          }
+        }
+        winner = checkWinner(this.board, row, col, 2)
+        if (winner) {
+          if (row % 2 === 1) {
+            score -= 1
+          }
+          else {
+            score -= 0.5
+          }
+        }
+      }
+    }
+    
+
+    return score
   }
 
   getMoves = (): Move[] => {
@@ -52,16 +113,16 @@ export class GameState {
     return this.board
   }
 
-  setBoard = (board: Cell[][], silent:boolean = false) => {
+  setBoard = (board: Cell[][], silent: boolean = false) => {
     // avoid use at all costs
     if (!silent)
       eventEmitter.emit('boardSet', { row: -1, col: -1, player: this.currentPlayer });
     this.board = board
   }
 
-  constructFromMoves (){
+  constructFromMoves() {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex+1); i++) {
+    for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex + 1); i++) {
       const move = this.moves[i]
       let row = ROWS - 1
       while (row >= 0 && this.board[row][move.col] !== null) {
@@ -75,49 +136,6 @@ export class GameState {
     eventEmitter.emit('boardSet', { row: -1, col: lastCol, player: this.currentPlayer });
   }
 
-  checkWinner(row: number, col: number): boolean {
-    const directions = [
-      [0, 1],  // horizontal
-      [1, 0],  // vertical
-      [1, 1],  // diagonal right
-      [1, -1], // diagonal left
-    ]
-
-    const currentPlayerValue = this.board[row][col]
-
-    for (const [dx, dy] of directions) {
-      let count = 1
-      for (const factor of [-1, 1]) {
-        let r = row + factor * dx
-        let c = col + factor * dy
-
-        while (
-          r >= 0 && r < ROWS &&
-          c >= 0 && c < COLS &&
-          this.board[r][c] === currentPlayerValue
-        ) {
-          count++
-          r += factor * dx
-          c += factor * dy
-        }
-      }
-
-      if (count >= 4) {
-        this.winner = currentPlayerValue
-        this.gameOver = true
-        return true
-      }
-    }
-
-    // Check for draw
-    if (this.board.every(row => row.every(cell => cell !== null))) {
-      this.gameOver = true
-      return true
-    }
-
-    return false
-  }
-
   getAvailableRow(col: number): number {
     let targetRow = ROWS - 1
     while (targetRow >= 0 && this.board[targetRow][col] !== null) {
@@ -128,6 +146,8 @@ export class GameState {
 
   makeMove(col: number): { row: number; success: boolean } {
     
+    console.log(this.getControlOfZugzwang())
+
     const targetRow = this.getAvailableRow(col)
     // ensure that the board reflects all the moves made i.e. not in history view
     // count non-empty cells in board
@@ -142,20 +162,23 @@ export class GameState {
     if (nonEmptyCells < this.moves.length) {
       return { row: -1, success: false }
     }
-    
+
     if (targetRow >= 0) {
       this.board[targetRow][col] = this.currentPlayer
       this.moves.push({ player: this.currentPlayer, col })
-      this.checkWinner(targetRow, col)
+      this.checkGameOver()
+      if (this.gameOver) {
+        this.endGame(this.winner)
+      }
       this.currentPlayer = this.currentPlayer === 1 ? 2 : 1
 
       // Call boardUpdated event!
-      this.currentMoveIndex ++;
+      this.currentMoveIndex++;
       eventEmitter.emit('boardUpdated', { row: targetRow, col, player: this.currentPlayer });
-      
+
       return { row: targetRow, success: true }
     }
-    
+
     return { row: -1, success: false }
   }
 
@@ -201,8 +224,8 @@ export class GameState {
 
     // Check for draw (full board)
     if (this.board.every(row => row.every(cell => cell !== null))) {
-      this.gameOver = true
       this.winner = null
+      this.gameOver = true
       return
     }
 
@@ -257,16 +280,9 @@ export function checkWinner(board: Cell[][], row: number, col: number, player: 1
         c += factor * dy
       }
     }
-
     if (count >= 4) {
       return true
     }
   }
-
-  // Check for draw
-  if (board.every(row => row.every(cell => cell !== null))) {
-    return true
-  }
-
   return false
 }

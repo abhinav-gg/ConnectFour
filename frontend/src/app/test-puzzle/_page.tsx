@@ -3,7 +3,7 @@
 // import React, { useState } from 'react'
 
 
-// export default function Puzzle (){
+// export default function PuzzleGame (){
 //   const [currentMove, setCurrentMove] = useState<number>(0)
 //   const [message, setMessage] = useState<string>('')
 //   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
