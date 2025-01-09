@@ -1,8 +1,14 @@
 'use client';
 
-import GameBoard from '@/game-board';
+import GameBoard from '@/components/game-board';
 import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
+import Dashboard from '@/components/dashboard';
+import MoveHistory from '@/components/history';
+import GameAnalysis from '@/components/analysis';
+import { GameState, Player } from '@/utils/game';
+import { Analysis } from '@/utils/analysis';
+import { propagateServerField } from 'next/dist/server/lib/render-server';
 
 type PlayerJoined = {
   event: 'playerJoined';
@@ -25,7 +31,7 @@ type PlayerDisconnected = {
 
 type MoveMade = {
   event: 'moveMade';
-  data: { player: number; col: number; row: number; };
+  data: { player: Player; col: number; };
 };
 
 type Message = PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
@@ -38,21 +44,10 @@ export default function TestingWebsockets() {
   const [isConnected, setIsConnected] = useState(false);
   const [playersCount, setPlayersCount] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
-  const [moves, setMoves] = useState<Array<{ player: number; column: number; row: number; }>>([]);
   const userIdRef = useRef(crypto.randomUUID());
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const roomFromUrl = params.get('room');
-    
-    if (roomFromUrl) {
-      console.log('Found room in URL:', roomFromUrl);
-      setRoomId(roomFromUrl);
-      if (inputRef.current) {
-        inputRef.current.value = roomFromUrl;
-      }
-    }
-  }, []); 
+  const statusTextRef = useRef<HTMLParagraphElement>(null);
+  const gameBoardRef = useRef<GameState>();
+  gameBoardRef.current = new GameState();
 
   useEffect(() => {
     const backendUrl = getConfig().websocketUrl;
@@ -68,6 +63,7 @@ export default function TestingWebsockets() {
       if (roomFromUrl) {
         console.log('Auto-joining room:', roomFromUrl);
         setHasJoined(true);
+        setRoomId(roomFromUrl);
         newSocket.send(JSON.stringify({ 
           event: 'joinGame', 
           data: { roomId: roomFromUrl, userId: userIdRef.current } 
@@ -107,15 +103,25 @@ export default function TestingWebsockets() {
           setGameStatus('Opponent disconnected. Waiting for new player...');
           break;
         case 'moveMade':
-          setMoves(prev => [...prev, { 
-            player: data.data.player, 
-            column: data.data.col, 
-            row: data.data.row 
-          }]);
-          break;
+          const gameState = gameBoardRef.current;
+          if (gameState) {
+              const index = gameState.getMoves().length-1;
+              gameState.currentPlayer = index % 2 === 0 ? 2 : 1;
+              gameState.currentMoveIndex = index;
+              gameState.constructFromMoves();
+              gameState.makeMove( 
+                data.data.col, 
+              );
+              // There is no way to store this as of right now
+              // if (statusTextRef.current) {
+              //   console.log (gameState.currentPlayer, playerNumber);
+              //   statusTextRef.current.textContent = (gameState.currentPlayer === playerNumber ? 'Your' : "Opponent's") + '  turn...';
+              // }
+          }
+        break;
       }
     };
-
+    
     return () => {
       newSocket.close();
     };
@@ -143,63 +149,82 @@ export default function TestingWebsockets() {
   };
 
   const handleMove = (col: number) => {
+    const currentGameBoard = gameBoardRef.current;
+    if (!currentGameBoard) return; // Ensure gameBoardRef.current is not undefined
+
+    if (currentGameBoard.gameOver || currentGameBoard.currentMoveIndex !== currentGameBoard.getMoves().length - 1) {
+      console.log("Error")
+    }
+
     if (socket && playerNumber && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ event: 'makeMove', data: { roomId, col } }));
     }
+
   };
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const BOARD = <GameBoard
+  playerNumber={playerNumber}
+  isConnected={isConnected}
+  playersCount={playersCount}
+  roomId={roomId}
+  onMove={handleMove}
+  ref={gameBoardRef.current}
+/>;
+  const HISTORY = <MoveHistory ref={gameBoardRef.current} />;
+  const ANALYSIS = <GameAnalysis analysis={new Analysis(gameBoardRef.current)} />;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {!hasJoined ? (
-        <div className="flex flex-col items-center justify-center min-h-screen">
-          <div className="bg-white p-8 rounded-lg shadow-md w-96">
-            <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
-            <div className="space-y-4">
-              <input
-                type="text"
-                ref={inputRef}
-                defaultValue={roomId}
-                placeholder="Enter Room ID"
-                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleJoinRoom();
-                  }
-                }}
-              />
-              <button
-                onClick={handleJoinRoom}
-                className="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 transition-colors"
-              >
-                Join Room
-              </button>
+    <div className="flex min-h-screen bg-gray-100">
+      <Dashboard />
+      <div className="flex-1 flex flex-col">
+        {!hasJoined ? (
+          <div className="flex items-center justify-center w-full h-1/2">
+            <div className="bg-white p-8 rounded-lg shadow-md w-96">
+              <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  ref={inputRef}
+                  defaultValue={roomId}
+                  placeholder="Enter Room ID"
+                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleJoinRoom();
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleJoinRoom}
+                  className="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  Join Room
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="p-4">
-          <div className="mb-4 text-center">
+        ) : (
+        <div className="flex w-full">
+          <div className="flex-1 flex flex-col items-center">
             <h2 className="text-xl font-semibold">Room: {roomId}</h2>
             <p className="text-gray-600">{gameStatus}</p>
             {playerNumber && (
               <p className="text-blue-600">You are Player {playerNumber}</p>
             )}
+            { BOARD }
           </div>
-
-          <GameBoard
-            socket={socket}
-            playerNumber={playerNumber}
-            isConnected={isConnected}
-            playersCount={playersCount}
-            gameStatus={gameStatus}
-            roomId={roomId}
-            onMove={handleMove}
-            moves={moves}
-          />
+          <div className="w-1/3 flex flex-col items-center justify-center">
+            <div className="p-4 w-full">
+              { HISTORY }
+            </div><br/><br/>
+            <div className="p-4 w-full">
+              { ANALYSIS }
+            </div>
+          </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
