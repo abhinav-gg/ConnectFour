@@ -44,14 +44,15 @@ class UserOperations {
     username: string,
     email: string,
     passwordHash: string,
+    isAnonymous: boolean = false
   ): Promise<User> {
     const client = await this.getClient();
     try {
       await client.query('BEGIN');
 
-      // todo move to dedicated "check..." functions
+      // Check if username already exists
       const userCheckResult = await client.query(
-        `SELECT id FROM users WHERE username = $1`,
+        `SELECT id FROM con4_schema.Users WHERE username = $1`,
         [username]
       );
 
@@ -59,8 +60,9 @@ class UserOperations {
         throw new DBError.UsernameExists();
       }
 
+      // Check if email already exists
       const emailCheckResult = await client.query(
-        `SELECT id FROM users WHERE email = $1`,
+        `SELECT id FROM con4_schema.Users WHERE email = $1`,
         [email]
       );
 
@@ -69,11 +71,12 @@ class UserOperations {
       }
       // -------------------------------------------
 
+      // Insert new user
       const result = await client.query(
-        `INSERT INTO users (username, email, password_hash, created_at, updated_at)
-                 VALUES ($1, $2, $3, NOW(), NOW())
-                 RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
-        [username, email, passwordHash]
+        `INSERT INTO con4_schema.Users (username, email, password_hash, is_anonymous, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
+         RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
+        [username, email, passwordHash, isAnonymous]
       );
 
       await client.query('COMMIT');
@@ -81,7 +84,7 @@ class UserOperations {
       return result.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Failed to create user');
+      console.error('Failed to create user:', error);
       throw error;
     } finally {
       client.release();
@@ -147,6 +150,25 @@ class UserOperations {
     }
   }
 
+  async getUserByID(id: string): Promise<User> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id, username, email, email_verified, created_at, updated_at, last_login
+                 FROM users
+                 WHERE id = $1`,
+        [id]
+      );
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch user by ID:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
 
   // allow login by username or email
 
@@ -246,6 +268,9 @@ export const dbOperations = {
   getPasswordHashByEmail: databaseOps.getPasswordHashByEmail.bind(databaseOps),
   getIDByUsername: databaseOps.getIDByUsername.bind(databaseOps),
   getIDByEmail: databaseOps.getIDByEmail.bind(databaseOps),
+  getUserByID: databaseOps.getUserByID.bind(databaseOps),
+
+
   getAllOpenings1: openingOps.GetAllData1.bind(openingOps),
   writeOpening1: openingOps.WriteData1.bind(openingOps),
   getAllOpenings2: openingOps.GetAllData2.bind(openingOps),
