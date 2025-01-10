@@ -4,6 +4,7 @@ declare global {
   interface Window {
     NEXT_PUBLIC_BACKEND_URL?: string;
     NEXT_PUBLIC_WEBSOCKET_URL?: string;
+    RECAPTCHA_SITE_KEY?: string;
   }
 }
 
@@ -19,6 +20,10 @@ export const getConfig = () => {
                    process.env.NEXT_PUBLIC_WEBSOCKET_URL || 
                    window.NEXT_PUBLIC_WEBSOCKET_URL ||
                    '',
+    recaptchaSiteKey: window.__NEXT_DATA__?.props?.pageProps?.recaptchaSiteKey || 
+                    process.env.RECAPTCHA_SITE_KEY || 
+                    window.RECAPTCHA_SITE_KEY ||
+                    '',
   };
 
   console.log('Config values:', {

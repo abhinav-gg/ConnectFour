@@ -48,18 +48,6 @@ app.post('/api/openings', async (req, res) => {
   }
 });
 
-app.get('/api/allopenings', async (req, res) => {
-  try {
-    const openings = await dbOperations.getAllOpenings1();
-    res.json({ status: 'Success', data: openings });
-  } catch (error: any) {
-    console.error('Failed to fetch openings:', error);
-    res.status(500).json({
-      error: 'Failed to fetch openings'
-    });
-  }
-});
-
 
 app.get('/api/test-db/users', async (req, res) => {
   try {
@@ -75,10 +63,7 @@ app.get('/api/test-db/users', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 
-
 setupGameEvents(app);
-
-
 
 app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);

@@ -6,7 +6,7 @@ import { OpeningOperations } from './dbOpenings';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
-
+const application_name = "con-four";
 
 class UserOperations {
   client: PoolClient | null = null;
@@ -14,7 +14,7 @@ class UserOperations {
   private async getClient(): Promise<PoolClient> {
     const pool = new Pool({
       connectionString: process.env.DB_URL,
-      application_name: "con4"
+      application_name: application_name
     });
 
     if (!this.client) {
@@ -115,7 +115,7 @@ class UserOperations {
     try {
       const result = await client.query(
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-                 FROM users
+                 FROM con4_schema.users
                  WHERE username = $1`,
         [username]
       );
@@ -135,7 +135,7 @@ class UserOperations {
     try {
       const result = await client.query(
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-                 FROM users
+                 FROM con4_schema.users
                  WHERE email = $1`,
         [email]
       );
@@ -154,8 +154,8 @@ class UserOperations {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-                 FROM users
+        `SELECT id, username, email, email_verified, created_at, updated_at, last_login, is_anonymous
+                 FROM con4_schema.users
                  WHERE id = $1`,
         [id]
       );
@@ -177,7 +177,7 @@ class UserOperations {
     try {
       const result = await client.query(
         `SELECT password_hash
-                 FROM users
+                 FROM con4_schema.users
                  WHERE username = $1`,
         [username]
       );
