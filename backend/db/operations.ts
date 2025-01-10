@@ -271,9 +271,5 @@ export const dbOperations = {
   getUserByID: databaseOps.getUserByID.bind(databaseOps),
 
 
-  getAllOpenings1: openingOps.GetAllData1.bind(openingOps),
-  writeOpening1: openingOps.WriteData1.bind(openingOps),
-  getAllOpenings2: openingOps.GetAllData2.bind(openingOps),
-  writeOpening2: openingOps.WriteData2.bind(openingOps),
   GetOpening: openingOps.GetOpening.bind(openingOps),
 };

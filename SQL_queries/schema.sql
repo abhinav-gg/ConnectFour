@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.puzzles (
   updated_at TIMESTAMP DEFAULT now()
 );
 
+/*
 CREATE OR REPLACE FUNCTION con4_schema.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -126,12 +127,13 @@ CREATE TRIGGER update_puzzles_updated_at
   BEFORE UPDATE ON con4_schema.puzzles
   FOR EACH ROW
   EXECUTE FUNCTION con4_schema.update_updated_at_column();
+*/
 
 -- Create the public openings database
 CREATE DATABASE IF NOT EXISTS openings;
 
 -- Grant select permission to the readonly_user on the openings table
-GRANT SELECT ON openings.openings TO readonly_user; -- why?
+-- GRANT SELECT ON openings.openings TO readonly_user; -- why?
 
 CREATE TABLE IF NOT EXISTS openings.OpeningDescription (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -141,5 +143,5 @@ CREATE TABLE IF NOT EXISTS openings.OpeningDescription (
 CREATE TABLE IF NOT EXISTS openings.Opening (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   position STRING UNIQUE NOT NULL,
-  opening_description_id UUID REFERENCES game_schema.OpeningDescription(id)
+  opening_description_id UUID REFERENCES openings.OpeningDescription(id)
 );
