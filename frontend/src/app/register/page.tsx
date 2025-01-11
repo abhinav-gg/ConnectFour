@@ -1,27 +1,36 @@
 'use client'
 
 import Link from 'next/link'
-import { Home, LogIn } from 'lucide-react'
+import { Home, LogIn, Eye, EyeOff } from 'lucide-react'
 import Dashboard from '@/components/dashboard'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getConfig } from '@/config/env'
 
 export default function Register() {
   const router = useRouter()
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    
+    console.log(getConfig().recaptchaSiteKey);
+    if (formData.get('password') !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     try {
-      const response = await fetch('/api/auth/register', {
+      const config = getConfig();
+      const response = await fetch(`${config.backendUrl}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.get('username'),
+          username: formData.get('username'),
           email: formData.get('email'),
           password: formData.get('password'),
         }),
@@ -66,11 +75,16 @@ export default function Register() {
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-              <input type="password" id="password" name="password" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
+              <div className="relative">
+                <input type={showPassword ? 'text' : 'password'} id="password" name="password" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </button>
+              </div>
             </div>
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
-              <input type="password" id="confirmPassword" name="confirmPassword" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
+              <input type="password" id="confirmPassword" name="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
             </div>
             <button type="submit" className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
               Register
@@ -82,6 +96,9 @@ export default function Register() {
               Login here
             </Link>
           </p>
+          {
+          //<script src="https://www.google.com/recaptcha/api.js?render={{getConfig().recaptchaSiteKey}}"></script>
+          }
         </div>
       </div>
     </div>
