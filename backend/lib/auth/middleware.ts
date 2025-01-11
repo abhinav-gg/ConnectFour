@@ -1,3 +1,4 @@
+import { dbOperations } from '@/db/operations';
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
@@ -24,3 +25,5 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
     return; // Ensure we return here to avoid further execution
   }
 };
+
+

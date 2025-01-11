@@ -251,6 +251,28 @@ class UserOperations {
       this.client = null;
     }
   }
+
+  async getAllUserTagNames(id: string): Promise<[string]> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT con4_schema.utags.name
+          FROM con4_schema.usertags INNER JOIN con4_schema.utags 
+          ON con4_schema.utags.id = con4_schema.usertags.tag_id
+          WHERE con4_schema.usertags.user_id = $1`,
+        [id]
+      );
+
+      return result.rows.map((row) => row.name) as [string];
+    } catch (error) {
+      console.error('Failed to fetch all user tag names:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
 }
 
 const databaseOps = new UserOperations();
@@ -269,7 +291,7 @@ export const dbOperations = {
   getIDByUsername: databaseOps.getIDByUsername.bind(databaseOps),
   getIDByEmail: databaseOps.getIDByEmail.bind(databaseOps),
   getUserByID: databaseOps.getUserByID.bind(databaseOps),
-
+  getAllUserTagNames: databaseOps.getAllUserTagNames.bind(databaseOps),
 
   GetOpening: openingOps.GetOpening.bind(openingOps),
 };

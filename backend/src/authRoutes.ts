@@ -120,4 +120,26 @@ router.post('/logout', authenticateJWT, async (req: Request, res: Response, next
   res.json({ status: 'Success' }); // Return success response
 });
 
+router.get('/isadmin', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
+  const userId = (req as any).user?.userId;
+
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const tags = await dbOperations.getAllUserTagNames(userId);
+    if (!tags) {
+      res.status(404).json({ error: 'Page Not Found' });
+      return;
+    }
+    console.log('Tags:', tags);
+    res.json({ isAdmin: tags.includes('Admin') });
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+    next(error);
+  }
+});
+
 export default router;

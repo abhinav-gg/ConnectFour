@@ -17,11 +17,21 @@ CREATE TABLE IF NOT EXISTS con4_schema.UTags (
   name STRING(50) NOT NULL UNIQUE
 );
 
-INSERT INTO UTags (name) VALUES
+INSERT INTO con4_schema.UTags (name) VALUES
   ('IM'),     -- International Master
   ('GM'),     -- Grandmaster
   ('Admin')   -- Administrator
 ON CONFLICT DO NOTHING;
+
+
+CREATE TABLE IF NOT EXISTS con4_schema.UserTags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES con4_schema.Users(id),
+  tag_id UUID REFERENCES con4_schema.UTags(id),
+  created_at TIMESTAMP DEFAULT now()
+);
+
+----------------------------------------------
 
 CREATE TABLE IF NOT EXISTS con4_schema.GameStates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,12 +53,6 @@ CREATE TABLE IF NOT EXISTS con4_schema.TimeControls (
   UNIQUE (base_time, increment, disadvantage)
 );
 
-CREATE TABLE IF NOT EXISTS con4_schema.UserTags (
-  user_id UUID REFERENCES Users(id),
-  tag_id UUID REFERENCES UTags(id),
-  created_at TIMESTAMP DEFAULT now(),
-  PRIMARY KEY (user_id, tag_id)
-);
 
 -- a game is between two players and is created when both players have joined
 CREATE TABLE IF NOT EXISTS con4_schema.Games (
