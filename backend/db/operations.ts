@@ -2,7 +2,7 @@ import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import { User } from '@/models/User';
 import * as DBError from './errors';
-import { OpeningOperations } from './dbOpenings';
+import { OpeningOperations } from './openingOps';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
@@ -272,6 +272,22 @@ class UserOperations {
       this.client = null;
     }
   }
+
+  async assignUserTag(id: string, tag: string): Promise<void> {
+
+    // id is the user uuid
+    // tag = 'IM', 'Admin' etc
+
+
+    //INSERT INTO con4_schema.usertags (user_id,tag_id) 
+    //SELECT $1, id FROM con4_schema.utags WHERE name = $2;
+
+    return 
+  }
+
+
+
+
 
 }
 
