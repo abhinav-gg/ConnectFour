@@ -43,7 +43,7 @@ router.post('/login', async (req: Request, res: any) => {
   } else if (!password) {
     return res.status(400).json({ error: 'Password is required' });
   }
-  console.log('Login:', username, password);
+  //console.log('Login:', username, password);
   const schema = z.object({
     username: z.string().max(30).optional(),
     email: z.string().email().optional(),
@@ -85,6 +85,19 @@ router.post('/login', async (req: Request, res: any) => {
   } catch (error) {
     console.error('Failed to login:', error);
     return res.status(500).json({ error: 'Failed to login' });
+  }
+});
+
+router.get('/anonymous', async (req: Request, res: Response) => {
+  // Create a new user called Anonymous
+  // Add security to prevent multiple anonymous users by bots
+  try {
+    const anonID = await dbOperations.getAnonymousUser();
+    const accessToken = generateAccessToken(anonID);
+    res.json({ status: 'Success', data: { accessToken } });
+  } catch (error) {
+    console.error('Failed to login:', error);
+    res.status(500).json({ error: 'Failed' });
   }
 });
 

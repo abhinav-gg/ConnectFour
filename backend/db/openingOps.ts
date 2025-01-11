@@ -1,6 +1,6 @@
 import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
-import * as DBError from './errors';
+import * as DBError from './dbErrors';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });

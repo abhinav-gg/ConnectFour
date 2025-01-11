@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.Users (
   created_at TIMESTAMP DEFAULT now(),
   updated_at TIMESTAMP DEFAULT now(),
   last_login TIMESTAMP,
-  is_anonymous BOOL
+  is_anonymous BOOL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.UTags (
@@ -47,33 +47,33 @@ CREATE TABLE IF NOT EXISTS con4_schema.GameStates (
   state STRING(42) NOT NULL UNIQUE
 );
 
-INSERT INTO GameStates (state) VALUES
+INSERT INTO con4_schema.GameStates (state) VALUES
   ('ongoing'),
   ('draw'),
   ('p1_won'),
   ('p2_won')
 ON CONFLICT DO NOTHING;
 
+------------------------------------------------------------------------
+
 -- a game is between two players and is created when both players have joined
 CREATE TABLE IF NOT EXISTS con4_schema.Games (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  short_id STRING(8) NOT NULL UNIQUE, -- a short id for the game
   player1 UUID NOT NULL REFERENCES Users(id), -- also known as red
   player2 UUID NOT NULL REFERENCES Users(id), -- also known as yellow
-  time_control UUID NOT NULL REFERENCES TimeControls(id),
-  state UUID NOT NULL REFERENCES GameStates(id), -- a game must always have a state
-  last_move UUID REFERENCES Moves(id) -- for fast reference, can be null
-  board STRING(42) NOT NULL; -- a string representation of the board
+  game_info UUID NOT NULL REFERENCES con4_schema.GameInfo(id),
+  state UUID NOT NULL REFERENCES con4_schema.GameStates(id), -- a game must always have a state
   created_at TIMESTAMP DEFAULT now(),
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.Moves (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   game_id UUID NOT NULL REFERENCES Games(id),
-  player_id UUID NOT NULL REFERENCES Users(id),
+  turn INT NOT NULL CHECK (turn >= 0 AND TURN < 43),
   move INT NOT NULL CHECK (move >= 0 AND move < 7),
   played_at TIMESTAMP DEFAULT now(),
   delta FLOAT NOT NULL, -- time taken to make the move since the last move
-  created_at TIMESTAMP DEFAULT now() -- Add created_at for tracking
+  PRIMARY KEY (game_id, turn)
 );
 
 -- Note: You will need to call this function from your application code
@@ -103,17 +103,22 @@ CREATE TABLE IF NOT EXISTS con4_schema.Events (
   description TEXT,
   start TIMESTAMP NOT NULL,
   end TIMESTAMP NOT NULL,
-  event_type STRING(50) NOT NULL,
   max_participants INT,
-  current_participants INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT now(),
-  updated_at TIMESTAMP DEFAULT now(),
   created_by UUID REFERENCES Users(id)
+);
+
+CREATE TABLE IF NOT EXISTS con4_schema.EventParticipants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES Events(id),
+  user_id UUID NOT NULL REFERENCES Users(id),
+  created_at TIMESTAMP DEFAULT now() -- use for the time they signed up
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.GameModes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name STRING(50) NOT NULL UNIQUE
+  event UUID REFERENCES Events(id) NULL
 );
 
 INSERT INTO con4_schema.GameModes (name) VALUES
@@ -129,7 +134,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.Elo (
   elo INT NOT NULL -- no default as it varies
 );
 
-CREATE TABLE IF NOT EXISTS con4_schema.ModeTimeControls (
+CREATE TABLE IF NOT EXISTS con4_schema.GameInfo (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   mode UUID NOT NULL REFERENCES GameModes(id),
   time_control UUID NOT NULL REFERENCES TimeControls(id)

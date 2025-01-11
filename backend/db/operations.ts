@@ -1,7 +1,7 @@
 import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import { User } from '@/models/User';
-import * as DBError from './errors';
+import * as DBError from './dbErrors';
 import { OpeningOperations } from './openingOps';
 
 // Load .env from project root
@@ -285,7 +285,30 @@ class UserOperations {
     return 
   }
 
+  async getAnonymousUser(): Promise<string> {
+    const client = await this.getClient();
+    try {
+      await client.query('BEGIN');
+      // Insert new user
+      const result = await client.query(
+        `INSERT INTO con4_schema.users (is_anonymous) VALUES (TRUE) RETURNING id`);
+      await client.query('COMMIT');
 
+      return result.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Failed to create anonymous user:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+  }
+
+  }
+
+
+  //DELETE FROM con4_schema.users 
+  //WHERE username IS NULL;
 
 
 
@@ -308,6 +331,7 @@ export const dbOperations = {
   getIDByEmail: databaseOps.getIDByEmail.bind(databaseOps),
   getUserByID: databaseOps.getUserByID.bind(databaseOps),
   getAllUserTagNames: databaseOps.getAllUserTagNames.bind(databaseOps),
+  getAnonymousUser: databaseOps.getAnonymousUser.bind(databaseOps),
 
   GetOpening: openingOps.GetOpening.bind(openingOps),
 };
