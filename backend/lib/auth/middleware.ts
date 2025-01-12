@@ -10,7 +10,7 @@ interface AuthenticatedRequest extends Request {
 
 export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   const token = req.headers.authorization?.split(' ')[1]; // Extract the token from the header
-  console.log(token);
+
   if (!token) {
     res.status(401).json({ error: 'Access token required' });
     return; // Ensure we return here to avoid further execution

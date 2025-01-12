@@ -8,31 +8,7 @@ import MoveHistory from '@/components/history';
 import GameAnalysis from '@/components/analysis';
 import { GameState, Player } from '@/utils/game';
 import { Analysis } from '@/utils/analysis';
-import { propagateServerField } from 'next/dist/server/lib/render-server';
-
-type PlayerJoined = {
-  event: 'playerJoined';
-  data: { playersCount: number; };
-};
-
-type RoomFull = {
-  event: 'roomFull';
-};
-
-type GameStart = {
-  event: 'gameStart';
-  data: { firstPlayer: string; };
-};
-
-type PlayerDisconnected = {
-  event: 'playerDisconnected';
-  data: { playersCount: number; };
-};
-
-type MoveMade = {
-  event: 'moveMade';
-  data: { player: Player; col: number; };
-};
+// load from shared files
 
 type Message = PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
 
@@ -54,21 +30,24 @@ export default function TestingWebsockets() {
     const newSocket = new WebSocket(backendUrl);
     console.log('Connection established with userId:', userIdRef.current);
 
+    if (new URLSearchParams(window.location.search).get('room') === null) {
+      window.location.search = `/test-join`;
+    }
+
     newSocket.onopen = () => {
-      console.log('WebSocket connected!');
-      setIsConnected(true);
-      
-      const params = new URLSearchParams(window.location.search);
-      const roomFromUrl = params.get('room');
-      if (roomFromUrl) {
-        console.log('Auto-joining room:', roomFromUrl);
+        console.log('WebSocket connected!');
+        setIsConnected(true);
+        
+        const params = new URLSearchParams(window.location.search);
+        const roomFromUrl = params.get('room') || '';
+        console.log('Joining room:', roomFromUrl);
         setHasJoined(true);
         setRoomId(roomFromUrl);
         newSocket.send(JSON.stringify({ 
-          event: 'joinGame', 
-          data: { roomId: roomFromUrl, userId: userIdRef.current } 
+            event: 'joinGame', 
+            data: { roomId: roomFromUrl, userId: userIdRef.current } 
         }));
-      }
+      
     };
 
     setSocket(newSocket);
@@ -78,31 +57,56 @@ export default function TestingWebsockets() {
       console.log('Received message:', data);
 
       switch (data.event) {
-        case 'playerJoined':
-          setPlayersCount(data.data.playersCount);
-          if (data.data.playersCount === 1) {
+
+        case 'playerTimedOut': /////////////////////////////////////////////////////
+
+            // handle player timeout here.
+            // if it was the other player, display win
+            // if it was the current player, display loss
+
+            break;
+
+        case 'playerJoined': /////////////////////////////////////////////////////
+
+            
+            setPlayersCount(data.data.player2 === null ? 1 : 2);
+            if (playersCount) {
             setGameStatus('Waiting for opponent...');
-          } else if (data.data.playersCount === 2) {
+            } else if (data.data.playersCount === 2) {
             setGameStatus('Game ready to start!');
-          }
+            }
+            break;
+
+        case 'roomFull': /////////////////////////////////////////////////////
+
+          // setup spectating mode here
+
+          setGameStatus('Room is full. Spectating mode coming soon though!!');
           break;
-        case 'roomFull':
-          setGameStatus('Room is full. Please try another room.');
-          break;
-        case 'gameStart':
+
+        case 'gameStart': /////////////////////////////////////////////////////
+
           console.log('Game Start - comparing IDs:', {
-            firstPlayer: data.data.firstPlayer,
+            player1: data.data.player1,
             myUserId: userIdRef.current,
-            willBe: data.data.firstPlayer === userIdRef.current ? 'Player 1' : 'Player 2'
+            willBe: data.data.player1 === userIdRef.current ? 'Player 1' : 'Player 2'
           });
-          setPlayerNumber(data.data.firstPlayer === userIdRef.current ? 1 : 2);
+          setPlayerNumber(data.data.player1 === userIdRef.current ? 1 : 2);
           setGameStatus('Game started!');
           break;
-        case 'playerDisconnected':
-          setPlayersCount(data.data.playersCount);
-          setGameStatus('Opponent disconnected. Waiting for new player...');
-          break;
-        case 'moveMade':
+
+        case 'playerDisconnected': /////////////////////////////////////////////////////
+          
+            setPlayersCount(data.data.playersCount);
+            setGameStatus('Opponent disconnected. Waiting...');
+            // the remaining client should display a countdown to the game ending
+            // after their timer, the game should end and the room should be deleted
+            
+
+            break;
+
+        case 'moveMade': /////////////////////////////////////////////////////
+
           const gameState = gameBoardRef.current;
           if (gameState) {
               const index = gameState.getMoves().length-1;
@@ -130,11 +134,6 @@ export default function TestingWebsockets() {
   const handleJoinRoom = () => {
     const currentRoomId = inputRef.current?.value || '';
     console.log('Joining room:', currentRoomId);
-    
-    const url = new URL(window.location.href);
-    url.searchParams.set('room', currentRoomId);
-    window.history.pushState({}, '', url);
-
     setRoomId(currentRoomId);
 
     if (currentRoomId.trim() && isConnected && socket) {
@@ -178,33 +177,6 @@ export default function TestingWebsockets() {
     <div className="flex min-h-screen bg-gray-100">
       <Dashboard />
       <div className="flex-1 flex flex-col">
-        {!hasJoined ? (
-          <div className="flex items-center justify-center w-full h-1/2">
-            <div className="bg-white p-8 rounded-lg shadow-md w-96">
-              <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  ref={inputRef}
-                  defaultValue={roomId}
-                  placeholder="Enter Room ID"
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleJoinRoom();
-                    }
-                  }}
-                />
-                <button
-                  onClick={handleJoinRoom}
-                  className="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 transition-colors"
-                >
-                  Join Room
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
         <div className="flex w-full">
           <div className="flex-1 flex flex-col items-center">
             <h2 className="text-xl font-semibold">Room: {roomId}</h2>
@@ -223,7 +195,6 @@ export default function TestingWebsockets() {
             </div>
           </div>
         </div>
-        )}
       </div>
     </div>
   );

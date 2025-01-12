@@ -1,8 +1,9 @@
 import type { UUID } from "crypto";
 
 export type Room = {
-  players: Array<UUID>; // max 2 players
-  currentTurn: number;
+  player1: UUID;
+  player2: UUID;
+  currentTurn: number; // 0 or 1
 };
 
 export type RoomID = string;

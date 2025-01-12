@@ -48,19 +48,6 @@ app.post('/api/openings', async (req, res) => {
   }
 });
 
-
-app.get('/api/test-db/users', async (req, res) => {
-  try {
-    const users = await dbOperations.__getAllUsers();
-    res.json({ status: 'Success', data: users });
-  } catch (error: any) {
-    console.error('Failed to fetch users:', error);
-    res.status(500).json({
-      error: 'Failed to fetch users'
-    });
-  }
-});
-
 app.use('/api/auth', authRoutes);
 
 setupGameEvents(app);

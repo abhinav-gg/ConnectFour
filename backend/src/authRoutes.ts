@@ -124,7 +124,28 @@ router.get('/profile', authenticateJWT, async (req: Request, res: Response, next
   }
 });
 
-router.post('/refresh', async (req: Request, res: Response) => {
+
+router.get('/protected-route', authenticateJWT, (req: any, res: Response) => {
+  res.json({ message: 'You are authenticated!', user: req.user });
+});
+
+router.post('/refresh', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
+  const refreshToken = req.cookies?.refreshToken; // Get the refresh token from cookies
+
+  if (!refreshToken) {
+    res.status(401).json({ error: 'Refresh token not found' });
+  }
+
+  try {
+    // Verify the refresh token
+    // Assuming req.user.id is available through the authenticateJWT middleware
+    const accessToken = generateAccessToken((req as any).user.id);
+
+    res.json({ accessToken });
+  } catch (error) {
+    console.error('Failed to refresh token:', error);
+    res.status(403).json({ error: 'Invalid refresh token' });
+  }
 });
 
 router.post('/logout', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
@@ -154,5 +175,7 @@ router.get('/isadmin', authenticateJWT, async (req: Request, res: Response, next
     next(error);
   }
 });
+
+
 
 export default router;
