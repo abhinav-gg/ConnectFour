@@ -68,7 +68,9 @@ export default function TestingWebsockets() {
 
         case 'playerJoined': /////////////////////////////////////////////////////
 
-            
+            // if there is only player display the waiting stuff
+            // if there are two players, display the game ready to start message
+            // allow the first player to make the first move and start their clock
             setPlayersCount(data.data.player2 === null ? 1 : 2);
             if (playersCount) {
             setGameStatus('Waiting for opponent...');
@@ -80,47 +82,38 @@ export default function TestingWebsockets() {
         case 'roomFull': /////////////////////////////////////////////////////
 
           // setup spectating mode here
+          // ensure that this player is not one of the players of the game
 
           setGameStatus('Room is full. Spectating mode coming soon though!!');
           break;
 
-        case 'gameStart': /////////////////////////////////////////////////////
-
-          console.log('Game Start - comparing IDs:', {
-            player1: data.data.player1,
-            myUserId: userIdRef.current,
-            willBe: data.data.player1 === userIdRef.current ? 'Player 1' : 'Player 2'
-          });
-          setPlayerNumber(data.data.player1 === userIdRef.current ? 1 : 2);
-          setGameStatus('Game started!');
-          break;
-
         case 'playerDisconnected': /////////////////////////////////////////////////////
           
-            setPlayersCount(data.data.playersCount);
-            setGameStatus('Opponent disconnected. Waiting...');
             // the remaining client should display a countdown to the game ending
             // after their timer, the game should end and the room should be deleted
             
-
+            setPlayersCount(data.data.playersCount);
+            setGameStatus('Opponent disconnected. Waiting...');
             break;
 
         case 'moveMade': /////////////////////////////////////////////////////
 
-          const gameState = gameBoardRef.current;
-          if (gameState) {
-              const index = gameState.getMoves().length-1;
-              gameState.currentPlayer = index % 2 === 0 ? 2 : 1;
-              gameState.currentMoveIndex = index;
-              gameState.constructFromMoves();
-              gameState.makeMove( 
+            // check which player has made the move and update the game board
+            // change which clock counts down on the UI
+            
+            const gameState = gameBoardRef.current;
+            if (gameState) {
+                const index = gameState.getMoves().length-1;
+                gameState.currentPlayer = index % 2 === 0 ? 2 : 1;
+                gameState.currentMoveIndex = index;
+                gameState.constructFromMoves();
+                gameState.makeMove( 
                 data.data.col, 
-              );
-              // There is no way to store this as of right now
-              // if (statusTextRef.current) {
-              //   console.log (gameState.currentPlayer, playerNumber);
-              //   statusTextRef.current.textContent = (gameState.currentPlayer === playerNumber ? 'Your' : "Opponent's") + '  turn...';
-              // }
+                );
+                if (statusTextRef.current) {
+                console.log (gameState.currentPlayer, playerNumber);
+                statusTextRef.current.textContent = (gameState.currentPlayer === playerNumber ? 'Your' : "Opponent's") + '  turn...';
+                }
           }
         break;
       }
