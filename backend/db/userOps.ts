@@ -285,7 +285,7 @@ export class UserOperations {
     return 
   }
 
-  async getAnonymousUser(): Promise<string> {
+  async getAnonymousUser(): Promise<User> {
     const client = await this.getClient();
     try {
       await client.query('BEGIN');

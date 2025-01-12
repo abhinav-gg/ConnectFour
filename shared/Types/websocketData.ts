@@ -1,26 +1,44 @@
-
+type UUID = `${string}-${string}-${string}-${string}-${string}`;
 
 type PlayerJoined = {
     event: 'playerJoined';
     data: { playersCount: number; };
-  };
-  
-  type RoomFull = {
+};
+
+export  type RoomFull = {
     event: 'roomFull';
-  };
+};
   
-  type GameStart = {
+export type GameStart = {
     event: 'gameStart';
     data: { player1: string; };
   };
   
-  type PlayerDisconnected = {
+export type PlayerDisconnected = {
     event: 'playerDisconnected';
     data: { playersCount: number; };
   };
   
-  type MoveMade = {
+export type MoveMade = {
     event: 'moveMade';
     data: { player: 0 | 1; col: number; };
-  };
-  
+};
+
+export type RoomID = string;
+
+export type JoinGame = {
+    event: 'joinGame';
+    data: { roomId: RoomID; userId: UUID; };
+};
+
+export type MakeMove = {
+  event: 'makeMove';
+  data: { roomId: RoomID; col: number; };
+};
+
+export type EndGame = {
+  event: 'endGame';
+  data: { roomId: RoomID; };
+};
+
+export type Message = JoinGame | MakeMove | EndGame;

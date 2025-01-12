@@ -3,7 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { dbOperations } from '../db/operations.js';
 import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from '../lib/auth/index.js';
-import { authenticateJWT } from '../lib/auth/middleware';
+import { authenticateAdmin, authenticateJWT } from '../lib/auth/middleware';
 import { create } from 'domain';
 
 const router = Router();
@@ -91,9 +91,19 @@ router.post('/login', async (req: Request, res: any) => {
 router.get('/anonymous', async (req: Request, res: Response) => {
   // Create a new user called Anonymous
   // Add security to prevent multiple anonymous users by bots
+  console.log("Creating anonymous user")
   try {
-    const anonID = await dbOperations.getAnonymousUser();
-    const accessToken = generateAccessToken(anonID);
+    const user = await dbOperations.getAnonymousUser();
+    console.log(user)
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    });
     res.json({ status: 'Success', data: { accessToken } });
   } catch (error) {
     console.error('Failed to login:', error);
@@ -154,28 +164,8 @@ router.post('/logout', authenticateJWT, async (req: Request, res: Response, next
   res.json({ status: 'Success' }); // Return success response
 });
 
-router.get('/isadmin', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
-  const userId = (req as any).user?.userId;
-
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-
-  try {
-    const tags = await dbOperations.getAllUserTagNames(userId);
-    if (!tags) {
-      res.status(404).json({ error: 'Page Not Found' });
-      return;
-    }
-    console.log('Tags:', tags);
-    res.json({ isAdmin: tags.includes('Admin') });
-  } catch (error) {
-    console.error('Failed to fetch user profile:', error);
-    next(error);
-  }
+router.get('/isadmin', authenticateJWT, authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  res.json({ isAdmin: true });
 });
-
-
 
 export default router;

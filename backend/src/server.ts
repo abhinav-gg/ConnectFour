@@ -2,11 +2,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import expressWs from 'express-ws';
-import { dbOperations } from './db/operations.js';
-import { setupGameEvents } from './events/gameEvents';
-import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from './lib/auth/index.js';
-import { z } from 'zod';
-import authRoutes from './src/authRoutes'; // Import the auth routes
+import { dbOperations } from '@/db/operations.js';
+// import { setupGameEvents } from '@/events/gameEvents';
+import authRoutes from './authRoutes.js'; // Import the auth routes
 
 dotenv.config();
 
@@ -50,7 +48,7 @@ app.post('/api/openings', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 
-setupGameEvents(app);
+// setupGameEvents(app);
 
 app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);

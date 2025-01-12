@@ -1,4 +1,4 @@
-import { Client, Pool, PoolClient } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
 
@@ -6,21 +6,18 @@ import * as DBError from './dbErrors';
 dotenv.config({ path: "../../.env" });
 const application_name = "con-four";
 
+// Create a connection pool
+const pool = new Pool({
+  connectionString: process.env.DB_URL,
+  application_name: application_name,
+});
+
 export class GameOperations {
-  client: PoolClient | null = null;
+  // No need for a client property here
 
   private async getClient(): Promise<PoolClient> {
-    console.log(process.env.DB_URL);
-    const pool = new Pool({
-      connectionString: process.env.DB_URL,
-      application_name: application_name
-    });
-
-    if (!this.client) {
-      this.client = await pool.connect();
-    }
-
-    return this.client;
+    // Get a client from the pool
+    return await pool.connect();
   }
 
   // Look for game
@@ -40,7 +37,6 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
-      this.client = null;
     }
   }
 
@@ -62,7 +58,6 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
-      this.client = null;
     }
   }
   
@@ -104,3 +99,20 @@ export class GameOperations {
     }*/
 }
   
+// Graceful shutdown function
+const shutdownPool = async () => {
+  console.log('Closing database connection pool...');
+  await pool.end(); // Close all connections in the pool
+  console.log('Database connection pool closed.');
+};
+
+// Listen for shutdown signals
+process.on('SIGINT', async () => {
+  await shutdownPool();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await shutdownPool();
+  process.exit(0);
+});

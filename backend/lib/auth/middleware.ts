@@ -26,4 +26,28 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
   }
 };
 
+export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const userId = req.user?.userId;
 
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  try {
+    const tags = await dbOperations.getAllUserTagNames(userId);
+    if (!tags) {
+      res.status(404).json({ error: 'Page Not Found' });
+      return;
+    }
+    console.log('Tags:', tags);
+    if (!tags.includes('Admin')) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+    next();
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+    next(error);
+  }
+};
