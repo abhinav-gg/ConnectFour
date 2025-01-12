@@ -2,9 +2,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import expressWs from 'express-ws';
-import { dbOperations } from '@/db/operations.js';
+import { dbOperations } from './db/operations';
 // import { setupGameEvents } from '@/events/gameEvents';
-import authRoutes from './authRoutes.js'; // Import the auth routes
+import authRouter from './authRoutes'; // Import the auth routes
 
 dotenv.config();
 
@@ -46,7 +46,7 @@ app.post('/api/openings', async (req, res) => {
   }
 });
 
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRouter);
 
 // setupGameEvents(app);
 

@@ -1,15 +1,15 @@
 // src/routes/authRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { dbOperations } from '../db/operations.js';
+import { dbOperations } from './db/operations.js';
 import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from '../lib/auth/index.js';
 import { authenticateAdmin, authenticateJWT } from '../lib/auth/middleware';
 import { create } from 'domain';
 
-const router = Router();
+const authRouter = Router();
 
 // Registration Route
-router.post('/register', async (req: Request, res: any) => {
+authRouter.post('/register', async (req: Request, res: any) => {
   const { username, email, password } = req.body;
 
   const schema = z.object({
@@ -36,14 +36,14 @@ router.post('/register', async (req: Request, res: any) => {
 });
 
 // Login Route
-router.post('/login', async (req: Request, res: any) => {
+authRouter.post('/login', async (req: Request, res: any) => {
   const { username, email, password } = req.body;
   if (!username && !email) {
     return res.status(400).json({ error: 'Username or email is required' });
   } else if (!password) {
     return res.status(400).json({ error: 'Password is required' });
   }
-  //console.log('Login:', username, password);
+  console.log('Login:', username, password);
   const schema = z.object({
     username: z.string().max(30).optional(),
     email: z.string().email().optional(),
@@ -61,9 +61,11 @@ router.post('/login', async (req: Request, res: any) => {
     if (!fetchedHash) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const passwordMatch = await verifyPassword(fetchedHash, password);
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Invalid password' });
+    else {
+      const passwordMatch = await verifyPassword(fetchedHash, password);
+      if (!passwordMatch) {
+        return res.status(401).json({ error: 'Invalid password' });
+      }
     }
 
     const user = await dbOperations.getUserByUsername(username);
@@ -88,7 +90,7 @@ router.post('/login', async (req: Request, res: any) => {
   }
 });
 
-router.get('/anonymous', async (req: Request, res: Response) => {
+authRouter.get('/anonymous', async (req: Request, res: Response) => {
   // Create a new user called Anonymous
   // Add security to prevent multiple anonymous users by bots
   console.log("Creating anonymous user")
@@ -112,7 +114,7 @@ router.get('/anonymous', async (req: Request, res: Response) => {
 });
 
 // Profile Route
-router.get('/profile', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.get('/profile', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
   const userId = (req as any).user?.userId;
 
   if (!userId) {
@@ -135,11 +137,11 @@ router.get('/profile', authenticateJWT, async (req: Request, res: Response, next
 });
 
 
-router.get('/protected-route', authenticateJWT, (req: any, res: Response) => {
+authRouter.get('/protected-route', authenticateJWT, (req: any, res: Response) => {
   res.json({ message: 'You are authenticated!', user: req.user });
 });
 
-router.post('/refresh', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.post('/refresh', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
   const refreshToken = req.cookies?.refreshToken; // Get the refresh token from cookies
 
   if (!refreshToken) {
@@ -158,14 +160,18 @@ router.post('/refresh', authenticateJWT, async (req: Request, res: Response, nex
   }
 });
 
-router.post('/logout', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.post('/logout', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
   // If the user is authenticated, proceed to clear the refresh token cookie
   res.clearCookie('refreshToken'); // Clear the refresh token cookie
   res.json({ status: 'Success' }); // Return success response
 });
 
-router.get('/isadmin', authenticateJWT, authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.get('/isadmin', authenticateJWT, authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
   res.json({ isAdmin: true });
 });
 
-export default router;
+authRouter.get('/test', (req: Request, res: Response) => {
+  res.json({ message: 'Test endpoint' });
+});
+
+export default authRouter;

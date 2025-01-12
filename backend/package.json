@@ -2,7 +2,7 @@
     "name": "connect-four-api",
     "version": "1.0.0",
     "scripts": {
-        "dev": "npx tsc && node dist/server.js",
+        "dev": "npx tsc && node -r tsconfig-paths/register -r ts-node/register/transpile-only --require tsconfig-paths/register dist/backend/src/server.js --baseUrl ./dist",
         "build": "tsc -p tsconfig.json",
         "watch": "node dist/server.js",
         "lint": "eslint ."
@@ -29,7 +29,8 @@
         "@typescript-eslint/eslint-plugin": "^8.16.0",
         "@typescript-eslint/parser": "^8.16.0",
         "eslint": "^8.57.1",
+        "ts-node": "^10.9.2",
+        "tsconfig-paths": "^4.2.0",
         "typescript": "^5"
-    },
-    "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+    }
 }

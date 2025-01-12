@@ -1,6 +1,5 @@
 import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
-import { User } from '@/models/User';
 import { UserOperations } from './userOps';
 import * as DBError from './dbErrors';
 import { GameOperations } from './gameOps';

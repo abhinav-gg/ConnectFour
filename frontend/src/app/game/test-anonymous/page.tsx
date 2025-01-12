@@ -1,40 +1,41 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
  
 const TestAnonymousPage = () => {
   const router = useRouter();
   const config = getConfig();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token'); // Check for token in local storage
     const createAnonymousAccount = async () => {
       try {
         const response = await fetch(`${config.backendUrl}/api/auth/anonymous`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
-          },
+          method: 'GET'
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create anonymous account');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create anonymous account');
         }
 
         const data = await response.json();
-        console.log('Anonymous account created:', data);
-        // Redirect to /game after successful account creation
         localStorage.setItem('token', data.data.accessToken);
         router.push('/game');
       } catch (error) {
+        setError(error instanceof Error ? error.message : 'An error occurred');
         console.error('Error creating anonymous account:', error);
       }
     };
 
     createAnonymousAccount();
-  }, [router]);
+  }, [router, config.backendUrl]);
+
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
 
   return <div>Creating anonymous account...</div>;
 };
