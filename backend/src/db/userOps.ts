@@ -14,6 +14,7 @@ export class UserOperations {
     const pool = new Pool({
       connectionString: process.env.DB_URL,
       application_name: application_name
+      application_name: application_name
     });
 
     if (!this.client) {
@@ -44,13 +45,16 @@ export class UserOperations {
     email: string,
     passwordHash: string,
     isAnonymous: boolean = false
+    isAnonymous: boolean = false
   ): Promise<User> {
     const client = await this.getClient();
     try {
       await client.query('BEGIN');
 
       // Check if username already exists
+      // Check if username already exists
       const userCheckResult = await client.query(
+        `SELECT id FROM con4_schema.Users WHERE username = $1`,
         `SELECT id FROM con4_schema.Users WHERE username = $1`,
         [username]
       );
@@ -60,7 +64,9 @@ export class UserOperations {
       }
 
       // Check if email already exists
+      // Check if email already exists
       const emailCheckResult = await client.query(
+        `SELECT id FROM con4_schema.Users WHERE email = $1`,
         `SELECT id FROM con4_schema.Users WHERE email = $1`,
         [email]
       );
@@ -71,7 +77,12 @@ export class UserOperations {
       // -------------------------------------------
 
       // Insert new user
+      // Insert new user
       const result = await client.query(
+        `INSERT INTO con4_schema.Users (username, email, password_hash, is_anonymous, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
+         RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
+        [username, email, passwordHash, isAnonymous]
         `INSERT INTO con4_schema.Users (username, email, password_hash, is_anonymous, created_at, updated_at)
          VALUES ($1, $2, $3, $4, NOW(), NOW())
          RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
@@ -83,6 +94,7 @@ export class UserOperations {
       return result.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
+      console.error('Failed to create user:', error);
       console.error('Failed to create user:', error);
       throw error;
     } finally {
@@ -115,6 +127,7 @@ export class UserOperations {
       const result = await client.query(
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
                  FROM con4_schema.users
+                 FROM con4_schema.users
                  WHERE username = $1`,
         [username]
       );
@@ -134,6 +147,7 @@ export class UserOperations {
     try {
       const result = await client.query(
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
+                 FROM con4_schema.users
                  FROM con4_schema.users
                  WHERE email = $1`,
         [email]
@@ -168,6 +182,25 @@ export class UserOperations {
       this.client = null;
     }
   }
+  async getUserByID(id: string): Promise<User> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id, username, email, email_verified, created_at, updated_at, last_login, is_anonymous
+                 FROM con4_schema.users
+                 WHERE id = $1`,
+        [id]
+      );
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch user by ID:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
 
   // allow login by username or email
 
@@ -176,6 +209,7 @@ export class UserOperations {
     try {
       const result = await client.query(
         `SELECT password_hash
+                 FROM con4_schema.users
                  FROM con4_schema.users
                  WHERE username = $1`,
         [username]
