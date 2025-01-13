@@ -2,7 +2,7 @@ import { type UUID } from "crypto";
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
 import type { Room, GameState } from "../types/types";
-import type { Message } from "@shared/Types/websocketData";
+import type { MakeMove, Message, MoveMade } from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 
@@ -10,7 +10,31 @@ const state: GameState = {
   rooms: new Map()
 };
 
-const SocketIDs = new Map<UUID, WSocket>();
+type UserSocket = {
+  userID: string;
+  socket: WSocket;
+}
+
+const SocketIDs = [] as UserSocket[];
+
+function getSocket(userID: string) {
+  return SocketIDs.find(s => s.userID === userID);
+}
+
+function getUserID(socket: WSocket) {
+  return SocketIDs.find(s => s.socket === socket);
+}
+
+function addSocket(userID: string, socket: WSocket) {
+  SocketIDs.push({ userID, socket });
+}
+
+function removeSocket(userID: string) {
+  const index = SocketIDs.findIndex(s => s.userID === userID);
+  if (index !== -1) {
+    SocketIDs.splice(index, 1);
+  }
+}
 
 function sendToRoom(roomId: string, event: string, data: any) {
   const room = state.rooms.get(roomId);
@@ -19,25 +43,27 @@ function sendToRoom(roomId: string, event: string, data: any) {
   const wsData = JSON.stringify({ event, data });
 
   [room.player1, room.player2].forEach(playerId => {
-    const socket = SocketIDs.get(playerId);
+    const socket = getSocket(playerId)?.socket;
     if (socket) {
       socket.send(wsData);
     }
   });
 };
 
-function handleGameEnd(roomId: string) {
+async function handleGameEnd(roomId: string) {
   // Simply close the websocket for this game because the room can never be reused
   // players will be redirected to a new game id in the frontend if they want to rematch
   const room = state.rooms.get(roomId);
   if (!room) return;
 
+  const gameData = await dbOperations.GetGameByShortCode(roomId);
+
   [room.player1, room.player2].forEach(playerId => {
-    const socket = SocketIDs.get(playerId);
+    const socket = getSocket(playerId)?.socket;
     if (socket) {
       socket.close();
     }
-    SocketIDs.delete(playerId);
+    removeSocket(playerId);
   });
 };
 
@@ -52,7 +78,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
     if (user) {
       console.log('User connected:', user);
-      SocketIDs.set(user.userID, ws);
+      addSocket(user.userID, ws);
     } else {
       console.log('User not authenticated');
       ws.close();
@@ -70,6 +96,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             // a player might be rejoining the room so deal with that here
             // check who's turn it is with the database and update the game state
             
+            // follow datatype of JoinGame
             const roomId = data.data.roomId;
             const userId = data.data.userId;
             if (!roomId || !userId) {
@@ -77,9 +104,18 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               return;
             }
 
-            SocketIDs.set(userId, ws); // TODO allow for multiple sockets per user (?)
+            // TODO allow user to reconnect from another location (new websocket connection)
 
             const roomExists = state.rooms.has(roomId);
+
+            if (!roomExists) {
+              const game = await dbOperations.GetGameByShortCode(roomId)
+              console.log('Game:', game);
+              if (!game) {
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid room' } }));
+                return;
+              }
+            }
             const room = state.rooms.get(roomId) || { players: [], currentTurn: 0 };
             // if (!roomExists) {
             //   state.rooms.set(roomId, room);
@@ -112,10 +148,19 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             // check it is the correct player's turn
             // insert the move in the database and send the move to the other player
 
+            // const moves = await dbOperations.GetMovesByGameID(data.data.roomId);
 
+            // Verify game here, leave for now assuming no interference occured
 
-            // const { roomId, col } = data.data;
-            // const room = state.rooms.get(roomId);
+            // read from MoveMade
+            const { roomId, col } = data.data as MakeMove["data"];
+            if (!roomId || !col) {
+              ws.send(JSON.stringify({ event: 'error', data: { error: 'Invalid data' } }));
+              return;
+            }
+            const room = state.rooms.get(roomId);
+            //const index = data.room.currentTurn;
+
 
             // if (!room) return; 
             // const id = IDToSocket.get(ws);
@@ -145,6 +190,9 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             // room.currentTurn = room.currentTurn === 0 ? 1 : 0;
             // state.rooms.set(roomId, room);
+
+            const dbResponse = await dbOperations.MakeMove(roomId, col, 0);
+
             break;
           }
 

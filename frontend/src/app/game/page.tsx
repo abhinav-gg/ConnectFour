@@ -5,11 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/history';
-import GameAnalysis from '@/components/analysis';
 import { GameState, Player } from '@/utils/game';
-import { Analysis } from '@/utils/analysis';
 import { Message } from '@shared/Types/websocketData';
-import { useRouter } from 'next/navigation';
 
 export default function TestingWebsockets() {
   const [roomId, setRoomId] = useState('');
@@ -24,15 +21,27 @@ export default function TestingWebsockets() {
   const gameBoardRef = useRef<GameState>();
   gameBoardRef.current = new GameState();
 
+  // FOR NOW ASSUME USER IS LOGGED IN
+  // THIS WILL BE MERGED WITH /TEST-LOGIN SO THAT USER CAN LOGIN AS ANONYMOUS AS WELL
+
   useEffect(() => {
 
     const backendUrl = getConfig().websocketUrl;
     const accessToken = localStorage.getItem('token');
     if (!accessToken) {
       console.error('No access token found!');
-      //window.location.href = '/game/test-login';
+      window.location.href = '/game/test-login';
       return;
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+    if (!roomFromUrl) {
+      console.error('No room ID found in URL!');
+      window.location.href = '/game/test-login';
+      return;
+    }
+
     // Pass the token as a protocol
     const newSocket = new WebSocket(backendUrl, [accessToken]);
     
@@ -42,17 +51,13 @@ export default function TestingWebsockets() {
       console.log('WebSocket connected!');
       setIsConnected(true);
       
-      const params = new URLSearchParams(window.location.search);
-      const roomFromUrl = params.get('room');
-      if (roomFromUrl) {
-        console.log('Auto-joining room:', roomFromUrl);
-        setHasJoined(true);
-        setRoomId(roomFromUrl);
-        newSocket.send(JSON.stringify({ 
-          event: 'joinGame', 
-          data: { roomId: roomFromUrl, userId: userIdRef.current } 
+      console.log('Auto-joining room:', roomFromUrl);
+      setHasJoined(true);
+      setRoomId(roomFromUrl);
+      newSocket.send(JSON.stringify({ 
+        event: 'joinGame', 
+        data: { roomId: roomFromUrl, userId: userIdRef.current } 
         }));
-      }
     };
 
     setSocket(newSocket);
@@ -71,7 +76,7 @@ export default function TestingWebsockets() {
           }
           break;
         case 'roomFull':
-          setGameStatus('Room is full. Please try another room.');
+          setGameStatus('Spectating game between players...');
           break;
         case 'gameStart':
           console.log('Game Start - comparing IDs:', {
@@ -156,39 +161,11 @@ export default function TestingWebsockets() {
   ref={gameBoardRef.current}
 />;
   const HISTORY = <MoveHistory ref={gameBoardRef.current} />;
-  const ANALYSIS = <GameAnalysis analysis={new Analysis(gameBoardRef.current)} />;
 
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Dashboard />
       <div className="flex-1 flex flex-col">
-        {!hasJoined ? (
-          <div className="flex items-center justify-center w-full h-1/2">
-            <div className="bg-white p-8 rounded-lg shadow-md w-96">
-              <h1 className="text-2xl font-bold mb-6 text-center">Join Game Room</h1>
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  ref={inputRef}
-                  defaultValue={roomId}
-                  placeholder="Enter Room ID"
-                  className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleJoinRoom();
-                    }
-                  }}
-                />
-                <button
-                  onClick={handleJoinRoom}
-                  className="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 transition-colors"
-                >
-                  Join Room
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
         <div className="flex w-full">
           <div className="flex-1 flex flex-col items-center">
             <h2 className="text-xl font-semibold">Room: {roomId}</h2>
@@ -201,13 +178,9 @@ export default function TestingWebsockets() {
           <div className="w-1/3 flex flex-col items-center justify-center">
             <div className="p-4 w-full">
               { HISTORY }
-            </div><br/><br/>
-            <div className="p-4 w-full">
-              { ANALYSIS }
             </div>
           </div>
         </div>
-        )}
       </div>
     </div>
   );

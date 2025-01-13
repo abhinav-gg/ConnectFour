@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.Games (
 CREATE TABLE IF NOT EXISTS con4_schema.Moves (
   game_id UUID NOT NULL REFERENCES con4_schema.Games(id),
   move INT NOT NULL CHECK (move >= 0 AND move < 43), -- 42 moves in a game
+  player UUID NOT NULL REFERENCES con4_schema.Users(id),
   col INT NOT NULL CHECK (col >= 0 AND col < 7),
   played_at TIMESTAMP DEFAULT now(),
   delta FLOAT NOT NULL, -- time taken to make the move since the last move

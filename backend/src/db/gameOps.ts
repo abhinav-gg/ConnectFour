@@ -1,23 +1,29 @@
 import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
+import { User } from '@/models/User';
+import { Games, Moves } from '@/models/Game';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
 const application_name = "con-four";
 
-// Create a connection pool
-const pool = new Pool({
-  connectionString: process.env.DB_URL,
-  application_name: application_name,
-});
 
 export class GameOperations {
   // No need for a client property here
+  client: PoolClient | null = null;
 
   private async getClient(): Promise<PoolClient> {
-    // Get a client from the pool
-    return await pool.connect();
+    const pool = new Pool({
+      connectionString: process.env.DB_URL,
+      application_name: application_name
+    });
+
+    if (!this.client) {
+      this.client = await pool.connect();
+    }
+
+    return this.client;
   }
 
   // Look for game
@@ -81,7 +87,6 @@ export class GameOperations {
     }
   }
   
-
     // Get a game by ID
     async GetGameByID(gameid: string): Promise<void> {
       const client = await this.getClient();
@@ -137,7 +142,7 @@ export class GameOperations {
     }
 
     // Make Move
-    async MakeMove(gameid: string, playerid: string, move: number, column: number, delta: number): Promise<void> {
+    async MakeMove(gameid: string, playerid: string, move: number, column: number, delta: number): Promise<[Moves]> {
       const client = await this.getClient();
       try {
         const result = await client.query(
@@ -145,7 +150,7 @@ export class GameOperations {
             VALUES ($1, $2, $3, $4, $5)`,
           [gameid, playerid, move, column, delta]
         );
-        return;
+        return result.rows as [Moves];
       } catch (error) {
         console.error('Failed to make move:', error);
         throw error;
@@ -172,6 +177,23 @@ export class GameOperations {
       }
     }
 
+    // Get Game By Short Code
+    async GetGameByShortCode(shortCode: string): Promise<Games> {
+      const client = await this.getClient();
+      try {
+        const result = await client.query(
+          `SELECT * FROM con4_schema.Games WHERE short_id = $1`,
+          [shortCode]
+        );
+        return result.rows[0];
+      } catch (error) {
+        console.error('Failed to fetch game by short code:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
     // End ongoing game
       // Update game status <- difficult
       // Remove entry for both players in GameLookup <- function defined above
@@ -182,41 +204,8 @@ export class GameOperations {
 
     // Get games by player
 
-    /*async getUserByUsername(username: string): Promise<Boolean> {
-        const client = await this.getClient();
-        try {
-          const result = await client.query(
-            `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-                     FROM con4_schema.users
-                     WHERE username = $1`,
-            [username]
-          );
-    
-          return result.rows[0];
-        } catch (error) {
-          console.error('Failed to fetch user by username:', error);
-          throw error;
-        } finally {
-          client.release();
-          this.client = null;
-        }
-    }*/
+
 }
-  
-// Graceful shutdown function
-const shutdownPool = async () => {
-  console.log('Closing database connection pool...');
-  await pool.end(); // Close all connections in the pool
-  console.log('Database connection pool closed.');
-};
 
-// Listen for shutdown signals
-process.on('SIGINT', async () => {
-  await shutdownPool();
-  process.exit(0);
-});
+// SELECT id FROM con4_schema.gamestates WHERE state = 'ongoing';
 
-process.on('SIGTERM', async () => {
-  await shutdownPool();
-  process.exit(0);
-});

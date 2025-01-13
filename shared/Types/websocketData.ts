@@ -41,4 +41,10 @@ export type EndGame = {
   data: { roomId: RoomID; };
 };
 
+export type Error = {
+  event: 'error';
+  data: { message: string; };
+};
+
 export type Message = JoinGame | MakeMove | EndGame | PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
+

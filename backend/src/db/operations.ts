@@ -1,5 +1,3 @@
-import { Client, Pool, PoolClient } from 'pg';
-import dotenv from 'dotenv';
 import { UserOperations } from './userOps';
 import * as DBError from './dbErrors';
 import { GameOperations } from './gameOps';
@@ -7,6 +5,7 @@ import { OpeningOperations } from './openingOps';
 
 const databaseOps = new UserOperations();
 const openingOps = new OpeningOperations();
+const gameOps = new GameOperations();
 
 export const dbOperations = {
   // deprecated, remove ASAP
@@ -25,7 +24,8 @@ export const dbOperations = {
   getAnonymousUser: databaseOps.getAnonymousUser.bind(databaseOps),
 
   GetOpening: openingOps.GetOpening.bind(openingOps),
-  CreateOpening: openingOps.CreateOpening.bind(openingOps)
+  CreateOpening: openingOps.CreateOpening.bind(openingOps),
 
-  
+  GetGameByShortCode: gameOps.GetGameByShortCode.bind(openingOps),
+  MakeMove: gameOps.MakeMove.bind(openingOps)
 };

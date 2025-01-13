@@ -50,7 +50,7 @@ export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response
       res.status(404).json({ error: 'Page Not Found' });
       return;
     }
-    console.log('Tags:', tags);
+
     if (!tags.includes('Admin')) {
       res.status(403).json({ error: 'Forbidden' });
       return;

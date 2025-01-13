@@ -301,8 +301,30 @@ export class UserOperations {
     } finally {
       client.release();
       this.client = null;
+    }
+
   }
 
+  // Call this function to delete anonymous users that are older than 24 hours every day
+  async CronDeleteAnonymousUsers(): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query('BEGIN');
+      // Delete anonymous users
+      await client.query(
+        `DELETE FROM con4_schema.users
+          WHERE is_anonymous=true
+          AND (CAST(now() AS FLOAT) - CAST(created_at AS FLOAT)) < 86401;`
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Failed to delete anonymous users:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
   }
 
 
