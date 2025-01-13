@@ -2,9 +2,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import expressWs from 'express-ws';
-import { dbOperations } from './db/operations';
-// import { setupGameEvents } from '@/events/gameEvents';
-import authRouter from './authRoutes'; // Import the auth routes
+import { dbOperations } from '@/db/operations';
+import authRouter from '@/authRoutes'; // Import the auth routes
+import { setupGameEvents } from '@/events/gameEvents';
+import { authenticateAdmin, authenticateJWT } from '@/lib/auth/middleware';
 
 dotenv.config();
 
@@ -46,9 +47,23 @@ app.post('/api/openings', async (req, res) => {
   }
 });
 
+app.post('/api/make-opening', authenticateJWT, authenticateAdmin, async (req, res) => {
+  const { position, description } = req.body;
+  console.log('Position:', position, 'Description:', description);
+  try {
+    const creation = await dbOperations.CreateOpening(position.toString(), description.toString());
+    res.json({ status: 'Success' });
+  } catch (error: any) {
+    console.error('Failed to fetch openings:', error);
+    res.status(500).json({
+      error: 'Failed to fetch openings'
+    });
+  }
+});
+
 app.use('/api/auth', authRouter);
 
-// setupGameEvents(app);
+setupGameEvents(app);
 
 app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);

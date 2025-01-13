@@ -5,11 +5,6 @@ import * as DBError from './dbErrors';
 import { GameOperations } from './gameOps';
 import { OpeningOperations } from './openingOps';
 
-// Load .env from project root
-dotenv.config({ path: "../../.env" });
-const application_name = "con-four";
-
-
 const databaseOps = new UserOperations();
 const openingOps = new OpeningOperations();
 
@@ -30,9 +25,7 @@ export const dbOperations = {
   getAnonymousUser: databaseOps.getAnonymousUser.bind(databaseOps),
 
   GetOpening: openingOps.GetOpening.bind(openingOps),
-
+  CreateOpening: openingOps.CreateOpening.bind(openingOps)
 
   
-
-
 };

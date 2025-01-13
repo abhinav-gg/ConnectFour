@@ -2,7 +2,6 @@ import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import { User } from '@/models/User';
 import * as DBError from './dbErrors';
-import { OpeningOperations } from './openingOps';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });

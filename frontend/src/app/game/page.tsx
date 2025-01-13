@@ -8,33 +8,8 @@ import MoveHistory from '@/components/history';
 import GameAnalysis from '@/components/analysis';
 import { GameState, Player } from '@/utils/game';
 import { Analysis } from '@/utils/analysis';
-import { propagateServerField } from 'next/dist/server/lib/render-server';
-
-type PlayerJoined = {
-  event: 'playerJoined';
-  data: { playersCount: number; };
-};
-
-type RoomFull = {
-  event: 'roomFull';
-};
-
-type GameStart = {
-  event: 'gameStart';
-  data: { firstPlayer: string; };
-};
-
-type PlayerDisconnected = {
-  event: 'playerDisconnected';
-  data: { playersCount: number; };
-};
-
-type MoveMade = {
-  event: 'moveMade';
-  data: { player: Player; col: number; };
-};
-
-type Message = PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
+import { Message } from '@shared/Types/websocketData';
+import { useRouter } from 'next/navigation';
 
 export default function TestingWebsockets() {
   const [roomId, setRoomId] = useState('');
@@ -50,8 +25,17 @@ export default function TestingWebsockets() {
   gameBoardRef.current = new GameState();
 
   useEffect(() => {
+
     const backendUrl = getConfig().websocketUrl;
-    const newSocket = new WebSocket(backendUrl);
+    const accessToken = localStorage.getItem('token');
+    if (!accessToken) {
+      console.error('No access token found!');
+      //window.location.href = '/game/test-login';
+      return;
+    }
+    // Pass the token as a protocol
+    const newSocket = new WebSocket(backendUrl, [accessToken]);
+    
     console.log('Connection established with userId:', userIdRef.current);
 
     newSocket.onopen = () => {
@@ -91,11 +75,11 @@ export default function TestingWebsockets() {
           break;
         case 'gameStart':
           console.log('Game Start - comparing IDs:', {
-            firstPlayer: data.data.firstPlayer,
+            firstPlayer: data.data.player1,
             myUserId: userIdRef.current,
-            willBe: data.data.firstPlayer === userIdRef.current ? 'Player 1' : 'Player 2'
+            willBe: data.data.player1 === userIdRef.current ? 'Player 1' : 'Player 2'
           });
-          setPlayerNumber(data.data.firstPlayer === userIdRef.current ? 1 : 2);
+          setPlayerNumber(data.data.player1 === userIdRef.current ? 1 : 2);
           setGameStatus('Game started!');
           break;
         case 'playerDisconnected':

@@ -10,8 +10,6 @@ import { GameState, Player } from '@/utils/game';
 import { Analysis } from '@/utils/analysis';
 // load from shared files
 
-type Message = PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
-
 export default function TestingWebsockets() {
   const [roomId, setRoomId] = useState('');
   const [hasJoined, setHasJoined] = useState(false);

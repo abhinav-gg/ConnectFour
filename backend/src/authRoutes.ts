@@ -1,10 +1,10 @@
 // src/routes/authRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { dbOperations } from './db/operations.js';
-import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from '../lib/auth/index.js';
-import { authenticateAdmin, authenticateJWT } from '../lib/auth/middleware';
-import { create } from 'domain';
+import { dbOperations } from '@/db/operations';
+import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from '@/lib/auth/index';
+import { authenticateAdmin, authenticateJWT } from '@/lib/auth/middleware';
+import * as dbErrors from '@/db/dbErrors';
 
 const authRouter = Router();
 
@@ -59,12 +59,12 @@ authRouter.post('/login', async (req: Request, res: any) => {
     }
 
     if (!fetchedHash) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: 'User not found' });
     }
     else {
       const passwordMatch = await verifyPassword(fetchedHash, password);
       if (!passwordMatch) {
-        return res.status(401).json({ error: 'Invalid password' });
+        return res.status(401).json({ message: 'Invalid password' });
       }
     }
 
@@ -116,7 +116,7 @@ authRouter.get('/anonymous', async (req: Request, res: Response) => {
 // Profile Route
 authRouter.get('/profile', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
   const userId = (req as any).user?.userId;
-
+  console.log('User ID:', userId);
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' });
     return;

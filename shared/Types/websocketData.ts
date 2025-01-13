@@ -1,4 +1,5 @@
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
+export type RoomID = string;
 
 type PlayerJoined = {
     event: 'playerJoined';
@@ -20,15 +21,14 @@ export type PlayerDisconnected = {
   };
   
 export type MoveMade = {
-    event: 'moveMade';
-    data: { player: 0 | 1; col: number; };
+  event: 'moveMade';
+  data: { player: 0 | 1; col: number; };
 };
 
-export type RoomID = string;
 
 export type JoinGame = {
-    event: 'joinGame';
-    data: { roomId: RoomID; userId: UUID; };
+  event: 'joinGame';
+  data: { roomId: RoomID; userId: UUID; };
 };
 
 export type MakeMove = {
@@ -41,4 +41,4 @@ export type EndGame = {
   data: { roomId: RoomID; };
 };
 
-export type Message = JoinGame | MakeMove | EndGame;
+export type Message = JoinGame | MakeMove | EndGame | PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;

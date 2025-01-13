@@ -10,7 +10,6 @@ export class OpeningOperations {
     client: PoolClient | null = null;
   
     private async getAdminClient(): Promise<PoolClient> {
-      console.log(process.env.OPENING_ADMIN_DB_URL);
       const pool = new Pool({
         connectionString: process.env.OPENING_ADMIN_DB_URL,
         application_name: application_name
@@ -40,8 +39,6 @@ export class OpeningOperations {
     async CreateOpening(position: String, description: String): Promise<any> {
       const client = await this.getAdminClient();
       try {
-          // Insert into TimeControl table
-          
           const descriptionId = await client.query(
             `INSERT INTO OpeningDescription (id, description) VALUES (gen_random_uuid(), $1) RETURNING id`,
             [description]
@@ -76,7 +73,6 @@ export class OpeningOperations {
         client.release();
         this.client = null;
       }
-      console.log(result.rows);
       return result.rows[0]?.description || '# Unknown Opening';
     }
 }

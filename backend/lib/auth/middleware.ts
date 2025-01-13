@@ -1,6 +1,7 @@
 import { dbOperations } from '@/db/operations';
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import { verifyAccessToken } from './index';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -17,9 +18,18 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    req.user = decoded; // Attach user info to the request
-    next(); // Call next to pass control to the next middleware
+    const decoded = verifyAccessToken(token); // Verify the token
+
+    // check if decoded is promise null and raise error
+    if (!decoded) {
+      throw new Error('Unable to decode token');
+    }
+    else {
+      console.log('Decoded:', decoded, 'Token:', token);
+      req.user = decoded; // Attach user info to the request
+      next(); // Call next to pass control to the next middleware
+    }
+
   } catch (err) {
     res.status(403).json({ error: 'Invalid or expired token' });
     return; // Ensure we return here to avoid further execution
@@ -28,7 +38,7 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
 
 export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
-
+  console.log('User ID:', userId, req);
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' });
     return;

@@ -54,8 +54,13 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
 
     if (gameState.gameOver || fallingPiece) return
 
-    if (audioRef.current) {
-      audioRef.current.play()
+    try {
+      if (audioRef.current) {
+        audioRef.current.play()
+      }
+    }
+    catch (error) {
+      console.error('Failed to play audio:', error)
     }
 
     gameState.makeMove(col)

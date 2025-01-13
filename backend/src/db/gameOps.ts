@@ -40,6 +40,26 @@ export class GameOperations {
     }
   }
 
+  // Finished Game Part One
+    // Remove entry from GameLookup
+    async FinishedGameLookup(playerid: string): Promise<void> {
+      const client = await this.getClient();
+      try {
+        const result = await client.query(
+          `DELETE FROM con4_schema.GameLookup
+           WHERE player = $1`,
+          [playerid]
+        );
+  
+        return;
+      } catch (error) {
+        console.error('Could not delete user from game search:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
     // Create game from both players
       // Insert into game
       // Update both player entries in game lookup
@@ -63,14 +83,98 @@ export class GameOperations {
   
 
     // Get a game by ID
+    async GetGameByID(gameid: string): Promise<void> {
+      const client = await this.getClient();
+      try {
+        const result = await client.query(
+          `SELECT * FROM con4_schema.Games WHERE id = $1`,
+          [gameid]
+        );
+        return;
+      } catch (error) {
+        console.error('Failed to fetch game by id:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
 
     // Get moves by game ID
+    async GetMovesByGameID(gameid: string): Promise<void> {
+      const client = await this.getClient();
+      try {
+        const result = await client.query(
+          `SELECT * FROM con4_schema.Moves 
+            WHERE game_id = $1
+            ORDER BY move`,
+          [gameid]
+        );
+        return;
+      } catch (error) {
+        console.error('Failed to fetch moves by game id:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
     
     // Get ongoing games by player
+    async GetOngoingGameByPlayer(playerid: string): Promise<string | null> {
+      const client = await this.getClient();
+      try {
+        const result = await client.query(
+          `SELECT game_id FROM con4_schema.GameLookup 
+            WHERE player = $1`,
+          [playerid]
+        );
+        return result.rows[0]?.game_id ?? null;
+      } catch (error) {
+        console.error('Failed to fetch ongoing games by player:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    // Make Move
+    async MakeMove(gameid: string, playerid: string, move: number, column: number, delta: number): Promise<void> {
+      const client = await this.getClient();
+      try {
+        const result = await client.query(
+          `INSERT INTO con4_schema.Moves (game_id, player, move, col, delta)
+            VALUES ($1, $2, $3, $4, $5)`,
+          [gameid, playerid, move, column, delta]
+        );
+        return;
+      } catch (error) {
+        console.error('Failed to make move:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
+
+    // Get Exact Time Control
+    async GetExactTimeControl(base: number, incr: number, detr: number): Promise<void> {
+      const client = await this.getClient();
+      try {
+        const result = await client.query(
+          `SELECT id FROM con4_schema.TimeControls
+            WHERE base_time = $1 AND increment = $2 AND disadvantage = $3`,
+          [base, incr, detr]
+        );
+        return result.rows[0]?.id;
+      } catch (error) {
+        console.error('Failed to fetch time control:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    }
 
     // End ongoing game
-      // Update game status 
-      // Remove entry for both players in GameLookup
+      // Update game status <- difficult
+      // Remove entry for both players in GameLookup <- function defined above
     
 
 /////////////////////// Below are functions that are not called during live games but for analysing games

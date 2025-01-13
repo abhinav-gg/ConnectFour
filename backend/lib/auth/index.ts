@@ -1,5 +1,5 @@
 import argon2 from 'argon2';
-import jwt from 'jsonwebtoken';
+import jwt, { Jwt, JwtPayload } from 'jsonwebtoken';
 import { dbOperations } from '@/db/operations';
 import dotenv from 'dotenv';
 
@@ -35,7 +35,7 @@ export function generateRefreshToken(userId: string): string {
   return jwt.sign({ userId }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN || '7d' });
 }
 
-export async function verifyAccessToken(token: string): Promise<string | null> {
+export function verifyAccessToken(token: string): JwtPayload | null {
   const JWT_SECRET = process.env.JWT_SECRET;
 
   if (!JWT_SECRET) {
@@ -43,7 +43,7 @@ export async function verifyAccessToken(token: string): Promise<string | null> {
   }
 
   try {
-    return jwt.verify(token, JWT_SECRET) as string;
+    return jwt.verify(token, JWT_SECRET) as JwtPayload;
   } catch (err) {
     return null;
   }

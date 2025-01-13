@@ -23,19 +23,7 @@ const HomePage = () => {
         if (userChoice) {
           // User chose to continue as anonymous
           try {
-            const response = await fetch(`${getConfig().backendUrl}/api/auth/anonymous`, {
-              method: 'GET',
-              credentials: 'include', // Include cookies for authentication
-            });
-
-            if (!response.ok) {
-              throw new Error('Failed to create anonymous account');
-            }
-
-            const data = await response.json();
-            console.log('Anonymous account created:', data);
-            // Redirect to /test-join after successful account creation
-            router.push('/test-join');
+            router.push('/game/test-anonymous'); // Redirect to anonymous login page
             
           } catch (error) {
             console.error('Error creating anonymous account:', error);
