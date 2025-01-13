@@ -2,11 +2,11 @@ import { Client, Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import { User } from '@/models/User';
 import * as DBError from './errors';
-import { OpeningOperations } from './dbOpenings';
+import { OpeningOperations } from './openingOps';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
-
+const application_name = "con-four";
 
 class UserOperations {
   client: PoolClient | null = null;
@@ -14,7 +14,7 @@ class UserOperations {
   private async getClient(): Promise<PoolClient> {
     const pool = new Pool({
       connectionString: process.env.DB_URL,
-      application_name: "con4"
+      application_name: application_name
     });
 
     if (!this.client) {
@@ -44,14 +44,15 @@ class UserOperations {
     username: string,
     email: string,
     passwordHash: string,
+    isAnonymous: boolean = false
   ): Promise<User> {
     const client = await this.getClient();
     try {
       await client.query('BEGIN');
 
-      // todo move to dedicated "check..." functions
+      // Check if username already exists
       const userCheckResult = await client.query(
-        `SELECT id FROM users WHERE username = $1`,
+        `SELECT id FROM con4_schema.Users WHERE username = $1`,
         [username]
       );
 
@@ -59,8 +60,9 @@ class UserOperations {
         throw new DBError.UsernameExists();
       }
 
+      // Check if email already exists
       const emailCheckResult = await client.query(
-        `SELECT id FROM users WHERE email = $1`,
+        `SELECT id FROM con4_schema.Users WHERE email = $1`,
         [email]
       );
 
@@ -69,11 +71,12 @@ class UserOperations {
       }
       // -------------------------------------------
 
+      // Insert new user
       const result = await client.query(
-        `INSERT INTO users (username, email, password_hash, created_at, updated_at)
-                 VALUES ($1, $2, $3, NOW(), NOW())
-                 RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
-        [username, email, passwordHash]
+        `INSERT INTO con4_schema.Users (username, email, password_hash, is_anonymous, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
+         RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
+        [username, email, passwordHash, isAnonymous]
       );
 
       await client.query('COMMIT');
@@ -81,7 +84,7 @@ class UserOperations {
       return result.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Failed to create user');
+      console.error('Failed to create user:', error);
       throw error;
     } finally {
       client.release();
@@ -112,7 +115,7 @@ class UserOperations {
     try {
       const result = await client.query(
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-                 FROM users
+                 FROM con4_schema.users
                  WHERE username = $1`,
         [username]
       );
@@ -132,7 +135,7 @@ class UserOperations {
     try {
       const result = await client.query(
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-                 FROM users
+                 FROM con4_schema.users
                  WHERE email = $1`,
         [email]
       );
@@ -147,6 +150,25 @@ class UserOperations {
     }
   }
 
+  async getUserByID(id: string): Promise<User> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id, username, email, email_verified, created_at, updated_at, last_login, is_anonymous
+                 FROM con4_schema.users
+                 WHERE id = $1`,
+        [id]
+      );
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch user by ID:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
 
   // allow login by username or email
 
@@ -155,7 +177,7 @@ class UserOperations {
     try {
       const result = await client.query(
         `SELECT password_hash
-                 FROM users
+                 FROM con4_schema.users
                  WHERE username = $1`,
         [username]
       );
@@ -229,6 +251,44 @@ class UserOperations {
       this.client = null;
     }
   }
+
+  async getAllUserTagNames(id: string): Promise<[string]> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT con4_schema.utags.name
+          FROM con4_schema.usertags INNER JOIN con4_schema.utags 
+          ON con4_schema.utags.id = con4_schema.usertags.tag_id
+          WHERE con4_schema.usertags.user_id = $1`,
+        [id]
+      );
+
+      return result.rows.map((row) => row.name) as [string];
+    } catch (error) {
+      console.error('Failed to fetch all user tag names:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async assignUserTag(id: string, tag: string): Promise<void> {
+
+    // id is the user uuid
+    // tag = 'IM', 'Admin' etc
+
+
+    //INSERT INTO con4_schema.usertags (user_id,tag_id) 
+    //SELECT $1, id FROM con4_schema.utags WHERE name = $2;
+
+    return 
+  }
+
+
+
+
+
 }
 
 const databaseOps = new UserOperations();
@@ -246,9 +306,8 @@ export const dbOperations = {
   getPasswordHashByEmail: databaseOps.getPasswordHashByEmail.bind(databaseOps),
   getIDByUsername: databaseOps.getIDByUsername.bind(databaseOps),
   getIDByEmail: databaseOps.getIDByEmail.bind(databaseOps),
-  getAllOpenings1: openingOps.GetAllData1.bind(openingOps),
-  writeOpening1: openingOps.WriteData1.bind(openingOps),
-  getAllOpenings2: openingOps.GetAllData2.bind(openingOps),
-  writeOpening2: openingOps.WriteData2.bind(openingOps),
+  getUserByID: databaseOps.getUserByID.bind(databaseOps),
+  getAllUserTagNames: databaseOps.getAllUserTagNames.bind(databaseOps),
+
   GetOpening: openingOps.GetOpening.bind(openingOps),
 };
