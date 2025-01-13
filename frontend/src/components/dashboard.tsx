@@ -2,15 +2,14 @@
 
 import Link from 'next/link'
 import { Home, LogIn, BarChart2, PlayCircle, Info, Book } from 'lucide-react'
-import MainLogo from './mainlogo'
 
 export default function Dashboard() {
   return (
     <div className="w-64 bg-white p-4 flex flex-col shadow-md min-h-screen">
       <div className="flex items-center gap-2 mb-6">
-        <div className="scale-100 transform-origin-left">
-          <MainLogo />
-        </div>
+      <div className="scale-100 transform-origin-left">
+        <img src="/logo.png" alt="Main Logo" className="w-auto h-auto" />
+      </div>
         <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
       </div>
       

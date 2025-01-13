@@ -97,7 +97,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             //      check who's turn it is with the database and update the game state
             
             // Check the user is one of the two players in the game.
-
+            
             // follow datatype of JoinGame
             const roomId = data.data.roomId;
             const userId = data.data.userId;
@@ -105,7 +105,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid data' } }));
               return;
             }
-
+            
             const roomExists = state.rooms.has(roomId);
             
             if (!roomExists) {

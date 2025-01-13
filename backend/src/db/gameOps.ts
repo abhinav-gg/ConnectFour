@@ -79,11 +79,7 @@ export class GameOperations {
       );
 
       return;
-    } catch (error: any) {
-      // check if the error is a shortcode conflict as it needs to be re-generated
-      if (error.code === '23505') {
-        throw new DBError.ShortCodeConflictError();
-      }
+    } catch (error) {
       console.error('Failed to fetch id by email:', error);
       throw error;
     } finally {
@@ -212,4 +208,3 @@ export class GameOperations {
 }
 
 // SELECT id FROM con4_schema.gamestates WHERE state = 'ongoing';
-
