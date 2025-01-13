@@ -13,5 +13,8 @@ gameRouter.post('/create', authenticateJWT, async (req: Request, res: Response, 
     // Extract the user ID from the request
     const userId = (req as any).user?.userId;
 
-    // Extract the 
+    // Call Matchmaking if they are looking for a competitive game
 });
+
+
+gameRouter.post('')

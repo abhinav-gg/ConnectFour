@@ -1,10 +1,8 @@
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
 export type RoomID = string;
 
-type PlayerJoined = {
-    event: 'playerJoined';
-    data: { playersCount: number; };
-};
+/////////// SENT TO FRONTEND BY SERVER ///////////
+
 
 export  type RoomFull = {
     event: 'roomFull';
@@ -12,19 +10,20 @@ export  type RoomFull = {
   
 export type GameStart = {
     event: 'gameStart';
-    data: { player1: string; };
+    data: { opponentName: string; player: 0 | 1; opponentElo: number; };
   };
   
 export type PlayerDisconnected = {
-    event: 'playerDisconnected';
-    data: { playersCount: number; };
-  };
+  event: 'playerDisconnected';
+  data: { playersCount: number; };
+};
   
 export type MoveMade = {
   event: 'moveMade';
   data: { player: 0 | 1; col: number; };
 };
 
+/////////// SENT TO SERVER BY FRONTEND ///////////
 
 export type JoinGame = {
   event: 'joinGame';
@@ -46,5 +45,5 @@ export type Error = {
   data: { message: string; };
 };
 
-export type Message = JoinGame | MakeMove | EndGame | PlayerJoined | RoomFull | GameStart | PlayerDisconnected | MoveMade;
+export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart | PlayerDisconnected | MoveMade;
 

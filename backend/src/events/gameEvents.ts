@@ -93,9 +93,11 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         switch (data.event) {
           case 'joinGame': {
             
-            // a player might be rejoining the room so deal with that here
-            // check who's turn it is with the database and update the game state
+            // TODO allow user to reconnect from another location (new websocket connection)
+            //      check who's turn it is with the database and update the game state
             
+            // Check the user is one of the two players in the game.
+
             // follow datatype of JoinGame
             const roomId = data.data.roomId;
             const userId = data.data.userId;
@@ -104,10 +106,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               return;
             }
 
-            // TODO allow user to reconnect from another location (new websocket connection)
-
             const roomExists = state.rooms.has(roomId);
-
+            
             if (!roomExists) {
               const game = await dbOperations.GetGameByShortCode(roomId)
               console.log('Game:', game);
@@ -117,9 +117,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             }
             const room = state.rooms.get(roomId) || { players: [], currentTurn: 0 };
-            // if (!roomExists) {
-            //   state.rooms.set(roomId, room);
-            // }
+
 
             // if (room.players.length >= 2) {
             //   ws.send(JSON.stringify({ event: 'roomFull', data: { message: 'This game is full' } }));
@@ -191,7 +189,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             // room.currentTurn = room.currentTurn === 0 ? 1 : 0;
             // state.rooms.set(roomId, room);
 
-            const dbResponse = await dbOperations.MakeMove(roomId, col, 0);
+            // const dbResponse = await dbOperations.MakeMove(roomId, col, 0);
 
             break;
           }

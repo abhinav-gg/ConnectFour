@@ -15,3 +15,9 @@ export class EmailExists extends Error {
     super('An account with this email already exists');
   }
 }
+
+export class ShortCodeConflictError extends Error {
+  constructor() {
+    super('A short code with this name already exists, please regenerate');
+  }
+}
