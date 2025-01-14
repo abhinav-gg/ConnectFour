@@ -60,7 +60,7 @@ export async function FindCompetitiveMatch(userId: string, timeControlId: string
                 AND gl.player != $1 
                 AND gl.game_id IS NULL
             ORDER BY rating_gap ASC
-            LIMIT 1`,
+            LIMIT 1`, // gets a list of every player looking for a match with the same time control as the user and sorts them to find the player with the closest difference in rating to the user to 50 as possible
             [userId, timeControlId]
         );
 
@@ -114,8 +114,17 @@ interface GlickoPlayer {
     lastPlayed: Date;
 }
 
+interface GlickoRatingChange {
+    player1WinRating: number;
+    player1LossRating: number;
+    player1DrawRating: number;
+    player2WinRating: number;
+    player2LossRating: number;
+    player2DrawRating: number;
+}
+
 // Calculate new ratings for both players based on Glicko system
-function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPlayer): [number, number, number, number] {
+function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPlayer): GlickoRatingChange {
     const q = Math.log(10) / 400;  // System constant
     
     // Adjust RD based on time since last played (increases uncertainty)
@@ -140,13 +149,24 @@ function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPlayer): [
     const d1 = 1 / (Math.pow(q, 2) * Math.pow(g1, 2) * E1 * (1 - E1));
     const d2 = 1 / (Math.pow(q, 2) * Math.pow(g2, 2) * E2 * (1 - E2));
 
-    // Calculate new ratings for all scenarios
-    const p1WinRating = Math.round(player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1));
-    const p1LossRating = Math.round(player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1));
-    const p2WinRating = Math.round(player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (1 - E2));
-    const p2LossRating = Math.round(player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (0 - E2));
-
-    return [p1WinRating, p1LossRating, p2WinRating, p2LossRating];
+    // Calculate new ratings for all scenarios and round to 2 decimal places
+    // For draws, use 0.5 as the score (halfway between 0 and 1)
+    const player1WinRating = Number((player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2));
+    const player1LossRating = Number((player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2));
+    const player1DrawRating = Number((player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2));
+    const player2WinRating = Number((player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (1 - E2)).toFixed(2));
+    const player2LossRating = Number((player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (0 - E2)).toFixed(2));
+    const player2DrawRating = Number((player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (0.5 - E2)).toFixed(2));
+    
+    const ratingChanges: GlickoRatingChange = {
+        player1WinRating,
+        player1LossRating,
+        player1DrawRating,
+        player2WinRating,
+        player2LossRating,
+        player2DrawRating
+    };
+    
+    return ratingChanges;
 }
-
 
