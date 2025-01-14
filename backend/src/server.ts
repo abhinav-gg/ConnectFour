@@ -4,6 +4,7 @@ import express from 'express';
 import expressWs from 'express-ws';
 import { dbOperations } from '@/db/operations';
 import authRouter from '@/authRoutes'; // Import the auth routes
+import gameRouter from '@/events/gameRoutes'; // Import the game routes
 import { setupGameEvents } from '@/events/gameEvents';
 import { authenticateAdmin, authenticateJWT } from '@/lib/auth/middleware';
 
@@ -35,7 +36,6 @@ app.get('/health', (req, res) => {
 
 app.post('/api/openings', async (req, res) => {
   const { position } = req.body;
-  console.log('Position:', position);
   try {
     const openings = await dbOperations.GetOpening(position.toString());
     res.json({ status: 'Success', data: openings });
@@ -62,6 +62,7 @@ app.post('/api/make-opening', authenticateJWT, authenticateAdmin, async (req, re
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/game', gameRouter);
 
 setupGameEvents(app);
 

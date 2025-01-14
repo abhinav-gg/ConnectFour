@@ -21,3 +21,9 @@ export class ShortCodeConflictError extends Error {
     super('A short code with this name already exists, please regenerate');
   }
 }
+
+export class MultipleGamesFoundError extends Error {
+  constructor() {
+    super('Critical failure: Multiple games found for this query');
+  }
+}

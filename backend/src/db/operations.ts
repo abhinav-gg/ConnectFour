@@ -8,9 +8,8 @@ const openingOps = new OpeningOperations();
 const gameOps = new GameOperations();
 
 export const dbOperations = {
-  // deprecated, remove ASAP
-  __getAllUsers: databaseOps.__getAllUsers.bind(databaseOps),
-  // new
+  // User Operations
+  __getAllUsers: databaseOps.__getAllUsers.bind(databaseOps),  // deprecated, remove ASAP
   createUser: databaseOps.createUser.bind(databaseOps),
   recordUserLogin: databaseOps.recordUserLogin.bind(databaseOps),
   getUserByUsername: databaseOps.getUserByUsername.bind(databaseOps),
@@ -23,9 +22,19 @@ export const dbOperations = {
   getAllUserTagNames: databaseOps.getAllUserTagNames.bind(databaseOps),
   getAnonymousUser: databaseOps.getAnonymousUser.bind(databaseOps),
 
+  // Opening Operations
   GetOpening: openingOps.GetOpening.bind(openingOps),
   CreateOpening: openingOps.CreateOpening.bind(openingOps),
 
-  GetGameByShortCode: gameOps.GetGameByShortCode.bind(openingOps),
-  MakeMove: gameOps.MakeMove.bind(openingOps)
+  // Game Operations
+  GetGameByShortCode: gameOps.GetGameByShortCode.bind(gameOps),
+  MakeMove: gameOps.MakeMove.bind(gameOps),
+  BeginFindingGame: gameOps.BeginFindingGame.bind(gameOps),
+  FinishedGameLookup: gameOps.FinishedGameLookup.bind(gameOps),
+  GetGameLookupByPlayer: gameOps.GetGameLookupByPlayer.bind(gameOps),
+  GetGameStatusById: gameOps.GetGameStatusById.bind(gameOps),
+  GetMovesByGameID: gameOps.GetMovesByGameID.bind(gameOps),
+  GetExactTimeControl: gameOps.GetExactTimeControl.bind(gameOps),
+  GetGameInfoID: gameOps.GetGameInfoID.bind(gameOps),
+  CreateGame: gameOps.CreateGame.bind(gameOps)
 };

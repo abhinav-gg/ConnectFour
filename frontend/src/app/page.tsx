@@ -5,7 +5,7 @@ import MainLogoAnimated from '@/components/mainlogo_animated';
 import Dashboard from '@/components/dashboard';
 
 export default function Home() {
-  const text = "Made by Abhinav and Ivan";
+  const text = "Made by Abhinav and Friends";
   const [showText, setShowText] = useState(false);
   const [opacities, setOpacities] = useState<number[]>([]);
 

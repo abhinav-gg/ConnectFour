@@ -1,13 +1,20 @@
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
 
 export type GameInfo = {
-    id: UUID;
-    gamemode: UUID;
-    time_control: UUID;
+    gamemode: GameMode;
+    time_control: TimeControl;
 };
 
 export type GameMode = {
-    id: UUID;
     name: string;
     event: UUID;
 };
+
+export type TimeControl = {
+    base_time: number;
+    increment: number;
+    disadvantage: number;
+}
+
+
+

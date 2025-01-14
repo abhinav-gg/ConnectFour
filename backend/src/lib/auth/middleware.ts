@@ -19,17 +19,14 @@ export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: 
 
   try {
     const decoded = verifyAccessToken(token); // Verify the token
-
     // check if decoded is promise null and raise error
     if (!decoded) {
       throw new Error('Unable to decode token');
     }
     else {
-      console.log('Decoded:', decoded, 'Token:', token);
       req.user = decoded; // Attach user info to the request
       next(); // Call next to pass control to the next middleware
     }
-
   } catch (err) {
     res.status(403).json({ error: 'Invalid or expired token' });
     return; // Ensure we return here to avoid further execution

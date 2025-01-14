@@ -1,25 +1,36 @@
-export interface Games {
+import { TimeControl } from "@shared/Models/gameInfo";
+import { GameMode } from "@shared/Models/gameInfo";
+import { UUID } from "crypto"
+
+export type GameInfo = {
+    id: UUID;
+    gamemode: UUID;
+    time_control: UUID;
+};
+
+export type GameRequest = {
+    gameMode: GameMode;
+    timeControl: TimeControl;
+}
+
+export type Games = {
     id: string
     short_id: string
-    player1: string
-    player2: string
     game_info: string
-    elo_win: number
-    elo_loss: number
     state: string
     created_at: string
 }
 
-export interface GameStates {
+export type GameStates = {
     id: string
     state: string
 }
 
-export interface Moves {
-    id: string
-    game_id: string
-    player: string
-    move: number
-    col: number
-    created_at: string
+export type Move = {
+    game_id: UUID,
+    move: number,
+    player: UUID,
+    col: number,
+    played_at: number,
+    delta: number
 }

@@ -3,7 +3,6 @@ export type RoomID = string;
 
 /////////// SENT TO FRONTEND BY SERVER ///////////
 
-
 export  type RoomFull = {
     event: 'roomFull';
 };
@@ -27,7 +26,7 @@ export type MoveMade = {
 
 export type JoinGame = {
   event: 'joinGame';
-  data: { roomId: RoomID; userId: UUID; };
+  data: { roomId: RoomID; };
 };
 
 export type MakeMove = {
@@ -46,4 +45,3 @@ export type Error = {
 };
 
 export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart | PlayerDisconnected | MoveMade;
-

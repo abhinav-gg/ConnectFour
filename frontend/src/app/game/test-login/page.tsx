@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
-import Dashboard from '@/components/dashboard';
 
 const HomePage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -49,7 +48,6 @@ const HomePage = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <Dashboard />
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <h1 className="text-3xl font-bold mb-6">Welcome to the Game</h1>
         <p className="text-lg">Checking your authentication status...</p>

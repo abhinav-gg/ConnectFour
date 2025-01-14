@@ -75,6 +75,51 @@ export class OpeningOperations {
       }
       return result.rows[0]?.description || '# Unknown Opening';
     }
+
+    async ChangeOpening(position: String, description: String): Promise<any> {
+      const client = await this.getAdminClient();
+      try {
+        const descriptionId = await client.query(
+          `SELECT id FROM OpeningDescription
+           INNER JOIN Opening ON Opening.opening_description_id = OpeningDescription.id
+           WHERE Opening.position = '${position}'`
+        );
+        if (descriptionId.rowCount === 0) {
+          throw new Error("Opening not found");
+        }
+        await client.query(
+          `UPDATE OpeningDescription SET description = $1 WHERE id = $2`,
+          [description, descriptionId.rows[0].id]
+        );
+      } catch (error) {
+        console.error('Failed to change opening:', error);
+        throw error;
+      } finally {
+        client.release();
+        this.client = null;
+      }
+      return {"status": "Success"};
+    }
+
+    async AddOpeningConnection(new_position: String, old_position: String): Promise<any> {
+      const client = await this.getAdminClient();
+      try {
+        const result = await client.query(
+          `INSERT INTO Opening (position, opening_description_id) 
+            SELECT $1, opening_description_id FROM Opening 
+            WHERE position = $2`,
+          [new_position, old_position]
+        );
+      } catch (error) {
+        console.error('Failed to add opening connection:', error);
+        throw error;
+      } finally {
+        client.release();
+        this.client = null;
+      }
+      return {"status": "Success"};
+    }
+
 }
   
 

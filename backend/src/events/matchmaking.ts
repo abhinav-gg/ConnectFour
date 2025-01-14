@@ -1,3 +1,4 @@
+import { TimeControl } from '@shared/Models/gameInfo';
 import { GameOperations } from '../db/gameOps';
 // file to control all elements of user matchmaking and game creation
 
@@ -9,7 +10,7 @@ import { GameOperations } from '../db/gameOps';
 export function CategoriseTime(timeControl: TimeControl): string { 
     // Calculate total game time in seconds:
     // 2 * base time (both players) + disadvantage + increment * total moves
-    const totalTime = (2 * timeControl.baseTime) + timeControl.disadvantage + (timeControl.increment * 30);
+    const totalTime = (2 * timeControl.base_time) + timeControl.disadvantage + (timeControl.increment * 30);
     
     // Categorize based on total game time:
     // Hyper Bullet: ≤ 70 seconds (1.16 minutes)
@@ -29,7 +30,7 @@ export function CategoriseTime(timeControl: TimeControl): string {
 }
 // TODO: figure out what GameOperations is and why it keeps trying to be used for this function
 // FindCompetitiveMatch takes the userID and timeControlId and returns a match or null if they need to wait
-export async function FindCompetitiveMatch(userId: string, timeControlId: string): Promise<string | null> {
+/*export async function FindCompetitiveMatch(userId: string, timeControlId: string): Promise<string | null> {
     const gameOps = new GameOperations();
     
     try {
@@ -170,3 +171,4 @@ function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPlayer): G
     return ratingChanges;
 }
 
+*/

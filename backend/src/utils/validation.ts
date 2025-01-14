@@ -1,3 +1,5 @@
+import { TimeControl } from "@shared/Models/gameInfo";
+
 /**
  * Validates username format
  * Rules:
@@ -54,3 +56,9 @@ export const validateLength = (str: string, min: number, max: number): boolean =
   const length = str.trim().length;
   return length >= min && length <= max;
 };
+
+export const validateTimeControl = (timeControl: TimeControl): boolean => {
+  return timeControl.base_time >= 0 && timeControl.base_time <= 30
+  && timeControl.increment >= 0     && timeControl.increment <= 600
+  && timeControl.disadvantage >= 0  && timeControl.disadvantage <= 600;
+}

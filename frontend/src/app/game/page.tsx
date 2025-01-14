@@ -16,7 +16,6 @@ export default function TestingWebsockets() {
   const [isConnected, setIsConnected] = useState(false);
   const [playersCount, setPlayersCount] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
-  const userIdRef = useRef(crypto.randomUUID());
   const statusTextRef = useRef<HTMLParagraphElement>(null);
   const gameBoardRef = useRef<GameState>();
   gameBoardRef.current = new GameState();
@@ -45,8 +44,6 @@ export default function TestingWebsockets() {
     // Pass the token as a protocol
     const newSocket = new WebSocket(backendUrl, [accessToken]);
     
-    console.log('Connection established with userId:', userIdRef.current);
-
     newSocket.onopen = () => {
       console.log('WebSocket connected!');
       setIsConnected(true);
@@ -56,7 +53,7 @@ export default function TestingWebsockets() {
       setRoomId(roomFromUrl);
       newSocket.send(JSON.stringify({ 
         event: 'joinGame', 
-        data: { roomId: roomFromUrl, userId: userIdRef.current } 
+        data: { roomId: roomFromUrl } 
         }));
     };
 
@@ -66,7 +63,7 @@ export default function TestingWebsockets() {
       const data = JSON.parse(event.data) as Message;
       console.log('Received message:', data);
 
-      switch (data.event) {
+      /*switch (data.event) {
         case 'playerJoined':
           setPlayersCount(data.data.playersCount);
           if (data.data.playersCount === 1) {
@@ -108,7 +105,7 @@ export default function TestingWebsockets() {
               // }
           }
         break;
-      }
+      }*/
     };
     
     return () => {
@@ -131,7 +128,7 @@ export default function TestingWebsockets() {
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ 
           event: 'joinGame', 
-          data: { roomId: currentRoomId, userId: userIdRef.current } 
+          data: { roomId: currentRoomId } 
         }));
       }
     }

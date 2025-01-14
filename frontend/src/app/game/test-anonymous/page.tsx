@@ -23,7 +23,7 @@ const TestAnonymousPage = () => {
 
         const data = await response.json();
         localStorage.setItem('token', data.data.accessToken);
-        router.push('/game');
+        router.push('/game/test-join');
       } catch (error) {
         setError(error instanceof Error ? error.message : 'An error occurred');
         console.error('Error creating anonymous account:', error);

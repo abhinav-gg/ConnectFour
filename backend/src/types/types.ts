@@ -1,9 +1,8 @@
 import type { UUID } from "crypto";
 
 export type Room = {
-  player1: UUID;
-  player2: UUID;
-  currentTurn: number; // 0 or 1 for fast reference
+  players: UUID[];
+  currentTurn: number;
 };
 
 export type GameState = {

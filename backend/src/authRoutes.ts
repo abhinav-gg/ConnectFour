@@ -44,11 +44,6 @@ authRouter.post('/login', async (req: Request, res: any) => {
     return res.status(400).json({ error: 'Password is required' });
   }
   console.log('Login:', username, password);
-  const schema = z.object({
-    username: z.string().max(30).optional(),
-    email: z.string().email().optional(),
-    password: z.string().min(8).max(1024),
-  });
 
   try {
     let fetchedHash: string | null = null;
@@ -135,7 +130,6 @@ authRouter.get('/profile', authenticateJWT, async (req: Request, res: Response, 
     next(error);
   }
 });
-
 
 authRouter.get('/protected-route', authenticateJWT, (req: any, res: Response) => {
   res.json({ message: 'You are authenticated!', user: req.user });
