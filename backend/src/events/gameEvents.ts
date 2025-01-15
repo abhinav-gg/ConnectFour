@@ -222,7 +222,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               return;
             }
 
-            // The user is meant to be in this room
             // Check if the user is already in the room
             let gamemode = getGameMode(roomId);
             let time_control = getTimeControl(roomId);
@@ -258,6 +257,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
 
               case 'friendly': {
+
+                // Check that the user is free to join the room
 
                 const roomFull = getRoom(roomId)?.players.length === 2;
                 // standard friendly gamemode starts with 2 players (current socket added above)
@@ -327,7 +328,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             let verification: verificationData;
             switch (gamemode?.name) {
-              case 'standard': {
+              case 'friendly': 
+              case 'standard' : {
 
                 try {
                   verification = await verifyStandardGame(roomId, userId!, col);
@@ -354,6 +356,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             });
             try {
+              // consider speed, will this write to the database in time for the next move??
               const dbResponse = await dbOperations.MakeMove(roomId, userId, verification.turn, col, verification.delta);
             }
             catch (error) {
@@ -404,7 +407,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
           // the player has some time to return if there are other players so do nothing
           if (room.players.length === 1) {
-            handleGameEnd(roomId, 'abandoned');
+            handleGameEnd(roomId, 'abandoned'); // TODO: handle this
           }
           
         }

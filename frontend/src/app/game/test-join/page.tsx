@@ -10,6 +10,8 @@ import AuthPage from '@/components/checkAuth';
 const TestJoinPage = () => {
   const [selectedTimeControl, setSelectedTimeControl] = useState('');
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gameType, setGameType] = useState<'search' | 'create' | 'friend' | 'computer' | null>(null);
 
   const requestGame = async () => {
       
@@ -17,6 +19,12 @@ const TestJoinPage = () => {
     const selectedControl = StandardGamemodes.find((control) => control.id === selectedTimeControl);
 
     if (!selectedControl) {
+      setMessage('Please select a time control');
+      console.error('Selected time control not found');
+      return;
+    }
+    if (!gameType) {
+      setMessage('Please select a game type');
       console.error('Selected time control not found');
       return;
     }
@@ -50,9 +58,18 @@ const TestJoinPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle the game search logic here
-    console.log('Searching for game with time control:', selectedTimeControl);
-    requestGame();
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      setMessage('Requesting game...');
+      requestGame();
+    } catch (error) {
+      setMessage('Error requesting game');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleNotAuth = () => {
@@ -60,38 +77,48 @@ const TestJoinPage = () => {
   }
 
   return (
-    <AuthPage
-      onAuthFail={handleNotAuth}>
-    <div className="flex min-h-screen bg-gray-100">
-      <Dashboard />
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <h1 className="text-3xl font-bold mb-6">Search for a Game</h1>
-        {message && <p className="text-lg">{message}</p>}
-        <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Select Time Control</h2>
-          <div className="flex flex-wrap justify-center mb-4">
-            {StandardGamemodes.map((control) => (
-              <div className="flex justify-center mb-2 mx-2" key={control.id}>
-                <button
-                  type="button"
-                  className={`py-2 px-4 rounded-lg ${selectedTimeControl === control.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}
-                  onClick={() => setSelectedTimeControl(control.id)}
-                >
-                  {control.label}{`(${control.base}+${control.increment}-${control.disadvantage})`}
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors"
-          >
-            Search Game
-          </button>
-        </form>
+    <AuthPage onAuthFail={handleNotAuth}>
+      <div className="flex min-h-screen bg-gray-100">
+        <Dashboard />
+        <div className="flex-1 flex flex-col items-center justify-center p-8">
+          <h1 className="text-3xl font-bold mb-6">Search for a Game</h1>
+          {message && <p className="text-lg">{message}</p>}
+          <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Select Time Control</h2>
+            <div className="flex flex-wrap justify-center mb-4">
+              {StandardGamemodes.map((control) => (
+                <div className="flex justify-center mb-2 mx-2" key={control.id}>
+                  <button
+                    type="button"
+                    className={`py-2 px-4 rounded-lg ${selectedTimeControl === control.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}
+                    onClick={() => setSelectedTimeControl(control.id)}
+                  >
+                    {control.label}{`(${control.base}+${control.increment}-${control.disadvantage})`}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors mb-4"
+            >
+              Search Game
+            </button>
+            <div className="flex flex-col space-y-2">
+              <button className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors">
+                Create Game
+              </button>
+              <button className="w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600 transition-colors">
+                Play with Friends
+              </button>
+              <button className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition-colors">
+                Play Computer
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
-  </AuthPage>
+    </AuthPage>
   );
 };
 
