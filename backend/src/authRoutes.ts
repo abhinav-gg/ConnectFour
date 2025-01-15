@@ -111,12 +111,10 @@ authRouter.get('/anonymous', async (req: Request, res: Response) => {
 // Profile Route
 authRouter.get('/profile', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
   const userId = (req as any).user?.userId;
-  console.log('User ID:', userId);
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-  console.log('User ID:', userId);
   try {
     const user = await dbOperations.getUserByID(userId);
     if (!user) {

@@ -32,9 +32,11 @@ export const dbOperations = {
   BeginFindingGame: gameOps.BeginFindingGame.bind(gameOps),
   FinishedGameLookup: gameOps.FinishedGameLookup.bind(gameOps),
   GetGameLookupByPlayer: gameOps.GetGameLookupByPlayer.bind(gameOps),
-  GetGameStatusById: gameOps.GetGameStatusById.bind(gameOps),
   GetMovesByGameID: gameOps.GetMovesByGameID.bind(gameOps),
   GetExactTimeControl: gameOps.GetExactTimeControl.bind(gameOps),
   GetGameInfoID: gameOps.GetGameInfoID.bind(gameOps),
-  CreateGame: gameOps.CreateGame.bind(gameOps)
+  CreateGame: gameOps.CreateGame.bind(gameOps),
+  GetTimeControlFromShortCode: gameOps.GetTimeControlFromShortCode.bind(gameOps),
+  GetGameModeFromShortCode: gameOps.GetGameModeFromShortCode.bind(gameOps),
+  GetGameStatusById: gameOps.GetGameStatusById.bind(gameOps),
 };

@@ -8,10 +8,6 @@ export type GameInfo = {
     time_control: UUID;
 };
 
-export type GameRequest = {
-    gameMode: GameMode;
-    timeControl: TimeControl;
-}
 
 export type Games = {
     id: string

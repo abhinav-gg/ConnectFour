@@ -7,7 +7,7 @@ export type GameInfo = {
 
 export type GameMode = {
     name: string;
-    event: UUID;
+    event: UUID | null;
 };
 
 export type TimeControl = {

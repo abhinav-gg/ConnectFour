@@ -2,7 +2,7 @@ import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
 import { Games, Move } from '@/models/Game';
-import { TimeControl } from '@shared/Models/gameInfo';
+import { GameMode, TimeControl } from '@shared/Models/gameInfo';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
@@ -18,7 +18,6 @@ export class GameOperations {
       connectionString: process.env.DB_URL,
       application_name: application_name
     });
-    console.log("Requesting client");
     if (!this.client) {
       this.client = await pool.connect();
     }
@@ -43,6 +42,7 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
 
@@ -62,26 +62,29 @@ export class GameOperations {
         throw error;
       } finally {
         client.release();
+        this.client = null;
       }
     }
 
     // Create game from both players
       // Insert into game
       // Update both player entries in game lookup
-  async CreateGame(shortCode: string, game_info: string): Promise<void> {
+  async CreateGame(shortCode: string, game_info: string): Promise<string> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `INSERT INTO con4_schema.Games (player, game_info, state)
-          VALUES ($1, $2, 'scheduled')`,
+        `INSERT INTO con4_schema.Games (short_id, game_info, state)
+          VALUES ($1, $2, 'scheduled')
+          RETURNING short_id`,
         [shortCode, game_info]
       );
-      return;
+      return result.rows[0].id;
     } catch (error) {
-      console.error('Failed to fetch id by email:', error);
+      console.error('Failed to make the game:', error);
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
   
@@ -99,6 +102,7 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
 
@@ -118,12 +122,12 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
   
   // Get ongoing games by player
   async GetGameLookupByPlayer(playerid: string): Promise<string | null> {
-    console.log(this);
     const client =  this.client ?? await this.getClient();
     try {
       const result = await client.query(
@@ -140,6 +144,7 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
 
@@ -158,6 +163,7 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
 
@@ -176,6 +182,7 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
 
@@ -193,24 +200,7 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
-    }
-  }
-
-  async GetGameStatusById(gameid: string): Promise<string> {
-    const client = await this.getClient();
-    try {
-      const result = await client.query(
-        `SELECT con4_schema.GameStates.state FROM con4_schema.Games
-          INNER JOIN con4_schema.GameStates ON con4_schema.Games.state = con4_schema.GameStates.id
-          WHERE con4_schema.Games.id = $1`,
-        [gameid]
-      );
-      return result.rows[0]?.state;
-    } catch (error) {
-      console.error('Failed to fetch game status by id:', error);
-      throw error;
-    } finally {
-      client.release();
+      this.client = null;
     }
   }
 
@@ -233,6 +223,7 @@ export class GameOperations {
       throw error;
     } finally {
       client.release();
+      this.client = null;
     }
   }
 
@@ -241,18 +232,77 @@ export class GameOperations {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT DATEDIFF(day, created_at, now()) FROM con4_schema.GamePlayers
+        `SELECT (CAST((now()-created_at) AS FLOAT)) AS diff FROM con4_schema.GamePlayers
           WHERE player = $1
           ORDER BY created_at DESC
           LIMIT 1`,
         [playerid]
       );
-      return result.rows[0]?.time_since_last_game;
+      return result.rows[0]?.diff ;
     } catch (error) {
       console.error('Failed to fetch time since last game:', error);
       throw error;
     } finally {
       client.release();
+      this.client = null;
+    }
+  }
+
+  // 
+  async GetTimeControlFromShortCode(gameid: string): Promise<TimeControl> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT base_time, increment, disadvantage FROM con4_schema.TimeControls
+          INNER JOIN con4_schema.GameInfo ON con4_schema.GameInfo.time_control = con4_schema.TimeControls.id
+          INNER JOIN con4_schema.Games ON con4_schema.Games.game_info = con4_schema.GameInfo.id
+          WHERE con4_schema.Games.id = $1`,
+        [gameid]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch game info:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async GetGameModeFromShortCode(shortCode: string): Promise<GameMode> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT name, event FROM con4_schema.GameModes
+          INNER JOIN con4_schema.GameInfo ON con4_schema.GameInfo.gamemode = con4_schema.GameModes.id
+          INNER JOIN con4_schema.Games ON con4_schema.Games.game_info = con4_schema.GameInfo.id
+          WHERE con4_schema.Games.short_id = $1`,
+        [shortCode]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch game mode:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async GetGameStatusById(shortcode: string): Promise<string> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT state FROM con4_schema.Games WHERE short_id = $1`,
+        [shortcode]
+      );
+      return result.rows[0]?.state;
+    } catch (error) {
+      console.error('Failed to fetch game status:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
     }
   }
 
@@ -269,4 +319,4 @@ export class GameOperations {
 
 }
 
-// SELECT id FROM con4_schema.gamestates WHERE state = 'ongoing';
+// DELETE FROM con4_schema.users WHERE is_anonymous = true;

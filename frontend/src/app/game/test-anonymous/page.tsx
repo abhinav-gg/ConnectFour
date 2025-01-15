@@ -12,6 +12,11 @@ const TestAnonymousPage = () => {
   useEffect(() => {
     const createAnonymousAccount = async () => {
       try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          router.push('/game/test-join');
+          return;
+        }
         const response = await fetch(`${config.backendUrl}/api/auth/anonymous`, {
           method: 'GET'
         });

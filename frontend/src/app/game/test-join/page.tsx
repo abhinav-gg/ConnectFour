@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
-import { TimeControl } from '@shared/Models/gameInfo';
+import { TimeControl, GameMode, GameInfo } from '@shared/Models/gameInfo';
 import { StandardGamemodes } from '@shared/constants';
 
 const TestJoinPage = () => {
@@ -29,12 +29,15 @@ const TestJoinPage = () => {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        eventId: null,
-        timeControl: {
+        gamemode: {
+          name: 'friendly',
+          event: null
+        } as GameMode,
+        time_control: {
           base_time: base,
           increment: increment,
           disadvantage: disadvantage } as TimeControl,
-      }),
+      } as GameInfo),
     });
     if (!response.ok) {
       console.error('Failed to request game');

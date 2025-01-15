@@ -42,8 +42,6 @@ CREATE TABLE IF NOT EXISTS con4_schema.TimeControls (
   UNIQUE (base_time, increment, disadvantage)
 );
 
-------------------------------------------------------------------------
-
 -- a game is between two players and is created when both players have joined
 CREATE TABLE IF NOT EXISTS con4_schema.Games (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

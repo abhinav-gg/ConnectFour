@@ -5,17 +5,19 @@ import type { JoinGame, MakeMove, Message, MoveMade } from "@shared/Types/websoc
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
+import { GameInfo } from "@shared/Models/gameInfo";
 
 const state: GameState = {
   rooms: new Map()
 };
 
-type UserSocket = {
+type UserCachedSocket = {
   userID: string;
+  gameInfo: GameInfo | null;
   socket: WSocket;
 }
 
-const SocketIDs = [] as UserSocket[];
+const SocketIDs = [] as UserCachedSocket[];
 
 function getSocket(userID: string) {
   return SocketIDs.find(s => s.userID === userID);
@@ -26,7 +28,14 @@ function getUserID(socket: WSocket) {
 }
 
 function addSocket(userID: string, socket: WSocket) {
-  SocketIDs.push({ userID, socket });
+  SocketIDs.push({ userID, gameInfo: null, socket });
+}
+
+function addGameInfo(socket: WSocket, gameInfo: GameInfo) {
+  const index = SocketIDs.findIndex(s => s.socket === socket);
+  if (index !== -1) {
+    SocketIDs[index].gameInfo = gameInfo;
+  }
 }
 
 function removeSocket(userID: string) {
@@ -34,6 +43,20 @@ function removeSocket(userID: string) {
   if (index !== -1) {
     SocketIDs.splice(index, 1);
   }
+}
+
+function getTimeControl(websoc: WSocket) {
+  const data = getUserID(websoc);
+  if (!data) return null;
+
+  return data.gameInfo?.time_control;
+}
+
+function getGameMode(websoc: WSocket) {
+  const data = getUserID(websoc);
+  if (!data) return null;
+
+  return data.gameInfo?.gamemode;
 }
 
 function sendToRoom(roomId: string, event: string, data: any) {
@@ -104,9 +127,41 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               state.rooms.set(roomId, { players: [userId as UUID], currentTurn: 0 });
             }
 
-            const gameInfo = dbOperations.GetGameByShortCode(roomId);
+            let gameInfo = getUserID(ws)?.gameInfo;
 
-            switch (gameInfo.status) {
+            if (!gameInfo) {
+              const gamemode = await dbOperations.GetGameModeFromShortCode(roomId);
+              const time_control = await dbOperations.GetTimeControlFromShortCode(roomId);
+              gameInfo = { gamemode, time_control };
+              addGameInfo(ws, gameInfo);
+            }
+
+            switch (gameInfo?.gamemode.name) {
+
+              case 'standard': {
+
+                // Check if the user is one of the players in the game
+                // If not then enter spectating mode, for now return
+
+                break;
+              }
+
+              case 'standard': {
+
+                // Check if the user is one of the players in the game
+                // If not then enter spectating mode, for now return
+
+                break;
+              }
+
+              default : {
+
+                // The game mode does not exist??
+                throw new Error('Game mode does not exist');
+
+              }
+            }
+
 
             const roomFull = state.rooms.get(roomId)?.players.length === 2; // change to accept large rooms
             // alternatively call database and check if game is ongoing
@@ -179,14 +234,28 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
 
             const moves = await dbOperations.GetMovesByGameID(data.data.roomId);
-            if (moves.length === 0)
-
+            const userId = getUserID(ws)?.userID;
+            const timecontrol = getTimeControl(ws);
+            const gamemode = getGameMode(ws);
+            
             // Verify game here, leave for now assuming no interference occured
-
+            
             // Verify the correct player is sending the move
-
+            
             // Verify the time left here and calculate the time delta
+            let timeTaken = 0; // calculate time taken
 
+            if (moves.length == 0) {
+              // Start the timer for the players
+            }
+            else {
+              for (let i = 0; i < moves.length; i++) {
+                if (moves[i].player === userId) {
+                  timeTaken += moves[i].delta;
+                }
+              }
+            }
+            console.log("Time taken by player:", timeTaken);
 
             room.players.forEach(playerId => {
               const socket = getSocket(playerId)?.socket;
@@ -197,7 +266,15 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             });
 
-            room.currentTurn = room.currentTurn + 1 % room.players.length;
+            switch (gamemode?.name) {
+              case 'standard': {
+                room.currentTurn = room.currentTurn + 1 % room.players.length;
+                break;
+              }
+              default: {
+                throw new Error('Game mode does not exist');
+              }
+            }
             
             try {
               //const dbResponse = await dbOperations.MakeMove(roomId, col, 0);
@@ -213,9 +290,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             // extremely important to verify the game has ended
             // extremely complicated to implement
-
-
-
 
 
             const { roomId } = data.data;
@@ -269,6 +343,19 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         removeSocket(sid);
       }
 
+      // check if the user was in a game - if so then send a message to the other player
+      // if the other player is not connected then mark the game as a draw
+      state.rooms.forEach((room, roomId) => {
+        if (room.players.includes(sid as UUID)) {
+          sendToRoom(roomId, 'playerDisconnected', {
+            playersCount: room.players.length
+          });
+
+          if (room.players.length === 1) {
+            handleGameEnd(roomId);
+          }
+        }
+      });
       // The player will get timed out if they don't reconnect in time and the room will be deleted there
     });
   });
