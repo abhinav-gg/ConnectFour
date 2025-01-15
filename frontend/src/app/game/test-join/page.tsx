@@ -5,6 +5,7 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import { TimeControl, GameMode, GameInfo } from '@shared/Models/gameInfo';
 import { StandardGamemodes } from '@shared/constants';
+import AuthPage from '@/components/checkAuth';
 
 const TestJoinPage = () => {
   const [selectedTimeControl, setSelectedTimeControl] = useState('');
@@ -54,35 +55,13 @@ const TestJoinPage = () => {
     requestGame();
   };
 
-  useEffect(() => {
-    const checkAuthentication = async () => {
-      const redirectUrl = '/game/test-login';
-      try {
-        const token = localStorage.getItem('token'); // Retrieve the token
-        if (!token) {
-            window.location.href = redirectUrl; // Redirect to login page if no token
-            return;
-        }
-        const response = await fetch(`${getConfig().backendUrl}/api/auth/protected-route`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
-          },
-        });
-        if (!response.ok) {
-          throw new Error('User not authenticated');
-        }
-        const data = await response.json();
-        setMessage(data.message); // Set the message from the response
-      } catch (error) {
-        console.error('Error fetching protected route:', error);
-        window.location.href = redirectUrl;
-      }
-    }; checkAuthentication();
-
-  });
+  const handleNotAuth = () => {
+    window.location.href = '/game/test-login';
+  }
 
   return (
+    <AuthPage
+      onAuthFail={handleNotAuth}>
     <div className="flex min-h-screen bg-gray-100">
       <Dashboard />
       <div className="flex-1 flex flex-col items-center justify-center p-8">
@@ -112,6 +91,7 @@ const TestJoinPage = () => {
         </form>
       </div>
     </div>
+  </AuthPage>
   );
 };
 

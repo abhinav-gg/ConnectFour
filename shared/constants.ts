@@ -12,9 +12,9 @@ export const StandardGamemodes = [
     { id: 'bullet3', label: 'Bullet', base: 1, increment: 1, disadvantage: 5 },
 ];
 
-export const StandardGameStates = [
-    'scheduled',
-    'ongoing',
-    'draw'
-]
+export const StandardGameStates = {
+    scheduled: 'scheduled',
+    ongoing: 'ongoing',
+    draw: 'draw'
+}
 

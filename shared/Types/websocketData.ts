@@ -1,16 +1,24 @@
+import { GameInfo } from "@shared/Models/gameInfo";
+
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
 export type RoomID = string;
 
 /////////// SENT TO FRONTEND BY SERVER ///////////
 
+
+export type RoomInfo = {
+  roomId: RoomID; // to double check the user room is correct
+  gameInfo: GameInfo; // to store for frontend to know what to display
+};
+
 export  type RoomFull = {
-    event: 'roomFull';
+  event: 'roomFull';
 };
   
 export type GameStart = {
-    event: 'gameStart';
-    data: { opponentName: string; player: 0 | 1; opponentElo: number; };
-  };
+  event: 'gameStart';
+  data: { opponents: string[]; };
+};
   
 export type PlayerDisconnected = {
   event: 'playerDisconnected';
@@ -19,7 +27,17 @@ export type PlayerDisconnected = {
   
 export type MoveMade = {
   event: 'moveMade';
-  data: { player: 0 | 1; col: number; };
+  data: { username: 0 | 1; col: number; delta: number; };
+};
+
+export type StartTimer = {
+  event: 'startTimer';
+  data: { username: string };
+};
+
+export type EndGame = {
+  event: 'endGame';
+  data: { winner: boolean; };
 };
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
@@ -32,11 +50,6 @@ export type JoinGame = {
 export type MakeMove = {
   event: 'makeMove';
   data: { roomId: RoomID; col: number; };
-};
-
-export type EndGame = {
-  event: 'endGame';
-  data: { roomId: RoomID; };
 };
 
 export type Error = {

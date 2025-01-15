@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/history';
-import { GameState, Player } from '@/utils/game';
+import { GameState, Player } from '@shared/utils/game';
 import { Message } from '@shared/Types/websocketData';
 
 export default function TestingWebsockets() {

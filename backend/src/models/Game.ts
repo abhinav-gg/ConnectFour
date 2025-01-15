@@ -9,7 +9,7 @@ export type GameInfo = {
 };
 
 
-export type Games = {
+export type Game = {
     id: string
     short_id: string
     game_info: string

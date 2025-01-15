@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard'; // Import the Dashboard component
-import AdminPage from '../checkAdmin'; // Import the CheckAdmin component
+import AdminPage from '../../../components/checkAuth'; // Import the CheckAdmin component
 
 export default function AddOpening() {
   const router = useRouter();

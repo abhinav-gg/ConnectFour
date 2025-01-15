@@ -76,14 +76,12 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
         
         case 'friendly':
 
-            const gameModeID = globals.FriendlyNoEventGameMode 
-            const timeControlID = await dbOperations.GetExactTimeControl(time_control);
-            const gameInfoID = await dbOperations.GetGameInfoID(gameModeID, timeControlID);
-            const shortCode = await createGame(gameInfoID);
+            
+            const { id, short_id } = await createGame(gamemode, time_control);
             // Add user to the game search
-
+            console.log(id, short_id);
             // tell user to redirect to the game at the shortcode 
-            res.status(200).json({ message: 'Game Created', shortCode });
+            res.status(200).json({ message: 'Game Created', short_id });
             break;
 
         default:

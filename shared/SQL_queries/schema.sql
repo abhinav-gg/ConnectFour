@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.GamePlayers (
   game_id UUID NOT NULL REFERENCES con4_schema.Games(id),
   player UUID NOT NULL REFERENCES con4_schema.Users(id),
   player_number INT NOT NULL, -- can be higher than 2 in custom gamemodes
-  elo_change INT NOT NULL DEFAULT 0, -- the change in elo for the player
+  elo_change FLOAT NOT NULL DEFAULT 0, -- the change in elo for the player
   created_at TIMESTAMP DEFAULT now()
 );
 
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.Moves (
   col INT NOT NULL CHECK (col >= 0 AND col < 7),
   played_at TIMESTAMP DEFAULT now(),
   delta FLOAT NOT NULL, -- time taken to make the move since the last move
-  PRIMARY KEY (game_id, move)
+  PRIMARY KEY (game_id, move) -- Use a composite key to autogenerate the sql index to speed up queries
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.GameLookup (

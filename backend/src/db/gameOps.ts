@@ -1,7 +1,7 @@
 import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
-import { Games, Move } from '@/models/Game';
+import { Game, Move } from '@/models/Game';
 import { GameMode, TimeControl } from '@shared/Models/gameInfo';
 
 // Load .env from project root
@@ -69,7 +69,7 @@ export class GameOperations {
     // Create game from both players
       // Insert into game
       // Update both player entries in game lookup
-  async CreateGame(shortCode: string, game_info: string): Promise<string> {
+  async CreateGame(shortCode: string, game_info: string): Promise<Game> {
     const client = await this.getClient();
     try {
       const result = await client.query(
@@ -89,7 +89,7 @@ export class GameOperations {
   }
   
   // Get a game by ID
-  async GetGameByID(gameid: string): Promise<Games> {
+  async GetGameByID(gameid: string): Promise<Game> {
     const client = await this.getClient();
     try {
       const result = await client.query(
@@ -186,8 +186,26 @@ export class GameOperations {
     }
   }
 
+  async GetGameModeID(gamemode: GameMode): Promise<string> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT id FROM con4_schema.GameModes
+          WHERE name = $1 AND event = $2`,
+        [gamemode.name, gamemode.event]
+      );
+      return result.rows[0]?.id;
+    } catch (error) {
+      console.error('Failed to fetch game mode id:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
   // Get Game By Short Code
-  async GetGameByShortCode(shortCode: string): Promise<Games> {
+  async GetGameByShortCode(shortCode: string): Promise<Game> {
     const client = await this.getClient();
     try {
       const result = await client.query(
@@ -249,7 +267,7 @@ export class GameOperations {
   }
 
   // 
-  async GetTimeControlFromShortCode(gameid: string): Promise<TimeControl> {
+  async GetTimeControlFromShortCode(shortCode: string): Promise<TimeControl> {
     const client = await this.getClient();
     try {
       const result = await client.query(
@@ -257,7 +275,7 @@ export class GameOperations {
           INNER JOIN con4_schema.GameInfo ON con4_schema.GameInfo.time_control = con4_schema.TimeControls.id
           INNER JOIN con4_schema.Games ON con4_schema.Games.game_info = con4_schema.GameInfo.id
           WHERE con4_schema.Games.id = $1`,
-        [gameid]
+        [shortCode]
       );
       return result.rows[0];
     } catch (error) {
@@ -306,10 +324,55 @@ export class GameOperations {
     }
   }
 
+  async AssignGame(gameid: string, playerid: string, playerNum: number, deltaElo: number): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const _res = await client.query(
+        `UPDATE con4_schema.GameLookup
+          SET game = $1
+          WHERE player = $2`,
+        [gameid, playerid]
+      );
+      const res = await client.query(`
+        INSERT INTO con4_schema.GamePlayers (game_id, player, player_number, elo_change)`); // now insert into gameplayers
+      return;
+    } catch (error) {
+      console.error('Failed to assign game:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async UnassignGame(game_id: string, playerid: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const _res = await client.query(
+        `UPDATE con4_schema.GameLookup
+          SET game = NULL
+          WHERE player = $1`,
+        [playerid]
+      );
+      const res = await client.query(
+        `DELETE FROM con4_schema.GamePlayers
+          WHERE player = $1
+          AND game_id = $2`,
+        [playerid, game_id]
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to unassign game:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
     // End ongoing game
       // Update game status <- difficult
       // Remove entry for both players in GameLookup <- function defined above
-    
 
 /////////////////////// Below are functions that are not called during live games but for analysing games
 
