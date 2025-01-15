@@ -25,7 +25,7 @@ export default function Leaderboard() {
 
   return (
     <div className={`flex min-h-screen ${darkMode ? 'bg-black' : 'bg-white'}`}>
-      <Dashboard />
+      <Dashboard darkMode={darkMode} />
       <div className="flex-1 p-8 relative">
         {/* Theme Toggle Button */}
         <button
