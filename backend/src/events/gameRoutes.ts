@@ -1,7 +1,7 @@
 // src/routes/authRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
 import { dbOperations } from '@/db/operations';
-import { GameMode, TimeControl } from '@shared/Models/gameInfo';
+import { GameMode, SendToRoom, TimeControl } from '@shared/Models/gameInfo';
 import { authenticateJWT } from '@/lib/auth/middleware';
 import * as globals from '@shared/constants';
 import { createGame, quitGameSearch } from './gameHelper';
@@ -34,7 +34,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
 
     // Check if the user is already in the game lookup
     const gameId = await dbOperations.GetGameLookupByPlayer(userId);
-    
+    console.log('Game ID:', gameId);
     if (gameId) {
         // First check if the game is still active
         try {
@@ -71,17 +71,33 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
             //////////////////////////////////////////////////////////////////
         
             // If that fails then go to waiting room
+
+
+            // README: Make the game after the matchamking is done incase of a failure 
+            //                          / two people in different games are matched
+
             
             break;
         
         case 'friendly':
 
-            
-            const { id, short_id } = await createGame(gamemode, time_control);
-            // Add user to the game search
-            console.log(id, short_id);
-            // tell user to redirect to the game at the shortcode 
-            res.status(200).json({ message: 'Game Created', short_id });
+            try {
+                const game = await createGame(gamemode, time_control);
+                // Add user to the game search
+                console.log(game.id, game.short_id);
+
+
+                // Add user to the game lookup
+                await dbOperations.BeginFindingGame(userId, game.game_info, game.id);
+
+                // tell user to redirect to the game at the shortcode 
+                res.status(200).json({ event: "sendToRoom",
+                    data: { roomId: game.short_id } } as SendToRoom);
+            }
+            catch (error) {
+                console.log('Failed to create game:', error);
+                res.status(500).json({ error: 'Failed to create game' });
+            }
             break;
 
         default:

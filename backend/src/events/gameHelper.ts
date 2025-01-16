@@ -13,7 +13,15 @@ export async function quitGameSearch(userId: string) {
     }
 }
 
-//
+/**
+ * Enters the user into the game lookup table
+ * This is for competitive games where the user did not get a match. AKA waiting room function.
+ * @param userId The user ID
+ * @param gameModeId The game mode ID
+ * @param timeControl The time control
+ * 
+ * @returns void
+ */
 export async function enterGameSearch(userId: string, gameModeId: string, timeControl: TimeControl) {
     try {
         if (!validateTimeControl(timeControl)) {
@@ -33,6 +41,11 @@ export async function createGame(gamemode: GameMode, time_control: TimeControl):
     try {
         const gameModeID = await dbOperations.GetGameModeID(gamemode);
         const timeControlID = await dbOperations.GetExactTimeControl(time_control);
+
+        if (!gameModeID || !timeControlID) {
+            throw new Error('GameModes or TimeControl not found');
+        }
+
         const gameInfoID = await dbOperations.GetGameInfoID(gameModeID, timeControlID);
         
         console.log('Creating game with:', gameInfoID);
@@ -40,8 +53,7 @@ export async function createGame(gamemode: GameMode, time_control: TimeControl):
         const shortCode = genRandomGameKey();
 
         // create the game
-        const result = await dbOperations.CreateGame(shortCode, gameInfoID);
-        return result;
+        return await dbOperations.CreateGame(shortCode, gameInfoID);
     }
     catch (error) {
         console.log('Failed to create game:', error);

@@ -27,15 +27,14 @@ export class GameOperations {
 
   // Look for game
     // Add entry to GameLookup
-  async BeginFindingGame(playerid: string, game_info: string): Promise<void> {
+  async BeginFindingGame(playerid: string, game_info: string, game_id?: string,): Promise<void> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `INSERT INTO con4_schema.GameLookup (player, game_info)
-         VALUES ($1, $2)`,
-        [playerid, game_info]
+        `INSERT INTO con4_schema.GameLookup (player, game, game_info)
+         VALUES ($1, $2, $3)`,
+        [playerid, game_id, game_info]
       );
-
       return;
     } catch (error) {
       console.error('Failed to fetch id by email:', error);
@@ -75,10 +74,13 @@ export class GameOperations {
       const result = await client.query(
         `INSERT INTO con4_schema.Games (short_id, game_info, state)
           VALUES ($1, $2, 'scheduled')
-          RETURNING short_id`,
+          RETURNING *`,
         [shortCode, game_info]
       );
-      return result.rows[0].id;
+      if (result.rowCount === 0) {
+        throw new Error("Failed to create game");
+      }
+      return result.rows[0];
     } catch (error) {
       console.error('Failed to make the game:', error);
       throw error;
@@ -135,7 +137,7 @@ export class GameOperations {
           WHERE player = $1`,
         [playerid]
       );
-      if (result.rowCount ?? 0 > 1 ) {
+      if (result.rowCount && result.rowCount > 1 ) {
         throw new DBError.MultipleGamesFoundError();
       }
       return result.rows[0]?.game_id ?? null;
@@ -189,11 +191,18 @@ export class GameOperations {
   async GetGameModeID(gamemode: GameMode): Promise<string> {
     const client = await this.getClient();
     try {
-      const result = await client.query(
-        `SELECT id FROM con4_schema.GameModes
-          WHERE name = $1 AND event = $2`,
-        [gamemode.name, gamemode.event]
-      );
+      let result;
+      if (gamemode.event) {
+        result = await client.query(
+          `SELECT id FROM con4_schema.GameModes
+            WHERE name = $1 AND event = $2`,
+          [gamemode.name, gamemode.event]);
+      } else {
+        result = await client.query(
+          `SELECT id FROM con4_schema.GameModes
+            WHERE name = $1`,
+          [gamemode.name])
+      };
       return result.rows[0]?.id;
     } catch (error) {
       console.error('Failed to fetch game mode id:', error);
@@ -225,17 +234,21 @@ export class GameOperations {
   async GetGameInfoID(gamemode: string, time_control: string) {
     const client = await this.getClient();
     try {
-      const result = await client.query(
+      let result;
+      result = await client.query(
         `SELECT id FROM con4_schema.GameInfo
           WHERE gamemode = $1 AND time_control = $2`,
         [gamemode, time_control]
       );
       if (result.rowCount === 0) {
-        // Insert here
+        result = await client.query(
+          `INSERT INTO con4_schema.GameInfo (gamemode, time_control)
+            VALUES ($1, $2)
+            RETURNING id`,
+          [gamemode, time_control]);
       }
-      else {
-        return result.rows[0]?.id;
-      }
+      return result.rows[0]?.id;
+      
     } catch (error) {
       console.error('Failed to fetch game info id:', error);
       throw error;

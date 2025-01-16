@@ -14,17 +14,17 @@ export type RoomInfo = {
 export  type RoomFull = {
   event: 'roomFull';
 };
-  
+
 export type GameStart = {
   event: 'gameStart';
   data: { opponents: string[]; };
 };
-  
+
 export type PlayerDisconnected = {
   event: 'playerDisconnected';
   data: { playersCount: number; };
 };
-  
+
 export type MoveMade = {
   event: 'moveMade';
   data: { username: 0 | 1; col: number; delta: number; };
@@ -41,6 +41,12 @@ export type EndGame = {
 };
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
+
+export type ResponseError = {
+  event: 'error';
+  data: { message: string; };
+};
+
 
 export type JoinGame = {
   event: 'joinGame';

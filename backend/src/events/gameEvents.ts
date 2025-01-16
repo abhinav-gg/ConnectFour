@@ -124,7 +124,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
       nextPlayer: userId,
       draw: false,
       winner: null
-    }
+    } as verificationData;
   }
   else {
     for (let i = 0; i < moves.length; i++) {
@@ -171,13 +171,20 @@ export const setupGameEvents = async (app: expressWs.Application) => {
     console.log('Client connected');
 
     const token = req.header('Sec-WebSocket-Protocol') as string;
-    
+    console.log(req.params);
     // Extract the Sec-WebSocket-Protocol header token from the request
     const user = verifyAccessToken(token as string);
 
     if (user) {
       console.log('User connected:', user);
-      const username = (await dbOperations.getUserByID(user.userID)).username;
+      const userobj = await dbOperations.getUserByID(user.userID)
+      console.log(userobj);
+      if (!userobj) {
+        console.log('User not found');
+        ws.close();
+        return;
+      }
+      const username = userobj.username || 'Anonymous';
       addSocket(user.userID, username, ws);
     } else {
       console.log('User not authenticated');
@@ -259,6 +266,16 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               case 'friendly': {
 
                 // Check that the user is free to join the room
+                try {
+                  const gameLookup = await dbOperations.GetGameLookupByPlayer(userId);
+                  if (gameLookup)
+                    throw new Error('User is already in a game');
+                }
+                catch (error) {
+                  console.error('Failed to check if user is free to join room:', error);
+                  ws.send(JSON.stringify({ event: 'error', data: { message: 'Failed to check if user is free to join room' } }));
+                  return;
+                }
 
                 const roomFull = getRoom(roomId)?.players.length === 2;
                 // standard friendly gamemode starts with 2 players (current socket added above)

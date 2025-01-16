@@ -153,13 +153,12 @@ export class UserOperations {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT id, username, email, email_verified, created_at, updated_at, last_login, is_anonymous
-                 FROM con4_schema.users
-                 WHERE id = $1`,
+        `SELECT *
+            FROM con4_schema.users
+            WHERE id = $1`,
         [id]
       );
-
-      return result.rows[0];
+      return result.rows[0] as User;
     } catch (error) {
       console.error('Failed to fetch user by ID:', error);
       throw error;

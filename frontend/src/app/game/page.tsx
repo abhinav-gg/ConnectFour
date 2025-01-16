@@ -7,6 +7,7 @@ import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/history';
 import { GameState, Player } from '@shared/utils/game';
 import { Message } from '@shared/Types/websocketData';
+import AuthPage from '@/components/checkAuth';
 
 export default function TestingWebsockets() {
   const [roomId, setRoomId] = useState('');
@@ -23,26 +24,19 @@ export default function TestingWebsockets() {
   // FOR NOW ASSUME USER IS LOGGED IN
   // THIS WILL BE MERGED WITH /TEST-LOGIN SO THAT USER CAN LOGIN AS ANONYMOUS AS WELL
 
-  useEffect(() => {
-
+  const connectedUser = () => {
+    
     const backendUrl = getConfig().websocketUrl;
-    const accessToken = localStorage.getItem('token');
-    if (!accessToken) {
-      console.error('No access token found!');
-      window.location.href = '/game/test-login';
-      return;
-    }
-
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (!roomFromUrl) {
       console.error('No room ID found in URL!');
-      window.location.href = '/game/test-login';
+      window.location.href = '/game/test-join';
       return;
     }
 
     // Pass the token as a protocol
-    const newSocket = new WebSocket(backendUrl, [accessToken]);
+    const newSocket = new WebSocket(backendUrl, [localStorage.getItem('token')!]);
     
     newSocket.onopen = () => {
       console.log('WebSocket connected!');
@@ -58,12 +52,15 @@ export default function TestingWebsockets() {
     };
 
     setSocket(newSocket);
+  }
 
-    newSocket.onmessage = (event) => {
-      const data = JSON.parse(event.data) as Message;
-      console.log('Received message:', data);
+  useEffect(() => {
+    if (socket) {
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data) as Message;
+        console.log('Received message:', data);
 
-      /*switch (data.event) {
+        /*switch (data.event) {
         case 'playerJoined':
           setPlayersCount(data.data.playersCount);
           if (data.data.playersCount === 1) {
@@ -105,14 +102,15 @@ export default function TestingWebsockets() {
               // }
           }
         break;
-      }*/
-    };
-    
-    return () => {
-      newSocket.close();
-    };
-  }, []);
 
+        }*/
+      };
+    
+      return () => {
+        socket.close();
+      };
+    }
+  });
   const handleJoinRoom = () => {
     const currentRoomId = inputRef.current?.value || '';
     console.log('Joining room:', currentRoomId);
@@ -160,6 +158,8 @@ export default function TestingWebsockets() {
   const HISTORY = <MoveHistory ref={gameBoardRef.current} />;
 
   return (
+  <AuthPage
+    onAuthSuccess={ connectedUser }>
     <div className="flex min-h-screen bg-gray-100">
       <Dashboard />
       <div className="flex-1 flex flex-col">
@@ -180,5 +180,6 @@ export default function TestingWebsockets() {
         </div>
       </div>
     </div>
+  </AuthPage>
   );
 }

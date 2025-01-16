@@ -6,7 +6,7 @@ import SinglePlayerGameboard from '@/components/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
 import GameAnalysis from '@/components/analysis'
 import Opening from '@/components/opening'
-import { GameState } from '@/utils/game'
+import { GameState } from '@shared/utils/game'
 
 export default function OpeningPage() {
     const gameBoardRef = useRef<GameState>();

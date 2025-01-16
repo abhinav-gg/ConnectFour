@@ -2,10 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Player, GameState } from '@/utils/game';
-import { eventEmitter } from '@/utils/eventEmitter';
+import { Player, GameState } from '@shared/utils/game';
+import { eventEmitter } from '@shared/utils/eventEmitter';
 import { getConfig } from '@/config/env';
-import { remark } from 'remark';
 import remarkHtml from 'remark-html';
 
 // Define a type for the response

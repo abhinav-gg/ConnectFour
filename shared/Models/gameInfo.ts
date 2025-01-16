@@ -16,5 +16,8 @@ export type TimeControl = {
     disadvantage: number;
 }
 
-
+export type SendToRoom = {
+    event: 'sendToRoom';
+    data: { roomId: UUID; };
+}
 

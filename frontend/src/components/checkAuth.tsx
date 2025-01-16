@@ -8,9 +8,10 @@ interface CheckAdminProps {
   children: ReactNode; // Define children prop
   // add a callback function if the auth fails
   onAuthFail?: () => void;
+  onAuthSuccess?: () => void;
 }
 
-export default function AuthPage({ children, onAuthFail }: CheckAdminProps) { // Accept children as props
+export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckAdminProps) { // Accept children as props
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -29,6 +30,11 @@ export default function AuthPage({ children, onAuthFail }: CheckAdminProps) { //
             console.log('User not authenticated');
           }
           return;
+        }
+        else {
+          if (onAuthSuccess) {
+            onAuthSuccess();
+          }
         }
       }
     }

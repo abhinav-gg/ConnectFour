@@ -2,8 +2,8 @@
 
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, Home, LogIn, RotateCcw } from 'lucide-react';
-import { GameState, type Player, type Move } from '@/utils/game';
-import { eventEmitter } from '@/utils/eventEmitter'
+import { GameState, type Player, type Move } from '@shared/utils/game';
+import { eventEmitter } from '@shared/utils/eventEmitter'
 
 interface GameBoardProps {
   playerNumber: number | null;

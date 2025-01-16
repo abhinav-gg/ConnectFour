@@ -3,20 +3,20 @@
 import { useEffect, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
-import { TimeControl, GameMode, GameInfo } from '@shared/Models/gameInfo';
-import { StandardGamemodes } from '@shared/constants';
+import { TimeControl, GameMode, GameInfo, SendToRoom } from '@shared/Models/gameInfo';
+import { StandardTimecontrols } from '@shared/constants';
 import AuthPage from '@/components/checkAuth';
 
 const TestJoinPage = () => {
   const [selectedTimeControl, setSelectedTimeControl] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [gameType, setGameType] = useState<'search' | 'create' | 'friend' | 'computer' | null>(null);
+  const [gameType, setGameType] = useState<'standard' | 'friendly' | 'computer' | null>(null);
 
   const requestGame = async () => {
       
     const token = localStorage.getItem('token');
-    const selectedControl = StandardGamemodes.find((control) => control.id === selectedTimeControl);
+    const selectedControl = StandardTimecontrols.find((control) => control.id === selectedTimeControl);
 
     if (!selectedControl) {
       setMessage('Please select a time control');
@@ -25,7 +25,7 @@ const TestJoinPage = () => {
     }
     if (!gameType) {
       setMessage('Please select a game type');
-      console.error('Selected time control not found');
+      console.error('Selected game mode not found');
       return;
     }
 
@@ -49,17 +49,22 @@ const TestJoinPage = () => {
       } as GameInfo),
     });
     if (!response.ok) {
+      const data = await response.json();
       console.error('Failed to request game');
+      setMessage(data.message)
       return;
     }
-    const data = await response.json();
-    console.log('Game requested:', data);
+    else {
+      const data = (await response.json()) as SendToRoom;
+      console.log('Game requested:', data);
+      window.location.href = '/game?room=' + data.data.roomId;
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
-
+    console.log('Requesting game...', selectedTimeControl, gameType);
     try {
       setIsSubmitting(true);
       setMessage('Requesting game...');
@@ -86,7 +91,7 @@ const TestJoinPage = () => {
           <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold mb-4">Select Time Control</h2>
             <div className="flex flex-wrap justify-center mb-4">
-              {StandardGamemodes.map((control) => (
+              {StandardTimecontrols.map((control) => (
                 <div className="flex justify-center mb-2 mx-2" key={control.id}>
                   <button
                     type="button"
@@ -98,20 +103,17 @@ const TestJoinPage = () => {
                 </div>
               ))}
             </div>
-            <button
-              type="submit"
-              className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors mb-4"
-            >
-              Search Game
-            </button>
             <div className="flex flex-col space-y-2">
-              <button className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors">
+              <button className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors"
+                onClick={() => setGameType('standard')}>
                 Create Game
               </button>
-              <button className="w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600 transition-colors">
+              <button className="w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600 transition-colors"
+                onClick={() => setGameType('friendly')}>
                 Play with Friends
               </button>
-              <button className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition-colors">
+              <button className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition-colors"
+                onClick={() => setGameType('friendly')}>
                 Play Computer
               </button>
             </div>

@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { RotateCcw, FileText, ChevronDown } from 'lucide-react'
-import { GameState, Player, Move } from '@/utils/game'
-import { eventEmitter } from '@/utils/eventEmitter'
+import { GameState, Player, Move } from '@shared/utils/game'
+import { eventEmitter } from '@shared/utils/eventEmitter'
 
 const ROWS = 6
 const COLS = 7

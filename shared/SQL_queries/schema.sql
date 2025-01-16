@@ -105,9 +105,22 @@ CREATE TABLE IF NOT EXISTS con4_schema.GameModes (
 );
 
 INSERT INTO con4_schema.GameModes (name) VALUES
-  ('standard'),
+  ('standard-bullet'),
+  ('standard-blitz'),
+  ('standard-rapid'),
   ('friendly')
 ON CONFLICT DO NOTHING;
+
+INSERT INTO con4_schema.TimeControls (base_time, increment, disadvantage) VALUES
+  (10, 0, 30),
+  (5, 2, 25),
+  (5, 0, 20),
+  (3, 2, 15),
+  (2, 0, 10),
+  (1, 1, 5)
+ON CONFLICT DO NOTHING;
+
+  
 
 CREATE TABLE IF NOT EXISTS con4_schema.Elo (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
