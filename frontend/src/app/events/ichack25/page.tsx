@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSpring, animated, config } from '@react-spring/web'
 import { Home, LogIn } from 'lucide-react'
 import IchackLogo from '@/components/ichacklogo'
+import Image from 'next/image'
 
 const eventDate = new Date('2025-02-02T00:00:00')
 
@@ -141,6 +142,69 @@ export default function ICHack25() {
               className="text-center mb-12"
             >
               {isClient ? renderCountdown() : <div>Loading...</div>}
+            </animated.div>
+
+            <animated.div
+              style={formAnimation}
+              className="mb-12"
+            >
+              <div className="flex items-center justify-center space-x-4">
+                <div className="flex flex-col space-y-4">
+                  {[0, 1, 2].map((i) => (
+                    <Image 
+                      key={i}
+                      src="/duck.png"
+                      alt="Duck"
+                      width={32}
+                      height={32}
+                      priority
+                      unoptimized
+                    />
+                  ))}
+                </div>
+
+                <div className="bg-white bg-opacity-90 rounded-lg shadow-md max-w-3xl mx-auto border-2 border-[#0A4C8B]">
+                  <div className="flex items-center bg-gradient-to-r from-[#2A5AA7] to-[#5B9BD5] px-2 py-1">
+                    <div className="flex-1">
+                      <div className="text-white font-bold text-sm">about.txt - Notepad</div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button className="text-black bg-[#E8E8E8] hover:bg-[#D5D5D5] px-3 py-0.5 text-sm font-bold rounded-sm">_</button>
+                      <button className="text-black bg-[#E8E8E8] hover:bg-[#D5D5D5] px-3 py-0.5 text-sm font-bold rounded-sm">□</button>
+                      <button className="text-black bg-[#E8E8E8] hover:bg-[#D5D5D5] px-3 py-0.5 text-sm font-bold rounded-sm">×</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-sm border-b border-gray-300">
+                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">File</div>
+                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">Edit</div>
+                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">Format</div>
+                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">View</div>
+                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">Help</div>
+                  </div>
+                  <div className="p-4 font-mono text-sm text-gray-800 whitespace-pre-line bg-white">
+                    {`IC Hack is an annual hackathon held at Imperial's South Kensington campus. It is the biggest student-run hackathon in Europe.
+
+Running for the 13th year, they're bringing over 700 of the UK's most creative and talented students together for 24 hours of learning, building, fun, and networking.
+
+IC Hack covers food and swag for all hackers, not to mention the opportunity to win some incredible prizes from their sponsors!`}
+                  </div>
+                </div>
+
+                <div className="flex flex-col space-y-4">
+                  {[0, 1, 2].map((i) => (
+                    <Image 
+                      key={i}
+                      src="/duck.png"
+                      alt="Duck"
+                      width={32}
+                      height={32}
+                      className="scale-x-[-1]"
+                      priority
+                      unoptimized
+                    />
+                  ))}
+                </div>
+              </div>
             </animated.div>
 
             <animated.form
