@@ -67,9 +67,19 @@ export default function ICHack25() {
     <div className="bg-black p-8 rounded-lg">
       <div className="flex justify-center space-x-4">
         {[
-          { label: 'Days', value: timeLeft.days, bgColor: 'bg-blue-500', width: 'w-1/3' },
-          { label: 'Hours', value: timeLeft.hours, bgColor: 'bg-red-500', width: 'w-1/3' },
-          <div className="w-1/3 flex flex-col space-y-2">
+          <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
+            <div className="flex items-end">
+              <div className="text-6xl font-bold text-white">{timeLeft.days}</div>
+              <div className="text-sm text-white ml-2 mb-2">Days</div>
+            </div>
+          </div>,
+          <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
+            <div className="flex items-end">
+              <div className="text-6xl font-bold text-white">{timeLeft.hours}</div>
+              <div className="text-sm text-white ml-2 mb-2">Hours</div>
+            </div>
+          </div>,
+          <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
             <div className="bg-yellow-500 rounded-lg p-2 text-white h-1/2 flex items-center justify-center">
               <div className="flex items-end">
                 <div className="text-4xl font-bold">{timeLeft.minutes}</div>
@@ -83,22 +93,7 @@ export default function ICHack25() {
               </div>
             </div>
           </div>
-        ].map((item, index) => {
-          if (index < 2) {
-            return (
-              <div 
-                key={item.label} 
-                className={`${item.bgColor} ${item.width} rounded-lg p-4 flex items-center justify-center`}
-              >
-                <div className="flex items-end">
-                  <div className="text-6xl font-bold text-white">{item.value}</div>
-                  <div className="text-sm text-white ml-2 mb-2">{item.label}</div>
-                </div>
-              </div>
-            );
-          }
-          return item;
-        })}
+        ]}
       </div>
     </div>
   );
