@@ -35,6 +35,11 @@ export type StartTimer = {
   data: { username: string };
 };
 
+export type PlayerJoined = {
+  event: 'playerJoined';
+  data: { playersCount: number; };
+}
+
 export type EndGame = {
   event: 'endGame';
   data: { winner: boolean; };
@@ -63,4 +68,4 @@ export type Error = {
   data: { message: string; };
 };
 
-export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart | PlayerDisconnected | MoveMade;
+export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart | PlayerDisconnected | MoveMade | PlayerJoined | StartTimer;

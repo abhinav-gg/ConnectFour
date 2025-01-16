@@ -60,7 +60,7 @@ export default function TestingWebsockets() {
         const data = JSON.parse(event.data) as Message;
         console.log('Received message:', data);
 
-        /*switch (data.event) {
+        switch (data.event) {
         case 'playerJoined':
           setPlayersCount(data.data.playersCount);
           if (data.data.playersCount === 1) {
@@ -69,7 +69,9 @@ export default function TestingWebsockets() {
             setGameStatus('Game ready to start!');
           }
           break;
-        case 'roomFull':
+        case 'startTimer':
+          break;
+        /*case 'roomFull':
           setGameStatus('Spectating game between players...');
           break;
         case 'gameStart':
@@ -84,7 +86,7 @@ export default function TestingWebsockets() {
         case 'playerDisconnected':
           setPlayersCount(data.data.playersCount);
           setGameStatus('Opponent disconnected. Waiting for new player...');
-          break;
+          break;*/
         case 'moveMade':
           const gameState = gameBoardRef.current;
           if (gameState) {
@@ -95,15 +97,11 @@ export default function TestingWebsockets() {
               gameState.makeMove( 
                 data.data.col, 
               );
-              // There is no way to store this as of right now
-              // if (statusTextRef.current) {
-              //   console.log (gameState.currentPlayer, playerNumber);
-              //   statusTextRef.current.textContent = (gameState.currentPlayer === playerNumber ? 'Your' : "Opponent's") + '  turn...';
-              // }
+          } else {
+            // require user to relog
           }
         break;
-
-        }*/
+        }
       };
     
       return () => {

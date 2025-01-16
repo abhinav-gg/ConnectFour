@@ -44,6 +44,7 @@ export class GameState {
   addMove = (move: Move) => {
     // add move to moves
     this.moves.push(move)
+
     // emit boardUpdated event
     eventEmitter.emit('boardUpdated', { row: -1, col: move.col, player: this.currentPlayer });
   }
@@ -126,7 +127,7 @@ export class GameState {
     return targetRow
   }
 
-  makeMove(col: number): { row: number; success: boolean } {
+  makeMove(col: number, silent = false): { row: number; success: boolean } {
     
     const targetRow = this.getAvailableRow(col)
     // ensure that the board reflects all the moves made i.e. not in history view
@@ -149,9 +150,10 @@ export class GameState {
       this.checkWinner(targetRow, col)
       this.currentPlayer = this.currentPlayer === 1 ? 2 : 1
 
-      // Call boardUpdated event!
       this.currentMoveIndex ++;
-      eventEmitter.emit('boardUpdated', { row: targetRow, col, player: this.currentPlayer });
+      // Call boardUpdated event!
+      if (!silent)
+        eventEmitter.emit('boardUpdated', { row: targetRow, col, player: this.currentPlayer });
       
       return { row: targetRow, success: true }
     }

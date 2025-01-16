@@ -1,16 +1,16 @@
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
-import type { Room, GameState } from "../types/types";
-import type { GameStart, JoinGame, MakeMove, Message, MoveMade } from "@shared/Types/websocketData";
+import type { Room, RoomMap } from "../types/types";
+import type { GameStart, JoinGame, MakeMove, Message } from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
 import { GameInfo, GameMode, TimeControl } from "@shared/Models/gameInfo";
 import { StandardGameStates } from "@shared/constants";
 import { assert } from "console";
-import { Game } from "@/models/Game";
+import { GameState } from "@shared/utils/game";
 
-const state : GameState = {
+const state : RoomMap = {
   rooms: new Map<string, Room>()
 };
 
@@ -70,7 +70,8 @@ function getGameMode(roomid: string): GameMode | undefined {
 function makeRoom(roomid: string, player: string, gamemode: GameMode, time_control: TimeControl) {
   state.rooms.set(roomid, {
     players: [player as UUID],
-    gameInfo: { gamemode, time_control }
+    gameInfo: { gamemode, time_control },
+    currentTurn: 0
   });
 }
 
@@ -109,10 +110,19 @@ type verificationData = {
 
 async function verifyStandardGame(roomId: string, userId: string, col: number): Promise<verificationData> {
   const moves = await dbOperations.GetMovesByGameID(roomId);
-  const timecontrol = getTimeControl(roomId);
-  // Verify game here, leave for now assuming no interference occured
+  const timecontrol = getTimeControl(roomId)!;
+  const room = getRoom(roomId)!;
   
   // Verify the correct player is sending the move
+  if (room.currentTurn !== room.players.indexOf(userId as UUID)) {
+    return {
+      delta: 0,
+      turn: -1,
+      nextPlayer: room.players[room.currentTurn],
+      draw: false,
+      winner: null
+    } as verificationData;
+  }
   
   // Verify the time left here and calculate the time delta
   let timeTaken = 0; // calculate time taken
@@ -127,14 +137,59 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
     } as verificationData;
   }
   else {
+    let allowedTime = 0; // get allowed time from time control
     for (let i = 0; i < moves.length; i++) {
       if (moves[i].player === userId) {
         timeTaken += moves[i].delta;
       }
     }
+    if (userId === room?.players[1]) {
+      allowedTime += timecontrol?.disadvantage as number;
+    }
+    const movesMadeByPlayer = moves.filter(m => m.player === userId).length;
+    allowedTime += timecontrol.base_time
+                +  timecontrol.increment * movesMadeByPlayer;
+
+    const lastMoveMadeTime = moves[moves.length - 1].played_at;
+    const currentTime = new Date().getTime();
+    if (timeTaken > allowedTime){
+      return {
+        delta: lastMoveMadeTime - currentTime,
+        turn: -1,
+        nextPlayer: "",
+        draw: false,
+        winner: room?.players[room.players.indexOf(userId as UUID) === 0 ? 1 : 0]
+      } as verificationData;
+    }
   }
-  console.log("Time taken by player:", timeTaken);
-  throw new Error('Not implemented');
+
+
+  // Verify game here, leave for now assuming no interference occured
+  const intMoves = moves.map(m => { return m.col }) as number[]
+  const gameState = new GameState();
+  intMoves.forEach((col) => {
+    let res = gameState.makeMove(col, true);
+    if (!res.success)
+      throw new Error('Invalid move');
+  });
+  if (gameState.gameOver) {
+    return {
+      delta: 0,
+      turn: -1,
+      nextPlayer: "",
+      draw: false,
+      winner: room?.players[gameState.winner as number]
+    } as verificationData;
+  }
+  else {
+    return {
+      delta: 0,
+      turn: 1,
+      nextPlayer: userId,
+      draw: false,
+      winner: null
+    } as verificationData;
+  }
 }
 
 function endGame(roomId: string, draw: boolean, winner: string) {
@@ -316,7 +371,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             break;
           }
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
           case 'makeMove': {
 
             // assume player is authenticated by wss
@@ -333,17 +388,20 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
             const room = state.rooms.get(roomId);
             const user = getUser(ws)?.userID || '';
-            
-            if (!room || !user) {
+
+            if (!room || !user || !playerInRoom(roomId, user)) {
               // fix this to re-create the room by getting the user to refresh their page
               ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid data on backend' } }));
               return;
             }
 
+            // The player and room have been fully verified
+
             const userId = getUser(ws)?.userID;
             const gamemode = getGameMode(roomId);
 
             let verification: verificationData;
+
             switch (gamemode?.name) {
               case 'friendly': 
               case 'standard' : {
@@ -364,14 +422,17 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             }
             
-            room.players.forEach(playerId => {
-              const socket = getSocket(playerId)?.socket;
-              if (socket) {
-                socket.send(JSON.stringify({ event: 'moveMade', data: { player: 
-                  room?.players.indexOf(user as UUID), col } 
-                }));
-              }
-            });
+            if (verification.turn === 1) {
+              sendToRoom(roomId, 'startTimer', { username: verification.nextPlayer });
+            }
+
+            if (verification.draw || verification.winner) {
+              sendToRoom(roomId, 'endGame', { winner: verification.winner, draw: verification.draw });
+            }
+
+            sendToRoom(roomId, 'moveMade', { player: 
+              room?.players.indexOf(user as UUID), col })
+          
             try {
               // consider speed, will this write to the database in time for the next move??
               const dbResponse = await dbOperations.MakeMove(roomId, userId, verification.turn, col, verification.delta);
