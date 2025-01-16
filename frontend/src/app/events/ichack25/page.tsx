@@ -1,5 +1,5 @@
 'use client'
-
+// TODO: update the dashboard to be the new one when on this page and add the ichack 2025 logo
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSpring, animated, config } from '@react-spring/web'
@@ -64,18 +64,37 @@ export default function ICHack25() {
   }, []);
 
   const renderCountdown = () => (
-    <div className="flex justify-center space-x-4">
-      {[
-        { label: 'Days', value: timeLeft.days },
-        { label: 'Hours', value: timeLeft.hours },
-        { label: 'Minutes', value: timeLeft.minutes },
-        { label: 'Seconds', value: timeLeft.seconds },
-      ].map(({ label, value }) => (
-        <div key={label} className="bg-white bg-opacity-20 rounded-lg p-4">
-          <div className="text-4xl font-bold">{value}</div>
-          <div className="text-sm">{label}</div>
-        </div>
-      ))}
+    <div className="bg-black p-8 rounded-lg">
+      <div className="flex justify-center space-x-4">
+        {[
+          <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
+            <div className="flex items-end">
+              <div className="text-6xl font-bold text-white">{timeLeft.days}</div>
+              <div className="text-sm text-white ml-2 mb-2">Days</div>
+            </div>
+          </div>,
+          <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
+            <div className="flex items-end">
+              <div className="text-6xl font-bold text-white">{timeLeft.hours}</div>
+              <div className="text-sm text-white ml-2 mb-2">Hours</div>
+            </div>
+          </div>,
+          <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
+            <div className="bg-yellow-500 rounded-lg p-2 text-white h-1/2 flex items-center justify-center">
+              <div className="flex items-end">
+                <div className="text-4xl font-bold">{timeLeft.minutes}</div>
+                <div className="text-sm ml-2 mb-1">Minutes</div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-2 text-black h-1/2 flex items-center justify-center">
+              <div className="flex items-end">
+                <div className="text-4xl font-bold">{timeLeft.seconds}</div>
+                <div className="text-sm ml-2 mb-1">Seconds</div>
+              </div>
+            </div>
+          </div>
+        ]}
+      </div>
     </div>
   );
 
@@ -98,10 +117,17 @@ export default function ICHack25() {
           <div className="container mx-auto">
             <animated.h1
               style={titleAnimation}
-              className="text-6xl font-bold text-center mb-8"
+              className="text-6xl font-bold text-center mb-4"
             >
               ICHack25
             </animated.h1>
+
+            <animated.h2
+              style={titleAnimation}
+              className="text-2xl text-center mb-8 text-gray-700"
+            >
+              The largest student-run hackathon in Europe
+            </animated.h2>
 
             <animated.div
               style={logoAnimation}
