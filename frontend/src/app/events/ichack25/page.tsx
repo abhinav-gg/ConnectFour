@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSpring, animated, config } from '@react-spring/web'
 import { Home, LogIn } from 'lucide-react'
+import Dashboard from '@/components/dashboard'
 import IchackLogo from '@/components/ichacklogo'
 
-const eventDate = new Date('2025-02-02T00:00:00')
+const eventDate = new Date('2025-02-02T09:00:00')
 
 const calculateTimeLeft = (eventDate: Date) => {
   const difference = +eventDate - +new Date();
@@ -101,17 +102,7 @@ export default function ICHack25() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-200 to-purple-300 text-gray-800">
       <div className="flex">
-        <div className="w-64 bg-white bg-opacity-10 p-4 flex flex-col shadow-md min-h-screen">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h2>
-          <Link href="/" className="flex items-center text-gray-800 hover:text-blue-600 mb-2">
-            <Home className="mr-2" />
-            Home
-          </Link>
-          <Link href="/login" className="flex items-center text-gray-800 hover:text-blue-600">
-            <LogIn className="mr-2" />
-            Login
-          </Link>
-        </div>
+        <Dashboard/>
 
         <main className="flex-1 px-4 py-8">
           <div className="container mx-auto">

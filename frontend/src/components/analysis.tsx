@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Analysis, AnalysisProps } from '@/utils/analysis'
-import { Player, Move } from '@/utils/game'
-import { eventEmitter } from '@/utils/eventEmitter'
-import { GameState } from '@/utils/game'
+import { Analysis, AnalysisProps } from '@shared/utils/analysis'
+import { Player, Move } from '@shared/utils/game'
+import { eventEmitter } from '@shared/utils/eventEmitter'
+import { GameState } from '@shared/utils/game'
 
 interface AnalysisHistoryProps {
   analysis: Analysis

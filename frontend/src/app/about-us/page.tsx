@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import SinglePlayerGameboard from '@/components/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
-import { GameState } from '@/utils/game'
+import { GameState } from '@shared/utils/game'
 
 export default function AboutUs() {
   return (

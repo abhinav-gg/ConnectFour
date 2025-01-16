@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Home, LogIn, BarChart2, PlayCircle, Info, Book, Trophy, Calendar } from 'lucide-react'
 
 interface DashboardProps {
-  darkMode: boolean;
+  darkMode?: boolean
 }
 
 export default function Dashboard({ darkMode }: DashboardProps) {
