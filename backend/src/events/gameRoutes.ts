@@ -23,6 +23,9 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
         if (!gamemode || !time_control || !userId) {
             throw new Error('Invalid Data');
         }
+        if ((req as any).user!.is_anonymous && gamemode.name !== globals.StandardGameModes.friendly) {
+            throw new Error('User is not logged in for competitive games');
+        }
     }
     catch (error) {
         console.log('Failed to extract data:', error);
@@ -38,12 +41,12 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
     if (gameId) {
         // First check if the game is still active
         try {
-            const state = await dbOperations.GetGameStatusById(gameId);
-            if (state === 'ongoing') {
+            const game = await dbOperations.GetGameByID(gameId);
+            if (game.state === globals.StandardGameStates.ongoing) {
                 res.status(200).json({ message: 'Game is still active, player must finish their game before making a new one' });
                 return;
             }
-            else if (state === 'scheduled') {
+            else if (game.state === globals.StandardGameStates.scheduled) {
                 // User is changing the game they are looking for
                 // Remove the user from the lookup and prepare for new game
                 await quitGameSearch(userId);
@@ -86,7 +89,6 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                 // Add user to the game search
                 console.log(game.id, game.short_id);
 
-
                 // Add user to the game lookup
                 await dbOperations.BeginFindingGame(userId, game.game_info, game.id);
 
@@ -110,6 +112,45 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
 
 gameRouter.get('/test', async (req: Request, res: Response) => {
     res.json({ message: 'Game routes are working!' });
+});
+
+gameRouter.post('/status', authenticateJWT, async (req: Request, res: Response) => {
+    // Check if the player is already in a game
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
+
+    const gameId = await dbOperations.GetGameLookupByPlayer(userId);
+    console.log('Game ID:', gameId);
+
+    if (gameId) {
+        // First check if the game is still active
+        try {
+            const game = await dbOperations.GetGameByID(gameId);
+            if (game.state === globals.StandardGameStates.ongoing) {
+                // return an error with the shortcode of the ongoing game to redirect to
+                res.status(200).json({ event: "sendToRoom",
+                    data: { roomId: game.short_id } } as SendToRoom);
+                return;
+            }
+            else if (game.state === globals.StandardGameStates.scheduled) {
+                // User is changing the game they are looking for
+                // Remove the user from the lookup and prepare for new game
+                await quitGameSearch(userId);
+            }
+            else {
+                throw new Error('Game is not in a state');
+            }
+        }
+        catch (error) {
+            console.log('Failed to remove user from game search:', error);
+            return;
+        }
+    }
+    res.status(200).json({ message: 'No game found' });
 });
 
 gameRouter.post('/get-leaderboard', async (req: Request, res: Response) => {

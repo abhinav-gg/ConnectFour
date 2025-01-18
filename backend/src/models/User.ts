@@ -1,8 +1,8 @@
 
 export interface User {
   id: string;
-  username: string;
-  email: string;
+  username: string | null;
+  email: string | null;
   email_verified: boolean;
   created_at: string;
   updated_at: string;

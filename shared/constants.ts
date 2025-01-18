@@ -18,3 +18,12 @@ export const StandardGameStates = {
     draw: 'draw'
 }
 
+
+export const StandardGameModes = {
+    standard: {
+        bullet: 'standard-bullet',
+        blitz: 'standard-blitz',
+        rapid: 'standard-rapid'
+    },
+    friendly: 'friendly'
+}

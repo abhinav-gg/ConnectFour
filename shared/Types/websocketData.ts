@@ -11,13 +11,25 @@ export type RoomInfo = {
   gameInfo: GameInfo; // to store for frontend to know what to display
 };
 
+export interface PlayerData {
+  username: string;
+  time: number;
+  // in friendly games these simply won't be sent
+  eloW: number | null;
+  eloD: number | null;
+  eloL: number | null;
+};
+
 export  type RoomFull = {
   event: 'roomFull';
 };
 
 export type GameStart = {
   event: 'gameStart';
-  data: { opponents: string[]; };
+  data: { 
+    playerNumber: number;
+    players: PlayerData[] 
+  }; // return the ordered list of players
 };
 
 export type PlayerDisconnected = {
@@ -27,17 +39,21 @@ export type PlayerDisconnected = {
 
 export type MoveMade = {
   event: 'moveMade';
-  data: { username: 0 | 1; col: number; delta: number; };
+  data: { nextPlayer: number; col: number; timeLeft: number };
 };
+
+export type Draw = {
+  event: 'draw';
+  // Is data needed?
+}
 
 export type StartTimer = {
   event: 'startTimer';
-  data: { username: string };
 };
 
 export type PlayerJoined = {
   event: 'playerJoined';
-  data: { playersCount: number; };
+  data: { playersCount: number; gameInfo: GameInfo; };
 }
 
 export type EndGame = {
@@ -52,6 +68,30 @@ export type ResponseError = {
   data: { message: string; };
 };
 
+export type OfferDraw = {
+  event: 'offerDraw';
+  data: { roomId: RoomID; };
+};
+
+export type AcceptDraw = {
+  event: 'acceptDraw';
+  data: { roomId: RoomID; };
+};
+
+export type DeclineDraw = {
+  event: 'declineDraw';
+  data: { roomId: RoomID; };
+};
+
+export type Resign = {
+  event: 'resign';
+  data: { roomId: RoomID; };
+};
+
+export type OfferRematch = {
+  event: 'offerRematch';
+  data: { roomId: RoomID; };
+};
 
 export type JoinGame = {
   event: 'joinGame';
@@ -68,4 +108,6 @@ export type Error = {
   data: { message: string; };
 };
 
-export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart | PlayerDisconnected | MoveMade | PlayerJoined | StartTimer;
+export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart 
+                    | PlayerDisconnected | MoveMade | PlayerJoined | StartTimer
+                    | Error;

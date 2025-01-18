@@ -8,7 +8,7 @@ import Dashboard from '@/components/dashboard'
 import IchackLogo from '@/components/ichacklogo'
 import Image from 'next/image'
 
-const eventDate = new Date('2025-02-02T09:00:00')
+const eventDate = new Date('2025-02-01T09:00:00')
 
 const calculateTimeLeft = (eventDate: Date) => {
   const difference = +eventDate - +new Date();
@@ -144,7 +144,7 @@ export default function ICHack25() {
                   {[0, 1, 2].map((i) => (
                     <Image 
                       key={i}
-                      src="/duck.png"
+                      src="/duck.svg"
                       alt="Duck"
                       width={32}
                       height={32}
@@ -185,7 +185,7 @@ IC Hack covers food and swag for all hackers, not to mention the opportunity to 
                   {[0, 1, 2].map((i) => (
                     <Image 
                       key={i}
-                      src="/duck.png"
+                      src="/duck.svg"
                       alt="Duck"
                       width={32}
                       height={32}

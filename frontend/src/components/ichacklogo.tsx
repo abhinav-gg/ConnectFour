@@ -30,100 +30,81 @@ const gameboardColors: CellColor[] = [
   'black', 'black', 'black', 'black', 'black', 'black', 'black'
 ]
 
-function LogoTemplate({
-  rows = 6,
-  cols = 7,
-  initialColor = 'empty',
-  onUpdate,
-  isStatic = false,
-  colorList
-}: LogoTemplateProps) {
-  const [grid, setGrid] = useState<CellColor[][]>(() => {
-    if (colorList) {
-      const newGrid: CellColor[][] = []
-      let colorIndex = 0
-      for (let i = 0; i < rows; i++) {
-        const row: CellColor[] = []
-        for (let j = 0; j < cols; j++) {
-          row.push(colorList[colorIndex] || initialColor)
-          colorIndex++
-        }
-        newGrid.push(row)
-      }
-      return newGrid
-    }
-    return Array(rows).fill(null).map(() => Array(cols).fill(initialColor))
-  })
-  const [currentColor, setCurrentColor] = useState<CellColor>('red')
-  const [exportedColors, setExportedColors] = useState<string>('')
-
+function LogoTemplate({ rows = 6, cols = 7, isStatic = true }: LogoTemplateProps) {
+  const [grid, setGrid] = useState<CellColor[][]>(
+    Array(rows).fill(null).map(() => Array(cols).fill('empty'))
+  );
+  const [currentPieces, setCurrentPieces] = useState<Array<{row: number, col: number, color: CellColor}>>([]);
+  
   useEffect(() => {
-    if (colorList) {
-      const newGrid: CellColor[][] = []
-      let colorIndex = 0
-      for (let i = 0; i < rows; i++) {
-        const row: CellColor[] = []
-        for (let j = 0; j < cols; j++) {
-          row.push(colorList[colorIndex] || initialColor)
-          colorIndex++
+    const pieces = [...gameboardColors]
+      .reverse()
+      .map((color, index) => ({
+        color,
+        finalRow: Math.floor((gameboardColors.length - 1 - index) / cols),
+        col: (gameboardColors.length - 1 - index) % cols
+      }));
+
+    pieces.forEach((piece, index) => {
+      setTimeout(() => {
+        for (let currentRow = -1; currentRow <= piece.finalRow; currentRow++) {
+          setTimeout(() => {
+            setGrid(prev => {
+              const newGrid = prev.map(row => [...row]);
+              // Clear previous position
+              if (currentRow > 0) {
+                newGrid[currentRow - 1][piece.col] = 'empty';
+              }
+              // Set new position if within grid
+              if (currentRow >= 0) {
+                newGrid[currentRow][piece.col] = piece.color;
+              }
+              return newGrid;
+            });
+          }, currentRow * 100); // Slowed down fall speed (was 50)
         }
-        newGrid.push(row)
-      }
-      setGrid(newGrid)
-    }
-  }, [colorList, rows, cols, initialColor])
-
-  useEffect(() => {
-    const flatColors = grid.flat()
-    setExportedColors(flatColors.join(', '))
-    onUpdate?.(grid)
-  }, [grid, onUpdate])
-
+      }, index * 50); // 50ms between pieces
+    });
+  }, []);
 
   return (
     <div className="flex flex-col items-center">
-      <div className="grid grid-cols-7 gap-1 bg-blue-700 p-2 rounded-lg mb-4">
+      <div className="grid grid-cols-7 gap-[1px] bg-blue-700 p-[2px] rounded-lg">
         {grid.map((row, i) => (
           row.map((cell, j) => (
-            <button
+            <div
               key={`${i}-${j}`}
-              className={`w-8 h-8 rounded-full ${colorClasses[cell]} ${isStatic ? '' : 'cursor-pointer'}`}
-              disabled={isStatic}
-              aria-label={`Cell ${i+1}-${j+1}, Color: ${cell}`}
-            />
+              className="w-6 h-6 rounded-full overflow-hidden relative"
+            >
+              <div
+                className={`w-full h-full rounded-full ${
+                  cell !== 'empty' ? colorClasses[cell] : 'bg-white bg-opacity-20'
+                }`}
+              />
+              {currentPieces.some(piece => piece.col === j) && (
+                <div
+                  className={`absolute w-full h-full rounded-full ${
+                    colorClasses[currentPieces.filter(piece => piece.col === j)
+                      .sort((a, b) => b.row - a.row)[0]?.color ?? 'empty']
+                  } transition-transform duration-50`}
+                  style={{
+                    transform: `translateY(${100 * i}%)`,
+                    opacity: 1
+                  }}
+                />
+              )}
+            </div>
           ))
         ))}
       </div>
-      {!isStatic && (
-        <>
-          <div className="flex space-x-2 mb-4">
-            {Object.entries(colorClasses).map(([color, className]) => (
-              <button
-                key={color}
-                className={`w-8 h-8 rounded-full ${className} ${color === currentColor ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
-                aria-label={`Select ${color} color`}
-              />
-            ))}
-          </div>
-          <div className="w-full mt-4">
-            <h3 className="text-lg font-semibold mb-2">Exported Colors:</h3>
-            <p className="break-words bg-gray-100 p-2 rounded">{exportedColors}</p>
-          </div>
-        </>
-      )}
     </div>
-  )
+  );
 }
 
-export default function ichacklogo() {
+export default function MainLogoAnimated() {
   return (
     <div className="inline-block">
-      <LogoTemplate
-        isStatic={true}
-        rows={6}
-        cols={7}
-        colorList={gameboardColors}
-      />
+      <LogoTemplate isStatic={true} />
     </div>
-  )
+  );
 }

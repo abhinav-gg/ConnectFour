@@ -46,7 +46,7 @@ export default function GameBoard (props: GameBoardProps)  {
   });
 
   useEffect(() => {
-    audioRef.current = new Audio('/drop-sound.mp3')
+    //audioRef.current = new Audio('/drop-sound.mp3')
     if (props.isConnected && gameState.getMoves().length > 0) {
       const newGameState = new GameState()
       
@@ -64,16 +64,16 @@ export default function GameBoard (props: GameBoardProps)  {
     }
   }, [props.isConnected])
 
-  const dropPiece = (col: number) => {
+  // const dropPiece = (col: number) => {
 
-    if (gameState.gameOver || fallingPiece) return
+  //   if (gameState.gameOver || fallingPiece) return
 
-    if (audioRef.current) {
-      audioRef.current.play()
-    }
+  //   if (audioRef.current) {
+  //     audioRef.current.play()
+  //   }
 
-    gameState.makeMove(col)
-  }
+  //   gameState.makeMove(col)
+  // }
 
   const animatePieceFall = (targetRow: number, col: number) => {
     let currentRow = -1
@@ -129,9 +129,9 @@ export default function GameBoard (props: GameBoardProps)  {
     try {
       const audio = new Audio('/drop-sound.mp3')
       audio.volume = 0.5
-      audio.play().catch(error => {
-      })
-    } catch (error) {
+      audio.play()
+    }
+    catch (error) {
     }
   }
 
@@ -187,7 +187,7 @@ export default function GameBoard (props: GameBoardProps)  {
                             className={`w-10 h-10 rounded-full ${
                               cell !== null 
                                 ? (cell === 1 ? 'bg-red-500' : 'bg-yellow-400')
-                                : (fallingPiece?.player === 2 ? 'bg-red-500' : 'bg-yellow-400')
+                                : (fallingPiece?.player === 0 ? 'bg-red-500' : 'bg-yellow-400')
                             } transition-transform duration-100`}
                             style={{
                               transform: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
