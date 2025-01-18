@@ -10,18 +10,19 @@ const application_name = "con-four";
 
 
 export class GameOperations {
-  // No need for a client property here
-  client: PoolClient | null = null;
+  private static pool: Pool;
+  private client: PoolClient | null = null;
 
   private async getClient(): Promise<PoolClient> {
-    const pool = new Pool({
-      connectionString: process.env.DB_URL,
-      application_name: application_name
-    });
-    if (!this.client) {
-      this.client = await pool.connect();
+    if (!GameOperations.pool) {
+      GameOperations.pool = new Pool({
+        connectionString: process.env.DB_URL,
+        application_name: application_name
+      });
     }
-
+    if (!this.client) {
+      this.client = await GameOperations.pool.connect();
+    }
     return this.client;
   }
 
@@ -30,11 +31,13 @@ export class GameOperations {
   async BeginFindingGame(playerid: string, game_info: string, game_id?: string,): Promise<void> {
     const client = await this.getClient();
     try {
-      const result = await client.query(
-        `INSERT INTO con4_schema.GameLookup (player, game, game_info)
-         VALUES ($1, $2, $3)`,
-        [playerid, game_id, game_info]
-      );
+      let result
+      if (game_id)
+        result = await client.query(
+          `INSERT INTO con4_schema.GameLookup (player, game, game_info)
+          VALUES ($1, $2, $3)`,
+          [playerid, game_id, game_info]
+        );
       return;
     } catch (error) {
       console.error('Failed to fetch id by email:', error);
@@ -287,7 +290,7 @@ export class GameOperations {
         `SELECT base_time, increment, disadvantage FROM con4_schema.TimeControls
           INNER JOIN con4_schema.GameInfo ON con4_schema.GameInfo.time_control = con4_schema.TimeControls.id
           INNER JOIN con4_schema.Games ON con4_schema.Games.game_info = con4_schema.GameInfo.id
-          WHERE con4_schema.Games.id = $1`,
+          WHERE con4_schema.Games.short_id = $1`,
         [shortCode]
       );
       return result.rows[0];
@@ -300,6 +303,7 @@ export class GameOperations {
     }
   }
 
+  // In future will be merged with above SQL query for performance
   async GetGameModeFromShortCode(shortCode: string): Promise<GameMode> {
     const client = await this.getClient();
     try {
@@ -320,24 +324,8 @@ export class GameOperations {
     }
   }
 
-  async GetGameStatusById(shortcode: string): Promise<string> {
-    const client = await this.getClient();
-    try {
-      const result = await client.query(
-        `SELECT state FROM con4_schema.Games WHERE short_id = $1`,
-        [shortcode]
-      );
-      return result.rows[0]?.state;
-    } catch (error) {
-      console.error('Failed to fetch game status:', error);
-      throw error;
-    } finally {
-      client.release();
-      this.client = null;
-    }
-  }
-
-  async AssignGame(gameid: string, playerid: string, playerNum: number, deltaElo: number): Promise<void> {
+  // Used for matchmaking
+  async AssignGame(gameid: string, playerid: string, playerNum: number): Promise<void> {
     const client = await this.getClient();
     try {
       const _res = await client.query(
@@ -347,7 +335,9 @@ export class GameOperations {
         [gameid, playerid]
       );
       const res = await client.query(`
-        INSERT INTO con4_schema.GamePlayers (game_id, player, player_number, elo_change)`); // now insert into gameplayers
+        INSERT INTO con4_schema.GamePlayers (game_id, player, player_number)
+        VALUES $1, $2, $3`,
+      [gameid, playerid, playerNum]); // now insert into gameplayers
       return;
     } catch (error) {
       console.error('Failed to assign game:', error);
@@ -358,6 +348,7 @@ export class GameOperations {
     }
   }
 
+  // Rare uses
   async UnassignGame(game_id: string, playerid: string): Promise<void> {
     const client = await this.getClient();
     try {
@@ -383,6 +374,44 @@ export class GameOperations {
     }
   }
 
+  async GetPlayerElo(playerid: string, gameModeId: string): Promise<number> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT elo FROM con4_schema.Elo
+          WHERE player = $1
+          AND mode = $2`,
+        [playerid, gameModeId]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to fetch player game info:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async GetPlayersByShortCode(short_id: string): Promise<string[]> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT player FROM con4_schema.GameLookup
+          INNER JOIN con4_schema.Games ON con4_schema.Games.id = con4_schema.GameLookup.game
+          WHERE con4_schema.Games.short_id = $1`,
+        [short_id]
+      );
+      return result.rows.map(row => row.player) as string[];
+    } catch (error) {
+      console.error('Failed to fetch players by game id:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
     // End ongoing game
       // Update game status <- difficult
       // Remove entry for both players in GameLookup <- function defined above
@@ -390,8 +419,7 @@ export class GameOperations {
 /////////////////////// Below are functions that are not called during live games but for analysing games
 
 
-    // Get games by player
-
+    // lol nothing
 
 }
 

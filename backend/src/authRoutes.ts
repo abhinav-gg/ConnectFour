@@ -130,6 +130,7 @@ authRouter.get('/profile', authenticateJWT, async (req: Request, res: Response, 
 });
 
 authRouter.get('/protected-route', authenticateJWT, (req: any, res: Response) => {
+  console.log("Protected route")
   res.json({ message: 'You are authenticated!', user: req.user });
 });
 

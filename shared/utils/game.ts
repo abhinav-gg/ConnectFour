@@ -1,6 +1,6 @@
 import { eventEmitter } from './eventEmitter';
 
-export type Player = 1 | 2
+export type Player = 0 | 1
 export type Cell = Player | null
 export type Move = { player: Player; col: number }
 
@@ -19,13 +19,16 @@ export class GameState {
   private board: Cell[][]
   private moves: Move[]
 
-  constructor() {
+  constructor(moves?: Move[]) {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    this.currentPlayer = 1
-    this.currentMoveIndex = -1 // used for animation synchronization
+    this.currentPlayer = 0
+    this.currentMoveIndex = -1
     this.winner = null
     this.gameOver = false
-    this.moves = []
+    this.moves = moves || []
+    if (moves) {
+      this.constructFromMoves(true) // silent
+    }
   }
 
   evaluate(): number {
@@ -41,12 +44,11 @@ export class GameState {
     return this.moves[index] || null
   }
 
-  addMove = (move: Move) => {
-    // add move to moves
+  addMove = (move: Move, silent: boolean = false) => {
     this.moves.push(move)
-
-    // emit boardUpdated event
-    eventEmitter.emit('boardUpdated', { row: -1, col: move.col, player: this.currentPlayer });
+    if (!silent) {
+      eventEmitter.emit('boardUpdated', { row: -1, col: move.col, player: this.currentPlayer });
+    }
   }
 
   getBoard = (): Cell[][] => {
@@ -60,7 +62,7 @@ export class GameState {
     this.board = board
   }
 
-  constructFromMoves (){
+  constructFromMoves(silent: boolean = false) {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
     for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex+1); i++) {
       const move = this.moves[i]
@@ -72,8 +74,10 @@ export class GameState {
         this.board[row][move.col] = move.player
       }
     }
-    const lastCol = this.moves.length > 0 ? this.moves[this.moves.length - 1].col : -1;
-    eventEmitter.emit('boardSet', { row: -1, col: lastCol, player: this.currentPlayer });
+    if (!silent) {
+      const lastCol = this.moves.length > 0 ? this.moves[this.moves.length - 1].col : -1;
+      eventEmitter.emit('boardSet', { row: -1, col: lastCol, player: this.currentPlayer });
+    }
   }
 
   checkWinner(row: number, col: number): boolean {
@@ -148,7 +152,7 @@ export class GameState {
       this.board[targetRow][col] = this.currentPlayer
       this.moves.push({ player: this.currentPlayer, col })
       this.checkWinner(targetRow, col)
-      this.currentPlayer = this.currentPlayer === 1 ? 2 : 1
+      this.currentPlayer = this.currentPlayer === 1 ? 0 : 1
 
       this.currentMoveIndex ++;
       // Call boardUpdated event!
@@ -182,7 +186,7 @@ export class GameState {
 
   reset(): void {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    this.currentPlayer = 1
+    this.currentPlayer = 0
     this.winner = null
     this.gameOver = false
     this.moves = []
@@ -223,7 +227,7 @@ export class GameState {
 
 export function generateAnalysis(board: Cell[][], currentPlayer: Player) {
   return {
-    evaluation: currentPlayer === 1 ? 0.5 : -0.5,
+    evaluation: currentPlayer === 0 ? 0.5 : -0.5,
     explanation: "Slight advantage based on center control",
     alternativeMoves: [
       { column: Math.floor(Math.random() * COLS), evaluation: 0.3 },
@@ -233,7 +237,7 @@ export function generateAnalysis(board: Cell[][], currentPlayer: Player) {
   }
 }
 
-export function checkWinner(board: Cell[][], row: number, col: number, player: 1 | 2): boolean {
+export function checkWinner(board: Cell[][], row: number, col: number, player: Player): boolean {
   const directions = [
     [0, 1],  // horizontal
     [1, 0],  // vertical

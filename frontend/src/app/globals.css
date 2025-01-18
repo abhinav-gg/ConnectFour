@@ -32,3 +32,20 @@ body {
 .font-ichack {
   font-family: sans-serif;
 }
+
+.w-64 {
+  position: relative;
+}
+
+.w-64 button {
+  position: absolute;
+  top: 0;
+}
+
+.w-64 button:first-child {
+  right: 0;
+}
+
+.w-64 button:last-child {
+  left: 0;
+}

@@ -75,25 +75,15 @@ export async function getGameInfo(shortCode: string): Promise<GameInfo> {
     }
 }
 
-export async function assignGame(gameId: string, userId: string, num: number, dElo: number) {
+export async function assignGame(gameId: string, userId: string, num: number) {
     try {
         // This does both the gameplayer assignment and the lookup updating
-        await dbOperations.AssignGame(gameId, userId, num, dElo);
+        await dbOperations.AssignGame(gameId, userId, num);
     }
     catch (error) {
         console.log('Failed to assign game:', error);
         throw error;
     }
-}
-
-export async function finishGame(gameId: string) {
-    // try {
-    //     await dbOperations.FinishGame(gameId);
-    // }
-    // catch (error) {
-    //     console.log('Failed to finish game:', error);
-    //     throw error;
-    // }
 }
 
 export async function finishPlayerGame(userId: string) {
@@ -105,3 +95,30 @@ export async function finishPlayerGame(userId: string) {
         throw error; // kinda strange error
     }
 }
+
+export async function abortGame(userId: string) {
+    try {
+        const game = await dbOperations.GetGameLookupByPlayer(userId);
+        if (!game) {
+            throw new Error('Game not found');
+        }
+        //Update the game lookup here
+        //Delete the game player entry here
+        await dbOperations.UnassignGame(game, userId);
+    }
+    catch (error) {
+        console.log('Failed to abort game:', error);
+        throw error;
+    }
+}
+
+export async function killGame(gameId: string) {
+    try {
+        //await dbOperations.KillGame(gameId);
+    }
+    catch (error) {
+        console.log('Failed to kill game:', error);
+        throw error;
+    }
+}
+

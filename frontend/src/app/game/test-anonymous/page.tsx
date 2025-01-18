@@ -9,8 +9,14 @@ const TestAnonymousPage = () => {
   const router = useRouter();
   const config = getConfig();
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const createAnonymousAccount = async () => {
+    if (loading){
+      return;
+    }
     try {
+      setLoading(true);
       const response = await fetch(`${config.backendUrl}/api/auth/anonymous`, {
         method: 'GET'
       });
@@ -24,6 +30,7 @@ const TestAnonymousPage = () => {
       localStorage.setItem('token', data.data.accessToken);
       router.push('/game/test-join');
     } catch (error) {
+      setLoading(false);
       setError(error instanceof Error ? error.message : 'An error occurred');
       console.error('Error creating anonymous account:', error);
     }

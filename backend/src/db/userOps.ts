@@ -153,8 +153,7 @@ export class UserOperations {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT *
-            FROM con4_schema.users
+        `SELECT * FROM con4_schema.users
             WHERE id = $1`,
         [id]
       );
@@ -312,8 +311,9 @@ export class UserOperations {
       // Delete anonymous users
       await client.query(
         `DELETE FROM con4_schema.users
-          WHERE is_anonymous=true
-          AND (CAST(now() AS FLOAT) - CAST(created_at AS FLOAT)) < 86401;`
+          WHERE is_anonymous = true
+          AND NOT EXISTS ( SELECT id FROM con4_schema.GamePlayers WHERE player = con4_schema.users.id )
+          AND NOT EXISTS ( SELECT id FROM con4_schema.GameLookup WHERE player = con4_schema.users.id );`
       );
       await client.query('COMMIT');
     } catch (error) {
