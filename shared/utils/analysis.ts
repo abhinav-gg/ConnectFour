@@ -1,8 +1,8 @@
-import { Cell, ROWS, COLS, checkWinner, GameState } from './game'
+import { type Cell, ROWS, COLS, checkWinner, GameState } from './game'
 
 const INFINITY = 3628800 // (10!) used for finding the distance to checkmate
-const MAX_DEPTH = 5
-const MAX_SUGGESTED_DEPTH = 3
+const MAX_DEPTH = 10
+const MAX_SUGGESTED_DEPTH = 7
 const MOVE_ORDER = [3, 2, 4, 1, 5, 0, 6] // Center-first column ordering
 
 export interface AnalysisProps {
@@ -20,7 +20,7 @@ export class Analysis {
     this.results = { evaluation: 0, explanation: 'Begin Game', alternativeMoves: [] }
   }
 
-  makeMove(board: Cell[][], col: number, player: 1 | 2): { row: number; success: boolean } {
+  makeMove(board: Cell[][], col: number, player: Player): { row: number; success: boolean } {
     for (let row = ROWS - 1; row >= 0; row--) {
       if (board[row][col] === null) {
         board[row][col] = player
@@ -38,58 +38,59 @@ export class Analysis {
     board: Cell[][],
     depth: number,
     maximizingPlayer: boolean,
+    alpha: number,
+    beta: number,
     suggestion: boolean
   ): number {
 
     const GS = new GameState()
     GS.setBoard(board, true)
     GS.checkGameOver()
-
+    
     if (GS.gameOver) {
+      console.log(GS.winner)
       if (GS.winner === 1) return INFINITY / depth  // Divide by depth for mate distance
       if (GS.winner === 2) return -INFINITY / depth
       return 0  // Draw
     }
 
-
     if (depth >= (suggestion ? MAX_SUGGESTED_DEPTH : MAX_DEPTH)) {
       const evalScore = GS.evaluate()
-      //console.log(`Max depth reached. Static evaluation: ${evalScore}`)
       return evalScore
     }
 
     const moves = MOVE_ORDER.filter(col => board[0][col] === null)
     if (moves.length === 0) {
-      //console.log('No moves available, returning 0')
       return 0
     }
 
-    //console.log(`Available moves: ${moves.join(', ')}`)
-    const currentPlayer = maximizingPlayer ? 1 : 2
+    const currentPlayer = maximizingPlayer ? 0 : 1
     let bestValue = maximizingPlayer ? -INFINITY : INFINITY
     
-    for (const col of moves) {
-      //console.log(`\nTrying move column ${col} for ${currentPlayer === 1 ? 'RED' : 'YELLOW'}`)
-      const { row, success } = this.makeMove(board, col, currentPlayer)
-      if (!success) {
-        //console.log(`Move in column ${col} failed`)
-        continue
-      }
-
-      const score = this.minimax(board, depth + 1, !maximizingPlayer, suggestion)
-      this.undoMove(board, row, col)
-      //console.log(`Move column ${col} evaluated to ${score}`)
-
-      if (maximizingPlayer) {
+    if (maximizingPlayer) {
+      for (const col of moves) {
+        const { row, success } = this.makeMove(board, col, currentPlayer)
+  
+        const score = this.minimax(board, depth + 1, !maximizingPlayer, alpha, beta, suggestion)
+        this.undoMove(board, row, col)
         bestValue = Math.max(bestValue, score)
-        //console.log(`RED: Updated best value to ${bestValue}`)
-      } else {
+        alpha = Math.max(alpha, bestValue)
+        if (alpha >= beta) break
+  
+      }
+    }
+    else {
+      for (const col of moves) {
+        const { row, success } = this.makeMove(board, col, currentPlayer)
+  
+        const score = this.minimax(board, depth + 1, !maximizingPlayer, alpha, beta, suggestion)
+        this.undoMove(board, row, col)
         bestValue = Math.min(bestValue, score)
-        //console.log(`YELLOW: Updated best value to ${bestValue}`)
+        beta = Math.min(beta, bestValue)
+        if (alpha >= beta) break
       }
     }
 
-    //console.log(`Depth ${depth} returning bestValue: ${bestValue}`)
     return bestValue
   }
 
@@ -100,7 +101,7 @@ export class Analysis {
     }
 
     // use currentIndex to get relevant board and player
-    const currentPlayer = 1 + (this.gameState.currentMoveIndex % 2)
+    const currentPlayer = this.gameState.currentMoveIndex % 2
 
     // select the board up until currentMoveIndex
     const board = this.gameState.getBoard()
@@ -111,17 +112,17 @@ export class Analysis {
     // REMEMBER: minimax starts at depth 1
 
     const boardCopy = board.map(row => [...row])
-    const evaluation = this.minimax(boardCopy, 1, currentPlayer !== 1, false)
+    const evaluation = this.minimax(boardCopy, 1, currentPlayer !== 0, -INFINITY, INFINITY, false)
     
     const alternativeMoves: { column: number; evaluation: number }[] = []
     for (const col of moves) {
       // Clone board for each move evaluation
       const moveBoardCopy = board.map(row => [...row])
-      const { row, success } = this.makeMove(moveBoardCopy, col, currentPlayer === 1 ? 2 : 1)
+      const { row, success } = this.makeMove(moveBoardCopy, col, currentPlayer === 0 ? 1 : 0)
       if (!success) continue
       alternativeMoves.push({ 
         column: col, 
-        evaluation: this.minimax(moveBoardCopy, 1, currentPlayer === 1, true) 
+        evaluation: this.minimax(moveBoardCopy, 1, currentPlayer === 0, -INFINITY, INFINITY, true) 
       })
     }
     
