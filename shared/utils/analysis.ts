@@ -67,23 +67,25 @@ export class Analysis {
     const currentPlayer = maximizingPlayer ? 0 : 1
     let bestValue = maximizingPlayer ? -INFINITY : INFINITY
     
-    for (const col of moves) {
-      //console.log(`\nTrying move column ${col} for ${currentPlayer === 0 ? 'RED' : 'YELLOW'}`)
-      const { row, success } = this.makeMove(board, col, currentPlayer)
-      if (!success) {
-        //console.log(`Move in column ${col} failed`)
-        continue
-      }
+    if (maximizingPlayer) {
+      for (const col of moves) {
+        //console.log(`\nTrying move column ${col} for ${currentPlayer === 0 ? 'RED' : 'YELLOW'}`)
+        const { row, success } = this.makeMove(board, col, currentPlayer)
+        if (!success) {
+          //console.log(`Move in column ${col} failed`)
+          continue
+        }
 
-      const score = this.minimax(board, depth + 1, !maximizingPlayer, suggestion)
-      this.undoMove(board, row, col)
-      //console.log(`Move column ${col} evaluated to ${score}`)
+        const score = this.minimax(board, depth + 1, !maximizingPlayer, suggestion)
+        this.undoMove(board, row, col)
+        //console.log(`Move column ${col} evaluated to ${score}`)
 
-      if (maximizingPlayer) {
-        bestValue = Math.max(bestValue, score)
-        alpha = Math.max(alpha, bestValue)
-        if (alpha >= beta) break
-  
+        if (maximizingPlayer) {
+          bestValue = Math.max(bestValue, score)
+          alpha = Math.max(alpha, bestValue)
+          if (alpha >= beta) break
+    
+        }
       }
     }
     else {
