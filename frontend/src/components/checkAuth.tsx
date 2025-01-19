@@ -1,29 +1,22 @@
-'use client'
-
-import { useEffect, useState, ReactNode } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { getConfig } from '@/config/env';
 
 interface CheckAuthProps {
   children: ReactNode; // Define children prop
-  // add a callback function if the auth fails
   onAuthFail?: () => void;
   onAuthSuccess?: () => void;
 }
 
-export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckAuthProps) { // Accept children as props
-  const [verified, setVerified] = useState(false); // Define a state variable to store the verification status
-  const [Loading, setLoading] = useState(false);
+export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckAuthProps) {
+  const [verified, setVerified] = useState(false);
 
   const checkAuthentication = async () => {
+    if (verified) return;
     try {
-      if (Loading){
-        return;
-      }
       const token = localStorage.getItem('token'); // Check for token in local storage
       if (token) {
         console.log('Checking authentication...', token);
-        setLoading(true);
-        const response = await fetch(`${getConfig().backendUrl}/api/auth/protected-route`, {
+        const response = await fetch(`${await getConfig().backendUrl}/api/auth/protected-route`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
@@ -33,48 +26,53 @@ export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckA
         if (!response.ok) {
           if (onAuthFail) {
             console.log("failing auth")
-            onAuthFail();
+            try {
+
+              await onAuthFail();
+            }
+            catch (error) {
+              console.log("Critical error")
+              return;
+            }
           } else {
             console.log('User not authenticated');
           }
-          return;
         }
         else {
-          setVerified(true);
           if (onAuthSuccess) {
-            onAuthSuccess();
+            await onAuthSuccess();
           }
+          setVerified(true);
         }
       } else {
         console.log("No token found")
-        throw new Error('No token found');
+        if (onAuthFail) {
+          try {
+            await onAuthFail();
+          }
+          catch (error) {
+            console.log("Critical error")
+            return;
+          }
+        }
       }
     }
     catch (error) {
-      console.error('Failed to authenticate user:', error);
+      console.log('Failed to authenticate user:', error);
       if (onAuthFail) {
-        onAuthFail();
+        await onAuthFail();
       }
-      setLoading(false);
     }
   }
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!verified && !Loading) {
-        checkAuthentication();
-      }
-    }, 2000); // Check every other second until verified
-
-    // Initial check
-    checkAuthentication();
-
-    return () => clearInterval(interval);
-  }, [verified]); // Only depend on verified state
-
-  if (!verified) {
-    return (<div><p>Loading...</p></div>);
-  }
+    if (!verified)
+      checkAuthentication();
+  }, []);
   
-  return <>{children}</>;
+  return (
+    <div>
+      {verified ? children : <div>Checking your authentication status...</div>}
+    </div>
+  );
 }

@@ -1,4 +1,4 @@
-import { Cell, ROWS, GameState, Player } from './game'
+import { type Cell, ROWS, COLS, checkWinner, GameState } from './game'
 
 const INFINITY = 3628800 // (10!) used for finding the distance to checkmate
 const MAX_DEPTH = 10
@@ -48,6 +48,7 @@ export class Analysis {
     GS.checkGameOver()
     
     if (GS.gameOver) {
+      console.log(GS.winner)
       if (GS.winner === 0) return INFINITY / depth  // Divide by depth for mate distance
       if (GS.winner === 1) return -INFINITY / depth
       return 0  // Draw
@@ -63,29 +64,19 @@ export class Analysis {
       return 0
     }
 
-    //console.log(`Available moves: ${moves.join(', ')}`)
-    const currentPlayer = maximizingPlayer ? 0 : 1
+    const currentPlayer = maximizingPlayer ? 0: 1
     let bestValue = maximizingPlayer ? -INFINITY : INFINITY
     
     if (maximizingPlayer) {
       for (const col of moves) {
-        //console.log(`\nTrying move column ${col} for ${currentPlayer === 0 ? 'RED' : 'YELLOW'}`)
         const { row, success } = this.makeMove(board, col, currentPlayer)
-        if (!success) {
-          //console.log(`Move in column ${col} failed`)
-          continue
-        }
-
-        const score = this.minimax(board, depth + 1, !maximizingPlayer, suggestion)
+  
+        const score = this.minimax(board, depth + 1, !maximizingPlayer, alpha, beta, suggestion)
         this.undoMove(board, row, col)
-        //console.log(`Move column ${col} evaluated to ${score}`)
-
-        if (maximizingPlayer) {
-          bestValue = Math.max(bestValue, score)
-          alpha = Math.max(alpha, bestValue)
-          if (alpha >= beta) break
-    
-        }
+        bestValue = Math.max(bestValue, score)
+        alpha = Math.max(alpha, bestValue)
+        if (alpha >= beta) break
+  
       }
     }
     else {
@@ -104,7 +95,7 @@ export class Analysis {
   }
 
   analyzePosition() {
-    console.log("This file does not contain the analyzePosition method")
+    
     if (this.gameState.currentMoveIndex < 1) {
       return { evaluation: 0, explanation: "Begin Game", alternativeMoves: [] }
     }
@@ -117,10 +108,11 @@ export class Analysis {
 
     const moves = MOVE_ORDER.filter(col => board[0][col] === null)
     
-    console.log("Analyzing position for", currentPlayer, board)
+    // Clone board for initial evaluation
+    // REMEMBER: minimax starts at depth 1
 
     const boardCopy = board.map(row => [...row])
-    const evaluation = this.minimax(boardCopy, 1, currentPlayer === 0, false)
+    const evaluation = this.minimax(boardCopy, 1, currentPlayer !== 0, -INFINITY, INFINITY, false)
     
     const alternativeMoves: { column: number; evaluation: number }[] = []
     for (const col of moves) {
@@ -130,7 +122,7 @@ export class Analysis {
       if (!success) continue
       alternativeMoves.push({ 
         column: col, 
-        evaluation: this.minimax(moveBoardCopy, 1, currentPlayer !== 0, true) 
+        evaluation: this.minimax(moveBoardCopy, 1, currentPlayer === 0, -INFINITY, INFINITY, true) 
       })
     }
     

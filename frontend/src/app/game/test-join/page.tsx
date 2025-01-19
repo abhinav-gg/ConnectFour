@@ -12,6 +12,7 @@ const TestJoinPage = () => {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gameType, setGameType] = useState<'standard' | 'friendly' | 'computer' | null>(null);
+  const URL = getConfig().backendUrl;
 
   const requestGame = async () => {
       
@@ -31,7 +32,7 @@ const TestJoinPage = () => {
 
     const { base, increment, disadvantage } = selectedControl;
 
-    const response = await fetch(`${getConfig().backendUrl}/api/game/request`, {
+    const response = await fetch(`${URL}/api/game/request`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,7 +79,8 @@ const TestJoinPage = () => {
   };
 
   const handleNotAuth = () => {
-    window.location.href = '/game/test-login';
+    console.log("critical error")
+    //window.location.href = '/game/test-login';
   }
 
   return (

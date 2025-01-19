@@ -34,6 +34,7 @@ const HomePage = () => {
   }, [router]);
 
   const handleAnonymous = () => {
+    console.log("THIS MESSAGE SHOULD BE SHOWN ONCE")
     try {
       router.push('/game/test-anonymous'); // Redirect to anonymous login page
     } catch (error) {

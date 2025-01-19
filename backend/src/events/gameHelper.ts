@@ -98,7 +98,7 @@ export async function finishPlayerGame(userId: string) {
 
 export async function abortGame(userId: string) {
     try {
-        const game = await dbOperations.GetGameLookupByPlayer(userId);
+        const game = await dbOperations.GetGameByPlayerLookup(userId);
         if (!game) {
             throw new Error('Game not found');
         }

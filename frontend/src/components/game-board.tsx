@@ -105,6 +105,7 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   const handleColumnHover = (col: number) => {
+    console.log(gameState.currentPlayer, props.playerNumber, gameState.gameOver, fallingPiece, gameState.currentMoveIndex)
     if (gameState.currentPlayer != props.playerNumber 
       || gameState.gameOver || fallingPiece
       || gameState.currentMoveIndex != gameState.getMoves().length - 1

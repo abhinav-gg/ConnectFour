@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link'
 import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight } from 'lucide-react'
-import MainLogo from './mainlogo'
 
 export default function Dashboard() {
   const [isOpen, setIsOpen] = useState(true);
@@ -34,18 +33,19 @@ export default function Dashboard() {
     <div className="flex">
       {isOpen && (
         <div className="relative w-64 bg-white p-4 flex flex-col shadow-md min-h-screen">
-          <div className="flex flex-col items-center mb-6">
+          <div className="flex flex-col items-center mb-6 relative">
             <div className="mb-2">
-            <button 
-            onClick={toggleDashboard} 
-            className="absolute top-4 right-4 p-2 bg-gray-200 rounded hover:bg-gray-300"
-            aria-label="Close Dashboard"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
+              <button 
+                onClick={toggleDashboard} 
+                className="absolute p-2 bg-gray-200 items-center rounded hover:bg-gray-300 top-0 right-0"
+                aria-label="Close Dashboard"
+                style={{ width: '2rem', height: '2rem' }}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
             </div>
             <div className="scale-100 transform-origin-left">
-              <MainLogo />
+              <img src="/logo.png" alt="Logo" className="w-16 h-16" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Dashboard</h2>
           </div>

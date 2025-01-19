@@ -36,7 +36,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
     console.log('Create Game:', userId, time_control);
 
     // Check if the user is already in the game lookup
-    const gameId = await dbOperations.GetGameLookupByPlayer(userId);
+    const gameId = await dbOperations.GetGameByPlayerLookup(userId);
     console.log('Game ID:', gameId);
     if (gameId) {
         // First check if the game is still active
@@ -49,6 +49,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
             else if (game.state === globals.StandardGameStates.scheduled) {
                 // User is changing the game they are looking for
                 // Remove the user from the lookup and prepare for new game
+                console.log('Quitting game search');
                 await quitGameSearch(userId);
             }
             else {
@@ -123,7 +124,7 @@ gameRouter.post('/status', authenticateJWT, async (req: Request, res: Response) 
         return;
     }
 
-    const gameId = await dbOperations.GetGameLookupByPlayer(userId);
+    const gameId = await dbOperations.GetGameByPlayerLookup(userId);
     console.log('Game ID:', gameId);
 
     if (gameId) {

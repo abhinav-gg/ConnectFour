@@ -132,7 +132,7 @@ export class GameOperations {
   }
   
   // Get ongoing games by player
-  async GetGameLookupByPlayer(playerid: string): Promise<string | null> {
+  async GetGameByPlayerLookup(playerid: string): Promise<string | null> {
     const client =  this.client ?? await this.getClient();
     try {
       const result = await client.query(
@@ -143,7 +143,7 @@ export class GameOperations {
       if (result.rowCount && result.rowCount > 1 ) {
         throw new DBError.MultipleGamesFoundError();
       }
-      return result.rows[0]?.game_id ?? null;
+      return result.rows[0]?.game ?? null;
     } catch (error) {
       console.error('Failed to fetch ongoing games by player:', error);
       throw error;

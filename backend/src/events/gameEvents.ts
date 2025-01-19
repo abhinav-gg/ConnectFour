@@ -353,7 +353,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               case 'standard': {
 
                 // Check if the user is one of the players in the game
-                const gameLookup = await dbOperations.GetGameLookupByPlayer(userId);
+                const gameLookup = await dbOperations.GetGameByPlayerLookup(userId);
                 const game = await dbOperations.GetGameByShortCode(roomId);
 
                 if (!gameLookup || gameLookup !== game.id) {
@@ -375,7 +375,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   // REWRITE THE BELOW
                     // Check if the user is already in a game
                     // If not add them to gamelookup if they are not already in it
-                  const gameLookup = await dbOperations.GetGameLookupByPlayer(userId);
+                  const gameLookup = await dbOperations.GetGameByPlayerLookup(userId);
                   console.log("Found game by player:", userId, gameLookup);
                   if (gameLookup) {
                     if (gameLookup !== game.id) {
