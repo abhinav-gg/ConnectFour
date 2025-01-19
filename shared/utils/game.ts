@@ -44,13 +44,6 @@ export class GameState {
     return this.moves[index] || null
   }
 
-  addMove = (move: Move, silent: boolean = false) => {
-    this.moves.push(move)
-    if (!silent) {
-      eventEmitter.emit('boardUpdated', move);
-    }
-  }
-
   getBoard = (): Cell[][] => {
     return this.board
   }
@@ -135,7 +128,8 @@ export class GameState {
   }
 
   makeMove(col: number, silent = false): { row: number; success: boolean } {
-    
+    console.log("Making move", col, this.currentPlayer)
+
     const targetRow = this.getAvailableRow(col)
     // ensure that the board reflects all the moves made i.e. not in history view
     // count non-empty cells in board

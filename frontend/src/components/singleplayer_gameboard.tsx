@@ -68,6 +68,8 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
 
   const animatePieceFall = (targetRow: number, col: number) => {
     let currentRow = -1
+
+    console.log('Animating piece fall', targetRow, col)
     const fall = () => {
       if (currentRow < targetRow) {
         currentRow++
@@ -172,9 +174,9 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
         </div>
         {gameState.gameOver && (
           <div className="mt-4 text-center">
-            {gameState.winner ? (
+            {gameState.winner !== null ? (
               <div className="text-2xl font-bold text-orange-500 mb-4">
-                Player {gameState.winner} wins!
+                Player {gameState.winner + 1} wins!
               </div>
             ) : (
               <div className="text-2xl font-bold text-orange-500 mb-4">

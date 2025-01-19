@@ -195,6 +195,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   const currentTime = new Date().getTime();
   const delta = currentTime - lastMoveMadeTime;
   const timeLeft = allowedTime - timeTaken - delta;
+  console.log('Time:', lastMoveMadeTime, currentTime, delta, timeLeft);
   if (timeTaken > allowedTime){
     return {
       delta: delta,
@@ -239,7 +240,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
     return {
       delta: delta,
       timeLeft: timeLeft,
-      turn: 1,
+      turn: moves.length + 1,
       nextPlayer: room.currentTurn,
       draw: false,
       winner: null
@@ -470,7 +471,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             
             // read from MoveMade
             const { roomId, col } = data.data as MakeMove["data"];
-            if (!roomId || !col) {
+            if (!roomId || (col === null)) {
               ws.send(JSON.stringify({ event: 'error', data: { error: 'Invalid data by frontend' } }));
               return;
             }
@@ -510,6 +511,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 throw new Error('Game mode does not exist');
               }
             }
+
+            if (verification.turn === -1) {
+              return;
+            }
             
             if (verification.turn === 1) {
               sendToRoom(roomId, {
@@ -526,7 +531,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             sendToRoom(roomId, {
               event: 'moveMade',
               data: { 
-                nextPlayer: room!.players.indexOf(user as UUID), 
+                nextPlayer: verification.nextPlayer, 
                 col: col,
                 timeLeft: verification.timeLeft
                }

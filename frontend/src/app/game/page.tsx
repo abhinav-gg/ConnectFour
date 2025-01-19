@@ -8,7 +8,6 @@ import MoveHistory from '@/components/history';
 import { GameState, Player } from '@shared/utils/game';
 import { JoinGame, MakeMove, Message, PlayerData, StartTimer } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
-//import { useBeforeunload } from 'react-beforeunload';
 
 type GamePlayer = {
   username: string;
@@ -21,7 +20,6 @@ export default function TestingWebsockets() {
   const [socket, setSocket] = useState<WebSocket>();
   const [getPlayers, setPlayers] = useState<GamePlayer[]>([]);
   const [playerNumber, setPlayerNumber] = useState<Player>(0);
-  const [currentNumber, setCurrentNumber] = useState<Player>(0);
   const [isConnected, setIsConnected] = useState(false);
   const [timeUpdate, setTimeUpdate] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
@@ -30,7 +28,6 @@ export default function TestingWebsockets() {
   const [waiting, setWaiting] = useState(false);
   const gameBoardRef = useRef<GameState>();
   const timerInterval = useRef<NodeJS.Timeout>();
-  gameBoardRef.current = new GameState();
 
   // FOR NOW ASSUME USER IS LOGGED IN
   // THIS WILL BE MERGED WITH /TEST-LOGIN SO THAT USER CAN LOGIN AS ANONYMOUS AS WELL
@@ -52,11 +49,6 @@ export default function TestingWebsockets() {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${milliseconds.toString().padStart(2, '0')}`;
   };
 
-  const changeCurrentPlayer = (nextPlayer: number, timeLeft: number) => {
-    if (timeLeft > 0)
-      getPlayers[playerNumber].time = timeLeft;
-    setCurrentNumber(nextPlayer as Player); // countdown updated in its own interval
-  }
 
   const notLoggedIn = () => {
     console.error('User not logged in!');
@@ -67,6 +59,28 @@ export default function TestingWebsockets() {
       return;
     } else {
       window.location.href = '/game/test-join?room=' + roomFromUrl;
+    }
+  }
+
+  const handleMoveReceived = (data: { nextPlayer: number; col: number; timeLeft: number }) => {
+    const gameState = gameBoardRef.current;
+    console.log("Move Received", data, gameState);
+    if (gameState) {
+      const index = gameState.getMoves().length;
+      console.log("Moves", gameState.getMoves(), index);
+      gameState.currentMoveIndex = index - 1;
+      gameState.constructFromMoves();
+      gameState.currentPlayer = data.nextPlayer ? 0 : 1 as Player;
+      gameState.makeMove(data.col);
+      if (data.timeLeft > 0)
+        getPlayers[playerNumber].time = data.timeLeft;
+      gameState.currentMoveIndex = index;
+      gameState.currentPlayer = data.nextPlayer as Player;
+      gameState.constructFromMoves();
+      setWaiting(false);
+      console.log("Move Made", gameState.getBoard());
+    } else {
+      throw new Error('Game state is not initialized!');
     }
   }
 
@@ -118,7 +132,7 @@ export default function TestingWebsockets() {
             addPlayer(player.username, player.time)
           });
           setGameStarted(true);
-          if (playerNumber === 0) {
+          if (data.data.playerNumber === 0) {
             setGameStatus('Game started! Your move!');
           } else {
             setGameStatus('Game started! Waiting for player 1 move...');
@@ -137,21 +151,7 @@ export default function TestingWebsockets() {
           break;
         
         case 'moveMade':
-          const gameState = gameBoardRef.current;
-          if (gameState) {
-            const index = gameState.getMoves().length;
-            gameState.currentPlayer = (data.data.nextPlayer===1) ? 0 : 1 as Player;
-            gameState.currentMoveIndex = index - 1;
-            gameState.constructFromMoves();
-            gameState.addMove( 
-              { player: gameState.currentPlayer, col: data.data.col },
-            );
-            changeCurrentPlayer(data.data.nextPlayer, data.data.timeLeft);
-            setWaiting(false);
-            console.log("Move Made");
-          } else {
-            throw new Error('Game state is not initialized!');
-          }
+          handleMoveReceived(data.data);
           break;
         case 'playerDisconnected':
           setGameStatus('Opponent disconnected. Waiting for reconnect or timeout...');
@@ -206,11 +206,11 @@ export default function TestingWebsockets() {
     
     setWaiting(true);
     const currentGameBoard = gameBoardRef.current;
-    console.log('Making move:', col, playerNumber, currentNumber);
+    console.log('Making move:', col, playerNumber);
     if (!currentGameBoard) return; // Ensure gameBoardRef.current is not undefined
 
     console.log('Game Over:', currentGameBoard.gameOver);
-    if (currentGameBoard.gameOver || !(playerNumber == currentNumber)) {
+    if (currentGameBoard.gameOver || !(playerNumber == currentGameBoard.currentPlayer)) {
       console.log("Don't accept moves")
     }
 
@@ -224,15 +224,21 @@ export default function TestingWebsockets() {
 
   };
 
+  useEffect(() => {
+    if (!gameBoardRef.current) {
+      gameBoardRef.current = new GameState();
+    }
+  }, []);
+
   const BOARD = <GameBoard
   playerNumber={playerNumber}
   isConnected={isConnected}
   playersCount={2}
   roomId={roomId}
   onMove={handleMove}
-  ref={gameBoardRef.current}
+  ref={gameBoardRef.current!}
 />;
-  const HISTORY = <MoveHistory ref={gameBoardRef.current} />;
+  const HISTORY = <MoveHistory ref={gameBoardRef.current!} />;
   const BOARD_WITH_TIMERS = (
     <div className="flex flex-col items-center">
       <div className="flex justify-between items-center w-full mb-2">
@@ -275,7 +281,7 @@ export default function TestingWebsockets() {
           <div className="flex-1 flex flex-col items-center">
             <h2 className="text-xl font-semibold">Room: {roomId}</h2>
             <p className="text-gray-600">{gameStatus}</p>
-            <p className="text-blue-600">You are Player {playerNumber}</p>
+            <p className="text-blue-600">You are Player {playerNumber + 1}</p>
             { BOARD_WITH_TIMERS }
           </div>
           <div className="w-1/3 flex flex-col items-center justify-center">

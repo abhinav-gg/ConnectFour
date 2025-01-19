@@ -11,7 +11,7 @@ interface GameBoardProps {
   playersCount: number;
   roomId: string;
   onMove: (col: number) => void;
-  ref: GameState;
+  ref: GameState | null;
 }
 
 export default function GameBoard (props: GameBoardProps)  {
@@ -21,13 +21,11 @@ export default function GameBoard (props: GameBoardProps)  {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const gameState = props.ref
   const websocketMove = props.onMove
-  
 
   useEffect(() => {
 
     const handleBoardUpdate = (data: { row: number; col: number; player: Player }) => {
       const { row, col, player } = data;
-      console.log('Board updated', row, col, player);
       setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
       animatePieceFall(row, col)
     };
@@ -39,6 +37,7 @@ export default function GameBoard (props: GameBoardProps)  {
 
     eventEmitter.on('boardUpdated', handleBoardUpdate);
     eventEmitter.on('boardSet', handleBoardSet);
+
     // Cleanup subscriptions on component unmount
     return (() => {
       eventEmitter.off('boardUpdated', handleBoardUpdate);
@@ -47,7 +46,6 @@ export default function GameBoard (props: GameBoardProps)  {
   });
 
   useEffect(() => {
-    //audioRef.current = new Audio('/drop-sound.mp3')
     if (props.isConnected && gameState.getMoves().length > 0) {
       const newGameState = new GameState()
       
@@ -78,6 +76,8 @@ export default function GameBoard (props: GameBoardProps)  {
 
   const animatePieceFall = (targetRow: number, col: number) => {
     let currentRow = -1
+
+    console.log('Animating piece fall', targetRow, col)
     const fall = () => {
       if (currentRow < targetRow) {
         currentRow++
@@ -106,7 +106,7 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   const handleColumnHover = (col: number) => {
-
+    console.log('Hovering column', col, gameState.currentPlayer, props.playerNumber, gameState.gameOver, fallingPiece, gameState.currentMoveIndex)
     if (gameState.currentPlayer != props.playerNumber 
       || gameState.gameOver || fallingPiece
       || gameState.currentMoveIndex != gameState.getMoves().length - 1

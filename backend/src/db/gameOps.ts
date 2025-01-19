@@ -470,3 +470,4 @@ export class GameOperations {
 }
 
 // DELETE FROM con4_schema.users WHERE is_anonymous = true;
+// DELETE FROM con4_schema.gamelookup;DELETE FROM con4_schema.gameplayers;DELETE FROM con4_schema.moves;DELETE FROM con4_schema.games;
