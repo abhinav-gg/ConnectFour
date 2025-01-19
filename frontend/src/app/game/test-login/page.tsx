@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 
 const HomePage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showChoice, setShowChoice] = useState(false); // New state for showing choice buttons
-  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuthentication = async () => {
@@ -22,7 +21,7 @@ const HomePage = () => {
         if (!response.ok) {
           console.log('User not authenticated');
         } else {
-          router.push('/game/test-join');
+          window.location.href='/game/test-join';
           return;
         }
       }
@@ -31,12 +30,12 @@ const HomePage = () => {
     };
 
     checkAuthentication();
-  }, [router]);
+  });
 
   const handleAnonymous = () => {
     console.log("THIS MESSAGE SHOULD BE SHOWN ONCE")
     try {
-      router.push('/game/test-anonymous'); // Redirect to anonymous login page
+      window.location.href='/game/test-anonymous'; // Redirect to anonymous login page
     } catch (error) {
       console.error('Error creating anonymous account:', error);
       alert('Failed to create anonymous account. Please try again.');
@@ -44,7 +43,7 @@ const HomePage = () => {
   };
 
   const handleLogin = () => {
-    router.push('/login'); // Redirect to login page
+    window.location.href='/login'; // Redirect to login page
   };
 
   return (

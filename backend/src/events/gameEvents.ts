@@ -1,7 +1,7 @@
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
 import type { Room, RoomMap } from "../types/types";
-import type { GameStart, JoinGame, MakeMove, Message, MoveMade, PlayerData, PlayerDisconnected, PlayerJoined, StartTimer } from "@shared/Types/websocketData";
+import type { Error, GameStart, JoinGame, MakeMove, Message, MoveMade, PlayerData, PlayerDisconnected, PlayerJoined, StartTimer } from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
@@ -320,8 +320,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             }
             catch (error) {
-              console.error('Failed to check if game is ongoing:', error);
-              ws.send(JSON.stringify({ event: 'error', data: { message: 'Failed to check if game is ongoing' } }));
+              console.log('Failed to check if game is ongoing:', error);
+              ws.send(JSON.stringify({ event: 'error', data: { message: 'Failed to check if game is ongoing', redirect: '/game' } }));
               return;
             }
 
@@ -337,8 +337,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             }
             catch (error) {
-              console.error('Failed to check if room exists:', error);
-              ws.send(JSON.stringify({ event: 'error', data: { message: 'Failed to check if room exists' } }));
+              console.log('Failed to check if room exists:', error);
+              ws.send(JSON.stringify({ event: 'error', data: { message: 'Failed to check if room exists', redirect: '/game' } } as Error));
               return;
             }
 
@@ -376,22 +376,22 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                     // Check if the user is already in a game
                     // If not add them to gamelookup if they are not already in it
                   const gameLookup = await dbOperations.GetGameByPlayerLookup(userId);
-                  console.log("Found game by player:", userId, gameLookup);
+                  const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId);
+                  // Check that the room has room for another player
+                  if (gamePlayers.length >= 2)
+                    throw new Error('Room is full');
+
                   if (gameLookup) {
                     if (gameLookup !== game.id) {
-                      throw new Error('User is in another game');
+                      console.log("Found game by player:", userId, gameLookup);
+                      const theirGame = await dbOperations.GetGameByID(gameLookup);
+                      ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid game lookup', redirect: `/game?room=${theirGame.short_id}` } } as Error));
+                      return;
                     }
-                    throw new Error('User reconnected, THIS SHOULD NEVER HAPPEN');
                   }
                   else {
                     await dbOperations.BeginFindingGame(userId, game.game_info, game.id);
                   }
-
-
-                  // Check that the room has room for another player
-                  const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId);
-                  if (gamePlayers.length >= 2)
-                    throw new Error('Room is full');
                 }
                 catch (error) {
                   console.error('Failed to check if user is free to join room:', error);

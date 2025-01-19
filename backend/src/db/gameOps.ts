@@ -116,8 +116,9 @@ export class GameOperations {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT game_id, move, player, col, CAST(played_at AS FLOAT), delta FROM con4_schema.Moves 
-          WHERE game_id = $1
+        `SELECT game_id, move, player, col, CAST(played_at AS FLOAT), delta FROM con4_schema.Moves
+          INNER JOIN con4_schema.Games ON con4_schema.Games.id = con4_schema.Moves.game_id 
+          WHERE con4_schema.Games.game_id = $1
           ORDER BY move`,
         [gameid]
       );
@@ -334,10 +335,11 @@ export class GameOperations {
           WHERE player = $2`,
         [gameid, playerid]
       );
-      const res = await client.query(`
-        INSERT INTO con4_schema.GamePlayers (game_id, player, player_number)
-        VALUES $1, $2, $3`,
-      [gameid, playerid, playerNum]); // now insert into gameplayers
+      const res = await client.query(
+      `INSERT INTO con4_schema.GamePlayers (game_id, player, player_number)
+        VALUES ($1, $2, $3)`,
+        [gameid, playerid, playerNum]
+    ); // now insert into gameplayers
       return;
     } catch (error) {
       console.error('Failed to assign game:', error);

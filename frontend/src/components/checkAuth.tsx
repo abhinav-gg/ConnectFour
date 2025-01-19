@@ -9,67 +9,47 @@ interface CheckAuthProps {
 
 export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckAuthProps) {
   const [verified, setVerified] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const checkAuthentication = async () => {
-    if (verified) return;
-    try {
-      const token = localStorage.getItem('token'); // Check for token in local storage
-      if (token) {
-        console.log('Checking authentication...', token);
-        const response = await fetch(`${await getConfig().backendUrl}/api/auth/protected-route`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
-          },
-        });
-        console.log("Response: ", response);
-        if (!response.ok) {
-          if (onAuthFail) {
-            console.log("failing auth")
-            try {
+    if (loading) {
+      return;
+    }
 
-              await onAuthFail();
-            }
-            catch (error) {
-              console.log("Critical error")
-              return;
-            }
-          } else {
-            console.log('User not authenticated');
-          }
-        }
-        else {
-          if (onAuthSuccess) {
-            await onAuthSuccess();
-          }
-          setVerified(true);
+    setLoading(true);
+
+    const token = localStorage.getItem('token'); // Check for token in local storage
+    if (token) {
+      const response = await fetch(`${await getConfig().backendUrl}/api/auth/protected-route`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
+        },
+      });
+
+      if (!response.ok) {
+        if (onAuthFail) {
+          onAuthFail();
         }
       } else {
-        console.log("No token found")
-        if (onAuthFail) {
-          try {
-            await onAuthFail();
-          }
-          catch (error) {
-            console.log("Critical error")
-            return;
-          }
+        setVerified(true);
+        if (onAuthSuccess) {
+          onAuthSuccess();
         }
       }
-    }
-    catch (error) {
-      console.log('Failed to authenticate user:', error);
+    } else {
       if (onAuthFail) {
-        await onAuthFail();
+        onAuthFail();
       }
     }
+
+    setLoading(false);
   }
 
   useEffect(() => {
-    if (!verified)
-      checkAuthentication();
-  }, []);
-  
+    checkAuthentication();
+  }, []); // Run once on component mount
+
   return (
     <div>
       {verified ? children : <div>Checking your authentication status...</div>}

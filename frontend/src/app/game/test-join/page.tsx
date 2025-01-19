@@ -80,7 +80,7 @@ const TestJoinPage = () => {
 
   const handleNotAuth = () => {
     console.log("critical error")
-    //window.location.href = '/game/test-login';
+    window.location.href = '/game/test-login';
   }
 
   return (

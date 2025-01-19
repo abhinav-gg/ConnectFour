@@ -105,7 +105,8 @@ export type MakeMove = {
 
 export type Error = {
   event: 'error';
-  data: { message: string; };
+  data: { redirect: string | null; message: string; };
+  
 };
 
 export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart 
