@@ -112,16 +112,17 @@ export class GameOperations {
   }
 
   // Get moves by game ID
-  async GetMovesByGameID(gameid: string): Promise<Move[]> {
+  async GetMovesByShortCode(short_id: string): Promise<Move[]> {
     const client = await this.getClient();
     try {
       const result = await client.query(
         `SELECT game_id, move, player, col, CAST(played_at AS FLOAT), delta FROM con4_schema.Moves
           INNER JOIN con4_schema.Games ON con4_schema.Games.id = con4_schema.Moves.game_id 
-          WHERE con4_schema.Games.game_id = $1
+          WHERE con4_schema.Games.short_id = $1
           ORDER BY move`,
-        [gameid]
+        [short_id]
       );
+      console.log(result.rows);
       return result.rows as Move[];
     } catch (error) {
       console.error('Failed to fetch moves by game id:', error);
@@ -407,6 +408,49 @@ export class GameOperations {
       return result.rows.map(row => row.player) as string[];
     } catch (error) {
       console.error('Failed to fetch players by game id:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async UpdatePlayerElo(playerid: string, gameModeId: string, delta: number): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `UPDATE con4_schema.Elo
+          SET elo = elo + $3
+          WHERE player = $1
+          AND mode = $2`,
+        [playerid, gameModeId, delta]
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to update player elo:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async QueryMatckmaking(playerid: string, gamemodeId: string): Promise<string[]> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT player FROM con4_schema.GameLookup
+          INNER JOIN con4_schema.Elo ON con4_schema.Elo.player = con4_schema.GameLookup.player
+          INNER JOIN con4_schema.GameInfo ON con4_schema.GameLookup.game_info = con4_schema.GameInfo.id
+          WHERE con4_schema.Elo.mode = $1
+          AND con4_schema.GameInfo.gamemode = $1
+          AND player != $2
+          ORDER BY ABS(ABS(con4_schema.Elo.elo - (SELECT elo FROM con4_schema.Elo WHERE player = $2 AND mode = $1)) - 30) ASC`,
+        [gamemodeId, playerid]
+      );
+      return result.rows.map(row => row.player) as string[];
+    } catch (error) {
+      console.error('Failed to query matchmaking:', error);
       throw error;
     } finally {
       client.release();

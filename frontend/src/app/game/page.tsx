@@ -26,6 +26,7 @@ export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
   const [gameStarted, setGameStarted] = useState(false);
+  const [timerActive, setTimerActive] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const gameBoardRef = useRef<GameState>();
   const timerInterval = useRef<NodeJS.Timeout>();
@@ -37,11 +38,14 @@ export default function TestingWebsockets() {
   const addPlayer = async (username: string, time: number) => {
     // Get the player data using api here
     const elo = 1000;
-
-    getPlayers.push({ username, elo, time: 0 });
+    getPlayers.push({ username, elo, time });
+    setTimeUpdate(timeUpdate + 1);
   }
 
   const formatTime = (ms: number) => {
+    if (ms < 0) {
+      return '00:00:00';
+    }
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     const milliseconds = Math.floor((ms % 1000) / 10);
@@ -49,10 +53,9 @@ export default function TestingWebsockets() {
   };
 
   const changeCurrentPlayer = (nextPlayer: number, timeLeft: number) => {
-    getPlayers[playerNumber].time = timeLeft;
-    if (nextPlayer !== 0 && nextPlayer !== 1)
-      throw new Error("Player Out Of Bounds")
-    setCurrentNumber(nextPlayer); // countdown updated in its own interval
+    if (timeLeft > 0)
+      getPlayers[playerNumber].time = timeLeft;
+    setCurrentNumber(nextPlayer as Player); // countdown updated in its own interval
   }
 
   const notLoggedIn = () => {
@@ -104,11 +107,7 @@ export default function TestingWebsockets() {
 
         switch (data.event) {
         case 'playerJoined':
-          if (data.data.playersCount === 1) {
-            setGameStatus('Waiting for opponent...');
-          } else if (data.data.playersCount === 2) {
-            setGameStatus('Game ready to start! Waiting for player 1 to move...');
-          }
+          setGameStatus('Waiting for opponent...');
           break;
         case 'gameStart':
 
@@ -118,9 +117,15 @@ export default function TestingWebsockets() {
           players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
+          setGameStarted(true);
+          if (playerNumber === 0) {
+            setGameStatus('Game started! Your move!');
+          } else {
+            setGameStatus('Game started! Waiting for player 1 move...');
+          }
           break;
         case 'startTimer': // SAME EXACT THING AS START GAME
-          setGameStarted(true);
+          setTimerActive(true);
           break;
         case 'error':
           console.log('Error:', data.data.message);
@@ -134,15 +139,16 @@ export default function TestingWebsockets() {
         case 'moveMade':
           const gameState = gameBoardRef.current;
           if (gameState) {
-            const index = gameState.getMoves().length-1;
-            gameState.currentPlayer = data.data.nextPlayer as Player;
-            gameState.currentMoveIndex = index;
+            const index = gameState.getMoves().length;
+            gameState.currentPlayer = (data.data.nextPlayer===1) ? 0 : 1 as Player;
+            gameState.currentMoveIndex = index - 1;
             gameState.constructFromMoves();
-            gameState.makeMove( 
-              data.data.col,
+            gameState.addMove( 
+              { player: gameState.currentPlayer, col: data.data.col },
             );
             changeCurrentPlayer(data.data.nextPlayer, data.data.timeLeft);
             setWaiting(false);
+            console.log("Move Made");
           } else {
             throw new Error('Game state is not initialized!');
           }
@@ -164,12 +170,21 @@ export default function TestingWebsockets() {
     // Add timer effect
   useEffect(() => {
 
-    if (!gameStarted) return;
+    if (!timerActive) return;
 
     timerInterval.current = setInterval(() => {
 
       // add 10 to the time of the current player
       getPlayers[playerNumber].time += 10;
+
+      if (getPlayers[playerNumber].time < 0) {
+        console.log('Player ran out of time!');
+        // socket?.send(JSON.stringify({
+        //   event: 'playerRanOutOfTime',
+        //   data: { roomId, playerNumber }
+        // }))
+      };
+
       setTimeUpdate(timeUpdate + 1);
 
     }, 10);
@@ -186,6 +201,7 @@ export default function TestingWebsockets() {
     
   const handleMove = (col: number) => {
 
+    if (!gameStarted) return;
     if (waiting) return
     
     setWaiting(true);

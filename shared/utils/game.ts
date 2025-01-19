@@ -47,7 +47,7 @@ export class GameState {
   addMove = (move: Move, silent: boolean = false) => {
     this.moves.push(move)
     if (!silent) {
-      eventEmitter.emit('boardUpdated', { row: -1, col: move.col, player: this.currentPlayer });
+      eventEmitter.emit('boardUpdated', move);
     }
   }
 
@@ -64,6 +64,9 @@ export class GameState {
 
   constructFromMoves(silent: boolean = false) {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
+
+    console.log('Constructing from moves', this.moves, this.currentMoveIndex, this.currentPlayer)
+
     for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex+1); i++) {
       const move = this.moves[i]
       let row = ROWS - 1

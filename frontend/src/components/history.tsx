@@ -24,7 +24,7 @@ export default function MoveHistory({
   const goToMove = (index: number) => {
     //console.log(index, gameState.currentMoveIndex, gameState.getMoves().length - 1)
     if (index == gameState.currentMoveIndex) return;
-    gameState.currentPlayer = index % 2 === 0 ? 2 : 1;
+    gameState.currentPlayer = (index % 2 === 0) ? 1 : 0;
     gameState.currentMoveIndex = index;
     gameState.constructFromMoves();
     setUpdateCount(prev => prev + 1);
@@ -82,7 +82,7 @@ export default function MoveHistory({
             key={index}
             onClick={() => goToMove(index)}
             className={`w-8 h-8 rounded-full text-white font-bold ${
-              move.player === 1 ? 'bg-red-500' : 'bg-yellow-400'
+              move.player === 0 ? 'bg-red-500' : 'bg-yellow-400'
             } ${
               index === (gameState.getMoves().length) ? 'ring-2 ring-blue-500 ring-offset-2' : ''
             }`}

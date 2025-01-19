@@ -150,7 +150,7 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
                         <div
                           className={`w-10 h-10 rounded-full ${
                             cell !== null 
-                              ? (cell === 1 ? 'bg-red-500' : 'bg-yellow-400')
+                              ? (cell === 0 ? 'bg-red-500' : 'bg-yellow-400')
                               : (fallingPiece?.player === 0 ? 'bg-yellow-500' : 'bg-red-400')
                           } transition-transform duration-100`}
                           style={{

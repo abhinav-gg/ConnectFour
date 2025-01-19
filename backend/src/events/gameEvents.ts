@@ -142,14 +142,14 @@ function getRoomOfPlayer(userId: string): string|null {
 
 type verificationData = {
   delta: number;
+  timeLeft: number;
   turn: number;
-  nextPlayer: string;
+  nextPlayer: number;
   draw: boolean;
-  winner: string | null;
+  winner: number | null;
 }
 
 async function verifyStandardGame(roomId: string, userId: string, col: number): Promise<verificationData> {
-  const moves = await dbOperations.GetMovesByGameID(roomId);
   const timecontrol = getTimeControl(roomId)!;
   const room = getRoom(roomId)!;
   
@@ -157,55 +157,58 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   if (room.currentTurn !== room.players.indexOf(userId as UUID)) {
     return {
       delta: 0,
+      timeLeft: -1,
       turn: -1,
-      nextPlayer: room.players[room.currentTurn],
+      nextPlayer: room.currentTurn,
       draw: false,
       winner: null
     } as verificationData;
   }
   
   // Verify the time left here and calculate the time delta
-  let timeTaken = 0; // calculate time taken
-
+  const moves = await dbOperations.GetMovesByShortCode(roomId);
+  room.currentTurn = room.currentTurn === 0 ? 1 : 0;
+  
   if (moves.length == 0) {
     return {
       delta: 0,
+      timeLeft: -1,
       turn: 1,
-      nextPlayer: userId,
+      nextPlayer: room.currentTurn,
       draw: false,
       winner: null
     } as verificationData;
   }
-  else {
-    let allowedTime = 0; // get allowed time from time control
-    for (let i = 0; i < moves.length; i++) {
-      if (moves[i].player === userId) {
-        timeTaken += moves[i].delta;
-      }
-    }
-    if (userId === room?.players[1]) {
-      allowedTime += timecontrol?.disadvantage as number;
-    }
-    const movesMadeByPlayer = moves.filter(m => m.player === userId).length;
-    allowedTime += timecontrol.base_time
-                +  timecontrol.increment * movesMadeByPlayer;
+  
+  let timeTaken = 0; // calculate time taken
+  let allowedTime = 0; // get allowed time from time control
+  const movesByPlayer = moves.filter(m => m.player === userId);
+  timeTaken = movesByPlayer.reduce((acc, m) => acc + m.delta, 0);
 
-    const lastMoveMadeTime = moves[moves.length - 1].played_at;
-    const currentTime = new Date().getTime();
-    if (timeTaken > allowedTime){
-      return {
-        delta: lastMoveMadeTime - currentTime,
-        turn: -1,
-        nextPlayer: "",
-        draw: false,
-        winner: room?.players[room.players.indexOf(userId as UUID) === 0 ? 1 : 0]
-      } as verificationData;
-    }
+  if (userId === room?.players[1]) {
+    allowedTime += timecontrol?.disadvantage as number;
+  }
+  allowedTime += (timecontrol.base_time * 60000)
+              +  (timecontrol.increment * movesByPlayer.length * 1000);
+
+  const lastMoveMadeTime = moves[moves.length - 1].played_at;
+  const currentTime = new Date().getTime();
+  const delta = currentTime - lastMoveMadeTime;
+  const timeLeft = allowedTime - timeTaken - delta;
+  if (timeTaken > allowedTime){
+    return {
+      delta: delta,
+      timeLeft: timeLeft,
+      turn: -1,
+      nextPlayer: -1,
+      draw: false,
+      winner: room.currentTurn
+    } as verificationData;
   }
 
-
-  // Verify game here, leave for now assuming no interference occured
+  // Verify game here
   const intMoves = moves.map(m => { return m.col }) as number[]
+  intMoves.push(col);
   const gameState = new GameState();
   intMoves.forEach((col) => {
     let res = gameState.makeMove(col, true);
@@ -213,19 +216,31 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
       throw new Error('Invalid move');
   });
   if (gameState.gameOver) {
+    if (gameState.winner === null) {
+      return {
+        delta: delta,
+        timeLeft: timeLeft,
+        turn: -1,
+        nextPlayer: -1,
+        draw: true,
+        winner: null
+      } as verificationData;
+    }
     return {
-      delta: 0,
+      delta: delta,
+      timeLeft: timeLeft,
       turn: -1,
-      nextPlayer: "",
+      nextPlayer: -1,
       draw: false,
-      winner: room?.players[gameState.winner as number]
+      winner: room.currentTurn ? 1 : 0
     } as verificationData;
   }
   else {
     return {
-      delta: 0,
+      delta: delta,
+      timeLeft: timeLeft,
       turn: 1,
-      nextPlayer: userId,
+      nextPlayer: room.currentTurn,
       draw: false,
       winner: null
     } as verificationData;
@@ -481,6 +496,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
                 try {
                   verification = await verifyStandardGame(roomId, userId!, col);
+                  console.log('Verification:', verification);
                 }
                 catch (error) {
                   console.error('Failed to verify standard game:', error);
@@ -496,7 +512,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
             
             if (verification.turn === 1) {
-              
               sendToRoom(roomId, {
                 event: 'startTimer',
               } as StartTimer);
@@ -513,13 +528,14 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               data: { 
                 nextPlayer: room!.players.indexOf(user as UUID), 
                 col: col,
-                timeLeft: 2
+                timeLeft: verification.timeLeft
                }
               } as MoveMade)
           
             try {
               // consider speed, will this write to the database in time for the next move??
-              const dbResponse = await dbOperations.MakeMove(roomId, userId, verification.turn, col, verification.delta);
+              const gameId = (await dbOperations.GetGameByShortCode(roomId))?.id;
+              dbOperations.MakeMove(gameId, userId, verification.turn, col, verification.delta);
             }
             catch (error) {
               throw new Error('Failed to send move to database');
@@ -539,7 +555,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         }
       } catch (error) {
         console.error('Error handling message:', error);
-        ws.send(JSON.stringify({ event: 'error', data: { message: 'An error occurred' } }));
+        ws.send(JSON.stringify({ event: 'error', data: { message: 'Move Error' } }));
       }
     });
 

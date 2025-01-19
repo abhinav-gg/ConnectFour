@@ -61,7 +61,7 @@ export default function Dashboard() {
               Game
             </Link>
             
-            <Link href="/test-analysis" className="flex items-center text-gray-600 hover:text-gray-800">
+            <Link href="/analysis" className="flex items-center text-gray-600 hover:text-gray-800">
               <BarChart2 className="mr-2" />
               Analysis
             </Link>

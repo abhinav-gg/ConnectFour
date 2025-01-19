@@ -48,7 +48,6 @@ export class Analysis {
     GS.checkGameOver()
     
     if (GS.gameOver) {
-      console.log(GS.winner)
       if (GS.winner === 0) return INFINITY / depth  // Divide by depth for mate distance
       if (GS.winner === 1) return -INFINITY / depth
       return 0  // Draw

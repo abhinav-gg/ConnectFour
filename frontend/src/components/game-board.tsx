@@ -27,12 +27,13 @@ export default function GameBoard (props: GameBoardProps)  {
 
     const handleBoardUpdate = (data: { row: number; col: number; player: Player }) => {
       const { row, col, player } = data;
+      console.log('Board updated', row, col, player);
       setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
       animatePieceFall(row, col)
-
     };
 
     const handleBoardSet = () => {
+      console.log('Board set', gameState.getBoard());
       setUpdateCount(prev => prev + 1);
     }
 
@@ -105,7 +106,7 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   const handleColumnHover = (col: number) => {
-    console.log(gameState.currentPlayer, props.playerNumber, gameState.gameOver, fallingPiece, gameState.currentMoveIndex)
+
     if (gameState.currentPlayer != props.playerNumber 
       || gameState.gameOver || fallingPiece
       || gameState.currentMoveIndex != gameState.getMoves().length - 1
@@ -187,7 +188,7 @@ export default function GameBoard (props: GameBoardProps)  {
                           <div
                             className={`w-10 h-10 rounded-full ${
                               cell !== null 
-                                ? (cell === 1 ? 'bg-red-500' : 'bg-yellow-400')
+                                ? (cell === 0 ? 'bg-red-500' : 'bg-yellow-400')
                                 : (fallingPiece?.player === 0 ? 'bg-red-500' : 'bg-yellow-400')
                             } transition-transform duration-100`}
                             style={{
