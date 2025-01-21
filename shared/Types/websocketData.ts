@@ -66,6 +66,15 @@ export type Error = {
   data: { redirect: string | null; message: string; };
 };
 
+export type ChatMessage = {
+  event: 'chatMessage';
+  data: { playerNumber: number; message: string; };
+};
+
+
+export type ClientMessage = GameStart | PlayerJoined | MoveMade | EndGame 
+                          | RoomFull | GameStart | ChatMessage | Error | PlayerDisconnected 
+                          | StartTimer | Draw
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
 
@@ -115,6 +124,5 @@ export type PlayerTimeOut = {
 }
 
 
-export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart 
-                    | PlayerDisconnected | MoveMade | PlayerJoined | StartTimer
-                    | Error;
+export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | DeclineDraw | Resign
+                          | OfferRematch | JoinGame | MakeMove | PlayerTimeOut

@@ -46,4 +46,5 @@ export const dbOperations = {
   SetPlayerElo: gameOps.SetPlayerElo.bind(gameOps),
   GetPlayersByShortCode: gameOps.GetPlayersByShortCode.bind(gameOps),
   UpdatePlayerElo: gameOps.UpdatePlayerElo.bind(gameOps),
+  QueryMatckmaking: gameOps.QueryMatckmaking.bind(gameOps),
 };

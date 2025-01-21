@@ -6,10 +6,11 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
 import { GameState, Player } from '@shared/utils/game';
-import { JoinGame, MakeMove, Message, PlayerData, PlayerTimeOut, StartTimer } from '@shared/Types/websocketData';
+import { JoinGame, MakeMove, ClientMessage, PlayerData, PlayerTimeOut, StartTimer } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { GamePlayer } from '@shared/Models/gameInfo';
+import LiveChat from '@/components/game/chat';
 
 export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
@@ -24,6 +25,7 @@ export default function TestingWebsockets() {
   const [waiting, setWaiting] = useState(false);
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const gameBoardRef = useRef<GameState>();
+  const [chatMessages, setChatMessages] = useState<{ playerNumber?: number; message: string }[]>([]);
 
   // FOR NOW ASSUME USER IS LOGGED IN
   // THIS WILL BE MERGED WITH /TEST-LOGIN SO THAT USER CAN LOGIN AS ANONYMOUS AS WELL
@@ -111,7 +113,7 @@ export default function TestingWebsockets() {
     };
 
     newSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data) as Message;
+        const data = JSON.parse(event.data) as ClientMessage;
         console.log('Received message:', data);
 
         switch (data.event) {
@@ -153,6 +155,13 @@ export default function TestingWebsockets() {
         case 'playerDisconnected':
           setGameStatus('Opponent disconnected. Waiting for reconnect or timeout...');
           break;
+        case 'chatMessage':
+          setChatMessages(prev => [...prev, {
+            playerNumber: data.data.playerNumber,
+            username: gamePlayers[data.data.playerNumber].username,
+            message: data.data.message
+          }]);
+          break;
       }
     }
   }
@@ -190,6 +199,16 @@ export default function TestingWebsockets() {
       ));
     }
 
+  };
+
+  const handleSendMessage = (inputMessage: string) => {
+    
+    if (!inputMessage.trim() || !socket) return;
+
+    socket.send(JSON.stringify({
+      event: 'chatMessage',
+      data: { roomId, message: inputMessage }
+    }));
   };
 
   useEffect(() => {
@@ -253,6 +272,11 @@ export default function TestingWebsockets() {
           <div className="w-1/3 flex flex-col items-center justify-center">
             <div className="p-4 w-full">
               { HISTORY }
+              <LiveChat 
+                playerNumber={playerNumber}
+                onSendMessage={handleSendMessage}
+                roomId={roomId}
+              />
             </div>
           </div>
         </div>

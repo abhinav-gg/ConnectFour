@@ -1,7 +1,7 @@
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
 import type { Room, RoomMap } from "../types/types";
-import type { Error, GameStart, JoinGame, MakeMove, Message, MoveMade, PlayerData, PlayerDisconnected, PlayerJoined, StartTimer } from "@shared/Types/websocketData";
+import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, PlayerData, PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage } from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
@@ -115,7 +115,7 @@ function joinRoom(roomid: string, player: string) {
   }
 }
 
-function sendToRoom(roomId: string, data: Message) {
+function sendToRoom(roomId: string, data: ClientMessage) {
   const room = getRoom(roomId);
   if (!room) return;
 
@@ -300,7 +300,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
     ws.on('message', async (message) => {
       try {
         console.log('Received message:', message);
-        const data: Message = JSON.parse(message.toString());
+        const data: ServerMessage = JSON.parse(message.toString());
         console.log('Parsed message:', data);
 
 /////////////////////////////////////////////////////////////////////////////

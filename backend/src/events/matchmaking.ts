@@ -1,5 +1,5 @@
-import { TimeControl } from '@shared/Models/gameInfo';
-import { GameOperations } from '../db/gameOps';
+import { GameMode, TimeControl } from '@shared/Models/gameInfo';
+import { dbOperations } from '@/db/operations';
 // file to control all elements of user matchmaking and game creation
 
 // helper functions of the main gameEvents file
@@ -10,7 +10,8 @@ import { GameOperations } from '../db/gameOps';
 export function CategoriseTime(timeControl: TimeControl): string { 
     // Calculate total game time in seconds:
     // 2 * base time (both players) + disadvantage + increment * total moves
-    const totalTime = (2 * timeControl.base_time) + timeControl.disadvantage + (timeControl.increment * 30);
+    const avgGameLength = 30;  // Average game length in moves
+    const totalTime = (2 * 60 * timeControl.base_time) + timeControl.disadvantage + (timeControl.increment * avgGameLength);
     
     // Categorize based on total game time:
     // Hyper Bullet: ≤ 70 seconds (1.16 minutes)
@@ -19,8 +20,7 @@ export function CategoriseTime(timeControl: TimeControl): string {
     // Rapid: ≥ 500 seconds (8.3+ minutes)
     if (totalTime <= 70) {
         return 'hyper bullet';
-    }
-    else if (totalTime <= 255) {
+    } else if (totalTime <= 255) {
         return 'bullet';
     } else if (totalTime < 500) {
         return 'blitz';
@@ -30,51 +30,34 @@ export function CategoriseTime(timeControl: TimeControl): string {
 }
 // TODO: figure out what GameOperations is and why it keeps trying to be used for this function
 // FindCompetitiveMatch takes the userID and timeControlId and returns a match or null if they need to wait
-/*export async function FindCompetitiveMatch(userId: string, timeControlId: string): Promise<string | null> {
-    const gameOps = new GameOperations();
+export async function FindCompetitiveMatch(userId: string, time_control: TimeControl, gamemode: GameMode): Promise<string | null> {
     
     try {
         // First, check if player is already in a game
-        const existingGame = await gameOps.GetOngoingGameByPlayer(userId);
+        const existingGame = await dbOperations.GetGameByPlayerLookup(userId);
         if (existingGame) {
             return existingGame;
         }
 
         // Add player to matchmaking queue
-        await gameOps.BeginFindingGame(userId, timeControlId);
-
-        const client = await gameOps.getClient();
+        //await dbOperations.BeginFindingGame(userId,);
         
         // Look for potential opponents with same time control and closest rating
         // Orders by absolute difference from ideal rating gap (50)
-        const potentialMatch = await client.query(
-            `WITH user_rating AS (
-                SELECT rating FROM con4_schema.Users WHERE id = $1
-            )
-            SELECT 
-                gl.player,
-                u.rating,
-                ABS(ABS(u.rating - (SELECT rating FROM user_rating)) - 50) as rating_gap
-            FROM con4_schema.GameLookup gl
-            JOIN con4_schema.Users u ON gl.player = u.id
-            WHERE gl.time_control = $2 
-                AND gl.player != $1 
-                AND gl.game_id IS NULL
-            ORDER BY rating_gap ASC
-            LIMIT 1`, // gets a list of every player looking for a match with the same time control as the user and sorts them to find the player with the closest difference in rating to the user to 50 as possible
-            [userId, timeControlId]
-        );
+        const potentialMatch = dbOperations.QueryMatckmaking(userId, gamemodeId);
 
         // If we found a match
         if (potentialMatch.rows.length > 0) {
             const opponent = potentialMatch.rows[0];
-            const shortCode = generateShortCode();
+
+            // Check time current player has been in queue
+            // If they have been waiting <20 seconds and opponent elo diff is >50, keep waiting
+            // If they have been waiting >20 seconds, create the game
+            // If opponent elo diff is <50, create the game
+
             
             // Calculate expected scores based on ratings
-            const userRating = (await client.query(
-                'SELECT rating FROM con4_schema.Users WHERE id = $1',
-                [userId]
-            )).rows[0].rating;
+            const userRating = dbOperations.GetPlayerElo(userId, gamemodeId);
 
             // Calculate expected scores (1 for win, 0 for loss)
             const expectedScore = 1 / (1 + Math.pow(10, (opponent.rating - userRating) / 400));
@@ -102,10 +85,10 @@ export function CategoriseTime(timeControl: TimeControl): string {
         throw error;
     }
 }
-*/
+
 
 // TODO: GlickoPlayer needs to be stored in the database
-interface GlickoPlayer {
+export interface GlickoPlayer {
     rating: number;
     rd: number;  // Rating Deviation
     timeSinceLastPlayed: number;
@@ -120,16 +103,18 @@ interface GlickoRatingChange {
     p2D: number;
 }
 
+export const adjustRD = (player: GlickoPlayer): number => {
+    const daysSinceLastGame = (player.timeSinceLastPlayed) / (1000 * 60 * 60 * 24);
+    const newRD = Math.min(350, Math.sqrt(Math.pow(player.rd, 2) + daysSinceLastGame * 5));
+    return newRD;
+};
+
 // Calculate new ratings for both players based on Glicko system
 export function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPlayer): GlickoRatingChange {
     const q = Math.log(10) / 400;  // System constant
     
     // Adjust RD based on time since last played (increases uncertainty)
-    const adjustRD = (player: GlickoPlayer): number => {
-        const daysSinceLastGame = (player.timeSinceLastPlayed) / (1000 * 60 * 60 * 24);
-        const newRD = Math.min(350, Math.sqrt(Math.pow(player.rd, 2) + daysSinceLastGame * 5));
-        return newRD;
-    };
+    
 
     const p1RD = adjustRD(player1);
     const p2RD = adjustRD(player2);
