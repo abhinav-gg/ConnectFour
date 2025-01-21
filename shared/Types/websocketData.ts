@@ -58,7 +58,7 @@ export type PlayerJoined = {
 
 export type EndGame = {
   event: 'endGame';
-  data: { winner: boolean; };
+  data: { draw: boolean; winner: number | null; };
 };
 
 export type Error = {
@@ -120,9 +120,14 @@ export type MakeMove = {
 
 export type PlayerTimeOut = {
   event: 'playerTimeOut';
-  data: { playerNumber: number; roomId: RoomID; };
+  data: { roomId: RoomID; playerNumber: number;  };
 }
+
+export type SendMessage = {
+  event: 'sendMessage';
+  data: { roomId: RoomID; message: string; };
+};
 
 
 export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | DeclineDraw | Resign
-                          | OfferRematch | JoinGame | MakeMove | PlayerTimeOut
+                          | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage

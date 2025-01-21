@@ -6,11 +6,12 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
 import { GameState, Player } from '@shared/utils/game';
-import { JoinGame, MakeMove, ClientMessage, PlayerData, PlayerTimeOut, StartTimer } from '@shared/Types/websocketData';
+import { JoinGame, MakeMove, ClientMessage, PlayerData, PlayerTimeOut, StartTimer, ServerMessage, SendMessage } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
+import EndPopup from '@/components/game/endPopup';
 
 export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
@@ -26,6 +27,8 @@ export default function TestingWebsockets() {
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const gameBoardRef = useRef<GameState>();
   const [chatMessages, setChatMessages] = useState<{ playerNumber?: number; message: string }[]>([]);
+  const [showEndPopup, setShowEndPopup] = useState(false);
+  const [gameResult, setGameResult] = useState<{ winner: string | null; players: { username: string; elo: number; eloChange: number }[] }>();
 
   // FOR NOW ASSUME USER IS LOGGED IN
   // THIS WILL BE MERGED WITH /TEST-LOGIN SO THAT USER CAN LOGIN AS ANONYMOUS AS WELL
@@ -34,6 +37,12 @@ export default function TestingWebsockets() {
     // Update to use setState
     const elo = 1000;
     setGamePlayers(prev => [...prev, { username, elo: elo, time, timerActive: false }]);
+  }
+
+  const sendToServer = (data: ServerMessage) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(data));
+    }
   }
 
   const notLoggedIn = () => {
@@ -192,23 +201,17 @@ export default function TestingWebsockets() {
     }
 
     console.log(socket, socket?.readyState);
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      console.log("SENT MOVE");
-      socket.send(JSON.stringify(
-        { event: 'makeMove', data: { roomId, col } } as MakeMove
-      ));
-    }
-
-  };
+    sendToServer({ event: 'makeMove', data: { roomId, col } } as MakeMove);
+  }
 
   const handleSendMessage = (inputMessage: string) => {
     
     if (!inputMessage.trim() || !socket) return;
 
-    socket.send(JSON.stringify({
-      event: 'chatMessage',
-      data: { roomId, message: inputMessage }
-    }));
+    sendToServer({
+      event: 'sendMessage',
+      data: { roomId: roomId, message: inputMessage }
+    } as SendMessage);
   };
 
   useEffect(() => {
@@ -255,11 +258,37 @@ export default function TestingWebsockets() {
       </div>
     </div>
   );
+
+  // Example function to simulate game end
+  const handleGameEnd = () => {
+    // Example data, replace with actual game result data
+    setGameResult({
+      winner: null, // null for draw
+      players: [
+        { username: 'Player1', elo: 1500, eloChange: 0 },
+        { username: 'Player2', elo: 1500, eloChange: 0 }
+      ]
+    });
+    setShowEndPopup(true);
+  };
+
   return (
   <AuthPage
     onAuthSuccess={ connectedUser }
     onAuthFail={ notLoggedIn }>
     <div className="flex min-h-screen bg-gray-100">
+      {showEndPopup && gameResult && (
+        <EndPopup
+          winner={gameResult.winner}
+          players={gameResult.players}
+          onRematch={() => {
+            console.log('Rematch requested');
+            setShowEndPopup(false);
+            // Add logic for starting a new game
+          }}
+          onClose={() => setShowEndPopup(false)}
+        />
+      )}
       <Dashboard />
       <div className="flex-1 flex flex-col">
         <div className="flex w-full">

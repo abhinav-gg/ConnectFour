@@ -1,7 +1,7 @@
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
 import type { Room, RoomMap } from "../types/types";
-import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, PlayerData, PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage } from "@shared/Types/websocketData";
+import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, PlayerData, PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage, EndGame } from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
@@ -102,8 +102,23 @@ async function setupPlayer(userId: string, gamemode: GameMode) {
   }
 }
 
-function reconnect(roomId: string, userId: string){
-
+async function reconnect(roomId: string, userId: string, newSocket: WSocket) {
+  // Check if the room is still ongoing
+  // If it is then add the new socket to the room and remove the old one
+  const game = await dbOperations.GetGameByShortCode(roomId);
+  const lookup = await dbOperations.GetGameByPlayerLookup(userId);
+  if (game.id === lookup && 
+    (game.state === StandardGameStates.scheduled ||
+     game.state === StandardGameStates.ongoing)) {
+    const room = getRoom(roomId);
+    if (!room) throw new Error('Room does not exist???');
+    
+    const usersock = getSocket(userId)!;
+    usersock.socket = newSocket;
+  }
+  else {
+    throw new Error('Game is not ongoing');
+  }
 }
 
 function joinRoom(roomid: string, player: string) {
@@ -319,7 +334,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             // Check if the user is already in the room
             if (playerInRoom(roomId, userId)) {
-              reconnect(roomId, userId);
+              await reconnect(roomId, userId, ws);
               // The user is already in the room
               ws.send(JSON.stringify({ event: 'error', data: { message: 'User is already in the room' } }));
               return; // TODO: Allow the user to reconnect to the room from another location
@@ -513,6 +528,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             }
 
+            // much like chess.com we do not start the timer until the first move is made
             if (verification.turn === -1) {
               return;
             }
@@ -524,20 +540,23 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               } as StartTimer);
             }
 
-            if (verification.draw || verification.winner) {
-              // sendToRoom(roomId, {
-              //   event: "endGame",
-              //   data: { winner: verification.winner, draw: verification.draw });
-            }
-
             sendToRoom(roomId, {
               event: 'moveMade',
               data: { 
                 nextPlayer: verification.nextPlayer, 
                 col: col,
                 timeLeft: verification.timeLeft
-               }
-              } as MoveMade)
+              }
+            } as MoveMade)
+
+            if (verification.draw || verification.winner) {
+              sendToRoom(roomId, {
+                event: "endGame",
+                data: { 
+                  winner: verification.winner, 
+                  draw: verification.draw }
+              } as EndGame);
+            }
           
             try {
               // consider speed, will this write to the database in time for the next move??
@@ -551,7 +570,9 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
           }
 
-          //case 'sendMessage': { } // TODO: allow chatting, not a priority, messages are not stored, use profanity filter
+          case 'sendMessage': { 
+
+          } // TODO: allow chatting, not a priority, messages are not stored, use profanity filter
 
           //case 'timedOut': { } // TODO: handle timeouts
 
