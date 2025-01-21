@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import SinglePlayerGameboard from '@/components/singleplayer_gameboard'
+import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
 import { GameState } from '@shared/utils/game'
 

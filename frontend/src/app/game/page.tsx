@@ -1,14 +1,14 @@
 'use client';
 
-import GameBoard from '@/components/game-board';
+import GameBoard from '@/components/game/game-board';
 import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
-import MoveHistory from '@/components/history';
+import MoveHistory from '@/components/game/history';
 import { GameState, Player } from '@shared/utils/game';
 import { JoinGame, MakeMove, Message, PlayerData, PlayerTimeOut, StartTimer } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
-import Timer from '@/components/timer';
+import Timer from '@/components/game/timer';
 import { GamePlayer } from '@shared/Models/gameInfo';
 
 export default function TestingWebsockets() {

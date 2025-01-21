@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import MoveHistory from '@/components/history'
-import SinglePlayerGameboard from '@/components/singleplayer_gameboard'
+import MoveHistory from '@/components/game/history'
+import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
-import GameAnalysis from '@/components/analysis'
+import GameAnalysis from '@/components/game/analysis'
 import { Analysis } from '@shared/utils/analysis'
 import { GameState } from '@shared/utils/game'
 
