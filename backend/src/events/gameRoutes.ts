@@ -86,8 +86,8 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
         case 'friendly':
 
             try {
+                // create game
                 const game = await createGame(gamemode, time_control);
-                // Add user to the game search
                 console.log(game.id, game.short_id);
 
                 // Add user to the game lookup

@@ -43,6 +43,7 @@ export const dbOperations = {
   AssignGame: gameOps.AssignGame.bind(gameOps),
   UnassignGame: gameOps.UnassignGame.bind(gameOps),
   GetPlayerElo: gameOps.GetPlayerElo.bind(gameOps),
+  SetPlayerElo: gameOps.SetPlayerElo.bind(gameOps),
   GetPlayersByShortCode: gameOps.GetPlayersByShortCode.bind(gameOps),
   UpdatePlayerElo: gameOps.UpdatePlayerElo.bind(gameOps),
 };

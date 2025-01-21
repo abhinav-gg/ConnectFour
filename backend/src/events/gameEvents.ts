@@ -89,7 +89,6 @@ async function setupPlayer(userId: string, gamemode: GameMode) {
   const user = await dbOperations.getUserByID(userId);
   const elo = 1000 // await dbOperations.GetPlayerElo(userId, gmid);
   if (!user) return;
-  console.log(user)
   if (!SocketIDs.find(s => s.userID === userId)) {
     throw new Error('User is not connected');
   }
@@ -186,15 +185,15 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   timeTaken = movesByPlayer.reduce((acc, m) => acc + m.delta, 0);
 
   if (userId === room?.players[1]) {
-    allowedTime += timecontrol?.disadvantage as number;
+    allowedTime += timecontrol.disadvantage * 1000;
   }
   allowedTime += (timecontrol.base_time * 60000)
               +  (timecontrol.increment * movesByPlayer.length * 1000);
 
-  const lastMoveMadeTime = moves[moves.length - 1].played_at;
-  const currentTime = new Date().getTime();
+  const lastMoveMadeTime = moves[moves.length - 1].played_at * 1000; // db stores in seconds
+  const currentTime = new Date().getTime(); // debug this
   const delta = currentTime - lastMoveMadeTime;
-  const timeLeft = allowedTime - timeTaken - delta;
+  const timeLeft = allowedTime - timeTaken - delta + timecontrol.increment * 1000;
   console.log('Time:', lastMoveMadeTime, currentTime, delta, timeLeft);
   if (timeTaken > allowedTime){
     return {
@@ -282,20 +281,21 @@ async function handleGameEnd(roomId: string, status: string) {
   });
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 export const setupGameEvents = async (app: expressWs.Application) => {
   app.ws('/ws', (ws, req) => {
     console.log('Client connected');
     const token = req.header('Sec-WebSocket-Protocol') as string;
     const user = verifyAccessToken(token as string);
     if (!user) {
-      console.log('User not authenticated');
       ws.close();
       return;
     }
     else {
       addSocket(user.userId, ws)
     }
-    // ^ don't touch it if its not broken -_-
+    // Handle incoming messages
 
     ws.on('message', async (message) => {
       try {
@@ -330,10 +330,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             try {
               game = await dbOperations.GetGameByShortCode(roomId);
-              console.log('Game Status:', game);
               if (game.state !== StandardGameStates.scheduled) {
                 throw new Error('Game is not in appropriate state');
               }
+              // else let the user spectate the game
             }
             catch (error) {
               console.log('Failed to check if game is ongoing:', error);
@@ -395,6 +395,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId);
                   // Check that the room has room for another player
                   if (gamePlayers.length >= 2)
+                    // allow spectation
                     throw new Error('Room is full');
 
                   if (gameLookup) {
@@ -516,6 +517,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               return;
             }
             
+            // I think that happens by default
             if (verification.turn === 1) {
               sendToRoom(roomId, {
                 event: 'startTimer',
@@ -552,7 +554,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
           //case 'sendMessage': { } // TODO: allow chatting, not a priority, messages are not stored, use profanity filter
 
           //case 'timedOut': { } // TODO: handle timeouts
-
 
           default:
             console.log('Unknown event:', JSON.stringify(data));
@@ -592,8 +593,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         // the player has some time to return if there are other players so do nothing
         if (room.players.length === 1) {
           handleGameEnd(roomId, 'abandoned'); // IMPORTANT - TODO: handle this
-            }
-        
+        }
       }
       
       // The player will get timed out if they don't reconnect in time and the room will be deleted there

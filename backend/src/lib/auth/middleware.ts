@@ -9,9 +9,10 @@ interface AuthenticatedRequest extends Request {
   user?: JwtPayload;
 }
 
+
 export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   const token = req.headers.authorization?.split(' ')[1]; // Extract the token from the header
-
+  // TODO: ivan to check for "NONE" signing algorithm (should NOT be accepted)
   if (!token) {
     res.status(401).json({ error: 'Access token required' });
     return; // Ensure we return here to avoid further execution

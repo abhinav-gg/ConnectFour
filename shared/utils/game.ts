@@ -58,8 +58,6 @@ export class GameState {
   constructFromMoves(silent: boolean = false) {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
 
-    console.log('Constructing from moves', this.moves, this.currentMoveIndex, this.currentPlayer)
-
     for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex+1); i++) {
       const move = this.moves[i]
       let row = ROWS - 1
@@ -128,7 +126,6 @@ export class GameState {
   }
 
   makeMove(col: number, silent = false): { row: number; success: boolean } {
-    console.log("Making move", col, this.currentPlayer)
 
     const targetRow = this.getAvailableRow(col)
     // ensure that the board reflects all the moves made i.e. not in history view

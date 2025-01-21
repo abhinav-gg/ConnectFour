@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
 import { Game, Move } from '@/models/Game';
 import { GameMode, TimeControl } from '@shared/Models/gameInfo';
+import { PlayerEloNotFound } from './dbErrors';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
@@ -122,7 +123,6 @@ export class GameOperations {
           ORDER BY move`,
         [short_id]
       );
-      console.log(result.rows);
       return result.rows as Move[];
     } catch (error) {
       console.error('Failed to fetch moves by game id:', error);
@@ -386,9 +386,30 @@ export class GameOperations {
           AND mode = $2`,
         [playerid, gameModeId]
       );
+      if (result.rowCount === 0) {
+        throw new PlayerEloNotFound;
+      }
       return result.rows[0];
     } catch (error) {
       console.error('Failed to fetch player game info:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async SetPlayerElo(playerid: string, gameModeId: string, elo: number): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `INSERT INTO con4_schema.Elo (player, mode, elo, rating_deviation)
+          VALUES ($1, $2, $3, 350)`,
+        [playerid, gameModeId, elo]
+      );
+      return result.rows[0];
+    } catch (error) {
+      console.error('Failed to set player elo:', error);
       throw error;
     } finally {
       client.release();

@@ -1,3 +1,4 @@
+import { PlayerEloNotFound } from "@/db/dbErrors";
 import { dbOperations } from "@/db/operations";
 import { Game } from "@/models/Game";
 import { genRandomGameKey } from "@/utils/helper";
@@ -121,4 +122,21 @@ export async function killGame(gameId: string) {
         throw error;
     }
 }
+
+export async function getPlayerEloOrDefault(userId: string, gamemode_id: string, defaultElo:number =1000): Promise<number> {
+    try {
+        return await dbOperations.GetPlayerElo(userId, gamemode_id);
+    }
+    catch (error) {
+        if (error === PlayerEloNotFound) {
+            dbOperations.SetPlayerElo(userId, gamemode_id, defaultElo);
+            return 1000;
+        }
+        else {
+            console.log('Failed to get player elo:', error);
+            throw error;
+        }
+    }
+}
+
 

@@ -61,6 +61,12 @@ export type EndGame = {
   data: { winner: boolean; };
 };
 
+export type Error = {
+  event: 'error';
+  data: { redirect: string | null; message: string; };
+};
+
+
 /////////// SENT TO SERVER BY FRONTEND ///////////
 
 export type ResponseError = {
@@ -103,11 +109,11 @@ export type MakeMove = {
   data: { roomId: RoomID; col: number; };
 };
 
-export type Error = {
-  event: 'error';
-  data: { redirect: string | null; message: string; };
-  
-};
+export type PlayerTimeOut = {
+  event: 'playerTimeOut';
+  data: { playerNumber: number; roomId: RoomID; };
+}
+
 
 export type Message = JoinGame | MakeMove | EndGame | RoomFull | GameStart 
                     | PlayerDisconnected | MoveMade | PlayerJoined | StartTimer

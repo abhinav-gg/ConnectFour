@@ -6,49 +6,33 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/history';
 import { GameState, Player } from '@shared/utils/game';
-import { JoinGame, MakeMove, Message, PlayerData, StartTimer } from '@shared/Types/websocketData';
+import { JoinGame, MakeMove, Message, PlayerData, PlayerTimeOut, StartTimer } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
-
-type GamePlayer = {
-  username: string;
-  elo: number;
-  time: number;
-}
+import Timer from '@/components/timer';
+import { GamePlayer } from '@shared/Models/gameInfo';
 
 export default function TestingWebsockets() {
+  const [timeUpdate, setTimeUpdate] = useState(0);
   const [roomId, setRoomId] = useState('');
   const [socket, setSocket] = useState<WebSocket>();
-  const [getPlayers, setPlayers] = useState<GamePlayer[]>([]);
   const [playerNumber, setPlayerNumber] = useState<Player>(0);
+  const [currentPlayer, setCurrentPlayer] = useState<Player>(0);
   const [isConnected, setIsConnected] = useState(false);
-  const [timeUpdate, setTimeUpdate] = useState(0);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
   const [gameStarted, setGameStarted] = useState(false);
-  const [timerActive, setTimerActive] = useState(false);
+  const [timeStarted, setTimeStarted] = useState(false);
   const [waiting, setWaiting] = useState(false);
+  const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const gameBoardRef = useRef<GameState>();
-  const timerInterval = useRef<NodeJS.Timeout>();
 
   // FOR NOW ASSUME USER IS LOGGED IN
   // THIS WILL BE MERGED WITH /TEST-LOGIN SO THAT USER CAN LOGIN AS ANONYMOUS AS WELL
 
   const addPlayer = async (username: string, time: number) => {
-    // Get the player data using api here
+    // Update to use setState
     const elo = 1000;
-    getPlayers.push({ username, elo, time });
-    setTimeUpdate(timeUpdate + 1);
+    setGamePlayers(prev => [...prev, { username, elo: elo, time, timerActive: false }]);
   }
-
-  const formatTime = (ms: number) => {
-    if (ms < 0) {
-      return '00:00:00';
-    }
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    const milliseconds = Math.floor((ms % 1000) / 10);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${milliseconds.toString().padStart(2, '0')}`;
-  };
-
 
   const notLoggedIn = () => {
     console.error('User not logged in!');
@@ -64,24 +48,36 @@ export default function TestingWebsockets() {
 
   const handleMoveReceived = (data: { nextPlayer: number; col: number; timeLeft: number }) => {
     const gameState = gameBoardRef.current;
-    console.log("Move Received", data, gameState);
+
     if (gameState) {
       const index = gameState.getMoves().length;
-      console.log("Moves", gameState.getMoves(), index);
       gameState.currentMoveIndex = index - 1;
       gameState.constructFromMoves();
       gameState.currentPlayer = data.nextPlayer ? 0 : 1 as Player;
       gameState.makeMove(data.col);
-      if (data.timeLeft > 0)
-        getPlayers[playerNumber].time = data.timeLeft;
+      if (data.timeLeft > 0) {
+        setGamePlayers(prev => {
+          const newPlayers = [...prev];
+          newPlayers[data.nextPlayer ? 0 : 1].time = data.timeLeft;
+          return newPlayers;
+        });
+      }
       gameState.currentMoveIndex = index;
       gameState.currentPlayer = data.nextPlayer as Player;
       gameState.constructFromMoves();
       setWaiting(false);
-      console.log("Move Made", gameState.getBoard());
-    } else {
+
+    } 
+    else {
       throw new Error('Game state is not initialized!');
     }
+    // Update timer active state
+    setGamePlayers(prev => {
+      const newPlayers = [...prev];
+      return newPlayers;
+    });
+    setCurrentPlayer(data.nextPlayer as Player);
+    setTimeUpdate(timeUpdate + 1);
   }
 
   const connectedUser = () => {
@@ -112,7 +108,6 @@ export default function TestingWebsockets() {
         data: { roomId: roomFromUrl } 
         } as JoinGame));
 
-      console.log("sent join game data");
     };
 
     newSocket.onmessage = (event) => {
@@ -124,22 +119,23 @@ export default function TestingWebsockets() {
           setGameStatus('Waiting for opponent...');
           break;
         case 'gameStart':
-
           // parse players and add them to the list
           const players = data.data.players;
           setPlayerNumber(data.data.playerNumber as Player);
           players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
-          setGameStarted(true);
           if (data.data.playerNumber === 0) {
             setGameStatus('Game started! Your move!');
           } else {
             setGameStatus('Game started! Waiting for player 1 move...');
           }
+          setGameStarted(true);
+          setTimeUpdate(prevTimeUpdate => prevTimeUpdate + 1);
           break;
-        case 'startTimer': // SAME EXACT THING AS START GAME
-          setTimerActive(true);
+        case 'startTimer':
+          setTimeUpdate(timeUpdate + 1);
+          setTimeStarted(true);
           break;
         case 'error':
           console.log('Error:', data.data.message);
@@ -152,6 +148,7 @@ export default function TestingWebsockets() {
         
         case 'moveMade':
           handleMoveReceived(data.data);
+          setTimeUpdate(timeUpdate + 1);
           break;
         case 'playerDisconnected':
           setGameStatus('Opponent disconnected. Waiting for reconnect or timeout...');
@@ -167,34 +164,6 @@ export default function TestingWebsockets() {
     };
   }, []);
 
-    // Add timer effect
-  useEffect(() => {
-
-    if (!timerActive) return;
-
-    timerInterval.current = setInterval(() => {
-
-      // add 10 to the time of the current player
-      getPlayers[playerNumber].time += 10;
-
-      if (getPlayers[playerNumber].time < 0) {
-        console.log('Player ran out of time!');
-        // socket?.send(JSON.stringify({
-        //   event: 'playerRanOutOfTime',
-        //   data: { roomId, playerNumber }
-        // }))
-      };
-
-      setTimeUpdate(timeUpdate + 1);
-
-    }, 10);
-    return () => {
-      if (timerInterval.current) {
-        clearInterval(timerInterval.current);
-      }
-    };
-  }, [gameStarted, getPlayers, playerNumber]);
-  
   window.onbeforeunload = function() {
     socket?.close();
   };
@@ -209,7 +178,6 @@ export default function TestingWebsockets() {
     console.log('Making move:', col, playerNumber);
     if (!currentGameBoard) return; // Ensure gameBoardRef.current is not undefined
 
-    console.log('Game Over:', currentGameBoard.gameOver);
     if (currentGameBoard.gameOver || !(playerNumber == currentGameBoard.currentPlayer)) {
       console.log("Don't accept moves")
     }
@@ -241,31 +209,29 @@ export default function TestingWebsockets() {
   const HISTORY = <MoveHistory ref={gameBoardRef.current!} />;
   const BOARD_WITH_TIMERS = (
     <div className="flex flex-col items-center">
-      <div className="flex justify-between items-center w-full mb-2">
+      <div className="flex justify-between items-center w-full mb-1">
         <div className={`text-2xl font-mono ${playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
           Player 1
         </div>
         <div className={`font-mono ${playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
-          <span className="text-2xl">{
-            getPlayers.length > 1 ? formatTime(getPlayers[0].time).slice(0, -3) : '00:00'
-          }</span>
-          <span className="text-lg">{
-            getPlayers.length > 1 ? formatTime(getPlayers[0].time).slice(-3) : ':00'
-          }</span>
+          <Timer 
+            timerActive={timeStarted && currentPlayer===0} 
+            playerNumber={0} 
+            getPlayers={gamePlayers} 
+          />
         </div>
       </div>
       {BOARD}
-      <div className="flex justify-between items-center w-full mt-2">
+      <div className="flex justify-between items-center w-full mt-1">
         <div className={`text-2xl font-mono ${!playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
           Player 2
         </div>
         <div className={`font-mono ${!playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
-          <span className="text-2xl">{
-            getPlayers.length > 1 ? formatTime(getPlayers[1].time).slice(0, -3) : '00:00'
-          }</span>
-          <span className="text-lg">{
-            getPlayers.length > 1 ? formatTime(getPlayers[1].time).slice(-3) : ':00'
-          }</span>
+          <Timer 
+            timerActive={timeStarted && currentPlayer===1} 
+            playerNumber={1} 
+            getPlayers={gamePlayers} 
+          />
         </div>
       </div>
     </div>

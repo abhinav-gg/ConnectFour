@@ -10,6 +10,12 @@ export class UsernameDoesntExist extends Error {
   }
 }
 
+export class PlayerEloNotFound extends Error {
+  constructor() {
+    super('Player elo not found');
+  }
+}
+
 export class EmailExists extends Error {
   constructor() {
     super('An account with this email already exists');

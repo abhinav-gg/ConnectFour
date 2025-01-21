@@ -120,6 +120,8 @@ export class OpeningOperations {
       return {"status": "Success"};
     }
 
+    // Update openings
+
 }
   
 

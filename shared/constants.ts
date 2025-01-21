@@ -1,6 +1,4 @@
 
-export const StandardNoEventGameMode = 'b7a10a0d-2ff0-4601-b1b5-c920870c297d';
-
 export const FriendlyNoEventGameMode = 'cd3eac8a-4a65-425e-8e0e-fda476f0d2b5';
 
 export const StandardTimecontrols = [

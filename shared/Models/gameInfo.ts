@@ -21,3 +21,9 @@ export type SendToRoom = {
     data: { roomId: UUID; };
 }
 
+export type GamePlayer = {
+    username: string;
+    elo: number;
+    time: number;
+  }
+

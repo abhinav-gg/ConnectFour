@@ -85,6 +85,7 @@ authRouter.post('/login', async (req: Request, res: any) => {
   }
 });
 
+// TODO: stop bots from creating multiple anonymous users
 authRouter.get('/anonymous', async (req: Request, res: Response) => {
   // Create a new user called Anonymous
   // Add security to prevent multiple anonymous users by bots
@@ -133,6 +134,7 @@ authRouter.get('/protected-route', authenticateJWT, (req: any, res: Response) =>
   res.json({ message: 'You are authenticated!', user: req.user });
 });
 
+// TODO: ivan
 authRouter.post('/refresh', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
   const refreshToken = req.cookies?.refreshToken; // Get the refresh token from cookies
 

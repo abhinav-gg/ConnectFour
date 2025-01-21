@@ -108,7 +108,7 @@ export function CategoriseTime(timeControl: TimeControl): string {
 interface GlickoPlayer {
     rating: number;
     rd: number;  // Rating Deviation
-    lastPlayed: Date;
+    timeSinceLastPlayed: number;
 }
 
 interface GlickoRatingChange {
@@ -126,7 +126,7 @@ export function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPla
     
     // Adjust RD based on time since last played (increases uncertainty)
     const adjustRD = (player: GlickoPlayer): number => {
-        const daysSinceLastGame = (new Date().getTime() - player.lastPlayed.getTime()) / (1000 * 60 * 60 * 24);
+        const daysSinceLastGame = (player.timeSinceLastPlayed) / (1000 * 60 * 60 * 24);
         const newRD = Math.min(350, Math.sqrt(Math.pow(player.rd, 2) + daysSinceLastGame * 5));
         return newRD;
     };

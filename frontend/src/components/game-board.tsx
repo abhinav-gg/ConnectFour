@@ -26,12 +26,12 @@ export default function GameBoard (props: GameBoardProps)  {
 
     const handleBoardUpdate = (data: { row: number; col: number; player: Player }) => {
       const { row, col, player } = data;
-      setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
+      setFallingPiece({ row: -1, col, player: gameState!.currentPlayer })
       animatePieceFall(row, col)
     };
 
     const handleBoardSet = () => {
-      console.log('Board set', gameState.getBoard());
+      // console.log('Board set', gameState!.getBoard());
       setUpdateCount(prev => prev + 1);
     }
 
@@ -46,11 +46,11 @@ export default function GameBoard (props: GameBoardProps)  {
   });
 
   useEffect(() => {
-    if (props.isConnected && gameState.getMoves().length > 0) {
+    if (props.isConnected && gameState!.getMoves().length > 0) {
       const newGameState = new GameState()
       
-      gameState.getMoves().forEach(({ player, col }, index) => {
-        if (index === gameState.getMoves().length - 1) {
+      gameState!.getMoves().forEach(({ player, col }, index) => {
+        if (index === gameState!.getMoves().length - 1) {
           setFallingPiece({ row: -1, col, player: player as Player })
           animatePieceFall(2, col)
         } else {
@@ -59,7 +59,7 @@ export default function GameBoard (props: GameBoardProps)  {
       })
 
       // Update game state
-      Object.assign(gameState, newGameState)
+      Object.assign(gameState!, newGameState)
     }
   }, [props.isConnected])
 
@@ -77,7 +77,7 @@ export default function GameBoard (props: GameBoardProps)  {
   const animatePieceFall = (targetRow: number, col: number) => {
     let currentRow = -1
 
-    console.log('Animating piece fall', targetRow, col)
+    //console.log('Animating piece fall', targetRow, col)
     const fall = () => {
       if (currentRow < targetRow) {
         currentRow++
@@ -106,15 +106,15 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   const handleColumnHover = (col: number) => {
-    console.log('Hovering column', col, gameState.currentPlayer, props.playerNumber, gameState.gameOver, fallingPiece, gameState.currentMoveIndex)
-    if (gameState.currentPlayer != props.playerNumber 
-      || gameState.gameOver || fallingPiece
-      || gameState.currentMoveIndex != gameState.getMoves().length - 1
+    //console.log('Hovering column', col, gameState!.currentPlayer, props.playerNumber, gameState!.gameOver, fallingPiece, gameState!.currentMoveIndex)
+    if (gameState!.currentPlayer != props.playerNumber 
+      || gameState!.gameOver || fallingPiece
+      || gameState!.currentMoveIndex != gameState!.getMoves().length - 1
     ) {
       setHighlightedColumn(null)
       return
     }
-    if (!gameState.gameOver && !fallingPiece && gameState.currentMoveIndex === gameState.getMoves().length - 1) {
+    if (!gameState!.gameOver && !fallingPiece && gameState!.currentMoveIndex === gameState!.getMoves().length - 1) {
       setHighlightedColumn(col)
     }
   }
@@ -138,17 +138,17 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h bg-gray-100 flex">
       {/* Game Board */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="relative">
             {/* Chevron indicators */}
             <div className="absolute top-[-24px] left-0 right-0 flex justify-around">
               {Array(7).fill(null).map((_, colIndex) => (
                 <div key={`chevron-${colIndex}`} className="w-12 flex justify-center">
-                  {highlightedColumn === colIndex && !gameState.gameOver && !fallingPiece && 
-                   gameState.currentMoveIndex === gameState.getMoves().length - 1 && (
+                  {highlightedColumn === colIndex && !gameState!.gameOver && !fallingPiece && 
+                   gameState!.currentMoveIndex === gameState!.getMoves().length - 1 && (
                     <ChevronDown className="text-orange-500 animate-bounce" />
                   )}
                 </div>
@@ -177,7 +177,7 @@ export default function GameBoard (props: GameBoardProps)  {
                 </div>
 
                 {/* Game grid */}
-                {gameState.getBoard().map((row, rowIndex) => (
+                {gameState!.getBoard().map((row, rowIndex) => (
                   <div key={rowIndex} className="flex">
                     {row.map((cell, colIndex) => (
                       <div
@@ -189,7 +189,7 @@ export default function GameBoard (props: GameBoardProps)  {
                             className={`w-10 h-10 rounded-full ${
                               cell !== null 
                                 ? (cell === 0 ? 'bg-red-500' : 'bg-yellow-400')
-                                : (fallingPiece?.player === 0 ? 'bg-red-500' : 'bg-yellow-400')
+                                : (fallingPiece?.player === 1 ? 'bg-red-500' : 'bg-yellow-400')
                             } transition-transform duration-100`}
                             style={{
                               transform: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
@@ -209,11 +209,11 @@ export default function GameBoard (props: GameBoardProps)  {
             </div>
           </div>
 
-          {gameState.gameOver && (
+          {gameState!.gameOver && (
             <div className="mt-4 text-center">
-              {gameState.winner ? (
+              {gameState!.winner ? (
                 <div className="text-2xl font-bold text-orange-500 mb-4">
-                  Player {gameState.winner} wins!
+                  Player {gameState!.winner} wins!
                 </div>
               ) : (
                 <div className="text-2xl font-bold text-orange-500 mb-4">
