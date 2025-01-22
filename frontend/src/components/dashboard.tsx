@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link'
 import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight } from 'lucide-react'
+import Image from 'next/image'
 
 export default function Dashboard() {
   const [isOpen, setIsOpen] = useState(true);
@@ -45,7 +46,12 @@ export default function Dashboard() {
               </button>
             </div>
             <div className="scale-100 transform-origin-left">
-              <img src="/logo.png" alt="Logo" className="w-16 h-16" />
+              <Image 
+                src="/logo.png" 
+                alt="Logo"
+                width={100} 
+                height={100}
+              />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Dashboard</h2>
           </div>

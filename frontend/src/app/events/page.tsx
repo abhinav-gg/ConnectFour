@@ -106,7 +106,7 @@ function EventTable({ events, title, isPast }: { events: Event[], title: string,
 export default function Events() {
   return (
     <div className="flex min-h-screen bg-white">
-      <Dashboard darkMode={false} />
+      <Dashboard/>
       <div className="flex-1 p-8">
         <h1 className="text-3xl font-bold mb-6">Events</h1>
         
