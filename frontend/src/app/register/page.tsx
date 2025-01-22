@@ -6,7 +6,7 @@ import Dashboard from '@/components/dashboard'
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getConfig } from '@/config/env'
-import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
+import { useGoogleReCaptcha, GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
 
 export default function Register() {
   const router = useRouter()
@@ -91,6 +91,7 @@ export default function Register() {
               {error}
             </div>
           )}
+          <GoogleReCaptchaProvider reCaptchaKey={getConfig().recaptchaSiteKey}>
           <form onSubmit={handleReCaptchaVerify} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
@@ -117,6 +118,7 @@ export default function Register() {
               Register
             </button>
           </form>
+          </GoogleReCaptchaProvider>
           <p className="mt-4 text-sm text-gray-600">
             Already have an account?{' '}
             <Link href="/login" className="text-blue-500 hover:text-blue-600">

@@ -323,6 +323,12 @@ export default function TestingWebsockets() {
                 key={chatUpdate}
                 pMessages={messageRef.current}
                 onSendMessage={handleSendMessage}
+                onOfferDraw={() => {
+                    // Handle draw offer
+                }}
+                onResign={() => {
+                    // Handle resignation
+                }}
               />
             </div>
           </div>

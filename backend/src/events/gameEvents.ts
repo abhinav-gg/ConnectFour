@@ -626,7 +626,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             break;
           }
-          //case 'queryDisconnect': { } // TODO: handle timeouts
+          //case 'offerDraw': { } // TODO: handle timeouts
 
           default:
             console.log('Unknown event:', JSON.stringify(data));
@@ -660,6 +660,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         console.log('Game not found:', roomId);
         // simply drop the room as the game is over
         dropRoom(roomId!);
+        ws.close();
         return;
       }
       if (roomId) {
@@ -673,6 +674,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         // the player has some time to return if there are other players so do nothing
         if (room.players.length === 1) {
           handleGameEnd(roomId, true, 'abandoned'); // IMPORTANT - TODO: handle this
+          ws.close();
         }
       }
     });

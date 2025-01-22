@@ -5,14 +5,21 @@ import { useEffect, useRef, useState } from 'react';
 
 export default function LiveChat({ 
   pMessages, 
-  onSendMessage 
+  onSendMessage,
+  onOfferDraw,
+  onResign 
 }: { 
   pMessages: ChatMessage[];
   onSendMessage: (message: string) => void;
+  onOfferDraw: () => void;
+  onResign: () => void;
 }) {
     const [inputMessage, setInputMessage] = useState('');
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const [chatCooldown, setChatCooldown] = useState(0);
+    const [confirmDraw, setConfirmDraw] = useState(false);
+    const [confirmResign, setConfirmResign] = useState(false);
+    const [drawOffered, setDrawOffered] = useState(false);
     const messages = pMessages; // use React reference to avoid re-rendering
     console.log("All messages: ", messages);
 
@@ -41,6 +48,29 @@ export default function LiveChat({
         setInputMessage('');
         setChatCooldown(2);
     }
+
+    const handleDrawOffer = () => {
+        if (!confirmDraw) {
+            setConfirmDraw(true);
+            // Reset confirmation after 3 seconds
+            setTimeout(() => setConfirmDraw(false), 3000);
+            return;
+        }
+        setDrawOffered(true);
+        onOfferDraw();
+        setConfirmDraw(false);
+    };
+
+    const handleResign = () => {
+        if (!confirmResign) {
+            setConfirmResign(true);
+            // Reset confirmation after 3 seconds
+            setTimeout(() => setConfirmResign(false), 3000);
+            return;
+        }
+        onResign();
+        setConfirmResign(false);
+    };
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-lg w-full h-[400px] flex flex-col">
@@ -91,6 +121,37 @@ export default function LiveChat({
           Send
         </button>
       </form>
+
+      {/* Game control buttons */}
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={handleDrawOffer}
+          disabled={drawOffered}
+          className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+            ${drawOffered 
+              ? 'bg-gray-300 cursor-not-allowed'
+              : confirmDraw
+                ? 'bg-yellow-500 hover:bg-yellow-600'
+                : 'bg-yellow-400 hover:bg-yellow-500'
+            } text-white`}
+        >
+          {drawOffered 
+            ? 'Waiting...' 
+            : confirmDraw 
+              ? 'Confirm Draw Offer' 
+              : 'Offer Draw'}
+        </button>
+        <button
+          onClick={handleResign}
+          className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+            ${confirmResign 
+              ? 'bg-red-600 hover:bg-red-700'
+              : 'bg-red-500 hover:bg-red-600'
+            } text-white`}
+        >
+          {confirmResign ? 'Confirm Resign' : 'Resign'}
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,8 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
-import { getConfig } from '@/config/env'
 
 const inter = Inter({ subsets: ['latin'] })
-const config = getConfig()
 
 export const metadata: Metadata = {
   title: 'Connect Four',
@@ -23,9 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <GoogleReCaptchaProvider reCaptchaKey={config.recaptchaSiteKey}>
-          {children}
-        </GoogleReCaptchaProvider>
+        {children}
       </body>
     </html>
   )

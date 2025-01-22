@@ -48,8 +48,10 @@ export default function Home() {
       <Dashboard />
       <div className="flex-1 relative">
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="scale-[3] transform-origin-center">
-            <MainLogoAnimated />
+          <div className="w-full h-full flex justify-center items-center">
+            <div className="w-3/4 h-3/4">
+              <MainLogoAnimated />
+            </div>
           </div>
         </div>
         <div 
