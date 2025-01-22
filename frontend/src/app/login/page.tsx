@@ -36,7 +36,7 @@ export default function Login() {
       // Store token if needed
       console.log(data, data.data, data.token)
       localStorage.setItem('token', data.data.accessToken)
-      //router.push('/dashboard') // Redirect to dashboard or another page after login
+      router.push('/dashboard') // Redirect to dashboard or another page after login
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     }

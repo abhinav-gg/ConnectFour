@@ -1,12 +1,12 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import MoveHistory from '@/components/history'
-import SinglePlayerGameboard from '@/components/singleplayer_gameboard'
+import MoveHistory from '@/components/game/history'
+import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
-import GameAnalysis from '@/components/analysis'
-import Opening from '@/components/opening'
-import { GameState } from '@/utils/game'
+import GameAnalysis from '@/components/game/analysis'
+import Opening from '@/components/game/opening'
+import { GameState } from '@shared/utils/game'
 
 export default function OpeningPage() {
     const gameBoardRef = useRef<GameState>();

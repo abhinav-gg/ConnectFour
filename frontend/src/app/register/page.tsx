@@ -3,16 +3,43 @@
 import Link from 'next/link'
 import { Home, LogIn, Eye, EyeOff } from 'lucide-react'
 import Dashboard from '@/components/dashboard'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getConfig } from '@/config/env'
+import { useGoogleReCaptcha, GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
 
 export default function Register() {
   const router = useRouter()
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const { executeRecaptcha } =  useGoogleReCaptcha();
   
+
+  const handleReCaptchaVerify = useCallback(async ($event: any) => {
+    $event.preventDefault();
+
+    if (!executeRecaptcha) {
+    console.log('executeRecaptcha not yet available');
+    return;
+    }
+
+    const token = await executeRecaptcha('signup');
+    console.log('token is ', token);
+    if (token) {
+      const query:any = await fetch(`/api/recaptcha?token=${token}`)
+      const {success} = await query.json();
+      if(success){
+        console.log('Token verified');
+        handleSubmit($event);
+      } else {
+        console.log('Token verification failed');
+      }
+    } else {
+      console.log('Error getting token');
+    }
+}, [executeRecaptcha]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
@@ -64,7 +91,8 @@ export default function Register() {
               {error}
             </div>
           )}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <GoogleReCaptchaProvider reCaptchaKey={getConfig().recaptchaSiteKey}>
+          <form onSubmit={handleReCaptchaVerify} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
               <input type="text" id="username" name="username" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
@@ -90,17 +118,16 @@ export default function Register() {
               Register
             </button>
           </form>
+          </GoogleReCaptchaProvider>
           <p className="mt-4 text-sm text-gray-600">
             Already have an account?{' '}
             <Link href="/login" className="text-blue-500 hover:text-blue-600">
               Login here
             </Link>
           </p>
-          {
-          //<script src="https://www.google.com/recaptcha/api.js?render={{getConfig().recaptchaSiteKey}}"></script>
-          }
         </div>
       </div>
+      
     </div>
   )
 }

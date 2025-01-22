@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Connect Four',
   description: 'A fun Connect Four game built with Next.js and React',
+  icons: {
+    icon: '/logo.ico',
+  },
 }
 
 export default function RootLayout({
@@ -16,7 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {children}
+      </body>
     </html>
   )
 }

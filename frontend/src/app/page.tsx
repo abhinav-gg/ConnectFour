@@ -5,7 +5,7 @@ import MainLogoAnimated from '@/components/mainlogo_animated';
 import Dashboard from '@/components/dashboard';
 
 export default function Home() {
-  const text = "Made by Abhinav and Ivan";
+  const text = "Made by Abhinav and Friends";
   const [showText, setShowText] = useState(false);
   const [opacities, setOpacities] = useState<number[]>([]);
 
@@ -48,8 +48,10 @@ export default function Home() {
       <Dashboard />
       <div className="flex-1 relative">
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="scale-[3] transform-origin-center">
-            <MainLogoAnimated />
+          <div className="w-full h-full flex justify-center items-center">
+            <div className="w-1/2 h-1/2">
+              <MainLogoAnimated />
+            </div>
           </div>
         </div>
         <div 

@@ -2,9 +2,9 @@
 
 import React from 'react'
 import Link from 'next/link'
-import SinglePlayerGameboard from '@/components/singleplayer_gameboard'
+import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
-import { GameState } from '@/utils/game'
+import { GameState } from '@shared/utils/game'
 
 export default function AboutUs() {
   return (
@@ -41,21 +41,31 @@ export default function AboutUs() {
                 My name is Abhinav and I have had a passion for game development for quite a while. I still remember launching my first 2D platformer with terrible graphics and physics in Year 10 of school and we had so much fun with it. I was inspired across the next few years by a friend who loved competitive games and we would spend hours trying to best each other at Connect Four but with no good online tool for improvement we were in a stalemate. Over the Summer after completing A levels I began working on this project using a Django backend which was a terrible idea for someone who had no experience in it, so invited another friend who is now my Co-Founder to help with the Typescript backend of the project.
             </p>
           </div>
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">About My Co-founder</h2>
+        <div>
+          <h2 className="text-2xl font-semibold mb-4">About The Team</h2>
+      
+          <div className="mb-8">
+            <h3 className="text-xl font-medium mb-2">Team Member 1</h3>
             <p>
-                be me. CS and engineering student. also into law, specifically cybersecurity law. trying to be the perfect blend of nerd and aspiring solicitor. join law society for the ✨vibes✨. doing take-home CTF puzzles like it's a speedrun. tfw could complete all three puzzles but worried it’s “too much”. advent of code enjoyer, but secretly miss bubble tea. tfw Chatime isn't walking distance anymore. hear owl at night. decide to photograph it. owl never shows up. tfw it’s like a cryptid now. at least I'm getting a project done with a friend. tfw programming a web app but also wondering if copyright law will let me reboot a legal AI project. absolutely no one else is doing "Connect Four data storage optimization". tfw niche is life
+              be me. CS and engineering student. also into law, specifically cybersecurity law. trying to be the perfect blend of nerd and aspiring solicitor. join law society for the ✨vibes✨. doing take-home CTF puzzles like it's a speedrun. tfw could complete all three puzzles but worried it’s “too much”. advent of code enjoyer, but secretly miss bubble tea. tfw Chatime isn't walking distance anymore. hear owl at night. decide to photograph it. owl never shows up. tfw it’s like a cryptid now. at least I'm getting a project done with a friend. tfw programming a web app but also wondering if copyright law will let me reboot a legal AI project. absolutely no one else is doing "Connect Four data storage optimization". tfw niche is life
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-xl font-medium mb-2">Team Member 2</h3>
+            <p>
+              Second Team Member
             </p>
           </div>
         </div>
-        
-        <div className="text-center">
-          <Link href="/" className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">
-            Back to Home
-          </Link>
-        </div>
-        <br/><br/><br/>
       </div>
+      <div className="text-center">
+        <Link href="/" className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">
+          Back to Home
+        </Link>
+      </div>
+      <br/><br/><br/>
+    </div>
     </div>
   )
 }

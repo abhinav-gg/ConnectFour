@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard'; // Import the Dashboard component
-import AdminPage from '../checkAdmin'; // Import the CheckAdmin component
+import AdminPage from '../../../components/checkAuth'; // Import the CheckAdmin component
 
 export default function AddOpening() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function AddOpening() {
 
     try {
       const token = localStorage.getItem('token'); // Retrieve the token
-      const response = await fetch(`${getConfig().backendUrl}/api/openings`, {
+      const response = await fetch(`${getConfig().backendUrl}/api/make-opening`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,10 +27,11 @@ export default function AddOpening() {
         body: JSON.stringify({ position, description }),
       });
 
+      console.log('Response:', response);
+
       if (!response.ok) {
         throw new Error('Failed to add opening');
       }
-
       const data = await response.json();
       setSuccess('Opening added successfully!');
       setPosition('');

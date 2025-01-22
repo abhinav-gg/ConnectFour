@@ -1,44 +1,17 @@
 import dotenv from 'dotenv';
 
-declare global {
-  interface Window {
-    NEXT_PUBLIC_BACKEND_URL?: string;
-    NEXT_PUBLIC_WEBSOCKET_URL?: string;
-    RECAPTCHA_SITE_KEY?: string;
-  }
-}
-
+// Load environment variables from .env file
 dotenv.config();
 
 export const getConfig = () => {
   const config = {
-    backendUrl: window.__NEXT_DATA__?.props?.pageProps?.backendUrl || 
-                process.env.NEXT_PUBLIC_BACKEND_URL || 
-                window.NEXT_PUBLIC_BACKEND_URL ||
-                '',
-    websocketUrl: window.__NEXT_DATA__?.props?.pageProps?.websocketUrl || 
-                   process.env.NEXT_PUBLIC_WEBSOCKET_URL || 
-                   window.NEXT_PUBLIC_WEBSOCKET_URL ||
-                   '',
-    recaptchaSiteKey: window.__NEXT_DATA__?.props?.pageProps?.recaptchaSiteKey || 
-                    process.env.RECAPTCHA_SITE_KEY || 
-                    window.RECAPTCHA_SITE_KEY ||
-                    '',
+    backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL || '', // Read from .env or keep empty
+    websocketUrl: process.env.NEXT_PUBLIC_WEBSOCKET_URL || '', // Read from .env or keep empty
+    recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || '', // Read from .env or keep empty
   };
 
-  console.log('Config values:', {
-      'window.__NEXT_DATA__?.props?.pageProps?.backendUrl': window.__NEXT_DATA__?.props?.pageProps?.backendUrl,
-      'process.env.NEXT_PUBLIC_BACKEND_URL': process.env.NEXT_PUBLIC_BACKEND_URL,
-      'window.NEXT_PUBLIC_BACKEND_URL': window.NEXT_PUBLIC_BACKEND_URL,
-      'final backendUrl': config.backendUrl
-  });
-
-  console.log('Test values:', {
-    'process.env.TEST': process.env.TEST,
-  });
-
   return config;
-}
+};
 
 // Debug only during development
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {

@@ -68,34 +68,39 @@ function LogoTemplate({ rows = 6, cols = 7, isStatic = true }: LogoTemplateProps
   }, []);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="grid grid-cols-7 gap-[1px] bg-blue-700 p-[2px] rounded-lg">
-        {grid.map((row, i) => (
-          row.map((cell, j) => (
-            <div
-              key={`${i}-${j}`}
-              className="w-6 h-6 rounded-full overflow-hidden relative"
-            >
+    <div className="flex items-center justify-center w-full h-full">
+      <div className="relative w-full h-0" style={{ paddingBottom: '85.71%' }}>
+        <div className="grid grid-cols-7 gap-1 bg-blue-700 p-2 rounded-lg absolute inset-0">
+          {grid.map((row, i) => (
+            row.map((cell, j) => (
               <div
-                className={`w-full h-full rounded-full ${
-                  cell !== 'empty' ? colorClasses[cell] : 'bg-white bg-opacity-20'
-                }`}
-              />
-              {currentPieces.some(piece => piece.col === j) && (
+                key={`${i}-${j}`}
+                className="w-full h-full rounded-full overflow-hidden relative"
+                style={{
+                  aspectRatio: '1'
+                }}
+              >
                 <div
-                  className={`absolute w-full h-full rounded-full ${
-                    colorClasses[currentPieces.filter(piece => piece.col === j)
-                      .sort((a, b) => b.row - a.row)[0]?.color ?? 'empty']
-                  } transition-transform duration-50`}
-                  style={{
-                    transform: `translateY(${100 * i}%)`,
-                    opacity: 1
-                  }}
+                  className={`w-full h-full rounded-full ${
+                    cell !== 'empty' ? colorClasses[cell] : 'bg-white bg-opacity-20'
+                  }`}
                 />
-              )}
-            </div>
-          ))
-        ))}
+                {currentPieces.some(piece => piece.col === j) && (
+                  <div
+                    className={`absolute w-full h-full rounded-full ${
+                      colorClasses[currentPieces.filter(piece => piece.col === j)
+                        .sort((a, b) => b.row - a.row)[0]?.color ?? 'empty']
+                    } transition-transform duration-50`}
+                    style={{
+                      transform: `translateY(${100 * i}%)`,
+                      opacity: 1
+                    }}
+                  />
+                )}
+              </div>
+            ))
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -103,7 +108,7 @@ function LogoTemplate({ rows = 6, cols = 7, isStatic = true }: LogoTemplateProps
 
 export default function MainLogoAnimated() {
   return (
-    <div className="inline-block">
+    <div className="w-full h-full">
       <LogoTemplate isStatic={true} />
     </div>
   );
