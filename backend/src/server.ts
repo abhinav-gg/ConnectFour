@@ -61,6 +61,33 @@ app.post('/api/make-opening', authenticateJWT, authenticateAdmin, async (req, re
   }
 });
 
+type Data = {
+  success: boolean,
+  score: number
+}
+
+app.post('/api/recaptcha', async (req, res) => {
+  try{
+    const secret = process.env.RECAPTCHA_SECRET_KEY;
+    const {token} = req.query; 
+    if (!secret || !token) {
+      res.status(500).json({ success: false, score: -1 })
+    }
+    const query = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,{
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+    })
+    const apiResponse = await query.json();
+    res.status(200).json({ success: apiResponse?.success, score : apiResponse?.score }) 
+  } catch(error:any){
+    console.log('Error is ', error);
+    res.status(500).json({ success: false, score: -1 }) 
+  }
+});
+
 app.use('/api/auth', authRouter);
 app.use('/api/game', gameRouter);
 

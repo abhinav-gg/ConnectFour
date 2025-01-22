@@ -63,7 +63,7 @@ export type PlayerJoined = {
 
 export type EndGame = {
   event: 'endGame';
-  data: { draw: boolean; winner: number | null; };
+  data: { draw: boolean; winner: number | null; message: string; };
 };
 
 export type Error = {

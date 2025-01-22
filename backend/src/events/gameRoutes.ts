@@ -15,15 +15,16 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
     let gamemode : GameMode;
     let time_control : TimeControl;
     let userId
+    const user = (req as any).user;
     console.log(req.body)
     try {
-        userId = (req as any).user?.userId;
+        userId = user?.userId;
         gamemode = (req.body as GameInfo).gamemode;
         time_control = (req.body as GameInfo).time_control;
         if (!gamemode || !time_control || !userId) {
             throw new Error('Invalid Data');
         }
-        if ((req as any).user!.is_anonymous && gamemode.name !== globals.StandardGameModes.friendly) {
+        if (user!.is_anonymous && gamemode.name !== globals.StandardGameModes.friendly) {
             throw new Error('User is not logged in for competitive games');
         }
     }
@@ -67,20 +68,27 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
     // TODO: Use gameMode.event and gameMode.name to determine the game mode id from database
     //       Not for exotic gamemodes or events - require database entry
 
-    console.log('Game Mode:', GMM);
-    switch (GMM) {
+    const mainMade = GMM.split('-')[0];
+    console.log('Game Mode:', GMM, mainMade);
+    switch (mainMade) {
         case 'standard':
             //////////////////////////////////////////////////////////////////
             // Call Matchmaking if they are looking for a competitive game
             //////////////////////////////////////////////////////////////////
-        
+            if (user.is_anonymous) {
+                res.status(403).json({ error: 'User is not logged in for competitive games' });
+                return;
+            }
             // If that fails then go to waiting room
 
 
             // README: Make the game after the matchamking is done incase of a failure 
             //                          / two people in different games are matched
 
-            
+            // if (error === PlayerEloNotFound) {
+            //     dbOperations.SetPlayerElo(userId, gamemode_id, defaultElo);
+            //     return 1000;
+            // }
             break;
         
         case 'friendly':
