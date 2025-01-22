@@ -16,7 +16,7 @@ export class GameOperations {
   private client: PoolClient | null = null;
 
   private async getClient(): Promise<PoolClient> {
-    if (!GameOperations.pool) {
+    if (!GameOperations.pool || GameOperations.pool.ended) {
       GameOperations.pool = new Pool({
         connectionString: process.env.DB_URL,
         application_name: application_name
@@ -458,14 +458,14 @@ export class GameOperations {
     }
   }
 
-  async UpdateGameStatusByID(gameid: string, status: string): Promise<void> {
+  async UpdateGameStatusByShortCode(short_id: string, status: string): Promise<void> {
     const client = await this.getClient();
     try {
       const result = await client.query(
         `UPDATE con4_schema.Games
           SET state = $2
-          WHERE id = $1`,
-        [gameid, status]
+          WHERE short_id = $1`,
+        [short_id, status]
       );
       return;
     } catch (error) {

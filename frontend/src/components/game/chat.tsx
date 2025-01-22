@@ -21,7 +21,6 @@ export default function LiveChat({
     const [confirmResign, setConfirmResign] = useState(false);
     const [drawOffered, setDrawOffered] = useState(false);
     const messages = pMessages; // use React reference to avoid re-rendering
-    console.log("All messages: ", messages);
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {

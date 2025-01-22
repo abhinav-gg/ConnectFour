@@ -45,5 +45,4 @@ export interface ChatMessage {
     username: string;
     message: string;
     isAnnouncement: boolean;
-  }
-
+}

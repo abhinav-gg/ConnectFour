@@ -6,7 +6,7 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
 import { GameState, Player } from '@shared/utils/game';
-import { JoinGame, MakeMove, ClientMessage, PlayerData, PlayerTimeOut, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage } from '@shared/Types/websocketData';
+import { JoinGame, MakeMove, ClientMessage, PlayerData, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
@@ -26,8 +26,8 @@ export default function TestingWebsockets() {
   const [waiting, setWaiting] = useState(false);
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const [showEndPopup, setShowEndPopup] = useState(false);
-  const [eloChange, setEloChange] = useState<EloChange>();
   const [chatUpdate, setChatUpdate] = useState(0);
+  const eloChangeRef = useRef<EloChange>({ draw: -123, loss: 123, win: -123 });
   const gameBoardRef = useRef<GameState>();
   const messageRef = useRef<ChatMessage[]>([]);
   // const [gameResult, setGameResult] = useState<>();
@@ -123,13 +123,12 @@ export default function TestingWebsockets() {
 
         switch (data.event) {
         case 'playerJoined':
-          // do we even need the gameinfo? maybe later for different game modes (simple redirect to new page)
-          setEloChange(data.data.eloChanges);
           setGameStatus('Waiting for opponent...');
           break;
         case 'gameStart':
           // parse players and add them to the list
           const players = data.data.players;
+          eloChangeRef.current = data.data.eloChanges;
           setPlayerNumber(data.data.playerNumber as Player);
           players.forEach((player) => {
             addPlayer(player.username, player.time)
@@ -155,15 +154,17 @@ export default function TestingWebsockets() {
           setGameStatus('Spectating game between players...');
           break;
         case 'endGame':
+          setGameStatus(data.data.message);
           if (data.data.draw) {
             console.log('Game ended in a draw!');
-            handleGameEnd(eloChange!.draw);
+            handleGameEnd(true);
+          } else if (data.data.winner) {
+            handleGameEnd(false, data.data.winner!);
           } else {
-            handleGameEnd(data.data.winner ? eloChange!.win : eloChange!.loss);
+            handleGameEnd(true);
           }
           break;
         case 'moveMade':
-          console.log(gamePlayers);
           handleMoveReceived(data.data);
           setTimeUpdate(timeUpdate + 1);
           break;
@@ -184,34 +185,30 @@ export default function TestingWebsockets() {
     };
   }, []);
 
-  window.onbeforeunload = function() {
-    socket?.close();
-  };
-
   // Example function to simulate game end
-  const handleGameEnd = (deltaElo: number) => {
+  const handleGameEnd = (draw: boolean, winner?: number) => {
     // Example data, replace with actual game result data
-
+    let deltaElo = 0;
+    if (draw) {
+      deltaElo = eloChangeRef.current.draw;
+    } else if (winner === playerNumber) {
+      deltaElo = eloChangeRef.current.win;
+      console.log('You won!');
+    } else {
+      deltaElo = eloChangeRef.current.loss;
+      console.log('You lost!');
+    }
+    console.log('Elo change:', deltaElo);
     // setGameResult({
     //   winner: null, // null for draw
     // });
-    // <EndPopup
-    //       winner={gameResult.winner}
-    //       players={gamePlayers}
-    //       deltaElo={gameResult}
-    //       onRematch={() => {
-    //         console.log('Rematch requested');
-    //         setShowEndPopup(false);
-    //         // Add logic for starting a new game
-    //       }}
-    //       onClose={() => setShowEndPopup(false)}
-    //     />
+    setTimeStarted(false);
+    setTimeUpdate(timeUpdate + 1);
+    
     setShowEndPopup(true);
   };
 
   const handleMessageReceived = (data: ReceiveMessage["data"]) => {
-    console.log(data, gameStarted);
-    console.log(gamePlayers);
     if (gamePlayers.length === 0) return;
     messageRef.current.push({
       playerNumber: data.playerNumber, 
@@ -224,7 +221,6 @@ export default function TestingWebsockets() {
   };
     
   const handleMove = (col: number) => {
-
     if (!gameStarted) return;
     if (waiting) return
     
@@ -302,9 +298,21 @@ export default function TestingWebsockets() {
   <AuthPage
     onAuthSuccess={ connectedUser }
     onAuthFail={ notLoggedIn }>
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100 relative">
       {showEndPopup && (
-        <p>End Popup</p>
+        <div className="absolute z-50">
+          <EndPopup
+            playerNumber={playerNumber}
+            winner={0}
+            players={gamePlayers}
+            deltaElo={-1}
+            onRematch={() => {
+              console.log('Rematch requested');
+              setShowEndPopup(false);
+            }}
+            onClose={() => setShowEndPopup(false)}
+          />
+        </div>
       )}
       <Dashboard />
       <div className="flex-1 flex flex-col">

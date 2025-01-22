@@ -1,14 +1,13 @@
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
-import type { Room, RoomMap } from "../types/types";
+import type { Room, RoomMap } from "@/types/types";
 import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, PlayerData, 
   PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage, EndGame, PlayerTimeout, ReceiveMessage, SendMessage } from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
-import { GameInfo, GameMode, TimeControl } from "@shared/Models/gameInfo";
+import { EloChange, GameMode, TimeControl } from "@shared/Models/gameInfo";
 import { StandardGameStates } from "@shared/constants";
-import { assert } from "console";
 import { GameState } from "@shared/utils/game";
 import { assignGame, calculateTimesByMoves } from "./gameHelper";
 import { replaceProfanities } from 'no-profanity';
@@ -254,12 +253,13 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 async function handleGameEnd(roomId: string, draw: boolean, message: string, winner?: number) {
   // Simply close the websocket for this game because the room can never be reused
   // players will be redirected to a new game id in the frontend if they want to rematch
   const room = getRoom(roomId);
   if (!room) return; // Strange error
-
 
   sendToRoom(roomId, {
     event: "endGame",
@@ -269,7 +269,11 @@ async function handleGameEnd(roomId: string, draw: boolean, message: string, win
       message: message }
   } as EndGame);
 
-  //const gameData = await dbOperations.GetGameByShortCode(roomId);
+  if (draw) {
+    dbOperations.UpdateGameStatusByShortCode(roomId, StandardGameStates.draw);
+  } else {
+    dbOperations.UpdateGameStatusByShortCode(roomId, `win: ${winner}`);
+  }
 
   // Remove from game lookup (even disconnected players)
   const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId);
@@ -277,8 +281,8 @@ async function handleGameEnd(roomId: string, draw: boolean, message: string, win
     await dbOperations.FinishedGameLookup(player);
   });
 
-  // If we are allowing rematch offers then the room needs to be kept alive for a bit
-  // dropRoom(roomId);
+  // TODO: If we are allowing rematch offers then the room needs to be kept alive for a bit
+  dropRoom(roomId);
   // Mark game as finished depending on state
   
 };
@@ -361,6 +365,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
 
             const room = getRoom(roomId)!;
+            let eloChanges: EloChange;
 
             ///////////////////// IMPORTANT ////////////////////////
             // Check the user is one of the two players in the game
@@ -428,9 +433,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   event: 'playerJoined',
                   data: { 
                     gameInfo: room.gameInfo,
-                    eloChanges: { win: 0, draw: 0, loss: 0 }
                   }
                 } as PlayerJoined)); // Use the types for type checking
+                
+                eloChanges = { win: 0, draw: 0, loss: 0 }
                   
                   // standard friendly gamemode starts with 2 players (current socket added above)
                 if (room.players.length === 2) {
@@ -440,6 +446,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                     getSocket(player)!.socket.send(JSON.stringify({
                     event: "gameStart",
                     data: {
+                      eloChanges: eloChanges,
                       playerNumber: index,
                       players: [
                         { username: getUsernameByID(room.players[0]!), time: p1Time } as PlayerData,
@@ -520,24 +527,19 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             // much like chess.com we do not start the timer until the first move is made
             if (verification.turn === -1) {
               return;
-            }
-            else if (verification.turn === 1) {
+            } else if (verification.turn === 1) {
+              dbOperations.UpdateGameStatusByShortCode(roomId, StandardGameStates.ongoing);
               sendToRoom(roomId, {
                 event: 'startTimer',
               } as StartTimer);
-            }
-
+            } 
+            
             if (verification.timeLeft === 0) { 
               sendToRoom(roomId, {
                 event: "playerTimeout",
                 data: { }
               } as PlayerTimeout);
-              sendToRoom(roomId, {
-                event: "endGame",
-                data: { 
-                  winner: verification.winner, 
-                  draw: false }
-              } as EndGame);
+              handleGameEnd(roomId, false, `Player ${verification.nextPlayer + 1} timed out`, verification.winner!);
             }
 
             sendToRoom(roomId, {
@@ -549,15 +551,12 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             } as MoveMade)
 
-            if (verification.draw || (verification.winner !== null)) {
-              sendToRoom(roomId, {
-                event: "endGame",
-                data: { 
-                  winner: verification.winner, 
-                  draw: verification.draw }
-              } as EndGame);
+            if (verification.draw) {
+              handleGameEnd(roomId, true, 'Game Over', -1);
+            } else if (verification.winner !== null) {
+              handleGameEnd(roomId, false, 'Game Over', verification.winner);
             }
-          
+
             try {
               // consider speed, will this write to the database in time for the next move??
               const gameId = (await dbOperations.GetGameByShortCode(roomId))?.id;

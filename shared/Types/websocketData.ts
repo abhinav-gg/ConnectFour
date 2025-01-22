@@ -5,19 +5,9 @@ export type RoomID = string;
 
 /////////// SENT TO FRONTEND BY SERVER ///////////
 
-
-export type RoomInfo = {
-  roomId: RoomID; // to double check the user room is correct
-  gameInfo: GameInfo; // to store for frontend to know what to display
-};
-
 export interface PlayerData {
   username: string;
   time: number;
-  // in friendly games these simply won't be sent
-  eloW: number | null;
-  eloD: number | null;
-  eloL: number | null;
 };
 
 export  type RoomFull = {
@@ -27,6 +17,7 @@ export  type RoomFull = {
 export type GameStart = {
   event: 'gameStart';
   data: { 
+    eloChanges: EloChange;
     playerNumber: number;
     players: PlayerData[] 
   }; // return the ordered list of players
@@ -58,7 +49,7 @@ export type StartTimer = {
 
 export type PlayerJoined = {
   event: 'playerJoined';
-  data: {  gameInfo: GameInfo; eloChanges: EloChange; };
+  data: {  gameInfo: GameInfo; };
 }
 
 export type EndGame = {

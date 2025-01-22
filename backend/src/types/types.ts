@@ -10,3 +10,7 @@ export type Room = {
 export type RoomMap = {
   rooms: Map<string, Room>;
 };
+
+export type TimeInfo = {
+  timeTaken: number, allowedTime: number, timeLeft: number, delta: number
+};
