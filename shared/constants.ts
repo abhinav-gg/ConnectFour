@@ -16,6 +16,9 @@ export const StandardGameStates = {
     draw: 'draw'
 }
 
+export const StandardStartingElo = 1000;
+
+export const StandardStartingRatingDeviation = 350;
 
 export const StandardGameModes = {
     standard: {

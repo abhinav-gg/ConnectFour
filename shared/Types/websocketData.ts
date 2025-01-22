@@ -1,4 +1,4 @@
-import { GameInfo } from "@shared/Models/gameInfo";
+import { EloChange, GameInfo } from "@shared/Models/gameInfo";
 
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
 export type RoomID = string;
@@ -37,6 +37,11 @@ export type PlayerDisconnected = {
   data: { playersCount: number; };
 };
 
+export type PlayerTimeout = {
+  event: 'playerTimeout';
+  data: { };
+};
+
 export type MoveMade = {
   event: 'moveMade';
   data: { nextPlayer: number; col: number; timeLeft: number };
@@ -53,7 +58,7 @@ export type StartTimer = {
 
 export type PlayerJoined = {
   event: 'playerJoined';
-  data: { playersCount: number; gameInfo: GameInfo; };
+  data: {  gameInfo: GameInfo; eloChanges: EloChange; };
 }
 
 export type EndGame = {
@@ -66,15 +71,15 @@ export type Error = {
   data: { redirect: string | null; message: string; };
 };
 
-export type ChatMessage = {
-  event: 'chatMessage';
+export type ReceiveMessage = {
+  event: 'receiveMessage';
   data: { playerNumber: number; message: string; };
 };
 
 
 export type ClientMessage = GameStart | PlayerJoined | MoveMade | EndGame 
-                          | RoomFull | GameStart | ChatMessage | Error | PlayerDisconnected 
-                          | StartTimer | Draw
+                          | RoomFull | GameStart | ReceiveMessage | Error | PlayerDisconnected 
+                          | StartTimer | Draw | PlayerTimeout
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
 
@@ -120,7 +125,7 @@ export type MakeMove = {
 
 export type PlayerTimeOut = {
   event: 'playerTimeOut';
-  data: { roomId: RoomID; playerNumber: number;  };
+  data: { roomId: RoomID; };
 }
 
 export type SendMessage = {

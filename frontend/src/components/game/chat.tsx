@@ -1,39 +1,46 @@
 'use client';
 
+import { ChatMessage } from '@shared/Models/gameInfo';
 import { useEffect, useRef, useState } from 'react';
 
-interface ChatMessage {
-  playerNumber?: number;
-  username: string;
-  message: string;
-  isAnnouncement?: boolean;
-}
-
 export default function LiveChat({ 
-  playerNumber, 
-  onSendMessage, 
-  roomId 
+  pMessages, 
+  onSendMessage 
 }: { 
-  playerNumber: number;
+  pMessages: ChatMessage[];
   onSendMessage: (message: string) => void;
-  roomId: string;
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+    const [inputMessage, setInputMessage] = useState('');
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const [chatCooldown, setChatCooldown] = useState(0);
+    const messages = pMessages; // use React reference to avoid re-rendering
+    console.log("All messages: ", messages);
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+        if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+        setChatCooldown(0.5);
+    }, [messages, messages.length]);
+
+    // Always reduce the chat cooldown by 0.1 every 100ms
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setChatCooldown((prev) => Math.max(0, prev - 0.1));
+        }, 100);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleSendMessage = (e: React.FormEvent) => {
+        if (chatCooldown > 0) {
+            return;
+        }
+        e.preventDefault();
+        onSendMessage(inputMessage);
+        setInputMessage('');
+        setChatCooldown(2);
     }
-  }, [messages]);
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSendMessage(inputMessage);
-    setInputMessage('');
-  }
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-lg w-full h-[400px] flex flex-col">
@@ -55,8 +62,8 @@ export default function LiveChat({
             ) : (
               <p>
                 <span className={`font-semibold ${
-                  msg.playerNumber === 0 ? 'text-blue-600' : 
-                  msg.playerNumber === 1 ? 'text-red-600' : 
+                  msg.playerNumber === 0 ? 'text-red-600' : 
+                  msg.playerNumber === 1 ? 'text-yellow-600' : 
                   'text-gray-600'
                 }`}>
                   {msg.username}:

@@ -7,7 +7,7 @@ export default function Timer({ timerActive, playerNumber, getPlayers }: { timer
 
     // Effect to handle player time updates
     useEffect(() => {
-        console.log(timerActive, playerNumber, getPlayers);
+        //console.log(timerActive, playerNumber, getPlayers);
         if (getPlayers.length > 0 && getPlayers[playerNumber]?.time !== undefined) {
             setDisplayTime(getPlayers[playerNumber].time);
         }

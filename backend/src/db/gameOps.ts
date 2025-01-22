@@ -2,8 +2,9 @@ import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
 import { Game, Move } from '@/models/Game';
-import { GameMode, TimeControl } from '@shared/Models/gameInfo';
+import { GameMode, MatchData, TimeControl } from '@shared/Models/gameInfo';
 import { PlayerEloNotFound } from './dbErrors';
+import { StandardStartingRatingDeviation } from '@shared/constants';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
@@ -403,9 +404,10 @@ export class GameOperations {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `INSERT INTO con4_schema.Elo (player, mode, elo, rating_deviation)
-          VALUES ($1, $2, $3, 350)`,
-        [playerid, gameModeId, elo]
+        `IF NOT EXISTS
+          INSERT INTO con4_schema.Elo (player, mode, elo, rating_deviation)
+          VALUES ($1, $2, $3, $4)`,
+        [playerid, gameModeId, elo, StandardStartingRatingDeviation]
       );
       return result.rows[0];
     } catch (error) {
@@ -456,20 +458,44 @@ export class GameOperations {
     }
   }
 
-  async QueryMatckmaking(playerid: string, gamemodeId: string): Promise<string[]> {
+  async UpdateGameStatusByID(gameid: string, status: string): Promise<void> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT player FROM con4_schema.GameLookup
+        `UPDATE con4_schema.Games
+          SET state = $2
+          WHERE id = $1`,
+        [gameid, status]
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to update game status:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async QueryMatckmaking(playerid: string, gamemodeId: string): Promise<MatchData[]> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT player, con4_schema.Elo.elo FROM con4_schema.GameLookup
           INNER JOIN con4_schema.Elo ON con4_schema.Elo.player = con4_schema.GameLookup.player
           INNER JOIN con4_schema.GameInfo ON con4_schema.GameLookup.game_info = con4_schema.GameInfo.id
           WHERE con4_schema.Elo.mode = $1
           AND con4_schema.GameInfo.gamemode = $1
           AND player != $2
-          ORDER BY ABS(ABS(con4_schema.Elo.elo - (SELECT elo FROM con4_schema.Elo WHERE player = $2 AND mode = $1)) - 30) ASC`,
+          ORDER BY ABS(ABS(con4_schema.Elo.elo - (SELECT elo FROM con4_schema.Elo WHERE player = $2 AND mode = $1)) - 30) ASC
+          LIMIT 10`,
         [gamemodeId, playerid]
       );
-      return result.rows.map(row => row.player) as string[];
+      return result.rows.map(row => ({
+        username: row.player,
+        elo: row.elo,
+        created_at: row.created_at
+      })) as MatchData[];
     } catch (error) {
       console.error('Failed to query matchmaking:', error);
       throw error;

@@ -1,6 +1,7 @@
 {
     "name": "connect-four-api",
     "version": "1.0.0",
+    "description": "Connect Four API",
     "scripts": {
         "dev": "npx tsc && node -r tsconfig-paths/register -r ts-node/register/transpile-only --require tsconfig-paths/register dist/backend/src/server.js --baseUrl ./dist",
         "build": "tsc -p tsconfig.json",
@@ -17,6 +18,7 @@
         "express": "^4.21.1",
         "express-ws": "^5.0.2",
         "jsonwebtoken": "^9.0.2",
+        "no-profanity": "^1.5.1",
         "nodemailer": "^6.9.16",
         "pg": "^8.11.3",
         "zod": "^3.23.8"

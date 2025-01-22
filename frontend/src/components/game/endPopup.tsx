@@ -1,15 +1,17 @@
 'use client';
 
+import { GamePlayer } from '@shared/Models/gameInfo';
 import React from 'react';
 
 interface EndPopupProps {
   winner: string | null;
-  players: { username: string; elo: number; eloChange: number }[];
+  players: GamePlayer[];
+  deltaElo: number;
   onRematch: () => void;
   onClose: () => void;
 }
 
-const EndPopup: React.FC<EndPopupProps> = ({ winner, players, onRematch, onClose }) => {
+const EndPopup: React.FC<EndPopupProps> = ({ winner, players, deltaElo, onRematch, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -19,7 +21,7 @@ const EndPopup: React.FC<EndPopupProps> = ({ winner, players, onRematch, onClose
         <div>
           {players.map((player, index) => (
             <p key={index} className="text-center">
-              {player.username} - Elo: {player.elo} ({player.eloChange >= 0 ? `+${player.eloChange}` : player.eloChange})
+              {player.username} - Elo: {player.elo} ({deltaElo >= 0 ? `+${deltaElo}` : deltaElo})
             </p>
           ))}
         </div>

@@ -25,5 +25,25 @@ export type GamePlayer = {
     username: string;
     elo: number;
     time: number;
+    timerActive?: boolean;
+}
+
+export type MatchData = {
+    username: string;
+    elo: number;
+    created_at: number;
+}
+
+export type EloChange = {
+    win: number;
+    draw: number;
+    loss: number;
+}
+
+export interface ChatMessage {
+    playerNumber: number;
+    username: string;
+    message: string;
+    isAnnouncement: boolean;
   }
 

@@ -208,27 +208,6 @@ export default function GameBoard (props: GameBoardProps)  {
               </div>
             </div>
           </div>
-
-          {gameState!.gameOver && (
-            <div className="mt-4 text-center">
-              {gameState!.winner ? (
-                <div className="text-2xl font-bold text-orange-500 mb-4">
-                  Player {gameState!.winner} wins!
-                </div>
-              ) : (
-                <div className="text-2xl font-bold text-orange-500 mb-4">
-                  It's a draw!
-                </div>
-              )}
-              <button
-                onClick={playAgain}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors duration-200 flex items-center justify-center"
-              >
-                <RotateCcw className="mr-2" />
-                Play Again
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

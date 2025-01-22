@@ -1,5 +1,7 @@
 import { GameMode, TimeControl } from '@shared/Models/gameInfo';
 import { dbOperations } from '@/db/operations';
+import { createGame } from './gameHelper';
+import { EloChange } from '@shared/Models/gameInfo';
 // file to control all elements of user matchmaking and game creation
 
 // helper functions of the main gameEvents file
@@ -40,15 +42,18 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
         }
 
         // Add player to matchmaking queue
-        //await dbOperations.BeginFindingGame(userId,);
+        const gamemodeId = await dbOperations.GetGameModeID(gamemode);
+        const timeControlId = await dbOperations.GetExactTimeControl(time_control);
+        const game_info = await dbOperations.GetGameInfoID(gamemodeId, timeControlId);
+        await dbOperations.BeginFindingGame(userId, game_info);
         
         // Look for potential opponents with same time control and closest rating
         // Orders by absolute difference from ideal rating gap (50)
-        const potentialMatch = dbOperations.QueryMatckmaking(userId, gamemodeId);
+        const potentialMatch = await dbOperations.QueryMatckmaking(userId, gamemodeId);
 
         // If we found a match
-        if (potentialMatch.rows.length > 0) {
-            const opponent = potentialMatch.rows[0];
+        if (potentialMatch.length > 0) {
+            const bestOpponent = potentialMatch[0];
 
             // Check time current player has been in queue
             // If they have been waiting <20 seconds and opponent elo diff is >50, keep waiting
@@ -57,31 +62,20 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
 
             
             // Calculate expected scores based on ratings
-            const userRating = dbOperations.GetPlayerElo(userId, gamemodeId);
-
-            // Calculate expected scores (1 for win, 0 for loss)
-            const expectedScore = 1 / (1 + Math.pow(10, (opponent.rating - userRating) / 400));
+            const elo = await dbOperations.GetPlayerElo(userId, gamemodeId);
             
             // Create the game
-            await gameOps.CreateGame(
-                shortCode,
-                userId,
-                opponent.player,
-                timeControlId,
-                expectedScore,           // Expected score for player 1
-                1 - expectedScore       // Expected score for player 2
-            );
+            const game = createGame(gamemode, time_control);
 
-            return shortCode;
+            return (await game).short_id;
         }
 
-        // No match found
+        // No match found or player should wait
         return null;
 
     } catch (error) {
         console.error('Error in FindCompetitiveMatch:', error);
         // Clean up the game lookup entry if there was an error
-        await gameOps.FinishedGameLookup(userId);
         throw error;
     }
 }
@@ -94,14 +88,6 @@ export interface GlickoPlayer {
     timeSinceLastPlayed: number;
 }
 
-interface GlickoRatingChange {
-    p1W: number;
-    p1L: number;
-    p1D: number;
-    p2W: number;
-    p2L: number;
-    p2D: number;
-}
 
 export const adjustRD = (player: GlickoPlayer): number => {
     const daysSinceLastGame = (player.timeSinceLastPlayed) / (1000 * 60 * 60 * 24);
@@ -110,22 +96,22 @@ export const adjustRD = (player: GlickoPlayer): number => {
 };
 
 // Calculate new ratings for both players based on Glicko system
-export function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPlayer): GlickoRatingChange {
+export function calculateGlickoRatings(me: GlickoPlayer, them: GlickoPlayer): EloChange {
     const q = Math.log(10) / 400;  // System constant
     
     // Adjust RD based on time since last played (increases uncertainty)
     
 
-    const p1RD = adjustRD(player1);
-    const p2RD = adjustRD(player2);
+    const p1RD = adjustRD(me);
+    const p2RD = adjustRD(them);
 
     // Calculate g-factor (impact of rating deviation on updates)
     const g1 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p2RD, 2) / Math.pow(Math.PI, 2));
     const g2 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p1RD, 2) / Math.pow(Math.PI, 2));
 
     // Calculate expected scores
-    const E1 = 1 / (1 + Math.pow(10, g1 * (player2.rating - player1.rating) / 400));
-    const E2 = 1 / (1 + Math.pow(10, g2 * (player1.rating - player2.rating) / 400));
+    const E1 = 1 / (1 + Math.pow(10, g1 * (them.rating - me.rating) / 400));
+    const E2 = 1 / (1 + Math.pow(10, g2 * (me.rating - them.rating) / 400));
 
     // Calculate rating changes for win/loss
     const d1 = 1 / (Math.pow(q, 2) * Math.pow(g1, 2) * E1 * (1 - E1));
@@ -133,14 +119,10 @@ export function calculateGlickoRatings(player1: GlickoPlayer, player2: GlickoPla
 
     // Calculate new ratings for all scenarios and round to 2 decimal places
     // For draws, use 0.5 as the score (halfway between 0 and 1)
-    const ratingChanges: GlickoRatingChange = {
-        p1W : Number((player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
-        p1L : Number((player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
-        p1D : Number((player1.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
-        p2W : Number((player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (1 - E2)).toFixed(2)),
-        p2L : Number((player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (0 - E2)).toFixed(2)),
-        p2D : Number((player2.rating + (q / (1 / Math.pow(p2RD, 2) + 1 / d2)) * g2 * (0.5 - E2)).toFixed(2))
-    
+    const ratingChanges: EloChange = {
+        win : Number((me.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
+        loss : Number((me.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
+        draw : Number((me.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
     };
     return ratingChanges;
 }

@@ -1,7 +1,8 @@
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
 import type { Room, RoomMap } from "../types/types";
-import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, PlayerData, PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage, EndGame } from "@shared/Types/websocketData";
+import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, PlayerData, 
+  PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage, EndGame, PlayerTimeout, ReceiveMessage, SendMessage } from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
@@ -10,6 +11,7 @@ import { StandardGameStates } from "@shared/constants";
 import { assert } from "console";
 import { GameState } from "@shared/utils/game";
 import { assignGame } from "./gameHelper";
+import { replaceProfanities } from 'no-profanity';
 
 const state : RoomMap = {
   rooms: new Map<string, Room>()
@@ -213,9 +215,9 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   if (timeTaken > allowedTime){
     return {
       delta: delta,
-      timeLeft: timeLeft,
+      timeLeft: 0,
       turn: -1,
-      nextPlayer: -1,
+      nextPlayer: room.currentTurn,
       draw: false,
       winner: room.currentTurn
     } as verificationData;
@@ -235,8 +237,8 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
       return {
         delta: delta,
         timeLeft: timeLeft,
-        turn: -1,
-        nextPlayer: -1,
+        turn: moves.length + 1,
+        nextPlayer: room.currentTurn,
         draw: true,
         winner: null
       } as verificationData;
@@ -244,10 +246,10 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
     return {
       delta: delta,
       timeLeft: timeLeft,
-      turn: -1,
-      nextPlayer: -1,
+      turn: moves.length + 1,
+      nextPlayer: room.currentTurn,
       draw: false,
-      winner: room.currentTurn ? 1 : 0
+      winner: room.currentTurn ? 0 : 1
     } as verificationData;
   }
   else {
@@ -440,8 +442,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 ws.send(JSON.stringify({
                   event: 'playerJoined',
                   data: { 
-                    gameInfo: room.gameInfo }
-                  } as PlayerJoined)); // Use the types for type checking
+                    gameInfo: room.gameInfo,
+                    eloChanges: { win: 0, draw: 0, loss: 0 }
+                  }
+                } as PlayerJoined)); // Use the types for type checking
                   
                   // standard friendly gamemode starts with 2 players (current socket added above)
                 if (room.players.length === 2) {
@@ -532,12 +536,23 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             if (verification.turn === -1) {
               return;
             }
-            
-            // I think that happens by default
-            if (verification.turn === 1) {
+            else if (verification.turn === 1) {
               sendToRoom(roomId, {
                 event: 'startTimer',
               } as StartTimer);
+            }
+
+            if (verification.timeLeft === 0) { 
+              sendToRoom(roomId, {
+                event: "playerTimeout",
+                data: { }
+              } as PlayerTimeout);
+              sendToRoom(roomId, {
+                event: "endGame",
+                data: { 
+                  winner: verification.winner, 
+                  draw: false }
+              } as EndGame);
             }
 
             sendToRoom(roomId, {
@@ -549,7 +564,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               }
             } as MoveMade)
 
-            if (verification.draw || verification.winner) {
+            if (verification.draw || (verification.winner !== null)) {
               sendToRoom(roomId, {
                 event: "endGame",
                 data: { 
@@ -570,11 +585,43 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
           }
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
           case 'sendMessage': { 
+            const { roomId, message } = data.data as SendMessage["data"];
+            const userId = getUser(ws)?.userID;
+            if (!playerInRoom(roomId, userId)) throw new Error('User is not in the room to chat');
+
+            if (!roomId || !message) {
+              ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid data' } }));
+              return;
+            }
+            //const filter = new Filter();
+            const cleanedMessage = replaceProfanities(message);
+
+            const playerNum = getRoom(roomId)!.players.indexOf(userId as UUID);
+            if (playerNum === -1) throw new Error('Room Index Failed');
+            sendToRoom(roomId, {
+              event: 'receiveMessage',
+              data: { playerNumber: playerNum, message: cleanedMessage }
+            } as ReceiveMessage);
 
           } // TODO: allow chatting, not a priority, messages are not stored, use profanity filter
 
-          //case 'timedOut': { } // TODO: handle timeouts
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+          case 'playerTimeOut': {
+            // Check the player really did timeout and then end the game
+
+            const roomId = data.data.roomId;
+            const room = getRoom(roomId);
+            const user = getUser(ws)?.userID
+            if (!playerInRoom(roomId, user)) throw new Error('User is not in the room to timeout');
+
+
+
+            break;
+          }
+          //case 'queryDisconnect': { } // TODO: handle timeouts
 
           default:
             console.log('Unknown event:', JSON.stringify(data));
