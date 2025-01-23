@@ -6,6 +6,7 @@ import { authenticateJWT } from '@/lib/auth/middleware';
 import * as globals from '@shared/constants';
 import { createGame, quitGameSearch } from './gameHelper';
 import { GameInfo } from '@shared/Models/gameInfo';
+import { FindCompetitiveMatch } from './matchmaking';
 
 const gameRouter = Router();
 
@@ -54,7 +55,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                 await quitGameSearch(userId);
             }
             else {
-                throw new Error('Game is in an unknown state');
+                throw new Error('Game is over, let them review the game');
             }
         }
         catch (error) {
@@ -84,11 +85,21 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
 
             // README: Make the game after the matchamking is done incase of a failure 
             //                          / two people in different games are matched
+            try {
+                const roomId = await FindCompetitiveMatch(userId, time_control, gamemode);
 
-            // if (error === PlayerEloNotFound) {
-            //     dbOperations.SetPlayerElo(userId, gamemode_id, defaultElo);
-            //     return 1000;
-            // }
+                if (!roomId) {
+                    res.status(200).json({ message: 'No match found, player must wait' });
+                    return; // link to frontend waiting room
+                }
+                res.status(200).json({ event: "sendToRoom",
+                    data: { roomId } } as SendToRoom);
+            }
+            catch (error) {
+                console.log('Failed to find competitive match:', error);
+                res.status(500).json({ error: 'Failed to find competitive match' });
+            }
+
             break;
         
         case 'friendly':
@@ -122,6 +133,35 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
 gameRouter.get('/test', async (req: Request, res: Response) => {
     res.json({ message: 'Game routes are working!' });
 });
+
+gameRouter.post('/review', async (req: Request, res: Response) => {
+    // extract the roomId from the request
+    const roomId = req.body.roomId;
+
+    if (!roomId) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
+
+    // Check if the game is still active
+    try {
+        const game = await dbOperations.GetGameByShortCode(roomId);
+        if (game.state === globals.StandardGameStates.ongoing
+            || game.state === globals.StandardGameStates.scheduled) {
+            res.status(200).json({ event: "sendToRoom",
+                data: { roomId } } as SendToRoom);
+            return;
+        }
+    }
+    catch (error) {
+        console.log('Failed to remove user from game search:', error);
+        return;
+    }
+    const moves = await dbOperations.GetMovesByShortCode(roomId);
+    res.status(200).json({ event: "sendToRoom",
+        data: { roomId, moves } } as SendToRoom); // change as needed to return the moves
+});
+
 
 gameRouter.post('/status', authenticateJWT, async (req: Request, res: Response) => {
     // Check if the player is already in a game
@@ -164,6 +204,23 @@ gameRouter.post('/status', authenticateJWT, async (req: Request, res: Response) 
 
 gameRouter.post('/get-leaderboard', async (req: Request, res: Response) => {
     // Check the gamemode and event and fetch the leaderboard from database
+});
+
+gameRouter.post('/get-game-history', async (req: Request, res: Response) => {
+});
+
+gameRouter.post('/profile', async (req: Request, res: Response) => {
+    // Check the user ID and fetch the user profile from the database
+    const userId = req.body.userId;
+    const gamemodeId = req.body.gamemodeId;
+
+    if (!userId || !gamemodeId) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
+
+    const elo = await dbOperations.GetPlayerElo(userId, gamemodeId);
+    
 });
 
 export default gameRouter;

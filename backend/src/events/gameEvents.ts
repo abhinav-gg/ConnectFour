@@ -19,7 +19,6 @@ const state : RoomMap = {
 type UserCachedSocket = {
   userID: string;
   username: string | null;
-  elo: number | null;
   socket: WSocket;
 }
 
@@ -47,7 +46,7 @@ function getUser(socket: WSocket): UserCachedSocket {
 }
 
 function addSocket(userID: string, socket: WSocket) {
-  SocketIDs.push({ userID, username: null, elo: null, socket });
+  SocketIDs.push({ userID, username: null, socket });
 }
 
 function removeSocket(userID: string) {
@@ -101,7 +100,6 @@ async function setupPlayer(userId: string, gamemode: GameMode) {
     SocketIDs.forEach(s => {
       if (s.userID === userId) {
         s.username = user.username || 'Anonymous';
-        s.elo = elo;
       }
     });
   }
@@ -371,7 +369,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             // Check the user is one of the two players in the game
             // If not then enter spectating mode, for now return
 
-            switch (gamemode?.name) {
+            switch (gamemode?.name.split('-')[0]) {
 
               case 'standard': {
 
@@ -386,8 +384,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 }
 
                 // All checks have passed, the player may be added to the game
-
-                break;
               }
 
               case 'friendly': {
@@ -438,7 +434,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 
                 eloChanges = { win: 0, draw: 0, loss: 0 }
                   
-                  // standard friendly gamemode starts with 2 players (current socket added above)
+                // standard friendly gamemode starts with 2 players (current socket added above)
                 if (room.players.length === 2) {
                   const p1Time: number = time_control!.base_time*60000;
                   const p2Time: number = p1Time + time_control!.disadvantage*1000; 
@@ -461,6 +457,11 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                     assignGame(game.id, player, num);
                   });
                 }
+
+
+
+
+
                 break;
               }
               default : {
@@ -503,7 +504,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             let verification: verificationData;
 
-            switch (gamemode?.name) {
+            switch (gamemode?.name.split('-')[0]) {
               case 'friendly': 
               case 'standard' : {
 

@@ -400,14 +400,14 @@ export class GameOperations {
     }
   }
 
-  async SetPlayerElo(playerid: string, gameModeId: string, elo: number): Promise<void> {
+  async SetPlayerElo(playerid: string, gameModeId: string, elo: number, rd: number): Promise<void> {
     const client = await this.getClient();
     try {
       const result = await client.query(
         `IF NOT EXISTS
           INSERT INTO con4_schema.Elo (player, mode, elo, rating_deviation)
           VALUES ($1, $2, $3, $4)`,
-        [playerid, gameModeId, elo, StandardStartingRatingDeviation]
+        [playerid, gameModeId, elo, rd]
       );
       return result.rows[0];
     } catch (error) {

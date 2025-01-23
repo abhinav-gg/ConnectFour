@@ -46,3 +46,4 @@ export interface ChatMessage {
     message: string;
     isAnnouncement: boolean;
 }
+

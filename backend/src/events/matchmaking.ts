@@ -2,6 +2,7 @@ import { GameMode, TimeControl } from '@shared/Models/gameInfo';
 import { dbOperations } from '@/db/operations';
 import { createGame } from './gameHelper';
 import { EloChange } from '@shared/Models/gameInfo';
+import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/constants';
 // file to control all elements of user matchmaking and game creation
 
 // helper functions of the main gameEvents file
@@ -21,7 +22,7 @@ export function CategoriseTime(timeControl: TimeControl): string {
     // Blitz: 256-499 seconds (4.25-8.3 minutes)
     // Rapid: ≥ 500 seconds (8.3+ minutes)
     if (totalTime <= 70) {
-        return 'hyper bullet';
+        return 'hyper-bullet';
     } else if (totalTime <= 255) {
         return 'bullet';
     } else if (totalTime < 500) {
@@ -38,13 +39,16 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
         // First, check if player is already in a game
         const existingGame = await dbOperations.GetGameByPlayerLookup(userId);
         if (existingGame) {
-            return existingGame;
+            const short_id = (await dbOperations.GetGameByID(existingGame)).short_id;
+            return short_id; // redirects the user to their game
         }
 
         // Add player to matchmaking queue
         const gamemodeId = await dbOperations.GetGameModeID(gamemode);
         const timeControlId = await dbOperations.GetExactTimeControl(time_control);
         const game_info = await dbOperations.GetGameInfoID(gamemodeId, timeControlId);
+
+        await dbOperations.SetPlayerElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
         await dbOperations.BeginFindingGame(userId, game_info);
         
         // Look for potential opponents with same time control and closest rating
@@ -52,6 +56,7 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
         const potentialMatch = await dbOperations.QueryMatckmaking(userId, gamemodeId);
 
         // If we found a match
+        console.log('Potential Matches:', potentialMatch);
         if (potentialMatch.length > 0) {
             const bestOpponent = potentialMatch[0];
 

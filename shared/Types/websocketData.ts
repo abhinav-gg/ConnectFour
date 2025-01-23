@@ -28,6 +28,16 @@ export type PlayerDisconnected = {
   data: { playersCount: number; };
 };
 
+export type PlayerReconnected = {
+  event: 'reconnection';
+  data: { 
+    eloChanges: EloChange;
+    playerNumber: number;
+    players: PlayerData[] 
+    moves: number[]
+  }
+};
+
 export type PlayerTimeout = {
   event: 'playerTimeout';
   data: { };
