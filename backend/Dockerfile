@@ -3,7 +3,7 @@ FROM node:20-alpine
 
 
 # Copy the shared folder
-COPY ../shared ./shared         # Copy the shared folder to the root of the container
+COPY ../shared .         # Copy the shared folder to the root of the container
 
 # Set the working directory
 WORKDIR ./
