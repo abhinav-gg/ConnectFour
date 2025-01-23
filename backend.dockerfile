@@ -5,8 +5,8 @@ FROM node:20-alpine
 WORKDIR /backend
 
 # Copy package files
-COPY backend/package*.json ./backend
-COPY backend/tsconfig.json ./backend
+COPY backend/package*.json .
+COPY backend/tsconfig.json .
 
 RUN ls -la
 
