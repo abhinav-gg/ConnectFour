@@ -14,9 +14,9 @@ RUN npm install --legacy-peer-deps
 COPY backend/. ./                # Copy everything from the backend folder
 
 # Copy the shared folder
-WORKDIR ../
+WORKDIR ../shared
 # Copy the rest of the application
-COPY shared ./shared         # Copy the shared folder to the root of the container
+COPY shared/. ./         # Copy the shared folder to the root of the container
 
 # Build the application
 RUN npm run build
