@@ -5,15 +5,11 @@ FROM node:20-alpine
 RUN mkdir /backend
 RUN mkdir /shared
 
-WORKDIR /backend
-
 # Copy package files and tsconfig.json
-COPY backend .
-
-WORKDIR ../shared
+COPY backend ./backend
 
 # Copy the shared folder
-COPY shared .         # Copy the shared folder to the root of the container
+COPY shared ./shared         # Copy the shared folder to the root of the container
 
 WORKDIR /
 RUN ls -la
