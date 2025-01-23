@@ -1,11 +1,9 @@
 # Use a Node.js image
 FROM node:20-alpine
 
-# Set the working directory
-WORKDIR ../shared
 
 # Copy the shared folder
-COPY . ./shared         # Copy the shared folder to the root of the container
+COPY ../shared ./shared         # Copy the shared folder to the root of the container
 
 # Set the working directory
 WORKDIR ./
