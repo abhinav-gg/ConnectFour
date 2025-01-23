@@ -5,10 +5,8 @@ FROM node:20-alpine
 WORKDIR /backend
 
 # Copy package files
-COPY backend/package*.json .
-COPY backend/tsconfig.json .
-
-RUN ls -la
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
@@ -17,7 +15,9 @@ RUN npm install --legacy-peer-deps
 COPY backend .
 
 # Copy the shared directory
-COPY shared /backend/shared
+COPY shared .
+
+RUN ls -la
 
 # Build the application
 RUN npm run build
