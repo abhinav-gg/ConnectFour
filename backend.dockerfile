@@ -8,11 +8,13 @@ RUN mkdir /shared
 # Copy package files and tsconfig.json
 COPY backend ./backend
 
+RUN ls -la
+RUN ls -la backend
+
 # Copy the shared folder
 COPY shared ./shared         # Copy the shared folder to the root of the container
 
 WORKDIR /
-RUN ls -la
 
 WORKDIR /backend
 
