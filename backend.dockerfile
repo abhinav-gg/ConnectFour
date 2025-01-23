@@ -15,7 +15,7 @@ RUN npm install --legacy-peer-deps
 COPY backend .
 
 # Copy the shared directory
-COPY shared .
+COPY shared ./shared
 
 RUN ls -la
 
