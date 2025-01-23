@@ -2,19 +2,19 @@
 FROM node:20-alpine
 
 # Set the working directory
-WORKDIR ./
+WORKDIR /backend
 
-RUN ls -la
 # Copy package files and tsconfig.json
-COPY package*.json ./  # Copy package.json and package-lock.json (if exists)
-COPY tsconfig.json ./   # Copy tsconfig.json
+COPY backend/package*.json ./  # Copy package.json and package-lock.json (if exists)
+COPY backend/tsconfig.json ./   # Copy tsconfig.json
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
+# Copy the shared folder
+COPY ../shared ../shared         # Copy the shared folder to the root of the container
 # Copy the rest of the application
-COPY . .                # Copy everything from the backend folder
-COPY ../shared .         # Copy the shared folder to the root of the container
+COPY backend/. ./                # Copy everything from the backend folder
 
 # Build the application
 RUN npm run build
