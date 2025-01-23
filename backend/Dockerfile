@@ -1,10 +1,6 @@
 # Use a Node.js image
 FROM node:20-alpine
 
-
-# Copy the shared folder
-COPY ../shared .         # Copy the shared folder to the root of the container
-
 # Set the working directory
 WORKDIR ./
 
@@ -17,7 +13,8 @@ COPY tsconfig.json ./   # Copy tsconfig.json
 RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application
-COPY backend/. ./                # Copy everything from the backend folder
+COPY . .                # Copy everything from the backend folder
+COPY ../shared .         # Copy the shared folder to the root of the container
 
 # Build the application
 RUN npm run build
