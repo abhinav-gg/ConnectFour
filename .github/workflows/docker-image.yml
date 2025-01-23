@@ -2,7 +2,7 @@ name: Docker Build Backend for DO
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "testing-docker" ]
   pull_request:
     branches: [ "main" ]
 
