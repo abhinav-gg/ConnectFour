@@ -10,7 +10,7 @@ WORKDIR /backend
 # Copy package files and tsconfig.json
 COPY backend .
 
-WORKDIR /shared
+WORKDIR ../shared
 
 # Copy the shared folder
 COPY shared .         # Copy the shared folder to the root of the container
