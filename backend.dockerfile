@@ -1,6 +1,7 @@
 # Use a Node.js image
 FROM node:20-alpine
 
+WORKDIR /
 # Set the working directory
 RUN mkdir /backend
 RUN mkdir /shared
@@ -14,7 +15,6 @@ RUN ls -la backend
 # Copy the shared folder
 COPY shared ./shared         # Copy the shared folder to the root of the container
 
-WORKDIR /
 
 WORKDIR /backend
 
