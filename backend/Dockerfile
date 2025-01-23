@@ -2,7 +2,7 @@
 FROM node:20-alpine
 
 # Set the working directory
-# WORKDIR /backend
+WORKDIR ./
 
 # Copy package files and tsconfig.json
 COPY ./backend/package*.json ./  # Copy package.json and package-lock.json (if exists)
