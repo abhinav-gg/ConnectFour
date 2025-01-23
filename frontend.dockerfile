@@ -5,8 +5,9 @@ FROM node:20-alpine
 WORKDIR /frontend
 
 # Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY package*.json ./frontend
+COPY tsconfig.json ./frontend
+
 
 # Install dependencies
 RUN npm install --legacy-peer-deps

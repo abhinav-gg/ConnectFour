@@ -5,8 +5,8 @@ FROM node:20-alpine
 WORKDIR /backend
 
 # Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY package*.json ./backend
+COPY tsconfig.json ./backend
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
