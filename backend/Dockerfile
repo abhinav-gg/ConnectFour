@@ -11,8 +11,8 @@ COPY . ./shared         # Copy the shared folder to the root of the container
 WORKDIR /backend
 
 # Copy package files and tsconfig.json
-COPY backend/package*.json ./backend  # Copy package.json and package-lock.json (if exists)
-COPY backend/tsconfig.json ./backend   # Copy tsconfig.json
+COPY package*.json ./backend  # Copy package.json and package-lock.json (if exists)
+COPY tsconfig.json ./backend   # Copy tsconfig.json
 
 RUN ls -la
 
