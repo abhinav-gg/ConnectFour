@@ -8,6 +8,7 @@ WORKDIR /frontend
 COPY package*.json ./frontend
 COPY tsconfig.json ./frontend
 
+
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
