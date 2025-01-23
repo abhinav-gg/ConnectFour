@@ -2,7 +2,8 @@
 FROM node:20-alpine
 
 # Set the working directory
-WORKDIR /
+RUN mkdir /backend
+WORKDIR /backend
 
 # Copy package files and tsconfig.json
 COPY backend .
