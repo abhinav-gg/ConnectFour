@@ -5,21 +5,25 @@ FROM node:20-alpine
 WORKDIR /frontend
 
 # Copy package files
-COPY package*.json ./frontend
-COPY tsconfig.json ./frontend
-
+COPY frontend/package*.json ./
+COPY frontend/tsconfig.json ./
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application
-COPY . .
+COPY frontend .
+
+# Copy the shared directory
+COPY shared ./shared
+
+RUN ls -la
 
 # Build the application
 RUN npm run build
 
 # Expose the default production port
-EXPOSE 3000
+EXPOSE 3001
 
 # Start the application in production mode
 CMD ["npm", "run", "start"]
