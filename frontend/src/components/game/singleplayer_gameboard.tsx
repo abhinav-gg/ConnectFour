@@ -21,9 +21,9 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
 
   
   useEffect(() => {
-    audioRef.current = new Audio('/drop-sound.mp3')
     const handleBoardUpdate = (data: { row: number; col: number; player: Player }) => {
       const { row, col, player } = data;
+      console.log('Board updated', row, col, player);
       setFallingPiece({ row: -1, col, player: gameState.currentPlayer })
       animatePieceFall(row, col)
       // You can also trigger animations or other UI updates here
@@ -44,6 +44,7 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
 
     // Cleanup subscriptions on component unmount
     return () => {
+      console.log("UNMOUNTING");
       eventEmitter.off('boardUpdated', handleBoardUpdate);
       eventEmitter.off('gameEnded', handleGameEnd);
       eventEmitter.off('boardSet', handleBoardSet);
@@ -152,8 +153,8 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
                         <div
                           className={`w-10 h-10 rounded-full ${
                             cell !== null 
-                              ? (cell === 0 ? 'bg-red-500' : 'bg-yellow-400')
-                              : (fallingPiece?.player === 0 ? 'bg-yellow-500' : 'bg-red-400')
+                              ? (cell===0 ? 'bg-red-500' : 'bg-yellow-400')
+                              : (fallingPiece?.player === 1 ? 'bg-red-500' : 'bg-yellow-400')
                           } transition-transform duration-100`}
                           style={{
                             transform: fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row
