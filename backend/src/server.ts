@@ -6,7 +6,8 @@ import { dbOperations } from '@/db/operations';
 import authRouter from '@/authRoutes'; // Import the auth routes
 import gameRouter from '@/events/gameRoutes'; // Import the game routes
 import { setupGameEvents } from '@/events/gameEvents';
-import { authenticateAdmin, authenticateJWT } from '@/lib/auth/middleware';
+import { authenticateAdmin, authenticateJWT, handleDiscordCallback } from '@/lib/auth/middleware';
+import { DiscordUserRequest } from '@/types/types';
 
 dotenv.config();
 
@@ -63,28 +64,37 @@ app.post('/api/make-opening', authenticateJWT, authenticateAdmin, async (req, re
 
 type Data = {
   success: boolean,
-  score: number
-}
+  score: number;
+};
 
 app.post('/api/recaptcha', async (req, res) => {
-  try{
+  try {
     const secret = process.env.RECAPTCHA_SECRET_KEY;
-    const {token} = req.query; 
+    const { token } = req.query;
     if (!secret || !token) {
-      res.status(500).json({ success: false, score: -1 })
+      res.status(500).json({ success: false, score: -1 });
     }
-    const query = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,{
+    const query = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-    })
+    });
     const apiResponse = await query.json();
-    res.status(200).json({ success: apiResponse?.success, score : apiResponse?.score }) 
-  } catch(error:any){
+    res.status(200).json({ success: apiResponse?.success, score: apiResponse?.score });
+  } catch (error: any) {
     console.log('Error is ', error);
-    res.status(500).json({ success: false, score: -1 }) 
+    res.status(500).json({ success: false, score: -1 });
+  }
+});
+
+app.get('/auth/discord', handleDiscordCallback, (req, res) => {
+  const ureq = req as DiscordUserRequest;
+  if (ureq.user) {
+    res.status(200).json({ message: 'Authenticated' });
+  } else {
+    res.status(500).json({ error: 'Failed to authenticate' });
   }
 });
 

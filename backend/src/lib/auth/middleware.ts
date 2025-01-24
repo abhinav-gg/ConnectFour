@@ -1,14 +1,20 @@
 import { dbOperations } from '@/db/operations';
-import { Request, Response, NextFunction } from 'express';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import type { DiscordUserRequest } from '@/types/types';
+import axios from 'axios';
+import express, { NextFunction, Request, Response } from 'express';
+import { JwtPayload } from 'jsonwebtoken';
 import { verifyAccessToken } from './index';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+// discord stuff
+const CLIENT_ID = process.env.CLIENT_ID || '';
+const CLIENT_SECRET = process.env.CLIENT_SECRET || '';
+const REDIRECT_URI = process.env.REDIRECT_URI || '';
+
 interface AuthenticatedRequest extends Request {
   user?: JwtPayload;
 }
-
 
 export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   const token = req.headers.authorization?.split(' ')[1]; // Extract the token from the header
@@ -57,5 +63,65 @@ export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response
   } catch (error) {
     console.error('Failed to fetch user profile:', error);
     next(error);
+  }
+};
+
+export const handleDiscordCallback = async (
+  req: DiscordUserRequest,
+  res: express.Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const code = req.query.code as string;
+
+    if (!code) {
+      res.status(400).json({ error: 'Authorization code not provided' });
+      return;
+    }
+
+    // Exchange the authorization code for an access token
+    const tokenResponse = await axios.post(
+      'https://discord.com/api/oauth2/token',
+      new URLSearchParams({
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: REDIRECT_URI,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // Use the access token to fetch the user's information
+    const userResponse = await axios.get('https://discord.com/api/users/@me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const user = userResponse.data;
+
+    req.user = {
+      id: user.id,
+      username: user.username,
+      discriminator: user.discriminator,
+      avatar: user.avatar,
+    };
+
+    // ABHINAV ----------------------
+    // here is your User ID
+    console.log('User ID:', user.id);
+    // ------------------------------
+
+    next();
+  } catch (error) {
+    console.error('Error during authentication:', error);
+    res.status(500).json({ error: 'Authentication failed' });
   }
 };
