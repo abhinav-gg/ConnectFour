@@ -1,6 +1,5 @@
 import { dbOperations } from '@/db/operations';
 import type { DiscordUserRequest } from '@/types/types';
-import axios from 'axios';
 import express, { NextFunction, Request, Response } from 'express';
 import { JwtPayload } from 'jsonwebtoken';
 import { verifyAccessToken } from './index';
@@ -80,32 +79,39 @@ export const handleDiscordCallback = async (
     }
 
     // Exchange the authorization code for an access token
-    const tokenResponse = await axios.post(
-      'https://discord.com/api/oauth2/token',
-      new URLSearchParams({
+    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: REDIRECT_URI,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
-
-    const accessToken = tokenResponse.data.access_token;
-
-    // Use the access token to fetch the user's information
-    const userResponse = await axios.get('https://discord.com/api/users/@me', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      }).toString()
     });
 
-    const user = userResponse.data;
+    if (!tokenResponse.ok) {
+      throw new Error(`HTTP error! status: ${tokenResponse.status}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    // Use the access token to fetch the user's information
+    const userResponse = await fetch('https://discord.com/api/users/@me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      }
+    });
+
+    if (!userResponse.ok) {
+      throw new Error(`HTTP error! status: ${userResponse.status}`);
+    }
+
+    const user = await userResponse.json();
 
     req.user = {
       id: user.id,
