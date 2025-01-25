@@ -2,6 +2,12 @@ import { GameInfo } from "@shared/Models/gameInfo";
 import type { UUID } from "crypto";
 import type express from "express";
 
+export interface Glicko {
+  elo: number;
+  rating_deviation: number;  // Rating Deviation
+  updated_at: number;
+}
+
 export type Room = {
   players: UUID[];
   gameInfo: GameInfo;

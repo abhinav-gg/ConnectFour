@@ -4,11 +4,13 @@ import { ChatMessage } from '@shared/Models/gameInfo';
 import { useEffect, useRef, useState } from 'react';
 
 export default function LiveChat({ 
+  pNum,
   pMessages, 
   onSendMessage,
   onOfferDraw,
   onResign 
 }: { 
+  pNum: number;
   pMessages: ChatMessage[];
   onSendMessage: (message: string) => void;
   onOfferDraw: () => void;
@@ -39,7 +41,7 @@ export default function LiveChat({
     }, []);
 
     const handleSendMessage = (e: React.FormEvent) => {
-        if (chatCooldown > 0) {
+        if (chatCooldown > 0 || pNum === -1) {
             return;
         }
         e.preventDefault();
@@ -112,13 +114,13 @@ export default function LiveChat({
           onChange={(e) => setInputMessage(e.target.value)}
           placeholder="Type a message..."
           className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          Send
-        </button>
+        />{pNum !== -1 && (
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            Send
+          </button>)}
       </form>
 
       {/* Game control buttons */}

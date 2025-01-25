@@ -1,6 +1,7 @@
 
-import { type Cell, GameState, Player, type Move } from "./game";
+import { GameState } from "./game";
 import { AnalysisProps } from "./analysis";
+import { Cell, Player } from "@shared/Types/gameData";
 
 type Board = Cell[][];
 

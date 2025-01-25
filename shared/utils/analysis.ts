@@ -1,4 +1,5 @@
-import { type Cell, ROWS, COLS, checkWinner, GameState, Player } from './game'
+import { Cell, Player } from '@shared/Types/gameData'
+import { ROWS, COLS, checkWinner, GameState } from './game'
 
 const INFINITY = 3628800 // (10!) used for finding the distance to checkmate
 const MAX_DEPTH = 10

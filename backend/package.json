@@ -5,8 +5,8 @@
     "scripts": {
         "dev": "npx tsc && node -r tsconfig-paths/register -r ts-node/register/transpile-only --require tsconfig-paths/register dist/backend/src/server.js --baseUrl ./dist",
         "build": "tsc -p tsconfig.json",
-        "watch": "node dist/server.js",
-        "lint": "eslint ."
+        "lint": "eslint .",
+        "start": "node -r tsconfig-paths/register -r ts-node/register/transpile-only --require tsconfig-paths/register dist/backend/src/server.js --baseUrl ./dist"
     },
     "dependencies": {
         "@types/express-ws": "^3.0.5",

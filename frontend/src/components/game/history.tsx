@@ -4,7 +4,6 @@ import { ArrowLeft } from 'lucide-react';
 import { GameState, ROWS, COLS } from '@shared/utils/game';
 import { useEffect, useState } from 'react';
 import { eventEmitter } from '@shared/utils/eventEmitter';
-import { Player } from '@shared/utils/game';
 
 interface MoveHistoryProps {
   ref: GameState;

@@ -120,10 +120,10 @@ export const handleDiscordCallback = async (
       avatar: user.avatar,
     };
 
-    // ABHINAV ----------------------
-    // here is your User ID
+    
     console.log('User ID:', user.id);
-    // ------------------------------
+    // call ICH database here
+    
 
     next();
   } catch (error) {
