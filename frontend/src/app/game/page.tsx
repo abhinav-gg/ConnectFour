@@ -6,7 +6,8 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
 import { GameState } from '@shared/utils/game';
-import { JoinGame, MakeMove, ClientMessage, PlayerData, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut } from '@shared/Types/websocketData';
+import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut } from '@shared/Types/websocketData';
+import { PlayerData } from "@shared/Models/gameInfo";
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
@@ -18,7 +19,7 @@ export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
   const [roomId, setRoomId] = useState('');
   const [socket, setSocket] = useState<WebSocket>();
-  const [playerNumber, setPlayerNumber] = useState<Player>(0);
+  const [playerNumber, setPlayerNumber] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState<Player>(0);
   const [isConnected, setIsConnected] = useState(false);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
@@ -28,7 +29,7 @@ export default function TestingWebsockets() {
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const [showEndPopup, setShowEndPopup] = useState(false);
   const [chatUpdate, setChatUpdate] = useState(0);
-  const eloChangeRef = useRef<EloChange>({ draw: -123, loss: 123, win: -123 });
+  const eloChangeRef = useRef<EloChange>({ draw: -0, loss: -0, win: -0 });
   const gameBoardRef = useRef<GameState>();
   const messageRef = useRef<ChatMessage[]>([]);
   const resultRef = useRef({winner: -1, deltaElo: 0 });
@@ -184,6 +185,17 @@ export default function TestingWebsockets() {
           break;
         case 'receiveMessage':
           handleMessageReceived(data.data);
+          break;
+        case 'reconnection':
+          setGamePlayers([]);
+          data.data.players.forEach((player) => {
+            addPlayer(player.username, player.time)
+          });
+          eloChangeRef.current = data.data.eloChanges;
+          setPlayerNumber(data.data.playerNumber);
+          setGameStatus('Opponent reconnected!');
+          pushAnnouncement('Opponent reconnected!');
+          setTimeUpdate(timeUpdate + 1);
           break;
       }
     }

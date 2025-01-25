@@ -28,6 +28,11 @@ export type GamePlayer = {
     timerActive?: boolean;
 }
 
+export interface PlayerData {
+    username: string;
+    time: number;
+};
+
 export type EloChange = {
     win: number;
     draw: number;

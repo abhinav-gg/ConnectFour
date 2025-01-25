@@ -1,14 +1,11 @@
-import { EloChange, GameInfo } from "@shared/Models/gameInfo";
+import { EloChange, GameInfo, GamePlayer, PlayerData } from "@shared/Models/gameInfo";
 
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
+
 export type RoomID = string;
 
 /////////// SENT TO FRONTEND BY SERVER ///////////
 
-export interface PlayerData {
-  username: string;
-  time: number;
-};
 
 export  type RoomFull = {
   event: 'roomFull';
@@ -80,7 +77,7 @@ export type ReceiveMessage = {
 
 export type ClientMessage = GameStart | PlayerJoined | MoveMade | EndGame 
                           | RoomFull | GameStart | ReceiveMessage | Error | PlayerDisconnected 
-                          | StartTimer | Draw | PlayerTimeout
+                          | StartTimer | Draw | PlayerTimeout | PlayerReconnected
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
 
