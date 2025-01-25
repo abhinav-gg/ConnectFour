@@ -1,9 +1,5 @@
 import { eventEmitter } from './eventEmitter';
-
-export type Player = 0 | 1
-export type Cell = Player | null
-export type Move = { player: Player; col: number }
-
+import { Player, Cell, Move } from '../Types/gameData';
 export const ROWS = 6
 export const COLS = 7
 

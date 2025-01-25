@@ -6,7 +6,7 @@ import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard'
 import Dashboard from '@/components/dashboard'
 import GameAnalysis from '@/components/game/analysis'
 import { Analysis } from '@shared/utils/analysis'
-import { GameState, Move, Player } from '@shared/utils/game'
+import { GameState } from '@shared/utils/game'
 
 export default function AnalysisPage() {
     const gameBoardRef = useRef<GameState>(new GameState());
@@ -17,8 +17,8 @@ export default function AnalysisPage() {
       if (!moves.match(/^[1-7]+$/)) {
         return;
       }
-      let moveList = moves.split('');
-        console.log(moveList);
+      const moveList = moves.split('');
+      //console.log(moveList);
       gameBoardRef.current.reset();
       moveList.forEach((move, index) => {
         gameBoardRef.current.currentMoveIndex = index;
