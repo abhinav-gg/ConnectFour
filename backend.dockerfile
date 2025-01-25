@@ -8,6 +8,7 @@ WORKDIR /backend
 COPY backend/package*.json ./ 
 COPY backend/tsconfig.json ./
 
+
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
