@@ -5,8 +5,8 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Connect Four',
-  description: 'A fun Connect Four game built with Next.js and React',
+  title: 'Con4',
+  description: 'A competitive and fun online Four-In-A-Row game built with analysis, opening books and so much more!',
   icons: {
     icon: '/logo.ico',
   },

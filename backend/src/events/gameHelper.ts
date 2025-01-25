@@ -147,4 +147,3 @@ export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol
     const timeLeft = allowedTime - timeTaken - delta + timecontrol.increment * 1000;
     return {timeTaken, allowedTime, timeLeft, delta} as TimeInfo;
 }
-
