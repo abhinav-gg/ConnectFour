@@ -45,8 +45,9 @@ export const dbOperations = {
   GetPlayerElo: gameOps.GetPlayerStats.bind(gameOps),
   SetPlayerElo: gameOps.SetPlayerElo.bind(gameOps),
   GetPlayersByShortCode: gameOps.GetPlayersByShortCode.bind(gameOps),
-  UpdatePlayerElo: gameOps.UpdatePlayerElo.bind(gameOps),
+  UpdateElo: gameOps.UpdateElo.bind(gameOps),
   QueryMatckmaking: gameOps.QueryMatckmaking.bind(gameOps),
   UpdateGameStatusByShortCode: gameOps.UpdateGameStatusByShortCode.bind(gameOps),
   GetTimeSinceLastGameLookup: gameOps.GetTimeSinceLastGameLookup.bind(gameOps),
+  UpdateRD: gameOps.UpdateRD.bind(gameOps),
 };

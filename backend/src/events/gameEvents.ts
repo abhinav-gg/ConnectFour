@@ -9,7 +9,7 @@ import { UUID } from "crypto";
 import { EloChange, GameMode, TimeControl } from "@shared/Models/gameInfo";
 import { StandardGameStates } from "@shared/constants";
 import { GameState } from "@shared/utils/game";
-import { abortGame, assignGame, calculateTimesByMoves } from "./gameHelper";
+import { abortGame, assignGame, calculateTimesByMoves, endGame } from "./gameHelper";
 import { replaceProfanities } from 'no-profanity';
 import { Game } from "@/models/Game";
 
@@ -268,12 +268,12 @@ async function handleGameEnd(roomId: string, draw: boolean, message: string, win
       message: message }
   } as EndGame);
 
-  // CALL HELPER
+  // No real need to await this
+  endGame(roomId, room.gameInfo.gamemode, draw, winner);
 
-  // TODO: If we are allowing rematch offers then the room needs to be kept alive for a bit
   dropRoom(roomId);
+  // TODO: send user to the waiting websocket page.
   // Mark game as finished depending on state
-  
 };
 
 async function startStandardGame(room: Room, game: Game, time_control: TimeControl, eloChanges: EloChange) {
@@ -682,3 +682,4 @@ export const setupGameEvents = async (app: expressWs.Application) => {
     });
   });
 };
+

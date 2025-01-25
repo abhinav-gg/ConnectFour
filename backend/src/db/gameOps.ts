@@ -5,6 +5,7 @@ import { Game, Move } from '@/models/Game';
 import { GameMode, GMStats, TimeControl } from '@shared/Models/gameInfo';
 import { PlayerEloNotFound } from './dbErrors';
 import { StandardStartingRatingDeviation } from '@shared/constants';
+import { Glicko } from '@/types/types';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
@@ -378,11 +379,11 @@ export class GameOperations {
     }
   }
 
-  async GetPlayerStats(playerid: string, gameModeId: string): Promise<GMStats> {
+  async GetPlayerStats(playerid: string, gameModeId: string): Promise<Glicko> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT elo, rating_deviation FROM con4_schema.Elo
+        `SELECT elo, rating_deviation, updated_at FROM con4_schema.Elo
           WHERE player = $1
           AND mode = $2`,
         [playerid, gameModeId]
@@ -419,6 +420,46 @@ export class GameOperations {
     }
   }
 
+  async UpdateElo(playerid: string, gameModeId: string, elo: number): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `UPDATE con4_schema.Elo
+          SET elo = $3
+          WHERE player = $1
+          AND mode = $2`,
+        [playerid, gameModeId, elo]
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to update player elo:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async UpdateRD(playerid: string, gameModeId: string, rd: number): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `UPDATE con4_schema.Elo
+          SET rating_deviation = $3, updated_at = now()
+          WHERE player = $1
+          AND mode = $2`,
+        [playerid, gameModeId, rd]
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to update player rd:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+  
   async GetPlayersByShortCode(short_id: string): Promise<string[]> {
     const client = await this.getClient();
     try {
@@ -431,26 +472,6 @@ export class GameOperations {
       return result.rows.map(row => row.player) as string[];
     } catch (error) {
       console.error('Failed to fetch players by game id:', error);
-      throw error;
-    } finally {
-      client.release();
-      this.client = null;
-    }
-  }
-
-  async UpdatePlayerElo(playerid: string, gameModeId: string, delta: number): Promise<void> {
-    const client = await this.getClient();
-    try {
-      const result = await client.query(
-        `UPDATE con4_schema.Elo
-          SET elo = elo + $3
-          WHERE player = $1
-          AND mode = $2`,
-        [playerid, gameModeId, delta]
-      );
-      return;
-    } catch (error) {
-      console.error('Failed to update player elo:', error);
       throw error;
     } finally {
       client.release();
@@ -494,6 +515,26 @@ export class GameOperations {
       return result.rows?.[0];
     } catch (error) {
       console.error('Failed to query matchmaking:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async GetTimeSinceLastGameLookup(playerid: string): Promise<number> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT (CAST((now()-created_at) AS FLOAT)) AS diff FROM con4_schema.GameLookup
+          WHERE player = $1
+          ORDER BY created_at DESC
+          LIMIT 1`,
+        [playerid]
+      );
+      return result.rows[0]?.diff;
+    } catch (error) {
+      console.error('Failed to fetch time since last game lookup:', error);
       throw error;
     } finally {
       client.release();

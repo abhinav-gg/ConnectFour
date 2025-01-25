@@ -95,10 +95,6 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                     return; // link to frontend waiting room
                 }
 
-                
-
-
-
 
                 res.status(200).json({ event: "sendToRoom",
                     data: { roomId } } as SendToRoom);

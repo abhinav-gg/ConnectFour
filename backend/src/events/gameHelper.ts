@@ -1,12 +1,13 @@
 import { PlayerEloNotFound } from "@/db/dbErrors";
 import { dbOperations } from "@/db/operations";
 import { Game, Move } from "@/models/Game";
-import { TimeInfo } from "@/types/types";
+import { Glicko, TimeInfo } from "@/types/types";
 import { genRandomGameKey } from "@/utils/helper";
 import { validateTimeControl } from "@/utils/validation";
 import { StandardGameStates } from "@shared/constants";
 import { GameInfo, GameMode, GMStats, TimeControl } from "@shared/Models/gameInfo";
 import { boolean } from "zod";
+import { adjustRD, calculateGlickoRatings } from "./matchmaking";
 
 export async function quitGameSearch(userId: string) {
     try {
@@ -132,9 +133,6 @@ export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol
     return {timeTaken, allowedTime, timeLeft, delta} as TimeInfo;
 }
 
-
-
-
 export async function endGame(short_id: string, gamemode: GameMode, draw: boolean, winner?: number): Promise<void> {
     try {
         const game = await dbOperations.GetGameByShortCode(short_id);
@@ -151,12 +149,28 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
         switch (gamemode.name.split('-')[0]) {
             case 'standard':
-                const p1Stats = await dbOperations.GetPlayerElo(gamePlayers[0], gamemodeid) as GMStats;
-                const p2Stats = await dbOperations.GetPlayerElo(gamePlayers[1], gamemodeid) as GMStats;
-                const newElos = 
+                const p1Stats = await dbOperations.GetPlayerElo(gamePlayers[0], gamemodeid) as Glicko;
+                const p2Stats = await dbOperations.GetPlayerElo(gamePlayers[1], gamemodeid) as Glicko;
+                const p1Changes = calculateGlickoRatings(p1Stats, p2Stats);
+                const p2Changes = calculateGlickoRatings(p2Stats, p1Stats);
+                const p1rd = adjustRD(p1Stats);
+                const p2rd = adjustRD(p2Stats);
+                dbOperations.UpdateRD(gamePlayers[0], gamemodeid, p1rd);
+                dbOperations.UpdateRD(gamePlayers[1], gamemodeid, p2rd);
+                let p1New, p2New;
                 if (draw) {
-                    
+                    p1New = p1Stats.elo + p1Changes.draw;
+                    p2New = p2Stats.elo + p2Changes.draw;
+                } else if (winner === 0) {
+                    p1New = p1Stats.elo + p1Changes.win;
+                    p2New = p2Stats.elo + p2Changes.loss;
+                } else {
+                    p1New = p1Stats.elo + p1Changes.loss;
+                    p2New = p2Stats.elo + p2Changes.win;
                 }
+
+                dbOperations.UpdateElo(gamePlayers[0], gamemodeid, p1New);
+                dbOperations.UpdateElo(gamePlayers[1], gamemodeid, p2New);
                 break;                
         }
         gamePlayers.forEach(async (player) => {

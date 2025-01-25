@@ -3,6 +3,7 @@ import { dbOperations } from '@/db/operations';
 import { assignGame, createGame } from './gameHelper';
 import { EloChange } from '@shared/Models/gameInfo';
 import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/constants';
+import { Glicko } from '@/types/types';
 // file to control all elements of user matchmaking and game creation
 
 // helper functions of the main gameEvents file
@@ -66,7 +67,7 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
             // ADJUST AS NEEDED:
             // If they have been waiting >10 seconds, create the game
             // If opponent elo diff is <30, create the game
-            if (priority >= 10 || Math.abs(playerElo - potentialMatch.elo) <= 30) {
+            if (priority >= 10 || Math.abs(playerElo.elo - potentialMatch.elo) <= 30) {
                 // Calculate expected scores based on ratings
                 const game = await createGame(gamemode, time_control);
 
@@ -90,20 +91,15 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
 
 
 // TODO: GlickoPlayer needs to be stored in the database
-export interface GlickoPlayer {
-    rating: number;
-    rd: number;  // Rating Deviation
-    timeSinceLastPlayed: number;
-}
 
-export const adjustRD = (player: GlickoPlayer): number => {
-    const daysSinceLastGame = (player.timeSinceLastPlayed) / (1000 * 60 * 60 * 24);
-    const newRD = Math.min(350, Math.sqrt(Math.pow(player.rd, 2) + daysSinceLastGame * 5));
+export const adjustRD = (player: Glicko): number => {
+    const daysSinceLastGame = (player.updated_at) / (1000 * 60 * 60 * 24);
+    const newRD = Math.min(350, Math.sqrt(Math.pow(player.rating_deviation, 2) + daysSinceLastGame * 5));
     return newRD;
 };
 
 // Calculate new ratings for both players based on Glicko system
-export function calculateGlickoRatings(me: GlickoPlayer, them: GlickoPlayer): EloChange {
+export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
     const q = Math.log(10) / 400;  // System constant
     
     // Adjust RD based on time since last played (increases uncertainty)
@@ -117,8 +113,8 @@ export function calculateGlickoRatings(me: GlickoPlayer, them: GlickoPlayer): El
     const g2 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p1RD, 2) / Math.pow(Math.PI, 2));
 
     // Calculate expected scores
-    const E1 = 1 / (1 + Math.pow(10, g1 * (them.rating - me.rating) / 400));
-    const E2 = 1 / (1 + Math.pow(10, g2 * (me.rating - them.rating) / 400));
+    const E1 = 1 / (1 + Math.pow(10, g1 * (them.elo - me.elo) / 400));
+    const E2 = 1 / (1 + Math.pow(10, g2 * (me.elo - them.elo) / 400));
 
     // Calculate rating changes for win/loss
     const d1 = 1 / (Math.pow(q, 2) * Math.pow(g1, 2) * E1 * (1 - E1));
@@ -127,9 +123,9 @@ export function calculateGlickoRatings(me: GlickoPlayer, them: GlickoPlayer): El
     // Calculate new ratings for all scenarios and round to 2 decimal places
     // For draws, use 0.5 as the score (halfway between 0 and 1)
     const ratingChanges: EloChange = {
-        win : Number((me.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
-        loss : Number((me.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
-        draw : Number((me.rating + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
+        win : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
+        loss : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
+        draw : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
     };
     return ratingChanges;
 }
