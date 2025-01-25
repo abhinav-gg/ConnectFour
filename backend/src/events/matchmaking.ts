@@ -1,6 +1,6 @@
 import { GameMode, TimeControl } from '@shared/Models/gameInfo';
 import { dbOperations } from '@/db/operations';
-import { createGame } from './gameHelper';
+import { assignGame, createGame } from './gameHelper';
 import { EloChange } from '@shared/Models/gameInfo';
 import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/constants';
 // file to control all elements of user matchmaking and game creation
@@ -36,46 +36,49 @@ export function CategoriseTime(timeControl: TimeControl): string {
 export async function FindCompetitiveMatch(userId: string, time_control: TimeControl, gamemode: GameMode): Promise<string | null> {
     
     try {
-        // First, check if player is already in a game
-        const existingGame = await dbOperations.GetGameByPlayerLookup(userId);
-        if (existingGame) {
-            const short_id = (await dbOperations.GetGameByID(existingGame)).short_id;
-            return short_id; // redirects the user to their game
-        }
+        // get current time in seconds and calculate time since last played as priority
+        
+        // Can safely assume the player is not in a game (checked before call)
 
         // Add player to matchmaking queue
         const gamemodeId = await dbOperations.GetGameModeID(gamemode);
         const timeControlId = await dbOperations.GetExactTimeControl(time_control);
         const game_info = await dbOperations.GetGameInfoID(gamemodeId, timeControlId);
+        const playerElo = await dbOperations.GetPlayerElo(userId, gamemodeId);
 
         await dbOperations.SetPlayerElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
-        await dbOperations.BeginFindingGame(userId, game_info);
         
         // Look for potential opponents with same time control and closest rating
         // Orders by absolute difference from ideal rating gap (50)
         const potentialMatch = await dbOperations.QueryMatckmaking(userId, gamemodeId);
-
-        // If we found a match
         console.log('Potential Matches:', potentialMatch);
-        if (potentialMatch.length > 0) {
-            const bestOpponent = potentialMatch[0];
+        const priority = await dbOperations.GetTimeSinceLastGameLookup(userId);
+
+        await dbOperations.BeginFindingGame(userId, game_info);
+        
+        // If we found a match
+        if (potentialMatch) {
+
+            console.log('Best Opponent:', potentialMatch, 'Priority:', priority);
 
             // Check time current player has been in queue
-            // If they have been waiting <20 seconds and opponent elo diff is >50, keep waiting
-            // If they have been waiting >20 seconds, create the game
-            // If opponent elo diff is <50, create the game
 
-            
-            // Calculate expected scores based on ratings
-            const elo = await dbOperations.GetPlayerElo(userId, gamemodeId);
-            
-            // Create the game
-            const game = createGame(gamemode, time_control);
+            // ADJUST AS NEEDED:
+            // If they have been waiting >10 seconds, create the game
+            // If opponent elo diff is <30, create the game
+            if (priority >= 10 || Math.abs(playerElo - potentialMatch.elo) <= 30) {
+                // Calculate expected scores based on ratings
+                const game = await createGame(gamemode, time_control);
 
-            return (await game).short_id;
+                // TODO: add a switch case on the gamemode to assign the player numbers
+
+                const thisPNum = Math.random() > 0.5 ? 0 : 1;
+                await assignGame(game.id, userId, thisPNum);
+                await assignGame(game.id, potentialMatch.user_id, Math.abs(thisPNum - 1));
+                return game.short_id;
+            }
         }
-
-        // No match found or player should wait
+        // Nobody is playing the same game mode, wait for a match
         return null;
 
     } catch (error) {
@@ -92,7 +95,6 @@ export interface GlickoPlayer {
     rd: number;  // Rating Deviation
     timeSinceLastPlayed: number;
 }
-
 
 export const adjustRD = (player: GlickoPlayer): number => {
     const daysSinceLastGame = (player.timeSinceLastPlayed) / (1000 * 60 * 60 * 24);

@@ -9,7 +9,7 @@ import { UUID } from "crypto";
 import { EloChange, GameMode, TimeControl } from "@shared/Models/gameInfo";
 import { StandardGameStates } from "@shared/constants";
 import { GameState } from "@shared/utils/game";
-import { assignGame, calculateTimesByMoves } from "./gameHelper";
+import { abortGame, assignGame, calculateTimesByMoves } from "./gameHelper";
 import { replaceProfanities } from 'no-profanity';
 import { Game } from "@/models/Game";
 
@@ -19,7 +19,7 @@ const state : RoomMap = {
 
 type UserCachedSocket = {
   userID: string;
-  username: string | null;
+  username: string | null; // cached for speed
   socket: WSocket;
 }
 
@@ -268,17 +268,7 @@ async function handleGameEnd(roomId: string, draw: boolean, message: string, win
       message: message }
   } as EndGame);
 
-  if (draw) {
-    dbOperations.UpdateGameStatusByShortCode(roomId, StandardGameStates.draw);
-  } else {
-    dbOperations.UpdateGameStatusByShortCode(roomId, `win: ${winner}`);
-  }
-
-  // Remove from game lookup (even disconnected players)
-  const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId);
-  gamePlayers.forEach(async (player) => {
-    await dbOperations.FinishedGameLookup(player);
-  });
+  // CALL HELPER
 
   // TODO: If we are allowing rematch offers then the room needs to be kept alive for a bit
   dropRoom(roomId);
@@ -312,7 +302,7 @@ async function startStandardGame(room: Room, game: Game, time_control: TimeContr
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const setupGameEvents = async (app: expressWs.Application) => {
-  app.ws('/ws', (ws, req) => {
+  app.ws('/in-game', (ws, req) => {
     console.log('Client connected');
     const token = req.header('Sec-WebSocket-Protocol') as string;
     const user = verifyAccessToken(token as string);
@@ -643,7 +633,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         console.error('Websocket error:', error);
     });
 
-    ws.on('close', () => {
+    ws.on('close', async () => {
       // gracefully handle disconnections as player may reconnect
       const userId = getUser(ws)?.userID;
       console.log('Client disconnected:', userId);
@@ -659,7 +649,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
       if (!roomId) return; // player was between rooms or seomthing
 
       const room = getRoom(roomId!)!;
-      const game = dbOperations.GetGameByShortCode(roomId!);
+      const game = await dbOperations.GetGameByShortCode(roomId!);
+
       if (!game) {
         console.log('Game not found:', roomId);
         // simply drop the room as the game is over
@@ -667,6 +658,13 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         ws.close();
         return;
       }
+
+      if (game.state === StandardGameStates.scheduled) {
+        // kill the game and remove the player from the game lookup
+        abortGame(userId);
+      }
+
+
       if (roomId) {
         sendToRoom(roomId, {
           event: 'playerDisconnected',

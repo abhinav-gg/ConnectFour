@@ -39,13 +39,14 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
 
     // Check if the user is already in the game lookup
     const gameId = await dbOperations.GetGameByPlayerLookup(userId);
-    console.log('Game ID:', gameId);
+
     if (gameId) {
         // First check if the game is still active
         try {
             const game = await dbOperations.GetGameByID(gameId);
+
             if (game.state === globals.StandardGameStates.ongoing) {
-                res.status(200).json({ message: 'Game is still active, player must finish their game before making a new one' });
+                res.status(200).json({ message: 'Game is still active', roomId: game.short_id });
                 return;
             }
             else if (game.state === globals.StandardGameStates.scheduled) {
@@ -63,6 +64,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
             return;
         }
     }
+
 
     const GMM = gamemode.name;
     
@@ -92,6 +94,12 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                     res.status(200).json({ message: 'No match found, player must wait' });
                     return; // link to frontend waiting room
                 }
+
+                
+
+
+
+
                 res.status(200).json({ event: "sendToRoom",
                     data: { roomId } } as SendToRoom);
             }
@@ -158,6 +166,10 @@ gameRouter.post('/review', async (req: Request, res: Response) => {
         return;
     }
     const moves = await dbOperations.GetMovesByShortCode(roomId);
+
+    // extract col from moves for now
+
+
     res.status(200).json({ event: "sendToRoom",
         data: { roomId, moves } } as SendToRoom); // change as needed to return the moves
 });
@@ -184,18 +196,17 @@ gameRouter.post('/status', authenticateJWT, async (req: Request, res: Response) 
                 res.status(200).json({ event: "sendToRoom",
                     data: { roomId: game.short_id } } as SendToRoom);
                 return;
-            }
-            else if (game.state === globals.StandardGameStates.scheduled) {
+            } else if (game.state === globals.StandardGameStates.scheduled) {
                 // User is changing the game they are looking for
                 // Remove the user from the lookup and prepare for new game
                 await quitGameSearch(userId);
-            }
-            else {
-                throw new Error('Game is not in a state');
+                
+            } else {
+                throw new Error('GameLookup is not in a state');
             }
         }
         catch (error) {
-            console.log('Failed to remove user from game search:', error);
+            console.error('Failed to remove user from game search:', error);
             return;
         }
     }

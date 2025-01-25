@@ -4,7 +4,9 @@ import { Game, Move } from "@/models/Game";
 import { TimeInfo } from "@/types/types";
 import { genRandomGameKey } from "@/utils/helper";
 import { validateTimeControl } from "@/utils/validation";
-import { GameInfo, GameMode, TimeControl } from "@shared/Models/gameInfo";
+import { StandardGameStates } from "@shared/constants";
+import { GameInfo, GameMode, GMStats, TimeControl } from "@shared/Models/gameInfo";
+import { boolean } from "zod";
 
 export async function quitGameSearch(userId: string) {
     try {
@@ -88,38 +90,20 @@ export async function assignGame(gameId: string, userId: string, num: number) {
     }
 }
 
-export async function finishPlayerGame(userId: string) {
-    try {
-        await dbOperations.FinishedGameLookup(userId);
-    }
-    catch (error) {
-        console.log('Failed to finish player game:', error);
-        throw error; // kinda strange error
-    }
-}
-
 export async function abortGame(userId: string) {
+    // user did not play a single move
     try {
         const game = await dbOperations.GetGameByPlayerLookup(userId);
         if (!game) {
             throw new Error('Game not found');
         }
         //Update the game lookup here
+        await dbOperations.FinishedGameLookup(userId);
         //Delete the game player entry here
         await dbOperations.UnassignGame(game, userId);
     }
     catch (error) {
         console.log('Failed to abort game:', error);
-        throw error;
-    }
-}
-
-export async function killGame(gameId: string) {
-    try {
-        //await dbOperations.KillGame(gameId);
-    }
-    catch (error) {
-        console.log('Failed to kill game:', error);
         throw error;
     }
 }
@@ -146,4 +130,41 @@ export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol
     const delta = currentTime - lastMoveMadeTime;
     const timeLeft = allowedTime - timeTaken - delta + timecontrol.increment * 1000;
     return {timeTaken, allowedTime, timeLeft, delta} as TimeInfo;
+}
+
+
+
+
+export async function endGame(short_id: string, gamemode: GameMode, draw: boolean, winner?: number): Promise<void> {
+    try {
+        const game = await dbOperations.GetGameByShortCode(short_id);
+        const gamemodeid = await dbOperations.GetGameModeID(gamemode);
+        if (!game) {
+            throw new Error('Game not found???');
+        }
+        if (draw) {
+            await dbOperations.UpdateGameStatusByShortCode(short_id, StandardGameStates.draw);
+        } else {
+            await dbOperations.UpdateGameStatusByShortCode(short_id, `win: ${winner}`);
+        }
+
+        const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
+        switch (gamemode.name.split('-')[0]) {
+            case 'standard':
+                const p1Stats = await dbOperations.GetPlayerElo(gamePlayers[0], gamemodeid) as GMStats;
+                const p2Stats = await dbOperations.GetPlayerElo(gamePlayers[1], gamemodeid) as GMStats;
+                const newElos = 
+                if (draw) {
+                    
+                }
+                break;                
+        }
+        gamePlayers.forEach(async (player) => {
+            await dbOperations.FinishedGameLookup(player);
+        });
+    }
+    catch (error) {
+        console.log('Failed to end game:', error);
+        throw error;
+    }
 }

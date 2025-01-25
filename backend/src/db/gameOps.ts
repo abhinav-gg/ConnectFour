@@ -2,7 +2,7 @@ import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
 import { Game, Move } from '@/models/Game';
-import { GameMode, MatchData, TimeControl } from '@shared/Models/gameInfo';
+import { GameMode, GMStats, TimeControl } from '@shared/Models/gameInfo';
 import { PlayerEloNotFound } from './dbErrors';
 import { StandardStartingRatingDeviation } from '@shared/constants';
 
@@ -378,11 +378,11 @@ export class GameOperations {
     }
   }
 
-  async GetPlayerElo(playerid: string, gameModeId: string): Promise<number> {
+  async GetPlayerStats(playerid: string, gameModeId: string): Promise<GMStats> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT elo FROM con4_schema.Elo
+        `SELECT elo, rating_deviation FROM con4_schema.Elo
           WHERE player = $1
           AND mode = $2`,
         [playerid, gameModeId]
@@ -477,11 +477,11 @@ export class GameOperations {
     }
   }
 
-  async QueryMatckmaking(playerid: string, gamemodeId: string): Promise<MatchData[]> {
+  async QueryMatckmaking(playerid: string, gamemodeId: string): Promise<{user_id: string, elo: number}> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT player, con4_schema.Elo.elo FROM con4_schema.GameLookup
+        `SELECT player AS user_id, con4_schema.Elo.elo AS elo FROM con4_schema.GameLookup
           INNER JOIN con4_schema.Elo ON con4_schema.Elo.player = con4_schema.GameLookup.player
           INNER JOIN con4_schema.GameInfo ON con4_schema.GameLookup.game_info = con4_schema.GameInfo.id
           WHERE con4_schema.Elo.mode = $1
@@ -491,11 +491,7 @@ export class GameOperations {
           LIMIT 10`,
         [gamemodeId, playerid]
       );
-      return result.rows.map(row => ({
-        username: row.player,
-        elo: row.elo,
-        created_at: row.created_at
-      })) as MatchData[];
+      return result.rows?.[0];
     } catch (error) {
       console.error('Failed to query matchmaking:', error);
       throw error;

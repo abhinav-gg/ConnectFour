@@ -109,7 +109,7 @@ export default function TestingWebsockets() {
     // Pass the token as a protocol
     const token = localStorage.getItem('token')!
     console.log('Connecting to:', backendUrl, token);
-    const newSocket = new WebSocket(backendUrl, [token]);
+    const newSocket = new WebSocket(backendUrl + "/in-game", [token]);
     setSocket(newSocket);
     console.log("set socket", socket, newSocket);
     newSocket.onopen = () => {
@@ -334,6 +334,7 @@ export default function TestingWebsockets() {
               { HISTORY }
               <br/><br/><br/>
               <LiveChat 
+                pNum={playerNumber}
                 key={chatUpdate}
                 pMessages={messageRef.current}
                 onSendMessage={handleSendMessage}

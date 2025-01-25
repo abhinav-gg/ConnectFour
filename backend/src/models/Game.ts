@@ -14,7 +14,7 @@ export type Game = {
     short_id: string
     game_info: string
     state: string
-    created_at: string
+    created_at: number
 }
 
 export type GameStates = {
