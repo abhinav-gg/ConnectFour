@@ -5,9 +5,10 @@ dotenv.config();
 
 export const getConfig = () => {
   const config = {
+    recaptchaSiteKey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '', // Read from .env or keep empty
     backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL || '', // Read from .env or keep empty
     websocketUrl: process.env.NEXT_PUBLIC_WEBSOCKET_URL || '', // Read from .env or keep empty
-    recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || '', // Read from .env or keep empty
+    mode: process.env.NEXT_PUBLIC_NODE_ENV || 'development',
   };
 
   return config;

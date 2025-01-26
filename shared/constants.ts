@@ -20,6 +20,8 @@ export const StandardStartingElo = 1000;
 
 export const StandardStartingRatingDeviation = 350;
 
+export type StandardTimeCategories = "hyper-bullet" | "bullet" | "blitz" | "rapid";
+
 export const StandardGameModes = {
     standard: {
         bullet: 'standard-bullet',

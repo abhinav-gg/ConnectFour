@@ -9,7 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@/*": ["./src/*", "./*"],
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*", "./shared/*"]
     }
   },
   "include": [

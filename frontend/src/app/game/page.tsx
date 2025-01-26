@@ -5,13 +5,14 @@ import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
-import { GameState, Player } from '@shared/utils/game';
+import { GameState } from '@shared/utils/game';
 import { JoinGame, MakeMove, ClientMessage, PlayerData, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
 import EndPopup from '@/components/game/endPopup';
+import { Player } from '@shared/Types/gameData';
 
 export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
@@ -30,10 +31,7 @@ export default function TestingWebsockets() {
   const eloChangeRef = useRef<EloChange>({ draw: -123, loss: 123, win: -123 });
   const gameBoardRef = useRef<GameState>();
   const messageRef = useRef<ChatMessage[]>([]);
-  // const [gameResult, setGameResult] = useState<>();
-
-  // FOR NOW ASSUME USER IS LOGGED IN
-  // THIS WILL BE MERGED WITH /TEST-LOGIN SO THAT USER CAN LOGIN AS ANONYMOUS AS WELL
+  const resultRef = useRef({winner: -1, deltaElo: 0 });
 
   const addPlayer = async (username: string, time: number) => {
     // Update to use setState
@@ -87,6 +85,16 @@ export default function TestingWebsockets() {
     setTimeUpdate(timeUpdate + 1);
   }
 
+  const pushAnnouncement = (message: string) => {
+    messageRef.current.push({
+      playerNumber: -1,
+      username: '',
+      message: message,
+      isAnnouncement: true
+    } as ChatMessage);
+    setChatUpdate(prev => prev + 1);
+  }
+
   const connectedUser = () => {
     
     const backendUrl = getConfig().websocketUrl;
@@ -102,7 +110,7 @@ export default function TestingWebsockets() {
     // Pass the token as a protocol
     const token = localStorage.getItem('token')!
     console.log('Connecting to:', backendUrl, token);
-    const newSocket = new WebSocket(backendUrl, [token]);
+    const newSocket = new WebSocket(backendUrl + "/in-game", [token]);
     setSocket(newSocket);
     console.log("set socket", socket, newSocket);
     newSocket.onopen = () => {
@@ -139,6 +147,7 @@ export default function TestingWebsockets() {
             setGameStatus('Game started! Waiting for player 1 move...');
           }
           setGameStarted(true);
+          pushAnnouncement('Game started!');
           setTimeUpdate(prevTimeUpdate => prevTimeUpdate + 1);
           break;
         case 'startTimer':
@@ -154,11 +163,12 @@ export default function TestingWebsockets() {
           setGameStatus('Spectating game between players...');
           break;
         case 'endGame':
+          pushAnnouncement("Game Ended")
           setGameStatus(data.data.message);
           if (data.data.draw) {
             console.log('Game ended in a draw!');
             handleGameEnd(true);
-          } else if (data.data.winner) {
+          } else if (data.data.winner !== null) {
             handleGameEnd(false, data.data.winner!);
           } else {
             handleGameEnd(true);
@@ -169,6 +179,7 @@ export default function TestingWebsockets() {
           setTimeUpdate(timeUpdate + 1);
           break;
         case 'playerDisconnected':
+          pushAnnouncement('Opponent disconnected. Waiting for reconnect or timeout...');
           setGameStatus('Opponent disconnected. Waiting for reconnect or timeout...');
           break;
         case 'receiveMessage':
@@ -198,13 +209,10 @@ export default function TestingWebsockets() {
       deltaElo = eloChangeRef.current.loss;
       console.log('You lost!');
     }
-    console.log('Elo change:', deltaElo);
-    // setGameResult({
-    //   winner: null, // null for draw
-    // });
+    console.log('Elo change:', deltaElo, winner);
+    resultRef.current = { winner: winner ?? -1, deltaElo };
     setTimeStarted(false);
     setTimeUpdate(timeUpdate + 1);
-    
     setShowEndPopup(true);
   };
 
@@ -268,7 +276,7 @@ export default function TestingWebsockets() {
     <div className="flex flex-col items-center">
       <div className="flex justify-between items-center w-full mb-1">
         <div className={`text-2xl font-mono ${playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
-          Player 1
+        {gamePlayers[0]?.username ?? 'Player 1'}
         </div>
         <div className={`font-mono ${playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
@@ -281,7 +289,7 @@ export default function TestingWebsockets() {
       {BOARD}
       <div className="flex justify-between items-center w-full mt-1">
         <div className={`text-2xl font-mono ${!playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
-          Player 2
+          {gamePlayers[1]?.username ?? 'Player 2'}
         </div>
         <div className={`font-mono ${!playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
@@ -303,9 +311,8 @@ export default function TestingWebsockets() {
         <div className="absolute z-50">
           <EndPopup
             playerNumber={playerNumber}
-            winner={0}
+            result={resultRef.current}
             players={gamePlayers}
-            deltaElo={-1}
             onRematch={() => {
               console.log('Rematch requested');
               setShowEndPopup(false);
@@ -328,6 +335,7 @@ export default function TestingWebsockets() {
               { HISTORY }
               <br/><br/><br/>
               <LiveChat 
+                pNum={playerNumber}
                 key={chatUpdate}
                 pMessages={messageRef.current}
                 onSendMessage={handleSendMessage}
