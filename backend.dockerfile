@@ -18,10 +18,11 @@ COPY backend .
 # Copy the shared directory
 COPY shared ./shared
 
-RUN ls -la
-
 # Build the application
 RUN npm run build
+
+# list /dist recursively
+RUN ls -R -la /backend/dist
 
 # Expose the default production port
 EXPOSE 3001
