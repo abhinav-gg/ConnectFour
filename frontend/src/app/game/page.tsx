@@ -268,11 +268,16 @@ export default function TestingWebsockets() {
   }
 
   const waitForOpponentReconnect = () => {
-    // create a 10 second timer to wait for the opponent as they have disconnected, then send a timeout query to the server
-    setTimeout(() => {
-      sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
-      setGameStatus('Opponent did not reconnect in time!');
-    }, 10000);
+    let timeRemaining = 10; // 10 seconds
+    const interval = setInterval(() => {
+      setGameStatus(`Waiting for opponent to reconnect. ${timeRemaining !== 1 ? 's' : ''}s Left!`);
+      timeRemaining -= 1;
+      if (timeRemaining < 0) {
+        clearInterval(interval);
+        sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
+        setGameStatus('Opponent did not reconnect in time!');
+      }
+    }, 1000);
   };
 
   const handleSendMessage = (inputMessage: string) => {
@@ -291,6 +296,8 @@ export default function TestingWebsockets() {
     }
   }, []);
 
+  const topPlayer = (playerNumber.current === -1) ? 0 : Math.abs(1-playerNumber.current);
+  const bottomPlayer = (playerNumber.current === -1) ? 1 : playerNumber.current;
   const BOARD = <GameBoard
   playerNumber={playerNumber.current}
   isConnected={isConnected}
@@ -303,28 +310,28 @@ export default function TestingWebsockets() {
   const BOARD_WITH_TIMERS = (
     <div className="flex flex-col items-center">
       <div className="flex justify-between items-center w-full mb-1">
-        <div className={`text-2xl font-mono ${playerNumber.current ? 'text-red-600' : 'text-gray-600'}`}>
-        {gamePlayers[0]?.username ?? 'Player 1'}
+        <div className={`text-2xl font-mono ${(topPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+        {gamePlayers[topPlayer]?.username}
         </div>
-        <div className={`font-mono ${playerNumber.current ? 'text-red-600' : 'text-gray-600'}`}>
+        <div className={`font-mono ${(topPlayer === 0) ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
             key={playerNumber.current}
-            timerActive={timeStarted && currentPlayer!==playerNumber.current} 
-            playerNumber={(playerNumber.current!==0) ? 0 : 1} 
+            timerActive={timeStarted && currentPlayer===topPlayer} 
+            playerNumber={topPlayer} 
             getPlayers={gamePlayers} 
           />
         </div>
       </div>
       {BOARD}
       <div className="flex justify-between items-center w-full mt-1">
-        <div className={`text-2xl font-mono ${!playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
-          {gamePlayers[1]?.username ?? 'Player 2'}
+        <div className={`text-2xl font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+          {gamePlayers[bottomPlayer]?.username}
         </div>
-        <div className={`font-mono ${!(playerNumber.current===0) ? 'text-red-600' : 'text-gray-600'}`}>
+        <div className={`font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
             key={playerNumber.current}
-            timerActive={timeStarted && currentPlayer===playerNumber.current} 
-            playerNumber={playerNumber.current} 
+            timerActive={timeStarted && currentPlayer===bottomPlayer} 
+            playerNumber={bottomPlayer} 
             getPlayers={gamePlayers} 
           />
         </div>
