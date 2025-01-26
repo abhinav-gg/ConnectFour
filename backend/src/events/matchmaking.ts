@@ -45,7 +45,7 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
         const gamemodeId = await dbOperations.GetGameModeID(gamemode);
         const timeControlId = await dbOperations.GetExactTimeControl(time_control);
         const game_info = await dbOperations.GetGameInfoID(gamemodeId, timeControlId);
-        const playerElo = await dbOperations.GetPlayerElo(userId, gamemodeId);
+        const playerElo = await dbOperations.GetPlayerStats(userId, gamemodeId);
 
         await dbOperations.SetPlayerElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
         

@@ -19,7 +19,6 @@ export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
   const [roomId, setRoomId] = useState('');
   const [socket, setSocket] = useState<WebSocket>();
-  const [playerNumber, setPlayerNumber] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState<Player>(0);
   const [isConnected, setIsConnected] = useState(false);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
@@ -29,6 +28,7 @@ export default function TestingWebsockets() {
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const [showEndPopup, setShowEndPopup] = useState(false);
   const [chatUpdate, setChatUpdate] = useState(0);
+  const playerNumber = useRef(-1);
   const eloChangeRef = useRef<EloChange>({ draw: -0, loss: -0, win: -0 });
   const gameBoardRef = useRef<GameState>();
   const messageRef = useRef<ChatMessage[]>([]);
@@ -59,6 +59,16 @@ export default function TestingWebsockets() {
     }
   }
 
+  const turnText = (nextPlayer: number, p1?: number) => {
+    if (p1 === nextPlayer) {
+      setGameStatus('Your move!');    
+    } else if (playerNumber.current === nextPlayer) {
+      setGameStatus('Your move!');
+    } else {
+      setGameStatus('Opponent\'s move...');
+    }
+  }
+
   const handleMoveReceived = (data: MoveMade["data"]) => {
     const gameState = gameBoardRef.current;
 
@@ -76,7 +86,6 @@ export default function TestingWebsockets() {
       gameState.currentPlayer = data.nextPlayer as Player;
       gameState.constructFromMoves();
       setWaiting(false);
-
     } 
     else {
       throw new Error('Game state is not initialized!');
@@ -138,15 +147,11 @@ export default function TestingWebsockets() {
           // parse players and add them to the list
           const players = data.data.players;
           eloChangeRef.current = data.data.eloChanges;
-          setPlayerNumber(data.data.playerNumber as Player);
+          playerNumber.current = data.data.playerNumber;
           players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
-          if (data.data.playerNumber === 0) {
-            setGameStatus('Game started! Your move!');
-          } else {
-            setGameStatus('Game started! Waiting for player 1 move...');
-          }
+          turnText(0, data.data.playerNumber);
           setGameStarted(true);
           pushAnnouncement('Game started!');
           setTimeUpdate(prevTimeUpdate => prevTimeUpdate + 1);
@@ -177,26 +182,39 @@ export default function TestingWebsockets() {
           break;
         case 'moveMade':
           handleMoveReceived(data.data);
+          turnText(data.data.nextPlayer);
           setTimeUpdate(timeUpdate + 1);
           break;
         case 'playerDisconnected':
-          pushAnnouncement('Opponent disconnected. Waiting for reconnect or timeout...');
+          pushAnnouncement('Opponent disconnected...');
           setGameStatus('Opponent disconnected. Waiting for reconnect or timeout...');
+          waitForOpponentReconnect();
           break;
         case 'receiveMessage':
           handleMessageReceived(data.data);
           break;
         case 'reconnection':
-          setGamePlayers([]);
+          pushAnnouncement('You Reconnected!');
           data.data.players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
           eloChangeRef.current = data.data.eloChanges;
-          setPlayerNumber(data.data.playerNumber);
-          setGameStatus('Opponent reconnected!');
-          pushAnnouncement('Opponent reconnected!');
+          playerNumber.current = data.data.playerNumber;
+          setGameStarted(true);
           setTimeUpdate(timeUpdate + 1);
+          setTimeStarted(true);
           break;
+       
+      case "opponentReconnect":
+        if (data.data.playerNumber !== -1) {
+          turnText(data.data.playerNumber);
+          pushAnnouncement('Opponent Reconnected!');
+        }
+        break;
+      
+      default:
+        console.log('Unknown message:', data);
+        break;
       }
     }
   }
@@ -214,7 +232,7 @@ export default function TestingWebsockets() {
     let deltaElo = 0;
     if (draw) {
       deltaElo = eloChangeRef.current.draw;
-    } else if (winner === playerNumber) {
+    } else if (winner === playerNumber.current) {
       deltaElo = eloChangeRef.current.win;
       console.log('You won!');
     } else {
@@ -245,17 +263,15 @@ export default function TestingWebsockets() {
     if (waiting) return
     
     setWaiting(true);
-
-    console.log('Making move:', col, playerNumber);
     
     sendToServer({ event: 'makeMove', data: { roomId, col } } as MakeMove);
   }
 
   const waitForOpponentReconnect = () => {
-    setGameStatus('Waiting for opponent to reconnect...');
     // create a 10 second timer to wait for the opponent as they have disconnected, then send a timeout query to the server
     setTimeout(() => {
       sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
+      setGameStatus('Opponent did not reconnect in time!');
     }, 10000);
   };
 
@@ -276,7 +292,7 @@ export default function TestingWebsockets() {
   }, []);
 
   const BOARD = <GameBoard
-  playerNumber={playerNumber}
+  playerNumber={playerNumber.current}
   isConnected={isConnected}
   playersCount={2}
   roomId={roomId}
@@ -287,13 +303,14 @@ export default function TestingWebsockets() {
   const BOARD_WITH_TIMERS = (
     <div className="flex flex-col items-center">
       <div className="flex justify-between items-center w-full mb-1">
-        <div className={`text-2xl font-mono ${playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
+        <div className={`text-2xl font-mono ${playerNumber.current ? 'text-red-600' : 'text-gray-600'}`}>
         {gamePlayers[0]?.username ?? 'Player 1'}
         </div>
-        <div className={`font-mono ${playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
+        <div className={`font-mono ${playerNumber.current ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
-            timerActive={timeStarted && currentPlayer===0} 
-            playerNumber={0} 
+            key={playerNumber.current}
+            timerActive={timeStarted && currentPlayer!==playerNumber.current} 
+            playerNumber={(playerNumber.current!==0) ? 0 : 1} 
             getPlayers={gamePlayers} 
           />
         </div>
@@ -303,10 +320,11 @@ export default function TestingWebsockets() {
         <div className={`text-2xl font-mono ${!playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
           {gamePlayers[1]?.username ?? 'Player 2'}
         </div>
-        <div className={`font-mono ${!playerNumber ? 'text-red-600' : 'text-gray-600'}`}>
+        <div className={`font-mono ${!(playerNumber.current===0) ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
-            timerActive={timeStarted && currentPlayer===1} 
-            playerNumber={1} 
+            key={playerNumber.current}
+            timerActive={timeStarted && currentPlayer===playerNumber.current} 
+            playerNumber={playerNumber.current} 
             getPlayers={gamePlayers} 
           />
         </div>
@@ -322,7 +340,7 @@ export default function TestingWebsockets() {
       {showEndPopup && (
         <div className="absolute z-50">
           <EndPopup
-            playerNumber={playerNumber}
+            playerNumber={playerNumber.current}
             result={resultRef.current}
             players={gamePlayers}
             onRematch={() => {
@@ -339,7 +357,9 @@ export default function TestingWebsockets() {
           <div className="flex-1 flex flex-col items-center">
             <h2 className="text-xl font-semibold">Room: {roomId}</h2>
             <p className="text-gray-600">{gameStatus}</p>
-            <p className="text-blue-600">You are Player {playerNumber + 1}</p>
+            <p className="text-blue-600">
+              {playerNumber.current === -1 ? 'You are Spectating' : `You are Player ${playerNumber.current + 1}`}
+            </p>
             { BOARD_WITH_TIMERS }
           </div>
           <div className="w-1/3 flex flex-col items-center justify-center">
@@ -347,8 +367,8 @@ export default function TestingWebsockets() {
               { HISTORY }
               <br/><br/><br/>
               <LiveChat 
-                pNum={playerNumber}
                 key={chatUpdate}
+                pNum={playerNumber.current}
                 pMessages={messageRef.current}
                 onSendMessage={handleSendMessage}
                 onOfferDraw={() => {

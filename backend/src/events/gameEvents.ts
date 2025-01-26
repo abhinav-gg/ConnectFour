@@ -1,17 +1,19 @@
 import expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
 import type { Room, RoomMap } from "@/types/types";
-import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, PlayerData, 
-  PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage, EndGame, PlayerTimeout, ReceiveMessage, SendMessage } from "@shared/Types/websocketData";
+import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, 
+  PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage, EndGame, PlayerTimeout, ReceiveMessage, SendMessage, 
+  PlayerReconnected} from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
-import { EloChange, GameMode, TimeControl } from "@shared/Models/gameInfo";
+import { EloChange, GameMode, PlayerData, TimeControl } from "@shared/Models/gameInfo";
 import { StandardGameStates } from "@shared/constants";
 import { GameState } from "@shared/utils/game";
 import { abortGame, assignGame, calculateTimesByMoves, endGame } from "./gameHelper";
 import { replaceProfanities } from 'no-profanity';
 import { Game } from "@/models/Game";
+import { calculateGlickoRatings } from "./matchmaking";
 
 const state : RoomMap = {
   rooms: new Map<string, Room>()
@@ -30,15 +32,11 @@ function getRoom(room: string) {
   return state.rooms.get(room);
 }
 
-function playerInRoom(room: string, player: string): boolean {
-  return getRoom(room)?.players.includes(player as UUID) ?? false;
-}
-
 function getUsernameByID(userID: string): string {
   return SocketIDs.find(s => s.userID === userID)!.username!;
 }
 
-function getSocket(userID: string) {
+function getSocket(userID: string): UserCachedSocket | undefined {
   return SocketIDs.find(s => s.userID === userID);
 }
 
@@ -87,6 +85,16 @@ function setupRematch(roomid: string, GMM: string) {
     // for friendly, no need for special setup can assume they joined the new game at the same time
     // for matchmaking games add the players to the gameplayers table
     // This should then integrate with the normal systems
+
+    // use new websocket server for this 
+}
+
+async function getCompetitiveEloChange(gameId: string, userId: string, roomId: string): Promise<EloChange> {
+  const me = await dbOperations.GetPlayerStats(gameId, userId);
+  const room = getRoom(roomId)!;
+  const opponentId = room.players.find(p => p !== userId);
+  const them = await dbOperations.GetPlayerStats(gameId, opponentId!);
+  return calculateGlickoRatings(me, them);
 }
 
 async function setupPlayer(userId: string, gamemode: GameMode) {
@@ -109,6 +117,7 @@ async function setupPlayer(userId: string, gamemode: GameMode) {
 async function reconnect(roomId: string, userId: string, newSocket: WSocket) {
   // Check if the room is still ongoing
   // If it is then add the new socket to the room and remove the old one
+
   const game = await dbOperations.GetGameByShortCode(roomId);
   const lookup = await dbOperations.GetGameByPlayerLookup(userId);
   if (game.id === lookup && 
@@ -119,6 +128,39 @@ async function reconnect(roomId: string, userId: string, newSocket: WSocket) {
     
     const usersock = getSocket(userId)!;
     usersock.socket = newSocket;
+
+    const moves = await dbOperations.GetMovesByShortCode(roomId);
+    const timeControl = getTimeControl(roomId)!;
+    const gameMoge = getGameMode(roomId)!;
+    const p1 = room.players[0];
+
+    let eloChanges: EloChange = { win: -0, draw: -0, loss: -0 };
+
+    switch (gameMoge.name.split('-')[0]) {
+      case 'standard': {
+        eloChanges = await getCompetitiveEloChange(game.id, userId, roomId);
+        break;
+      }
+      case 'friendly': {
+        break;
+      }
+    }
+
+    const roomPlayers = room.players.map(p => {
+      return { username: getUsernameByID(p),
+        time: calculateTimesByMoves(moves, p, timeControl, p!==p1).timeLeft
+      }});
+    
+    sendToRoom(roomId, {
+      event: 'reconnection',
+      data: {
+        eloChanges: eloChanges,
+        playerNumber: room.players.indexOf(userId as UUID),
+        currentTurn: room.currentTurn,
+        players: roomPlayers as PlayerData[],
+        moves: moves.map(m => m.col) as number[]
+      }
+    } as PlayerReconnected);
   }
   else {
     throw new Error('Game is not ongoing');
@@ -149,11 +191,12 @@ function sendToRoom(roomId: string, data: ClientMessage) {
 };
 
 function getRoomOfPlayer(userId: string): string|null {
+  let found: string | null = null;
   state.rooms.forEach((room, roomId) => {
     if (room.players.includes(userId as UUID))
-      return roomId
-  })
-  return null
+      found = roomId;
+  });
+  return found;
 }
 
 /////////////////////////////////////////////////////////////
@@ -199,7 +242,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   }
   
   const { timeTaken, allowedTime, timeLeft, delta } = calculateTimesByMoves(moves, userId, timecontrol, 
-    room.currentTurn === 1);
+    room.currentTurn === 0);
   if (timeTaken > allowedTime){
     return {
       delta: delta,
@@ -336,7 +379,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
 
             // Check if the user is already in the room
-            if (playerInRoom(roomId, userId)) {
+            if (getRoomOfPlayer(userId) === roomId) {
               await reconnect(roomId, userId, ws);
               // The user is already in the room
               ws.send(JSON.stringify({ event: 'error', data: { message: 'User is already in the room' } }));
@@ -398,8 +441,27 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 }
 
                 // All checks have passed, the player may be added to the game
-              }
+                // Player is connecting to the game for the first time.
+                // Send the game state to the player and update the room state
+                await setupPlayer(userId, gamemode!);
+                
+                joinRoom(roomId, userId);
+                
+                ws.send(JSON.stringify({
+                  event: 'playerJoined',
+                  data: { 
+                    gameInfo: room.gameInfo,
+                  }
+                } as PlayerJoined)); // Use the types for type checking
 
+                const eloChanges = await getCompetitiveEloChange(game.id, userId, roomId);
+                  
+                // standard friendly gamemode starts with 2 players (current socket added above)
+                if (room.players.length === 2) {
+                  startStandardGame(room, game, time_control!, eloChanges);
+                }
+                break;
+              }
               case 'friendly': {
 
                 // Check that the user is free to join the room
@@ -482,7 +544,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const room = getRoom(roomId);
             const user = getUser(ws)?.userID || '';
 
-            if (!room || !user || !playerInRoom(roomId, user)) {
+            if (!room || !user || !(getRoomOfPlayer(user))) {
               // fix this to re-create the room by getting the user to refresh their page
               ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid data on backend' } }));
               return;
@@ -566,7 +628,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
           case 'sendMessage': { 
             const { roomId, message } = data.data as SendMessage["data"];
             const userId = getUser(ws)?.userID;
-            if (!playerInRoom(roomId, userId)) throw new Error('User is not in the room to chat');
+            if (!getRoomOfPlayer(userId)) throw new Error('User is not in the room to chat');
 
             if (!roomId || !message) {
               ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid data' } }));
@@ -591,7 +653,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const roomId = data.data.roomId;
             const room = getRoom(roomId);
             const user = getUser(ws)?.userID
-            if (!playerInRoom(roomId, user)) throw new Error('User is not in the room to timeout');
+            if (!getRoomOfPlayer(user)) throw new Error('User is not in the room to timeout');
 
             const timecontrol = getTimeControl(roomId)!;
             const moves = await dbOperations.GetMovesByShortCode(roomId);
@@ -637,20 +699,19 @@ export const setupGameEvents = async (app: expressWs.Application) => {
       // gracefully handle disconnections as player may reconnect
       const userId = getUser(ws)?.userID;
       console.log('Client disconnected:', userId);
-
-      if (userId) {
-        removeSocket(userId);
-      }
-
+      
       // check if the user was in a game - if so then send a message to the other player
       // TODO: if the other player is not connected then idfk
       const roomId = getRoomOfPlayer(userId)
+      
+      if (userId) {
+        removeSocket(userId);
+      }
 
       if (!roomId) return; // player was between rooms or seomthing
 
       const room = getRoom(roomId!)!;
       const game = await dbOperations.GetGameByShortCode(roomId!);
-
       if (!game) {
         console.log('Game not found:', roomId);
         // simply drop the room as the game is over
@@ -660,21 +721,27 @@ export const setupGameEvents = async (app: expressWs.Application) => {
       }
 
       if (game.state === StandardGameStates.scheduled) {
-        // kill the game and remove the player from the game lookup
+        // 
         abortGame(userId);
       }
 
-
       if (roomId) {
+        
         sendToRoom(roomId, {
           event: 'playerDisconnected',
-          data: {
-            
-          }
+          data: {}
         } as PlayerDisconnected);
+
+        let active = 0;
+
+        room.players.forEach(player => {
+          if (getSocket(player)) {
+            active++;
+          }
+        });
     
         // the player has some time to return if there are other players so do nothing
-        if (room.players.length === 1) {
+        if (active === 0) {
           handleGameEnd(roomId, true, 'abandoned'); // IMPORTANT - TODO: handle this
           ws.close();
         }
@@ -682,4 +749,3 @@ export const setupGameEvents = async (app: expressWs.Application) => {
     });
   });
 };
-

@@ -95,7 +95,6 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                     return; // link to frontend waiting room
                 }
 
-
                 res.status(200).json({ event: "sendToRoom",
                     data: { roomId } } as SendToRoom);
             }
@@ -216,7 +215,7 @@ gameRouter.post('/get-leaderboard', async (req: Request, res: Response) => {
 gameRouter.post('/get-game-history', async (req: Request, res: Response) => {
 });
 
-gameRouter.post('/profile', async (req: Request, res: Response) => {
+gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response) => {
     // Check the user ID and fetch the user profile from the database
     const userId = req.body.userId;
     const gamemodeId = req.body.gamemodeId;
@@ -226,7 +225,7 @@ gameRouter.post('/profile', async (req: Request, res: Response) => {
         return;
     }
 
-    const elo = await dbOperations.GetPlayerElo(userId, gamemodeId);
+    const elo = await dbOperations.GetPlayerStats(userId, gamemodeId);
     
 });
 

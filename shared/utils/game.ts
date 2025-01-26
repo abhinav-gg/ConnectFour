@@ -128,7 +128,6 @@ export class GameState {
   }
 
   makeMove(col: number, silent = false): { row: number; success: boolean } {
-    console.log(col, silent)
     const targetRow = this.getAvailableRow(col)
     // ensure that the board reflects all the moves made i.e. not in history view
     // count non-empty cells in board

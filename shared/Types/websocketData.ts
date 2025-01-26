@@ -30,9 +30,15 @@ export type PlayerReconnected = {
   data: { 
     eloChanges: EloChange;
     playerNumber: number;
+    currentTurn: number;
     players: PlayerData[] 
     moves: number[]
   }
+};
+
+export type OpponentReconnect = {
+  event: 'opponentReconnect';
+  data: { playerNumber: number; };
 };
 
 export type PlayerTimeout = {
@@ -78,6 +84,7 @@ export type ReceiveMessage = {
 export type ClientMessage = GameStart | PlayerJoined | MoveMade | EndGame 
                           | RoomFull | GameStart | ReceiveMessage | Error | PlayerDisconnected 
                           | StartTimer | Draw | PlayerTimeout | PlayerReconnected
+                          | OpponentReconnect
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
 
@@ -130,7 +137,6 @@ export type SendMessage = {
   event: 'sendMessage';
   data: { roomId: RoomID; message: string; };
 };
-
 
 export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | DeclineDraw | Resign
                           | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage

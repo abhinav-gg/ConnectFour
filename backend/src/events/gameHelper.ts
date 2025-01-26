@@ -149,8 +149,8 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
         switch (gamemode.name.split('-')[0]) {
             case 'standard':
-                const p1Stats = await dbOperations.GetPlayerElo(gamePlayers[0], gamemodeid) as Glicko;
-                const p2Stats = await dbOperations.GetPlayerElo(gamePlayers[1], gamemodeid) as Glicko;
+                const p1Stats = await dbOperations.GetPlayerStats(gamePlayers[0], gamemodeid) as Glicko;
+                const p2Stats = await dbOperations.GetPlayerStats(gamePlayers[1], gamemodeid) as Glicko;
                 const p1Changes = calculateGlickoRatings(p1Stats, p2Stats);
                 const p2Changes = calculateGlickoRatings(p2Stats, p1Stats);
                 const p1rd = adjustRD(p1Stats);
