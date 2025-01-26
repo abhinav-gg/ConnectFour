@@ -8,16 +8,31 @@ import { useRouter } from 'next/navigation'
 import { getConfig } from '@/config/env'
 import { useGoogleReCaptcha, GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
 
+
 export default function Register() {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey={getConfig().recaptchaSiteKey}>
+      <RegistrationPage />
+    </GoogleReCaptchaProvider>
+  )
+}
+
+function RegistrationPage(): React.ReactElement {
   const router = useRouter()
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
-  const { executeRecaptcha } =  useGoogleReCaptcha();
+  const [password, setPassword] = useState('');
+  const { executeRecaptcha } = useGoogleReCaptcha();
   
-
   const handleReCaptchaVerify = useCallback(async ($event: any) => {
     $event.preventDefault();
+
+    if (getConfig().mode === 'development') {
+      console.log('Development mode, skipping reCaptcha verification');
+      handleSubmit($event);
+      return;
+    }
 
     if (!executeRecaptcha) {
     console.log('executeRecaptcha not yet available');
@@ -42,9 +57,9 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    console.log(password, confirmPassword)
     const formData = new FormData(e.currentTarget)
-    console.log(getConfig().recaptchaSiteKey);
-    if (formData.get('password') !== confirmPassword) {
+    if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
@@ -91,7 +106,6 @@ export default function Register() {
               {error}
             </div>
           )}
-          <GoogleReCaptchaProvider reCaptchaKey={getConfig().recaptchaSiteKey}>
           <form onSubmit={handleReCaptchaVerify} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
@@ -104,7 +118,7 @@ export default function Register() {
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} id="password" name="password" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
+                <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">
                   {showPassword ? <EyeOff /> : <Eye />}
                 </button>
@@ -118,7 +132,6 @@ export default function Register() {
               Register
             </button>
           </form>
-          </GoogleReCaptchaProvider>
           <p className="mt-4 text-sm text-gray-600">
             Already have an account?{' '}
             <Link href="/login" className="text-blue-500 hover:text-blue-600">
@@ -127,7 +140,6 @@ export default function Register() {
           </p>
         </div>
       </div>
-      
     </div>
   )
 }

@@ -28,16 +28,15 @@ export type GamePlayer = {
     timerActive?: boolean;
 }
 
-export type MatchData = {
-    username: string;
-    elo: number;
-    created_at: number;
-}
-
 export type EloChange = {
     win: number;
     draw: number;
     loss: number;
+}
+
+export type GMStats = {
+    elo: number;
+    rating_deviation: number;
 }
 
 export interface ChatMessage {
@@ -46,3 +45,4 @@ export interface ChatMessage {
     message: string;
     isAnnouncement: boolean;
 }
+

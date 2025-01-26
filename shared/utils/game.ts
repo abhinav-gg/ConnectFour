@@ -1,9 +1,5 @@
 import { eventEmitter } from './eventEmitter';
-
-export type Player = 0 | 1
-export type Cell = Player | null
-export type Move = { player: Player; col: number }
-
+import { Player, Cell, Move } from '../Types/gameData';
 export const ROWS = 6
 export const COLS = 7
 
@@ -20,14 +16,20 @@ export class GameState {
   private moves: Move[]
 
   constructor(moves?: Move[]) {
+    if (moves) {
+      console.log("Constructing from moves", moves)
+    }
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    this.currentPlayer = 0
-    this.currentMoveIndex = -1
+    this.currentPlayer = moves ? (moves.length % 2) as Player : 0
+    this.currentMoveIndex = moves ? (moves.length-1) : -1
     this.winner = null
     this.gameOver = false
-    this.moves = moves || []
     if (moves) {
+      this.moves = moves
       this.constructFromMoves(true) // silent
+    }
+    else {
+      this.moves = []
     }
   }
 
@@ -126,7 +128,7 @@ export class GameState {
   }
 
   makeMove(col: number, silent = false): { row: number; success: boolean } {
-
+    console.log(col, silent)
     const targetRow = this.getAvailableRow(col)
     // ensure that the board reflects all the moves made i.e. not in history view
     // count non-empty cells in board
@@ -181,6 +183,7 @@ export class GameState {
   reset(): void {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
     this.currentPlayer = 0
+    this.currentMoveIndex = -1
     this.winner = null
     this.gameOver = false
     this.moves = []
