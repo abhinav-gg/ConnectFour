@@ -44,7 +44,7 @@ function RegistrationPage(): React.ReactElement {
     const token = await executeRecaptcha('signup');
     console.log('token is ', token);
     if (token) {
-      const query: any = await fetch(`/api/recaptcha?token=${token}`);
+      const query = await fetch(`${getConfig().backendUrl}/api/recaptcha?token=${token}`);
       const { success } = await query.json();
       if (success) {
         console.log('Token verified');
