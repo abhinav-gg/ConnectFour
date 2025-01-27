@@ -73,7 +73,7 @@ authRouter.post('/login', async (req: Request, res: any) => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // set to true as on localhost secure still allows HTTP
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     });
@@ -98,7 +98,7 @@ authRouter.get('/anonymous', async (req: Request, res: Response) => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     });
