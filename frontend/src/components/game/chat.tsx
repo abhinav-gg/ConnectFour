@@ -73,6 +73,37 @@ export default function LiveChat({
         setConfirmResign(false);
     };
 
+    const ControlButtons = (
+    <div className="flex gap-2 mt-2">
+      <button
+        onClick={handleDrawOffer}
+        disabled={drawOffered}
+        className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+          ${drawOffered 
+            ? 'bg-gray-300 cursor-not-allowed'
+            : confirmDraw
+              ? 'bg-yellow-500 hover:bg-yellow-600'
+              : 'bg-yellow-400 hover:bg-yellow-500'
+          } text-white`}
+      >
+        {drawOffered 
+          ? 'Waiting...' 
+          : confirmDraw 
+            ? 'Confirm Draw Offer' 
+            : 'Offer Draw'}
+      </button>
+      <button
+        onClick={handleResign}
+        className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+          ${confirmResign 
+            ? 'bg-red-600 hover:bg-red-700'
+            : 'bg-red-500 hover:bg-red-600'
+          } text-white`}
+      >
+        {confirmResign ? 'Confirm Resign' : 'Resign'}
+      </button>
+    </div>)
+
   return (
     <div className="bg-white p-4 rounded-lg shadow-lg w-full h-[400px] flex flex-col">
       <h2 className="text-xl font-bold text-gray-800 mb-2">Live Chat</h2>
@@ -107,6 +138,8 @@ export default function LiveChat({
       </div>
 
       {/* Message input form */}
+      {pNum !== -1 && (
+      <div>
       <form onSubmit={handleSendMessage} className="flex gap-2">
         <input
           type="text"
@@ -121,38 +154,9 @@ export default function LiveChat({
           >
             Send
           </button>)}
-      </form>
-
-      {/* Game control buttons */}
-      <div className="flex gap-2 mt-2">
-        <button
-          onClick={handleDrawOffer}
-          disabled={drawOffered}
-          className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
-            ${drawOffered 
-              ? 'bg-gray-300 cursor-not-allowed'
-              : confirmDraw
-                ? 'bg-yellow-500 hover:bg-yellow-600'
-                : 'bg-yellow-400 hover:bg-yellow-500'
-            } text-white`}
-        >
-          {drawOffered 
-            ? 'Waiting...' 
-            : confirmDraw 
-              ? 'Confirm Draw Offer' 
-              : 'Offer Draw'}
-        </button>
-        <button
-          onClick={handleResign}
-          className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
-            ${confirmResign 
-              ? 'bg-red-600 hover:bg-red-700'
-              : 'bg-red-500 hover:bg-red-600'
-            } text-white`}
-        >
-          {confirmResign ? 'Confirm Resign' : 'Resign'}
-        </button>
-      </div>
+      </form> 
+      { ControlButtons }
+      </div>)}
     </div>
   );
 }

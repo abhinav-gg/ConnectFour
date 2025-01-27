@@ -50,6 +50,19 @@ export class GameState {
     return this.board
   }
 
+  setMoves = (moves: number[]) => {
+    if (moves) {
+      console.log("Constructing from moves", moves)
+      this.reset();
+      this.currentPlayer = ((moves.length % 2)===0) ? 1 : 0 
+      this.currentMoveIndex = (moves.length-2)
+      this.moves = moves.slice(0, moves.length-1).map(
+        (col, index) => ({ player: index % 2 as Player, col })) as Move[]
+      this.constructFromMoves(true) // silent
+      this.makeMove(moves[moves.length-1]);
+    }
+  }
+
   setBoard = (board: Cell[][], silent:boolean = false) => {
     // avoid use at all costs
     if (!silent)

@@ -40,7 +40,7 @@ const TestJoinPage = () => {
       },
       body: JSON.stringify({
         gamemode: {
-          name: 'friendly',
+          name: gameType,
           event: null
         } as GameMode,
         time_control: {
@@ -56,7 +56,7 @@ const TestJoinPage = () => {
       return;
     }
     else {
-      const data = (await response.json()) as SendToRoom;
+      const data = (await response.json());
       console.log('Game requested:', data);
       window.location.href = '/game?room=' + data.data.roomId;
     }

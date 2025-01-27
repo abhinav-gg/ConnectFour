@@ -18,11 +18,6 @@
   }
 } */
 
-@font-face {
-  font-family: 'ICHack';
-  src: url('/fonts/ic-hack.ttf') format('truetype');
-}
-
 body {
   color: var(--foreground);
   background: var(--background);

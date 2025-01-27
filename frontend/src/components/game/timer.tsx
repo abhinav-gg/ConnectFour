@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { GamePlayer } from '@shared/Models/gameInfo';
 
 
-export default function Timer({ timerActive, playerNumber, getPlayers }: { timerActive: boolean; playerNumber: number, getPlayers: GamePlayer[] }) {
+export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout }: { timerActive: boolean; playerNumber: number, getPlayers: GamePlayer[], onTimeout: () => void }) {
     const [displayTime, setDisplayTime] = useState(0);
+    const [startTime, setStartTime] = useState<number | null>(null);
 
     // Effect to handle player time updates
     useEffect(() => {
@@ -16,16 +17,21 @@ export default function Timer({ timerActive, playerNumber, getPlayers }: { timer
     // Effect to handle countdown
     useEffect(() => {
         let interval: NodeJS.Timeout;
-
         if (timerActive && displayTime > 0 && getPlayers.length > 0) {
+            const setupTime = getPlayers[playerNumber].time;
+            if (!startTime){
+                setStartTime(Date.now());
+            }
             interval = setInterval(() => {
-                setDisplayTime(prevTime => {
-                    if (prevTime <= 10) {
-                        return 0;
-                    }
-                    return prevTime - 10;
-                });
-            }, 10);
+                const elapsedTime = Math.floor((Date.now() - startTime!));
+                const newTime = setupTime - elapsedTime;
+                setDisplayTime(_ => newTime);
+                if (newTime <= 0) {
+                    clearInterval(interval);
+                }
+            }, 35);
+        } else {
+            setStartTime(null);
         }
 
         return () => {

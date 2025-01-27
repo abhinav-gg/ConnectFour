@@ -13,7 +13,7 @@ import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
 import EndPopup from '@/components/game/endPopup';
-import { Player } from '@shared/Types/gameData';
+import { Move, Player } from '@shared/Types/gameData';
 
 export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
@@ -28,6 +28,7 @@ export default function TestingWebsockets() {
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const [showEndPopup, setShowEndPopup] = useState(false);
   const [chatUpdate, setChatUpdate] = useState(0);
+  const [waitingForRecconect, setWaitingForReconnect] = useState(false);
   const playerNumber = useRef(-1);
   const eloChangeRef = useRef<EloChange>({ draw: -0, loss: -0, win: -0 });
   const gameBoardRef = useRef<GameState>();
@@ -95,6 +96,10 @@ export default function TestingWebsockets() {
     setTimeUpdate(timeUpdate + 1);
   }
 
+  const handlePossibleTimeOut = () => {
+    sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
+  }
+
   const pushAnnouncement = (message: string) => {
     messageRef.current.push({
       playerNumber: -1,
@@ -136,10 +141,10 @@ export default function TestingWebsockets() {
     };
 
     newSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data) as ClientMessage;
-        console.log('Received message:', data);
+      const data = JSON.parse(event.data) as ClientMessage;
+      console.log('Received message:', data);
 
-        switch (data.event) {
+      switch (data.event) {
         case 'playerJoined':
           setGameStatus('Waiting for opponent...');
           break;
@@ -165,10 +170,9 @@ export default function TestingWebsockets() {
           if (data.data.redirect)
             window.location.href = data.data.redirect;
           break;
-        case 'roomFull':
-          setGameStatus('Spectating game between players...');
-          break;
         case 'endGame':
+          if (playerNumber.current === -1) 
+            break;
           pushAnnouncement("Game Ended")
           setGameStatus(data.data.message);
           if (data.data.draw) {
@@ -188,6 +192,7 @@ export default function TestingWebsockets() {
         case 'playerDisconnected':
           pushAnnouncement('Opponent disconnected...');
           setGameStatus('Opponent disconnected. Waiting for reconnect or timeout...');
+          setWaitingForReconnect(true);
           waitForOpponentReconnect();
           break;
         case 'receiveMessage':
@@ -200,21 +205,19 @@ export default function TestingWebsockets() {
           });
           eloChangeRef.current = data.data.eloChanges;
           playerNumber.current = data.data.playerNumber;
+          gameBoardRef.current?.setMoves(data.data.moves);
           setGameStarted(true);
           setTimeUpdate(timeUpdate + 1);
           setTimeStarted(true);
           break;
-       
-      case "opponentReconnect":
-        if (data.data.playerNumber !== -1) {
-          turnText(data.data.playerNumber);
+        case "opponentReconnect":
+          turnText(gameBoardRef.current?.currentPlayer ?? 0);
           pushAnnouncement('Opponent Reconnected!');
-        }
-        break;
-      
-      default:
-        console.log('Unknown message:', data);
-        break;
+          setWaitingForReconnect(false);
+          break;
+        default:
+          console.log('Unknown message:', data);
+          break;
       }
     }
   }
@@ -268,11 +271,14 @@ export default function TestingWebsockets() {
   }
 
   const waitForOpponentReconnect = () => {
-    let timeRemaining = 10; // 10 seconds
+    let timeRemaining = 10;
     const interval = setInterval(() => {
-      setGameStatus(`Waiting for opponent to reconnect. ${timeRemaining !== 1 ? 's' : ''}s Left!`);
+      if (!waitingForRecconect) return;
+      console.log('Time remaining:', timeRemaining);
+      setGameStatus(`Waiting for opponent to reconnect. ${timeRemaining}${timeRemaining !== 1 ? 's' : ''} Left!`);
       timeRemaining -= 1;
       if (timeRemaining < 0) {
+        setWaitingForReconnect(false);
         clearInterval(interval);
         sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
         setGameStatus('Opponent did not reconnect in time!');
@@ -319,6 +325,7 @@ export default function TestingWebsockets() {
             timerActive={timeStarted && currentPlayer===topPlayer} 
             playerNumber={topPlayer} 
             getPlayers={gamePlayers} 
+            onTimeout={handlePossibleTimeOut}
           />
         </div>
       </div>
@@ -333,6 +340,7 @@ export default function TestingWebsockets() {
             timerActive={timeStarted && currentPlayer===bottomPlayer} 
             playerNumber={bottomPlayer} 
             getPlayers={gamePlayers} 
+            onTimeout={handlePossibleTimeOut}
           />
         </div>
       </div>
