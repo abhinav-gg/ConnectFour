@@ -1,12 +1,12 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { Home, LogIn, Eye, EyeOff } from 'lucide-react'
-import Dashboard from '@/components/dashboard'
-import { useCallback, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { getConfig } from '@/config/env'
-import { useGoogleReCaptcha, GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
+import Link from 'next/link';
+import { Home, LogIn, Eye, EyeOff } from 'lucide-react';
+import Dashboard from '@/components/dashboard';
+import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getConfig } from '@/config/env';
+import { useGoogleReCaptcha, GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 
 
 export default function Register() {
@@ -14,51 +14,34 @@ export default function Register() {
     <GoogleReCaptchaProvider reCaptchaKey={getConfig().recaptchaSiteKey}>
       <RegistrationPage />
     </GoogleReCaptchaProvider>
-  )
+  );
 }
 
 function RegistrationPage(): React.ReactElement {
-  const router = useRouter()
-  const [error, setError] = useState('')
+  const router = useRouter();
+  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [password, setPassword] = useState('');
   const { executeRecaptcha } = useGoogleReCaptcha();
-  
+
   const handleReCaptchaVerify = useCallback(async ($event: any) => {
     $event.preventDefault();
 
-    if (getConfig().mode === 'development') {
-      console.log('Development mode, skipping reCaptcha verification');
-      handleSubmit($event);
-      return;
-    }
-
     if (!executeRecaptcha) {
-    console.log('executeRecaptcha not yet available');
-    return;
+      console.log('executeRecaptcha not yet available');
+      return;
     }
 
     const token = await executeRecaptcha('signup');
     console.log('token is ', token);
-    if (token) {
-      const query:any = await fetch(`/api/recaptcha?token=${token}`)
-      const {success} = await query.json();
-      if(success){
-        console.log('Token verified');
-        handleSubmit($event);
-      } else {
-        console.log('Token verification failed');
-      }
-    } else {
-      console.log('Error getting token');
-    }
-}, [executeRecaptcha]);
+    handleSubmit($event, token);
+  }, [executeRecaptcha]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    console.log(password, confirmPassword)
-    const formData = new FormData(e.currentTarget)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, reCaptchaToken: string) => {
+    e.preventDefault();
+    console.log(password, confirmPassword);
+    const formData = new FormData(e.target as HTMLFormElement);
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -75,26 +58,27 @@ function RegistrationPage(): React.ReactElement {
           username: formData.get('username'),
           email: formData.get('email'),
           password: formData.get('password'),
+          token: reCaptchaToken,
         }),
-      })
+      });
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message || 'Registration failed')
+        const data = await response.json();
+        throw new Error(data.message || 'Registration failed');
       }
 
-      const data = await response.json()
+      const data = await response.json();
       // Store token if needed
-      localStorage.setItem('token', data.token)
-      router.push('/login')
+      localStorage.setItem('token', data.token);
+      router.push('/login');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      setError(err instanceof Error ? err.message : 'Registration failed');
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      
+
       <Dashboard />
 
       {/* Registration Form */}
@@ -141,5 +125,5 @@ function RegistrationPage(): React.ReactElement {
         </div>
       </div>
     </div>
-  )
+  );
 }

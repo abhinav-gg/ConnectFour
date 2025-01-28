@@ -1,15 +1,14 @@
 // src/routes/authRoutes.ts
-import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import { dbOperations } from '@/db/operations';
 import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from '@/lib/auth/index';
-import { authenticateAdmin, authenticateJWT } from '@/lib/auth/middleware';
-import * as dbErrors from '@/db/dbErrors';
+import { authenticateAdmin, authenticateJWT, verifyRecaptcha } from '@/lib/auth/middleware';
+import { NextFunction, Request, Response, Router } from 'express';
+import { z } from 'zod';
 
 const authRouter = Router();
 
 // Registration Route
-authRouter.post('/register', async (req: Request, res: any) => {
+authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => {
   const { username, email, password } = req.body;
 
   const schema = z.object({
@@ -17,7 +16,7 @@ authRouter.post('/register', async (req: Request, res: any) => {
     email: z.string().email(),
     password: z.string().min(8).max(1024),
   });
-  
+
   try {
     schema.parse({ username, email, password });
   } catch (error) {
@@ -73,7 +72,7 @@ authRouter.post('/login', async (req: Request, res: any) => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // set to true as on localhost secure still allows HTTP
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     });
@@ -89,16 +88,16 @@ authRouter.post('/login', async (req: Request, res: any) => {
 authRouter.get('/anonymous', async (req: Request, res: Response) => {
   // Create a new user called Anonymous
   // Add security to prevent multiple anonymous users by bots
-  console.log("Creating anonymous user")
+  console.log("Creating anonymous user");
   try {
     const user = await dbOperations.getAnonymousUser();
-    console.log(user)
+    console.log(user);
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     });
