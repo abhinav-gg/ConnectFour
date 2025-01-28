@@ -5,10 +5,22 @@ import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 import AuthPage from '@/components/checkAuth';
 
-const TestAnonymousPage = () => {
+// add a variable onSuccess to this component
+export default function TestAnonymousPage () {
   const router = useRouter();
   const config = getConfig();
   const [error, setError] = useState<string | null>(null);
+
+  const onSuccess = () => {
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+    if (!roomFromUrl) {
+      window.location.href = '/game/test-join';
+      return;
+    } else {
+      window.location.href = '/game?room=' + roomFromUrl;
+    }
+  }
 
   const createAnonymousAccount = async () => {
     console.log("Creating anonymous account...");
@@ -29,12 +41,7 @@ const TestAnonymousPage = () => {
       setError(error instanceof Error ? error.message : 'An error occurred');
       console.error('Error creating anonymous account:', error);
     }
-  }
-
-  const onSuccess = () => {
-    console.log("LOGIN SUCCESSFUL");
-    router.push('/game/test-join');
-  }
+  };
 
   if (error) {
     return <div className="error-message">{error}</div>;
@@ -48,5 +55,3 @@ const TestAnonymousPage = () => {
     </AuthPage>
   );
 };
-
-export default TestAnonymousPage;
