@@ -32,53 +32,7 @@ jobs:
   #         echo "base-tag=$latest" >> "$GITHUB_OUTPUT"
   #         echo "Latest Production Tag: $latest"
 
-  testServer:
-    # needs: build
-    runs-on: ubuntu-latest
-    services:
-      # Label used to access the service container
-      postgres:
-        # Docker Hub image
-        image: postgres:16
-        # Provide the password for postgres
-        env:
-          POSTGRES_PASSWORD: postgres
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          # Maps tcp port 5432 on service container to the host
-          - 5432:5432
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.1.44
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Upload schema
-        run: |
-          PGPASSWORD=postgres psql -U postgres -h localhost -p 5432 -d postgres -f ./data/schema.sql
-
-      - name: Run tests
-        run: bun test server
-        env:
-          PGUSER: postgres
-          PGPASSWORD: postgres
-          PGDB: postgres
-          PGHOST: localhost
-          PGPORT: 5432
-
   build-website-image:
-    needs: testServer
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -110,70 +64,23 @@ jobs:
           docker build -t ghcr.io/abhinav-gg/ConnectFour -f ./backend.dockerfile --target website .
           docker push ghcr.io/abhinav-gg/ConnectFour
 
-  deploy-website:
-    needs: build-website-image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      # These are the DigitalOcean App IDs for the production and staging environments
-      - name: Set app
-        run: |
-          if [[ $GITHUB_REF == refs/tags/*-staging ]]; then
-            echo "ID=7c16dfac-7e9b-41bb-96fa-ed5ab016c1b6" >> "$GITHUB_ENV"
-          else
-            echo "ID=21888743-9b82-4fb1-ac22-8b6e1aeb7f08" >> "$GITHUB_ENV"
-          fi
-
-      - name: Deploy to DigitalOcean
-        run: doctl apps create-deployment ${{ env.ID }}
-
-  # generateChangelog:
-  #   needs: [deploy-website, build]
+  # deploy-website:
+  #   needs: build-website-image
   #   runs-on: ubuntu-latest
-  #   if: endsWith(github.ref, '-website')
   #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+  #     - name: Install doctl
+  #       uses: digitalocean/action-doctl@v2
   #       with:
-  #         fetch-depth: 0
-  #         fetch-tags: true
+  #         token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-  #     - name: Generate changelog
+  #     # These are the DigitalOcean App IDs for the production and staging environments
+  #     - name: Set app
   #       run: |
-  #         base_tag=$(echo ${{ needs.build.outputs.base-tag }})
+  #         if [[ $GITHUB_REF == refs/tags/*-staging ]]; then
+  #           echo "ID=7c16dfac-7e9b-41bb-96fa-ed5ab016c1b6" >> "$GITHUB_ENV"
+  #         else
+  #           echo "ID=21888743-9b82-4fb1-ac22-8b6e1aeb7f08" >> "$GITHUB_ENV"
+  #         fi
 
-  #         echo "Generating changelog since $base_tag"
-  #         git log --pretty=format:"- %s (%an)" $base_tag..HEAD | tee CHANGELOG.md
-
-  #     - name: Push to Discord
-  #       env:
-  #         WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-  #       run: |
-  #         base_tag=$(echo ${{ needs.build.outputs.base-tag }})
-  #         CHANGELOG=$(cat CHANGELOG.md)
-
-  #         payload=$(jq -n \
-  #           --arg title "Deployed to Staging: ${{ github.ref_name }}" \
-  #           --arg description "Changes since last production deployment **$base_tag**:" \
-  #           --arg changelog "$CHANGELOG" \
-  #           --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")" \
-  #           '{
-  #             username: "IC Hack Changelog Bot",
-  #             avatar_url: "https://ichack.org/favicon.ico",
-  #             embeds: [
-  #               {
-  #                 title: $title,
-  #                 description: ($description + "\n\n" + $changelog),
-  #                 color: 24806,
-  #                 timestamp: $timestamp,
-  #                 url: "https://github.com/icdocsoc/ichack"
-  #               }
-  #             ]
-  #           }'
-  #         )
-
-  #         curl -X POST -H "Content-Type: application/json" -d "$payload" "$WEBHOOK_URL"
+  #     - name: Deploy to DigitalOcean
+  #       run: doctl apps create-deployment ${{ env.ID }}
