@@ -8,7 +8,7 @@ import { z } from 'zod';
 const authRouter = Router();
 
 // Registration Route
-authRouter.post('/register', async (req: Request, res: any) => {
+authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => {
   const { username, email, password } = req.body;
 
   const schema = z.object({
@@ -35,7 +35,7 @@ authRouter.post('/register', async (req: Request, res: any) => {
 });
 
 // Login Route
-authRouter.post('/login', verifyRecaptcha, async (req: Request, res: any) => {
+authRouter.post('/login', async (req: Request, res: any) => {
   const { username, email, password } = req.body;
   if (!username && !email) {
     return res.status(400).json({ error: 'Username or email is required' });

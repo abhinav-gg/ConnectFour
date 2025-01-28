@@ -166,6 +166,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
     );
 
     const apiResponse: RecaptchaResponse = await query.json();
+    console.log(`score: ${apiResponse.score}`); // debug
 
     if (!apiResponse.success || apiResponse.score < 0.5) {
       res.status(403).json({
