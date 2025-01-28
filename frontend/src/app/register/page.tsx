@@ -41,6 +41,7 @@ function RegistrationPage(): React.ReactElement {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, reCaptchaToken: string) => {
     e.preventDefault();
     console.log(password, confirmPassword);
+    console.log(e, e.currentTarget); // debug
     const formData = new FormData(e.currentTarget);
     if (password !== confirmPassword) {
       setError('Passwords do not match');
