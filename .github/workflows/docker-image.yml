@@ -61,4 +61,4 @@ jobs:
           fi
 
       - name: Deploy to DigitalOcean
-        run: doctl apps create-deployment ${{ env.ID }}
+        run: doctl apps create-deployment ${{ env.DO_ID }}
