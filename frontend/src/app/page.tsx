@@ -99,8 +99,8 @@ export default function Home() {
 
     // Get the current transform values
     const transform = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
-    let startX = e.clientX - transform.m41;
-    let startY = e.clientY - transform.m42;
+    const startX = e.clientX - transform.m41;
+    const startY = e.clientY - transform.m42;
     let lastX = e.clientX;
     let lastY = e.clientY;
     let lastTime = Date.now();

@@ -89,8 +89,10 @@ export default function ICHack25() {
               </div>
             </div>
             <div className="bg-white rounded-lg p-2 text-black h-1/2 flex items-center justify-center">
-              Add here a button to join the event
-              <Button onClick={() => {}} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Join</Button>
+              <div className="flex items-end">
+                <div className="text-4xl font-bold">{timeLeft.seconds}</div>
+                <div className="text-sm ml-2 mb-1">Seconds</div>
+              </div>
             </div>
           </div>
         ]}

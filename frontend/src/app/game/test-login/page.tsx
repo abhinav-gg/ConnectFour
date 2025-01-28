@@ -78,8 +78,7 @@ const HomePage = () => {
           </div>
         )}
         {anonymousPageVisible && ( // Conditionally render the TestAnonymousPage
-          <TestAnonymousPage 
-            onSuccess={sendToJoin} />
+          <TestAnonymousPage />
         )}
       </div>
     </div>

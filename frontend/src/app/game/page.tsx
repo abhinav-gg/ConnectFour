@@ -7,7 +7,6 @@ import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
 import { GameState } from '@shared/utils/game';
 import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut } from '@shared/Types/websocketData';
-import { PlayerData } from "@shared/Models/gameInfo";
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
