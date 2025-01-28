@@ -1,14 +1,13 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard';
-import Dashboard from '@/components/dashboard';
-import { GameState } from '@shared/utils/game';
+import abhinav from "@/assets/8aw2oifj8a289.jpg";
 import ivan from "@/assets/8e740a38d475.jpeg";
 import avery from "@/assets/c7764b38e10a.jpg";
-import abhinav from "@/assets/8aw2oifj8a289.jpg";
+import Dashboard from '@/components/dashboard';
+import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard';
+import { GameState } from '@shared/utils/game';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function AboutUs() {
   return (
@@ -28,7 +27,7 @@ export default function AboutUs() {
             </p>
             <h3 className="text-xl font-semibold mb-2 text-center">Mathematical Solution</h3>
             <p className="text-center">
-              Connect Four is a solved game. The first player can always win by playing the right moves. This was first published by James Dow Allen on October 1, 1988, and independently by Victor Allis in 1992. Allis also computed that the first player can force a win using 41 moves (with perfect play), while the second player can only force a win using 42 moves.
+              Connect Four is a solved game. The first player can always win by playing the right moves. This was first published by James Dow Allen on October 1, 1988, and independently by Victor Allis on October 16, 1988. Allis also computed that the first player can force a win in at most 41 moves (with perfect play), by starting in the middle column.
             </p>
           </div>
         </div>
@@ -53,7 +52,7 @@ export default function AboutUs() {
           <div className='flex flex-row flex-wrap gap-2 items-center'>
             <Image src={ivan.src} alt="Ivan" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
             <div>
-              <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Full Stack Developer • Cyber-security Consultant</span></h3>
+              <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Full Stack Developer • Cybersecurity Consultant</span></h3>
               <p>
                 Hi, I'm Ivan, a computer engineering student at Birmingham. I've been programming for nearly a decade, dabbling in everything from encrypted messaging to legal research, and I'm always working on one of my many projects! When I'm not coding, you can find me cycling, experimenting with recipes, or trying to photograph owls (with mixed success). I'm thrilled to bring this game to IC Hack and hope you'll enjoy playing and analysing matches as much as we enjoyed creating it.
               </p>
