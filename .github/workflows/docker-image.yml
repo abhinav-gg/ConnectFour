@@ -45,6 +45,7 @@ jobs:
   deploy-website:
     needs: build-website-image
     runs-on: ubuntu-latest
+    secrets: inherit
     steps:
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
