@@ -8,7 +8,6 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
 
     // Effect to handle player time updates
     useEffect(() => {
-        //console.log(timerActive, playerNumber, getPlayers);
         if (getPlayers.length > 0 && getPlayers[playerNumber]?.time !== undefined) {
             setDisplayTime(getPlayers[playerNumber].time);
         }
@@ -25,6 +24,7 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
             interval = setInterval(() => {
                 const elapsedTime = Math.floor((Date.now() - startTime!));
                 const newTime = setupTime - elapsedTime;
+                //console.log(timerActive, playerNumber, getPlayers, displayTime, startTime, setupTime, elapsedTime, newTime);
                 setDisplayTime(_ => newTime);
                 if (newTime <= 0) {
                     clearInterval(interval);
@@ -39,7 +39,7 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
                 clearInterval(interval);
             }
         };
-    }, [timerActive, getPlayers, displayTime]);
+    }, [timerActive, getPlayers, displayTime, startTime, playerNumber]);
 
     const formatTime = (ms: number) => {
         if (ms < 0) {

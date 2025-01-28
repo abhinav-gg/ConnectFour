@@ -51,9 +51,11 @@ function addSocket(userID: string, socket: WSocket) {
 }
 
 function removeSocket(userID: string) {
-  const index = SocketIDs.findIndex(s => s.userID === userID);
-  if (index !== -1) {
-    SocketIDs.splice(index, 1);
+  for (let i = 0; i < SocketIDs.length; i++) {
+    if (SocketIDs[i].userID === userID) {
+      SocketIDs.splice(i, 1);
+      return;
+    }
   }
 }
 
@@ -129,11 +131,9 @@ async function reconnect(roomId: string, userId: string, newSocket: WSocket, isS
   const room = getRoom(roomId);
   if (!room) throw new Error('Room does not exist???');
   
-  const usersock = getSocket(userId)!;
-  if (usersock) {
-    usersock.socket = newSocket;
-  } else {
-    addSocket(userId, newSocket);
+  const usersock = getSocket(userId);
+  if (!usersock) throw new Error('no user???');
+  if (!usersock.username) {
     await setupPlayer(userId);
   }
   
@@ -460,6 +460,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
 
             const room = getRoom(roomId)!;
+            await setupPlayer(userId);
             let eloChanges: EloChange;
 
             ///////////////////// IMPORTANT ////////////////////////
@@ -483,7 +484,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 // All checks have passed, the player may be added to the game
                 // Player is connecting to the game for the first time.
                 // Send the game state to the player and update the room state
-                await setupPlayer(userId);
+                
                 
                 joinRoom(roomId, userId);
                 
@@ -538,8 +539,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
                 // Player is connecting to the game for the first time.
                 // Send the game state to the player and update the room state
-                await setupPlayer(userId);
-                
+
                 joinRoom(roomId, userId);
                 
                 ws.send(JSON.stringify({

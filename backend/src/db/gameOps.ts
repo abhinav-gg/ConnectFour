@@ -554,4 +554,6 @@ export class GameOperations {
 }
 
 // DELETE FROM con4_schema.users WHERE is_anonymous = true;
-// DELETE FROM con4_schema.gamelookup;DELETE FROM con4_schema.gameplayers;DELETE FROM con4_schema.moves;DELETE FROM con4_schema.games;
+// FIX GAMES COMMAND
+// find all the games that are ongoing and delete the gameplayers, moves, game and gamelookup entries in that order:
+// DELETE FROM con4_schema.GamePlayers WHERE game_id IN (SELECT id FROM con4_schema.games WHERE state = 'ongoing');DELETE FROM con4_schema.Moves WHERE game_id IN (SELECT id FROM con4_schema.games WHERE state = 'ongoing');DELETE FROM con4_schema.GameLookup WHERE game IN (SELECT id FROM con4_schema.games WHERE state = 'ongoing');DELETE FROM con4_schema.Games WHERE state = 'ongoing';

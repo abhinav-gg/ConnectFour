@@ -4,7 +4,7 @@ import { Game, Move } from "@/models/Game";
 import { Glicko, TimeInfo } from "@/types/types";
 import { genRandomGameKey } from "@/utils/helper";
 import { validateTimeControl } from "@/utils/validation";
-import { StandardGameStates } from "@shared/constants";
+import { AvgGameLength, StandardGameStates } from "@shared/constants";
 import { GameInfo, GameMode, GMStats, TimeControl } from "@shared/Models/gameInfo";
 import { boolean } from "zod";
 import { adjustRD, calculateGlickoRatings } from "./matchmaking";
@@ -106,6 +106,30 @@ export async function abortGame(userId: string) {
     catch (error) {
         console.log('Failed to abort game:', error);
         throw error;
+    }
+}
+
+// CategoriseTime takes a time control object and returns the game category
+// (TODO: define time control object, then function is done)
+export function CategoriseTime(timeControl: TimeControl): string { 
+    // Calculate total game time in seconds:
+    // 2 * base time (both players) + disadvantage + increment * total moves
+
+    const totalTime = (2 * 60 * timeControl.base_time) + timeControl.disadvantage + (timeControl.increment * AvgGameLength);
+    
+    // Categorize based on total game time:
+    // Hyper Bullet: ≤ 70 seconds (1.16 minutes)
+    // Bullet: ≤ 255 seconds (4.25 minutes)
+    // Blitz: 256-650 seconds (4.25-8.3 minutes)
+    // Rapid: ≥ 650 seconds (8.3+ minutes)
+    if (totalTime <= 70) {
+        return 'hyper-bullet';
+    } else if (totalTime <= 255) {
+        return 'bullet';
+    } else if (totalTime <= 650) {
+        return 'blitz';
+    } else {
+        return 'rapid';
     }
 }
 

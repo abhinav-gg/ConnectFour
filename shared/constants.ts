@@ -16,6 +16,8 @@ export const StandardGameStates = {
     draw: 'draw'
 }
 
+export const AvgGameLength = 30;
+
 export const StandardStartingElo = 1000;
 
 export const StandardStartingRatingDeviation = 350;
