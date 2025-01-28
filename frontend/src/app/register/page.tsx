@@ -28,14 +28,6 @@ function RegistrationPage(): React.ReactElement {
   const handleReCaptchaVerify = useCallback(async ($event: any) => {
     $event.preventDefault();
 
-    // recaptcha doesn't work when running outside prod, so we skip it
-    // (it's configured with the prod domain)
-    if (getConfig().mode === 'development') {
-      console.log('Development mode, skipping reCaptcha verification');
-      handleSubmit($event);
-      return;
-    }
-
     if (!executeRecaptcha) {
       console.log('executeRecaptcha not yet available');
       return;
@@ -43,21 +35,10 @@ function RegistrationPage(): React.ReactElement {
 
     const token = await executeRecaptcha('signup');
     console.log('token is ', token);
-    if (token) {
-      const query = await fetch(`${getConfig().backendUrl}/api/recaptcha?token=${token}`);
-      const { success } = await query.json();
-      if (success) {
-        console.log('Token verified');
-        handleSubmit($event);
-      } else {
-        console.log('Token verification failed');
-      }
-    } else {
-      console.log('Error getting token');
-    }
+    handleSubmit($event, token);
   }, [executeRecaptcha]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, reCaptchaToken: string) => {
     e.preventDefault();
     console.log(password, confirmPassword);
     const formData = new FormData(e.currentTarget);
@@ -77,6 +58,7 @@ function RegistrationPage(): React.ReactElement {
           username: formData.get('username'),
           email: formData.get('email'),
           password: formData.get('password'),
+          token: reCaptchaToken,
         }),
       });
 
