@@ -7,7 +7,7 @@
   --foreground: #171717;
 }
 
-.markdown > * {
+.markdown>* {
   all: revert;
 }
 
@@ -22,10 +22,6 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
-}
-
-.font-ichack {
-  font-family: sans-serif;
 }
 
 .w-64 {
@@ -43,4 +39,17 @@ body {
 
 .w-64 button:last-child {
   left: 0;
+}
+
+@font-face {
+  font-family: 'ICHack';
+  src: URL('../assets/ic-hack.ttf') format('truetype');
+}
+
+.font-ichack {
+  font-family: 'ICHack';
+}
+
+.font-inter {
+  font-family: 'Inter', sans-serif;
 }

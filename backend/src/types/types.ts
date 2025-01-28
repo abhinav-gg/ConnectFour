@@ -33,3 +33,12 @@ export interface DiscordUser {
 export interface DiscordUserRequest extends express.Request {
   user?: DiscordUser;
 }
+
+export interface RecaptchaResponse {
+  success: boolean;
+  score: number;
+}
+
+export interface RequestWithRecaptcha extends express.Request {
+  recaptchaResult?: RecaptchaResponse;
+}
