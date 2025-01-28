@@ -173,6 +173,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
         success: false,
         message: 'reCAPTCHA verification failed',
       });
+      console.log('reCAPTCHA verification failed:', apiResponse); // debug
       return;
     }
 
