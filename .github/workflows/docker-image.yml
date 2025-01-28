@@ -39,7 +39,7 @@ jobs:
 
       - name: Build and push
         run: |
-          docker build -t ghcr.io/abhinav-gg/connectfour -f './backend.dockerfile'
+          docker build -t ghcr.io/abhinav-gg/connectfour -f backend.dockerfile .
           docker push ghcr.io/abhinav-gg/connectfour
 
   deploy-website:
