@@ -149,6 +149,14 @@ CREATE TABLE IF NOT EXISTS con4_schema.puzzles (
   updated_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS con4_schema.ICHack25 (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES con4_schema.Users(id),
+  discord_id STRING(50) NOT NULL,
+  full_name STRING(100) NOT NULL,
+  hackspace ENUM('QTR', 'SCR', "JCR") NOT NULL
+);
+
 /*
 CREATE OR REPLACE FUNCTION con4_schema.update_updated_at_column()
 RETURNS TRIGGER AS $$

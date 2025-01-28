@@ -4,7 +4,7 @@ import { Game, Move } from "@/models/Game";
 import { Glicko, TimeInfo } from "@/types/types";
 import { genRandomGameKey } from "@/utils/helper";
 import { validateTimeControl } from "@/utils/validation";
-import { StandardGameStates } from "@shared/constants";
+import { AvgGameLength, StandardGameStates } from "@shared/constants";
 import { GameInfo, GameMode, GMStats, TimeControl } from "@shared/Models/gameInfo";
 import { boolean } from "zod";
 import { adjustRD, calculateGlickoRatings } from "./matchmaking";
@@ -109,10 +109,39 @@ export async function abortGame(userId: string) {
     }
 }
 
+// CategoriseTime takes a time control object and returns the game category
+// (TODO: define time control object, then function is done)
+export function CategoriseTime(timeControl: TimeControl): string { 
+    // Calculate total game time in seconds:
+    // 2 * base time (both players) + disadvantage + increment * total moves
+
+    const totalTime = (2 * 60 * timeControl.base_time) + timeControl.disadvantage + (timeControl.increment * AvgGameLength);
+    
+    // Categorize based on total game time:
+    // Hyper Bullet: ≤ 70 seconds (1.16 minutes)
+    // Bullet: ≤ 255 seconds (4.25 minutes)
+    // Blitz: 256-650 seconds (4.25-8.3 minutes)
+    // Rapid: ≥ 650 seconds (8.3+ minutes)
+    if (totalTime <= 70) {
+        return 'hyper-bullet';
+    } else if (totalTime <= 255) {
+        return 'bullet';
+    } else if (totalTime <= 650) {
+        return 'blitz';
+    } else {
+        return 'rapid';
+    }
+}
+
 export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol: TimeControl, hasDisadvantage: boolean) {
     
     if (moves.length === 0) {
-        return {timeTaken: 0, allowedTime: timecontrol.base_time * 60000, timeLeft: timecontrol.base_time * 60000, delta: 0} as TimeInfo;
+        const time = timecontrol.base_time * 60000 + (hasDisadvantage ? timecontrol.disadvantage * 1000 : 0);
+        return {
+            timeTaken: 0, 
+            allowedTime: time, 
+            timeLeft: time, 
+            delta: 0} as TimeInfo;
     }
     
     let timeTaken = 0; // calculate time taken
@@ -149,8 +178,8 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
         switch (gamemode.name.split('-')[0]) {
             case 'standard':
-                const p1Stats = await dbOperations.GetPlayerElo(gamePlayers[0], gamemodeid) as Glicko;
-                const p2Stats = await dbOperations.GetPlayerElo(gamePlayers[1], gamemodeid) as Glicko;
+                const p1Stats = await dbOperations.GetPlayerStats(gamePlayers[0], gamemodeid) as Glicko;
+                const p2Stats = await dbOperations.GetPlayerStats(gamePlayers[1], gamemodeid) as Glicko;
                 const p1Changes = calculateGlickoRatings(p1Stats, p2Stats);
                 const p2Changes = calculateGlickoRatings(p2Stats, p1Stats);
                 const p1rd = adjustRD(p1Stats);

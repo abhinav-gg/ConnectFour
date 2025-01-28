@@ -42,7 +42,7 @@ export const dbOperations = {
   GetGameModeFromShortCode: gameOps.GetGameModeFromShortCode.bind(gameOps),
   AssignGame: gameOps.AssignGame.bind(gameOps),
   UnassignGame: gameOps.UnassignGame.bind(gameOps),
-  GetPlayerElo: gameOps.GetPlayerStats.bind(gameOps),
+  GetPlayerStats: gameOps.GetPlayerStats.bind(gameOps),
   SetPlayerElo: gameOps.SetPlayerElo.bind(gameOps),
   GetPlayersByShortCode: gameOps.GetPlayersByShortCode.bind(gameOps),
   UpdateElo: gameOps.UpdateElo.bind(gameOps),

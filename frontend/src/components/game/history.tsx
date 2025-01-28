@@ -86,7 +86,7 @@ export default function MoveHistory({
               index === (gameState.getMoves().length) ? 'ring-2 ring-blue-500 ring-offset-2' : ''
             }`}
           >
-            {move.col + 1}
+            {parseInt(move.col as any) + 1}
           </button>
         )) || <p>No moves available.</p>}
       </div>

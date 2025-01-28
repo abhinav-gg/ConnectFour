@@ -5,7 +5,11 @@ import Link from 'next/link'
 import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 
-export default function Dashboard() {
+interface TestProps {
+  closed?: boolean
+}
+
+export default function Dashboard(props: TestProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
@@ -16,8 +20,12 @@ export default function Dashboard() {
         setIsOpen(true);
       }
     };
-
-    handleResize();
+    console.log(isOpen, props.closed)
+    if (props.closed) {
+      setIsOpen(false);
+    } else {
+      handleResize();
+    }
 
     window.addEventListener('resize', handleResize);
     

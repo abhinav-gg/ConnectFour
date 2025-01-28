@@ -18,7 +18,7 @@ export type TimeControl = {
 
 export type SendToRoom = {
     event: 'sendToRoom';
-    data: { roomId: UUID; };
+    data: { roomId: string; };
 }
 
 export type GamePlayer = {
@@ -27,6 +27,11 @@ export type GamePlayer = {
     time: number;
     timerActive?: boolean;
 }
+
+export type PlayerData = {
+    username: string;
+    time: number;
+};
 
 export type EloChange = {
     win: number;

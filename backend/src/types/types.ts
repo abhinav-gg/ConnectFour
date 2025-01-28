@@ -10,6 +10,7 @@ export interface Glicko {
 
 export type Room = {
   players: UUID[];
+  spectators: UUID[];
   gameInfo: GameInfo;
   currentTurn: number;
 };

@@ -4,7 +4,7 @@ import { dbOperations } from '@/db/operations';
 import { GameMode, SendToRoom, TimeControl } from '@shared/Models/gameInfo';
 import { authenticateJWT } from '@/lib/auth/middleware';
 import * as globals from '@shared/constants';
-import { createGame, quitGameSearch } from './gameHelper';
+import { CategoriseTime, createGame, quitGameSearch } from './gameHelper';
 import { GameInfo } from '@shared/Models/gameInfo';
 import { FindCompetitiveMatch } from './matchmaking';
 
@@ -25,8 +25,21 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
         if (!gamemode || !time_control || !userId) {
             throw new Error('Invalid Data');
         }
-        if (user!.is_anonymous && gamemode.name !== globals.StandardGameModes.friendly) {
-            throw new Error('User is not logged in for competitive games');
+        if (gamemode.name !== globals.StandardGameModes.friendly) {
+            if (user!.is_anonymous)
+                throw new Error('User is not logged in for competitive games');
+
+            const timeMode = CategoriseTime(time_control);
+            switch (timeMode) {
+                case 'blitz':
+                    gamemode.name = globals.StandardGameModes.standard.blitz;
+                case 'rapid':
+                    gamemode.name = globals.StandardGameModes.standard.rapid;
+                case 'bullet':
+                    gamemode.name = globals.StandardGameModes.standard.bullet;
+                default:
+                    throw new Error('Invalid Time Control');
+            }
         }
     }
     catch (error) {
@@ -35,7 +48,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
         return;
     }
 
-    console.log('Create Game:', userId, time_control);
+    console.log('Create Game:', userId, time_control, gamemode);
 
     // Check if the user is already in the game lookup
     const gameId = await dbOperations.GetGameByPlayerLookup(userId);
@@ -94,7 +107,6 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                     res.status(200).json({ message: 'No match found, player must wait' });
                     return; // link to frontend waiting room
                 }
-
 
                 res.status(200).json({ event: "sendToRoom",
                     data: { roomId } } as SendToRoom);
@@ -216,7 +228,7 @@ gameRouter.post('/get-leaderboard', async (req: Request, res: Response) => {
 gameRouter.post('/get-game-history', async (req: Request, res: Response) => {
 });
 
-gameRouter.post('/profile', async (req: Request, res: Response) => {
+gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response) => {
     // Check the user ID and fetch the user profile from the database
     const userId = req.body.userId;
     const gamemodeId = req.body.gamemodeId;
@@ -226,7 +238,7 @@ gameRouter.post('/profile', async (req: Request, res: Response) => {
         return;
     }
 
-    const elo = await dbOperations.GetPlayerElo(userId, gamemodeId);
+    const elo = await dbOperations.GetPlayerStats(userId, gamemodeId);
     
 });
 

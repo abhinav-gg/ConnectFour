@@ -40,7 +40,7 @@ const TestJoinPage = () => {
       },
       body: JSON.stringify({
         gamemode: {
-          name: 'friendly',
+          name: gameType,
           event: null
         } as GameMode,
         time_control: {
@@ -56,7 +56,7 @@ const TestJoinPage = () => {
       return;
     }
     else {
-      const data = (await response.json()) as SendToRoom;
+      const data = (await response.json());
       console.log('Game requested:', data);
       window.location.href = '/game?room=' + data.data.roomId;
     }
@@ -79,8 +79,13 @@ const TestJoinPage = () => {
   };
 
   const handleNotAuth = () => {
-    console.log("critical error")
-    window.location.href = '/game/test-login';
+    const roomFromUrl = new URLSearchParams(window.location.search).get('room');
+    if (!roomFromUrl) {
+      window.location.href = '/game/test-login';
+      return;
+    } else {
+      window.location.href = '/game/test-login?room=' + roomFromUrl;
+    }
   }
 
   return (

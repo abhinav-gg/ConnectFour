@@ -19,7 +19,7 @@ const EndPopup: React.FC<EndPopupProps> = ({ playerNumber, result, players, onRe
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-lg z-50">
         <h2 className="text-xl font-bold text-center mb-4">
-          {(winner !== -1) ? `Winner: ${players[winner]}` : 'Draw'}
+          {(winner !== -1) ? `Winner: ${players[winner]?.username}` : 'Draw'}
         </h2>
         <div>
           <p className="text-center">

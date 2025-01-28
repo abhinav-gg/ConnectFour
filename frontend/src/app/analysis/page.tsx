@@ -19,11 +19,7 @@ export default function AnalysisPage() {
       }
       const moveList = moves.split('');
       //console.log(moveList);
-      gameBoardRef.current.reset();
-      moveList.forEach((move, index) => {
-        gameBoardRef.current.currentMoveIndex = index;
-        gameBoardRef.current.makeMove(parseInt(move)-1, index !== moveList.length - 1);
-      });
+      gameBoardRef.current.setMoves(moveList.map(move => parseInt(move)-1));
     }
 
     const handleExport = () => {
