@@ -79,8 +79,13 @@ const TestJoinPage = () => {
   };
 
   const handleNotAuth = () => {
-    console.log("critical error")
-    window.location.href = '/game/test-login';
+    const roomFromUrl = new URLSearchParams(window.location.search).get('room');
+    if (!roomFromUrl) {
+      window.location.href = '/game/test-login';
+      return;
+    } else {
+      window.location.href = '/game/test-login?room=' + roomFromUrl;
+    }
   }
 
   return (

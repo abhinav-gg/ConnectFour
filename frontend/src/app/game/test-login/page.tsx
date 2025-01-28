@@ -2,15 +2,29 @@
 
 import { useEffect, useState } from 'react';
 import { getConfig } from '@/config/env';
+import TestAnonymousPage from '../test-anonymous/page';
 
 const HomePage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showChoice, setShowChoice] = useState(false); // New state for showing choice buttons
   const [isLoading, setIsLoading] = useState(true);
+  const [anonymousPageVisible, setAnonymousPageVisible] = useState(false); // New state for showing the anonymous page
+
+  const sendToJoin = () => {
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+    if (!roomFromUrl) {
+      window.location.href = '/game/test-join';
+      return;
+    } else {
+      window.location.href = '/game?room=' + roomFromUrl;
+    }
+  }
 
   useEffect(() => {
     const checkAuthentication = async () => {
       const token = localStorage.getItem('token'); // Check for token in local storage
+      // get room form params if exists
       if (token) {
         const response = await fetch(`${getConfig().backendUrl}/api/auth/protected-route`, {
           method: 'GET',
@@ -21,7 +35,7 @@ const HomePage = () => {
         if (!response.ok) {
           console.log('User not authenticated');
         } else {
-          window.location.href='/game/test-join';
+          sendToJoin();
           return;
         }
       }
@@ -33,13 +47,8 @@ const HomePage = () => {
   });
 
   const handleAnonymous = () => {
-    console.log("THIS MESSAGE SHOULD BE SHOWN ONCE")
-    try {
-      window.location.href='/game/test-anonymous'; // Redirect to anonymous login page
-    } catch (error) {
-      console.error('Error creating anonymous account:', error);
-      alert('Failed to create anonymous account. Please try again.');
-    }
+    console.log("THIS MESSAGE SHOULD BE SHOWN ONCE");
+    setAnonymousPageVisible(true); // Set the state to show the anonymous page
   };
 
   const handleLogin = () => {
@@ -67,6 +76,10 @@ const HomePage = () => {
               Log In
             </button>
           </div>
+        )}
+        {anonymousPageVisible && ( // Conditionally render the TestAnonymousPage
+          <TestAnonymousPage 
+            onSuccess={sendToJoin} />
         )}
       </div>
     </div>
