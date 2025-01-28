@@ -151,6 +151,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
         success: false,
         message: 'reCAPTCHA verification failed'
       });
+      console.log('Secret:', secret, 'Token:', token); // debug
       return;
     }
 
@@ -171,7 +172,6 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
       res.status(403).json({
         success: false,
         message: 'reCAPTCHA verification failed',
-        data: apiResponse // debug
       });
       return;
     }
