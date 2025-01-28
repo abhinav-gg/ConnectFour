@@ -70,27 +70,17 @@ export default function ICHack25() {
       <div className="flex justify-center space-x-4">
         {[
           <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
-            <div className="flex items-end">
-              <div className="text-6xl font-bold text-white">{timeLeft.days}</div>
-              <div className="text-sm text-white ml-2 mb-2">Days</div>
-            </div>
+            <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Join Event</Link>
           </div>,
           <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
-            <div className="flex items-end">
-              <div className="text-6xl font-bold text-white">{timeLeft.hours}</div>
-              <div className="text-sm text-white ml-2 mb-2">Hours</div>
-            </div>
+            <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Create Game</Link>
           </div>,
           <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
             <div className="bg-yellow-500 rounded-lg p-2 text-white h-1/2 flex items-center justify-center">
-              <div className="flex items-end">
-                <div className="text-4xl font-bold">{timeLeft.minutes}</div>
-                <div className="text-sm ml-2 mb-1">Minutes</div>
-              </div>
+              <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Leaderboard</Link>
             </div>
             <div className="bg-white rounded-lg p-2 text-black h-1/2 flex items-center justify-center">
-              Add here a button to join the event
-              <Button onClick={() => {}} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Join</Button>
+              
             </div>
           </div>
         ]}
