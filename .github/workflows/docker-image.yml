@@ -57,7 +57,7 @@ jobs:
           if [[ $GITHUB_REF == refs/tags/*-staging ]]; then
             echo "ID=staging??o.0" >> "$GITHUB_ENV"
           else
-            echo "ID=3b794986-648d-4155-b596-45ada62b9a4e" >> "$GITHUB_ENV"
+            echo "DO_ID=3b794986-648d-4155-b596-45ada62b9a4e" >> "$GITHUB_ENV"
           fi
 
       - name: Deploy to DigitalOcean
