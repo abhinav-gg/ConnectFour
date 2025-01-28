@@ -45,12 +45,12 @@ jobs:
   deploy-website:
     needs: build-website-image
     runs-on: ubuntu-latest
-    secrets: inherit
     steps:
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        secrets: inherit
 
       # These are the DigitalOcean App IDs for the production and staging environments
       - name: Set app
