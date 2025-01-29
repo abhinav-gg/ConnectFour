@@ -28,14 +28,18 @@ function RegistrationPage(): React.ReactElement {
   const handleReCaptchaVerify = useCallback(async ($event: any) => {
     $event.preventDefault();
 
-    if (!executeRecaptcha) {
-      console.log('executeRecaptcha not yet available');
-      return;
-    }
+    if (getConfig().mode === 'development') {
+      handleSubmit($event, 'development-nocaptcha');
+    } else {
+      if (!executeRecaptcha) {
+        console.log('executeRecaptcha not yet available');
+        return;
+      }
 
-    const token = await executeRecaptcha('signup');
-    console.log('token is ', token);
-    handleSubmit($event, token);
+      const token = await executeRecaptcha('signup');
+      console.log('token is ', token);
+      handleSubmit($event, token);
+    }
   }, [executeRecaptcha]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, reCaptchaToken: string) => {

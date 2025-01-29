@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS con4_schema.UserTags (
   created_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS con4_schema.Sessions (
+  user_id UUID PRIMARY KEY REFERENCES con4_schema.Users(id),
+  token STRING(32) NOT NULL,
+  expires TIMESTAMP NOT NULL
+);
+
 ----------------------------------------------
 
 

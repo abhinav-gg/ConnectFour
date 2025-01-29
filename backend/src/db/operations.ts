@@ -21,6 +21,10 @@ export const dbOperations = {
   getUserByID: databaseOps.getUserByID.bind(databaseOps),
   getAllUserTagNames: databaseOps.getAllUserTagNames.bind(databaseOps),
   getAnonymousUser: databaseOps.getAnonymousUser.bind(databaseOps),
+  createUserSession: databaseOps.createUserSession.bind(databaseOps),
+  revokeSessionByUID: databaseOps.revokeSessionByUID.bind(databaseOps),
+  revokeSessionByToken: databaseOps.revokeSessionByToken.bind(databaseOps),
+  getUserFromSession: databaseOps.getUserFromSession.bind(databaseOps),
 
   // Opening Operations
   GetOpening: openingOps.GetOpening.bind(openingOps),

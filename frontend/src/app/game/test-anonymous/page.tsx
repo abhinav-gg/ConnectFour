@@ -35,7 +35,7 @@ export default function TestAnonymousPage () {
       }
 
       const data = await response.json();
-      localStorage.setItem('token', data.data.accessToken);
+      localStorage.setItem('token', data.data.sessionToken);
       onSuccess();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');

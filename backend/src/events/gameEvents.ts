@@ -6,7 +6,7 @@ import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade,
   PlayerReconnected,
   OpponentReconnect} from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
-import { verifyAccessToken } from "@/lib/auth";
+import { getUserFromSession } from "@/lib/auth";
 import { UUID } from "crypto";
 import { EloChange, GameMode, PlayerData, TimeControl } from "@shared/Models/gameInfo";
 import { StandardGameStates } from "@shared/constants";
@@ -383,16 +383,18 @@ async function startStandardGame(room: Room, game: Game, time_control: TimeContr
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const setupGameEvents = async (app: expressWs.Application) => {
-  app.ws('/in-game', (ws, req) => {
+  app.ws('/in-game', async (ws, req) => {
     console.log('Client connected');
     const token = req.header('Sec-WebSocket-Protocol') as string;
-    const user = verifyAccessToken(token as string);
-    if (!user) {
+    const user = await getUserFromSession(token as string);
+    if (!user.userId) {
       ws.close();
       return;
     }
     else if (!getUser(ws)) {
+      if (user) {
       addSocket(user.userId, ws)
+      }
     }
     // Handle incoming messages
 

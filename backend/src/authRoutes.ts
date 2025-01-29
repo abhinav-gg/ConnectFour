@@ -1,7 +1,7 @@
 // src/routes/authRoutes.ts
 import { dbOperations } from '@/db/operations';
-import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from '@/lib/auth/index';
-import { authenticateAdmin, authenticateJWT, verifyRecaptcha } from '@/lib/auth/middleware';
+import { createSession, revokeSession, hashPassword, verifyPassword } from '@/lib/auth/index';
+import { authenticateAdmin, authenticateSession, verifyRecaptcha } from '@/lib/auth/middleware';
 import { NextFunction, Request, Response, Router } from 'express';
 import { z } from 'zod';
 
@@ -67,17 +67,16 @@ authRouter.post('/login', async (req: Request, res: any) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
+    const sessionToken = await createSession(user.id);
 
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('sessionToken', sessionToken, {
       httpOnly: true,
-      secure: true, // set to true as on localhost secure still allows HTTP
+      secure: true,
       sameSite: 'strict',
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
     });
 
-    return res.json({ status: 'Success', data: { accessToken } });
+    return res.json({ status: 'Success', data: { sessionToken } });
   } catch (error) {
     console.error('Failed to login:', error);
     return res.status(500).json({ error: 'Failed to login' });
@@ -92,16 +91,16 @@ authRouter.get('/anonymous', async (req: Request, res: Response) => {
   try {
     const user = await dbOperations.getAnonymousUser();
     console.log(user);
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
+    const sessionToken = await createSession(user.id);
 
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('sessionToken', sessionToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
     });
-    res.json({ status: 'Success', data: { accessToken } });
+
+    res.json({ status: 'Success', data: { sessionToken } });
   } catch (error) {
     console.error('Failed to login:', error);
     res.status(500).json({ error: 'Failed' });
@@ -109,7 +108,7 @@ authRouter.get('/anonymous', async (req: Request, res: Response) => {
 });
 
 // Profile Route
-authRouter.get('/profile', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.get('/profile', authenticateSession, async (req: Request, res: Response, next: NextFunction) => {
   const userId = (req as any).user?.userId;
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -129,37 +128,18 @@ authRouter.get('/profile', authenticateJWT, async (req: Request, res: Response, 
   }
 });
 
-authRouter.get('/protected-route', authenticateJWT, (req: any, res: Response) => {
+authRouter.get('/protected-route', authenticateSession, (req: any, res: Response) => {
   res.json({ message: 'You are authenticated!', user: req.user });
 });
 
-// TODO: ivan
-authRouter.post('/refresh', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
-  const refreshToken = req.cookies?.refreshToken; // Get the refresh token from cookies
-
-  if (!refreshToken) {
-    res.status(401).json({ error: 'Refresh token not found' });
-  }
-
-  try {
-    // Verify the refresh token
-    // Assuming req.user.id is available through the authenticateJWT middleware
-    const accessToken = generateAccessToken((req as any).user.id);
-
-    res.json({ accessToken });
-  } catch (error) {
-    console.error('Failed to refresh token:', error);
-    res.status(403).json({ error: 'Invalid refresh token' });
-  }
-});
-
-authRouter.post('/logout', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
-  // If the user is authenticated, proceed to clear the refresh token cookie
-  res.clearCookie('refreshToken'); // Clear the refresh token cookie
+authRouter.post('/logout', authenticateSession, async (req: Request, res: Response, next: NextFunction) => {
+  // If the user is authenticated, proceed to clear the session token cookie
+  await revokeSession((req as any).user?.userId); // Revoke the session token
+  res.clearCookie('sessionToken'); // Clear the session token cookie
   res.json({ status: 'Success' }); // Return success response
 });
 
-authRouter.get('/isadmin', authenticateJWT, authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.get('/isadmin', authenticateSession, authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
   res.json({ isAdmin: true });
 });
 

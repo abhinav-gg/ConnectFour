@@ -279,7 +279,7 @@ export class UserOperations {
     //INSERT INTO con4_schema.usertags (user_id,tag_id) 
     //SELECT $1, id FROM con4_schema.utags WHERE name = $2;
 
-    return 
+    return;
   }
 
   async getAnonymousUser(): Promise<User> {
@@ -319,6 +319,88 @@ export class UserOperations {
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Failed to delete anonymous users:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async createUserSession(id: string, token: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `INSERT INTO con4_schema.sessions (user_id, token, expires)
+         VALUES ($1, $2, NOW() + INTERVAL '7 days')
+         ON CONFLICT (user_id) DO UPDATE SET token = $2, expires = NOW() + INTERVAL '7 days'`,
+        [id, token]
+      );
+    } catch (error) {
+      console.error('Failed to create user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async revokeSessionByUID(id: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `DELETE FROM con4_schema.sessions
+          WHERE user_id = $1`,
+        [id]
+      );
+    } catch (error) {
+      console.error('Failed to revoke user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async revokeSessionByToken(token: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `DELETE FROM con4_schema.sessions
+          WHERE token = $1`,
+        [token]
+      );
+    } catch (error) {
+      console.error('Failed to revoke user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getUserFromSession(token: string): Promise<string | null> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT user_id FROM con4_schema.sessions
+         WHERE token = $1`,
+        [token]
+      );
+
+      const sessionExists = result.rows.length > 0;
+      if (!sessionExists) {
+        return null;
+      }
+
+      const expired = result.rows[0].expires < new Date();
+      if (expired) {
+        await this.revokeSessionByToken(token);
+        return null;
+      }
+
+      return result.rows[0].user_id;
+    } catch (error) {
+      console.error('Failed to check user session:', error);
       throw error;
     } finally {
       client.release();

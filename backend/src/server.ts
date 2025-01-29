@@ -6,7 +6,7 @@ import { dbOperations } from '@/db/operations';
 import authRouter from '@/authRoutes'; // Import the auth routes
 import gameRouter from '@/events/gameRoutes'; // Import the game routes
 import { setupGameEvents } from '@/events/gameEvents';
-import { authenticateAdmin, authenticateJWT, handleDiscordCallback } from '@/lib/auth/middleware';
+import { authenticateAdmin, authenticateSession, handleDiscordCallback } from '@/lib/auth/middleware';
 import { DiscordUserRequest } from '@/types/types';
 
 dotenv.config();
@@ -54,7 +54,7 @@ app.post('/api/openings', async (req, res) => {
   }
 });
 
-app.post('/api/make-opening', authenticateJWT, authenticateAdmin, async (req, res) => {
+app.post('/api/make-opening', authenticateSession, authenticateAdmin, async (req, res) => {
   const { position, description } = req.body;
   console.log('Position:', position, 'Description:', description);
   try {
