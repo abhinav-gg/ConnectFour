@@ -52,6 +52,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
     }
 
     console.log('Create Game:', userId, time_control, gamemode);
+    console.log('Create Game:', userId, time_control, gamemode);
 
     // Check if the user is already in the game lookup
     const gameId = await dbOperations.GetGameByPlayerLookup(userId);
@@ -233,6 +234,7 @@ gameRouter.post('/get-leaderboard', async (req: Request, res: Response) => {
 gameRouter.post('/get-game-history', async (req: Request, res: Response) => {
 });
 
+gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response) => {
 gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response) => {
     // Check the user ID and fetch the user profile from the database
     const userId = req.body.userId;

@@ -1,29 +1,27 @@
-'use client'
+'use client';
 // TODO: update the dashboard to be the new one when on this page and add the ichack 2025 logo
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useSpring, animated, config } from '@react-spring/web'
-import { Home, LogIn } from 'lucide-react'
-import Dashboard from '@/components/dashboard'
-import IchackLogo from '@/components/ichacklogo'
-import Image from 'next/image'
+import Dashboard from '@/components/dashboard';
+import IchackLogo from '@/components/ichacklogo';
+import { animated, config, useSpring } from '@react-spring/web';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
-const eventDate = new Date('2025-02-01T09:00:00')
+const eventDate = new Date('2025-02-01T09:00:00');
 
 const calculateTimeLeft = (eventDate: Date) => {
   const difference = +eventDate - +new Date();
-  
+
   return {
     days: Math.floor(difference / (1000 * 60 * 60 * 24)),
     hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
     minutes: Math.floor((difference / 1000 / 60) % 60),
     seconds: Math.floor((difference / 1000) % 60)
   };
-}
+};
 
 export default function ICHack25() {
-  const [registered, setRegistered] = useState(false)
-  const [isClient, setIsClient] = useState(false)
+  const [registered, setRegistered] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(eventDate));
 
   // Define animations
@@ -31,31 +29,31 @@ export default function ICHack25() {
     from: { opacity: 0, y: -50 },
     to: { opacity: 1, y: 0 },
     config: config.gentle
-  })
+  });
 
   const logoAnimation = useSpring({
     from: { opacity: 0, scale: 0.9 },
     to: { opacity: 1, scale: 1 },
     delay: 200,
     config: config.gentle
-  })
+  });
 
   const formAnimation = useSpring({
     from: { opacity: 0, y: 50 },
     to: { opacity: 1, y: 0 },
     delay: 400,
     config: config.gentle
-  })
+  });
 
   const registeredAnimation = useSpring({
     from: { opacity: 0, scale: 0.9 },
     to: { opacity: registered ? 1 : 0, scale: registered ? 1 : 0.9 },
     config: config.gentle
-  })
+  });
 
   useEffect(() => {
-    setIsClient(true)
-  }, [])
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -102,8 +100,11 @@ export default function ICHack25() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-200 to-purple-300 text-gray-800">
-      <div className="flex">
-        <Dashboard/>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin='anonymous' />
+      <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Jost:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+      <div className="flex font-ichack">
+        <Dashboard />
 
         <main className="flex-1 px-4 py-8">
           <div className="container mx-auto">
@@ -142,7 +143,7 @@ export default function ICHack25() {
               <div className="flex items-center justify-center space-x-4">
                 <div className="flex flex-col space-y-4">
                   {[0, 1, 2].map((i) => (
-                    <Image 
+                    <Image
                       key={i}
                       src="/duck.svg"
                       alt="Duck"
@@ -154,23 +155,23 @@ export default function ICHack25() {
                   ))}
                 </div>
 
-                <div className="bg-white bg-opacity-90 rounded-lg shadow-md max-w-3xl mx-auto border-2 border-[#0A4C8B]">
+                <div className="bg-white bg-opacity-90 rounded-lg shadow-md max-w-3xl mx-auto border-2 border-[#0A4C8B] font-inter">
                   <div className="flex items-center bg-gradient-to-r from-[#2A5AA7] to-[#5B9BD5] px-2 py-1">
                     <div className="flex-1">
                       <div className="text-white font-bold text-sm">about.txt - Notepad</div>
                     </div>
                     <div className="flex space-x-2">
-                      <button className="text-black bg-[#E8E8E8] hover:bg-[#D5D5D5] px-3 py-0.5 text-sm font-bold rounded-sm">_</button>
-                      <button className="text-black bg-[#E8E8E8] hover:bg-[#D5D5D5] px-3 py-0.5 text-sm font-bold rounded-sm">□</button>
-                      <button className="text-black bg-[#E8E8E8] hover:bg-[#D5D5D5] px-3 py-0.5 text-sm font-bold rounded-sm">×</button>
+                      <button className="text-black bg-[#ffffff] hover:bg-[#E5E5E5] px-3 py-0.5 text-sm font-bold rounded-sm">–</button>
+                      <button className="text-black bg-[#ffffff] hover:bg-[#E5E5E5] px-3 py-0.5 text-sm font-bold rounded-sm">□</button>
+                      <button className="text-black bg-[#ffffff] hover:bg-[#E81123] hover:text-white px-3 py-0.5 text-sm font-bold rounded-sm">×</button>
                     </div>
                   </div>
-                  <div className="flex items-center text-sm border-b border-gray-300">
-                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">File</div>
-                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">Edit</div>
-                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">Format</div>
-                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">View</div>
-                    <div className="px-2 py-1 hover:bg-[#E8E8E8] cursor-pointer">Help</div>
+                  <div className="flex items-center text-sm border-b-2 border-b-[#f0f0f0]">
+                    <div className="px-2 py-0.5 hover:bg-[#E5F3FF] border border-transparent hover:border-[#CCE8FF] cursor-pointer">File</div>
+                    <div className="px-2 py-0.5 hover:bg-[#E5F3FF] border border-transparent hover:border-[#CCE8FF] cursor-pointer">Edit</div>
+                    <div className="px-2 py-0.5 hover:bg-[#E5F3FF] border border-transparent hover:border-[#CCE8FF] cursor-pointer">Format</div>
+                    <div className="px-2 py-0.5 hover:bg-[#E5F3FF] border border-transparent hover:border-[#CCE8FF] cursor-pointer">View</div>
+                    <div className="px-2 py-0.5 hover:bg-[#E5F3FF] border border-transparent hover:border-[#CCE8FF] cursor-pointer">Help</div>
                   </div>
                   <div className="p-4 font-mono text-sm text-gray-800 whitespace-pre-line bg-white">
                     {`IC Hack is an annual hackathon held at Imperial's South Kensington campus. It is the biggest student-run hackathon in Europe.
@@ -183,7 +184,7 @@ IC Hack covers food and swag for all hackers, not to mention the opportunity to 
 
                 <div className="flex flex-col space-y-4">
                   {[0, 1, 2].map((i) => (
-                    <Image 
+                    <Image
                       key={i}
                       src="/duck.svg"
                       alt="Duck"
@@ -201,8 +202,8 @@ IC Hack covers food and swag for all hackers, not to mention the opportunity to 
             <animated.form
               style={formAnimation}
               onSubmit={(e) => {
-                e.preventDefault()
-                setRegistered(true)
+                e.preventDefault();
+                setRegistered(true);
               }}
               className="bg-white bg-opacity-10 rounded-lg p-8 mb-12"
             >
@@ -240,5 +241,5 @@ IC Hack covers food and swag for all hackers, not to mention the opportunity to 
         </main>
       </div>
     </div>
-  )
+  );
 }

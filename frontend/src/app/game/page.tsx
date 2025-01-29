@@ -110,6 +110,10 @@ export default function TestingWebsockets() {
     sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
   }
 
+  const handlePossibleTimeOut = () => {
+    sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
+  }
+
   const pushAnnouncement = (message: string) => {
     messageRef.current.push({
       playerNumber: -1,
@@ -153,7 +157,10 @@ export default function TestingWebsockets() {
     newSocket.onmessage = (event) => {
       const data = JSON.parse(event.data) as ClientMessage;
       console.log('Received message:', data);
+      const data = JSON.parse(event.data) as ClientMessage;
+      console.log('Received message:', data);
 
+      switch (data.event) {
       switch (data.event) {
         case 'playerJoined':
           setGameStatus('Waiting for opponent...');
@@ -163,9 +170,11 @@ export default function TestingWebsockets() {
           const players = data.data.players;
           eloChangeRef.current = data.data.eloChanges;
           playerNumber.current = data.data.playerNumber;
+          playerNumber.current = data.data.playerNumber;
           players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
+          turnText(0, data.data.playerNumber);
           turnText(0, data.data.playerNumber);
           setGameStarted(true);
           pushAnnouncement('Game started!');
@@ -183,6 +192,8 @@ export default function TestingWebsockets() {
         case 'endGame':
           if (playerNumber.current === -1) 
             break;
+          if (playerNumber.current === -1) 
+            break;
           pushAnnouncement("Game Ended")
           waitingForRecconect.current = false;
           setGameStatus(data.data.message);
@@ -197,6 +208,7 @@ export default function TestingWebsockets() {
           break;
         case 'moveMade':
           handleMoveReceived(data.data);
+          turnText(data.data.nextPlayer);
           turnText(data.data.nextPlayer);
           setTimeUpdate(timeUpdate + 1);
           break;
@@ -264,6 +276,7 @@ export default function TestingWebsockets() {
     if (draw) {
       deltaElo = eloChangeRef.current.draw;
     } else if (winner === playerNumber.current) {
+    } else if (winner === playerNumber.current) {
       deltaElo = eloChangeRef.current.win;
       console.log('You won!');
     } else {
@@ -315,7 +328,10 @@ export default function TestingWebsockets() {
 
   const topPlayer = (playerNumber.current === -1) ? 0 : Math.abs(1-playerNumber.current);
   const bottomPlayer = (playerNumber.current === -1) ? 1 : playerNumber.current;
+  const topPlayer = (playerNumber.current === -1) ? 0 : Math.abs(1-playerNumber.current);
+  const bottomPlayer = (playerNumber.current === -1) ? 1 : playerNumber.current;
   const BOARD = <GameBoard
+  playerNumber={playerNumber.current}
   playerNumber={playerNumber.current}
   isConnected={isConnected}
   playersCount={2}
@@ -329,13 +345,20 @@ export default function TestingWebsockets() {
       <div className="flex justify-between items-center w-full mb-1">
         <div className={`text-2xl font-mono ${(topPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
         {gamePlayers[topPlayer]?.username}
+        <div className={`text-2xl font-mono ${(topPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+        {gamePlayers[topPlayer]?.username}
         </div>
+        <div className={`font-mono ${(topPlayer === 0) ? 'text-red-600' : 'text-gray-600'}`}>
         <div className={`font-mono ${(topPlayer === 0) ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
             key={playerNumber.current}
             timerActive={timeStarted && currentPlayer===topPlayer} 
             playerNumber={topPlayer} 
+            key={playerNumber.current}
+            timerActive={timeStarted && currentPlayer===topPlayer} 
+            playerNumber={topPlayer} 
             getPlayers={gamePlayers} 
+            onTimeout={handlePossibleTimeOut}
             onTimeout={handlePossibleTimeOut}
           />
         </div>
@@ -344,13 +367,20 @@ export default function TestingWebsockets() {
       <div className="flex justify-between items-center w-full mt-1">
         <div className={`text-2xl font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
           {gamePlayers[bottomPlayer]?.username}
+        <div className={`text-2xl font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+          {gamePlayers[bottomPlayer]?.username}
         </div>
+        <div className={`font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
         <div className={`font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
             key={playerNumber.current}
             timerActive={timeStarted && currentPlayer===bottomPlayer} 
             playerNumber={bottomPlayer} 
+            key={playerNumber.current}
+            timerActive={timeStarted && currentPlayer===bottomPlayer} 
+            playerNumber={bottomPlayer} 
             getPlayers={gamePlayers} 
+            onTimeout={handlePossibleTimeOut}
             onTimeout={handlePossibleTimeOut}
           />
         </div>
@@ -366,6 +396,7 @@ export default function TestingWebsockets() {
       {showEndPopup && (
         <div className="absolute z-50">
           <EndPopup
+            playerNumber={playerNumber.current}
             playerNumber={playerNumber.current}
             result={resultRef.current}
             players={gamePlayers}
@@ -386,6 +417,9 @@ export default function TestingWebsockets() {
             <p className="text-blue-600">
               {playerNumber.current === -1 ? 'You are Spectating' : `You are Player ${playerNumber.current + 1}`}
             </p>
+            <p className="text-blue-600">
+              {playerNumber.current === -1 ? 'You are Spectating' : `You are Player ${playerNumber.current + 1}`}
+            </p>
             { BOARD_WITH_TIMERS }
           </div>
           <div className="w-1/3 flex flex-col items-center justify-center">
@@ -394,6 +428,7 @@ export default function TestingWebsockets() {
               <br/><br/><br/>
               <LiveChat 
                 key={chatUpdate}
+                pNum={playerNumber.current}
                 pNum={playerNumber.current}
                 pMessages={messageRef.current}
                 onSendMessage={handleSendMessage}

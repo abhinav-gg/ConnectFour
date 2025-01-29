@@ -32,7 +32,13 @@ app.head('/health', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+  res.status(200).json(
+    {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      mode: process.env.NODE_ENV
+    }
+  );
 });
 
 app.post('/api/openings', async (req, res) => {
@@ -67,27 +73,7 @@ type Data = {
   score: number;
 };
 
-app.post('/api/recaptcha', async (req, res) => {
-  try {
-    const secret = process.env.RECAPTCHA_SECRET_KEY;
-    const { token } = req.query;
-    if (!secret || !token) {
-      res.status(500).json({ success: false, score: -1 });
-    }
-    const query = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-    });
-    const apiResponse = await query.json();
-    res.status(200).json({ success: apiResponse?.success, score: apiResponse?.score });
-  } catch (error: any) {
-    console.log('Error is ', error);
-    res.status(500).json({ success: false, score: -1 });
-  }
-});
+
 
 app.get('/auth/discord', handleDiscordCallback, (req, res) => {
   const ureq = req as DiscordUserRequest;
