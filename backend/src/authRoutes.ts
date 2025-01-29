@@ -75,8 +75,8 @@ authRouter.post('/login', async (req: Request, res: any) => {
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
     });
-
-    return res.json({ status: 'Success', data: { sessionToken } });
+   
+    res.json({ status: 'Success' });
   } catch (error) {
     console.error('Failed to login:', error);
     return res.status(500).json({ error: 'Failed to login' });
@@ -100,7 +100,7 @@ authRouter.get('/anonymous', async (req: Request, res: Response) => {
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
     });
 
-    res.json({ status: 'Success', data: { sessionToken } });
+    res.json({ status: 'Success' });
   } catch (error) {
     console.error('Failed to login:', error);
     res.status(500).json({ error: 'Failed' });

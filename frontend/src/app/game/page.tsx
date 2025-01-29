@@ -122,9 +122,8 @@ export default function TestingWebsockets() {
     setRoomId(roomFromUrl);
 
     // Pass the token as a protocol
-    const token = localStorage.getItem('token')!
-    console.log('Connecting to:', backendUrl, token);
-    const newSocket = new WebSocket(backendUrl + "/in-game", [token]);
+    console.log('Connecting to:', backendUrl);
+    const newSocket = new WebSocket(backendUrl + "/in-game"); // ioc: check
     setSocket(newSocket);
     console.log("set socket", socket, newSocket);
     newSocket.onopen = () => {

@@ -72,8 +72,6 @@ function RegistrationPage(): React.ReactElement {
       }
 
       const data = await response.json();
-      // Store token if needed
-      localStorage.setItem('token', data.token);
       router.push('/login');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

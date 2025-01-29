@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,21 +19,12 @@ export default function UserDashboard() {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const token = localStorage.getItem('token'); // Retrieve the token
-
-      if (!token) {
-        // If no token, redirect to login
-        router.push('/login');
-        return;
-      }
-
-      try {
+            try {
         const response = await fetch(`${getConfig().backendUrl}/api/auth/profile`, {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
-          },
-        });
+          credentials: 'include',
+        },
+        );
 
         if (!response.ok) {
           throw new Error('Failed to fetch user profile');

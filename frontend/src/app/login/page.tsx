@@ -22,6 +22,7 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           username,
           password,
@@ -33,10 +34,8 @@ export default function Login() {
         throw new Error(data.message || 'Login failed')
       }
 
-      const data = await response.json()
-      // Store token if needed
-      console.log(data, data.data, data.token)
-      localStorage.setItem('token', data.data.sessionToken)
+      const data = await response.json();
+      
       router.push('/dashboard') // Redirect to dashboard or another page after login
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')

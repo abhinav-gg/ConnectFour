@@ -385,8 +385,18 @@ async function startStandardGame(room: Room, game: Game, time_control: TimeContr
 export const setupGameEvents = async (app: expressWs.Application) => {
   app.ws('/in-game', async (ws, req) => {
     console.log('Client connected');
-    const token = req.header('Sec-WebSocket-Protocol') as string;
+
+    // TODO
+    const token = req.cookies.sessionToken;
+
+    if (!token) {
+      console.log('No token');
+      ws.close();
+      return;
+    }
+
     const user = await getUserFromSession(token as string);
+
     if (!user.userId) {
       ws.close();
       return;

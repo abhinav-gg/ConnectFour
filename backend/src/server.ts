@@ -8,6 +8,7 @@ import gameRouter from '@/events/gameRoutes'; // Import the game routes
 import { setupGameEvents } from '@/events/gameEvents';
 import { authenticateAdmin, authenticateSession, handleDiscordCallback } from '@/lib/auth/middleware';
 import { DiscordUserRequest } from '@/types/types';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use(cors({
   origin: process.env.CLIENT_URL || "http://localhost:3000",
   credentials: true
 }));
+app.use(cookieParser());
 app.use(express.json());
 
 app.head('/health', (req, res) => {
