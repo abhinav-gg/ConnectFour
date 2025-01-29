@@ -107,6 +107,12 @@ export default function ICHack25() {
 
         <main className="flex-1 px-4 py-8">
           <div className="container mx-auto">
+            <div className="flex justify-between mb-6">
+              <img src="/duck.svg" alt="Duck" className="h-16 scale-x-[-1]" />
+              <img src="/Ichack25Logo.svg" alt="iHack 25 Logo" className="h-16" />
+              <Image src="/logo.png" alt="Logo" width={64} height={64} className="h-16" />
+            </div>
+
             <animated.h1
               style={titleAnimation}
               className="text-6xl font-bold text-center mb-4"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link'
-import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight, CalendarRange, Calendar } from 'lucide-react'
 import Image from 'next/image'
 
 export default function Dashboard() {
@@ -66,7 +66,12 @@ export default function Dashboard() {
               <PlayCircle className="mr-2" />
               Game
             </Link>
-            
+
+            <Link href="/events" className="flex items-center text-gray-600 hover:text-gray-800">
+              <Calendar className="mr-2" />
+              Events
+            </Link>
+
             <Link href="/analysis" className="flex items-center text-gray-600 hover:text-gray-800">
               <BarChart2 className="mr-2" />
               Analysis
