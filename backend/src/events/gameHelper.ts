@@ -4,13 +4,22 @@ import { Game, Move } from "@/models/Game";
 import { Glicko, TimeInfo } from "@/types/types";
 import { genRandomGameKey } from "@/utils/helper";
 import { validateTimeControl } from "@/utils/validation";
-import { AvgGameLength, StandardGameStates } from "@shared/constants";
-import { GameInfo, GameMode, GMStats, TimeControl } from "@shared/Models/gameInfo";
-import { boolean } from "zod";
+import { AvgGameLength, StandardGameStates, StandardStartingElo, StandardStartingRatingDeviation } from "@shared/constants";
+import { GameInfo, GameMode, TimeControl } from "@shared/Models/gameInfo";
 import { adjustRD, calculateGlickoRatings } from "./matchmaking";
 
 export async function quitGameSearch(userId: string) {
     try {
+        const gameId = await dbOperations.GetGameByPlayerLookup(userId);
+        if (!gameId) {
+            throw new Error('Game not found');
+        }
+        const game = await dbOperations.GetGameByID(gameId);
+        if (game.state === StandardGameStates.ongoing) {
+            throw new Error('Game is ongoing');
+        } else if (game.state === StandardGameStates.scheduled) {
+            await dbOperations.UnassignGame(gameId, userId);
+        }
         await dbOperations.FinishedGameLookup(userId);
     }
     catch (error) {
@@ -133,9 +142,33 @@ export function CategoriseTime(timeControl: TimeControl): string {
     }
 }
 
+export async function safeGetElo(userId: string, gamemodeId: string): Promise<Glicko> {
+    let playerElo: Glicko;
+    try {
+        playerElo = await dbOperations.GetPlayerStats(userId, gamemodeId)
+    } catch (error) {
+        if (error instanceof PlayerEloNotFound) {
+            await dbOperations.SafeCreateElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
+            playerElo = { 
+                elo: StandardStartingElo, 
+                rating_deviation: StandardStartingRatingDeviation , 
+                updated_at: Date.now() } as Glicko;
+        } else {
+            throw error;
+        }
+    }
+    return playerElo;
+}
+
 export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol: TimeControl, hasDisadvantage: boolean) {
     
     if (moves.length === 0) {
+        const time = timecontrol.base_time * 60000 + (hasDisadvantage ? timecontrol.disadvantage * 1000 : 0);
+        return {
+            timeTaken: 0, 
+            allowedTime: time, 
+            timeLeft: time, 
+            delta: 0} as TimeInfo;
         const time = timecontrol.base_time * 60000 + (hasDisadvantage ? timecontrol.disadvantage * 1000 : 0);
         return {
             timeTaken: 0, 
@@ -158,7 +191,7 @@ export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol
     const lastMoveMadeTime = moves[moves.length - 1].played_at * 1000; // db stores in seconds
     const currentTime = new Date().getTime(); // debug this
     const delta = currentTime - lastMoveMadeTime;
-    const timeLeft = allowedTime - timeTaken - delta + timecontrol.increment * 1000;
+    const timeLeft = allowedTime - timeTaken - delta;
     return {timeTaken, allowedTime, timeLeft, delta} as TimeInfo;
 }
 
@@ -178,28 +211,28 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
         switch (gamemode.name.split('-')[0]) {
             case 'standard':
-                const p1Stats = await dbOperations.GetPlayerStats(gamePlayers[0], gamemodeid) as Glicko;
-                const p2Stats = await dbOperations.GetPlayerStats(gamePlayers[1], gamemodeid) as Glicko;
+                const p1Stats = await safeGetElo(gamePlayers[0], gamemodeid) as Glicko;
+                const p2Stats = await safeGetElo(gamePlayers[1], gamemodeid) as Glicko;
                 const p1Changes = calculateGlickoRatings(p1Stats, p2Stats);
                 const p2Changes = calculateGlickoRatings(p2Stats, p1Stats);
                 const p1rd = adjustRD(p1Stats);
                 const p2rd = adjustRD(p2Stats);
                 dbOperations.UpdateRD(gamePlayers[0], gamemodeid, p1rd);
                 dbOperations.UpdateRD(gamePlayers[1], gamemodeid, p2rd);
-                let p1New, p2New;
+                let p1Delta, p2Delta;
                 if (draw) {
-                    p1New = p1Stats.elo + p1Changes.draw;
-                    p2New = p2Stats.elo + p2Changes.draw;
+                    p1Delta = p1Changes.draw;
+                    p2Delta = p2Changes.draw;
                 } else if (winner === 0) {
-                    p1New = p1Stats.elo + p1Changes.win;
-                    p2New = p2Stats.elo + p2Changes.loss;
+                    p1Delta = p1Changes.win;
+                    p2Delta = p2Changes.loss;
                 } else {
-                    p1New = p1Stats.elo + p1Changes.loss;
-                    p2New = p2Stats.elo + p2Changes.win;
+                    p1Delta = p1Changes.loss;
+                    p2Delta = p2Changes.win;
                 }
 
-                dbOperations.UpdateElo(gamePlayers[0], gamemodeid, p1New);
-                dbOperations.UpdateElo(gamePlayers[1], gamemodeid, p2New);
+                dbOperations.UpdateElo(gamePlayers[0], gamemodeid, p1Delta);
+                dbOperations.UpdateElo(gamePlayers[1], gamemodeid, p2Delta);
                 break;                
         }
         gamePlayers.forEach(async (player) => {
@@ -211,3 +244,4 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         throw error;
     }
 }
+

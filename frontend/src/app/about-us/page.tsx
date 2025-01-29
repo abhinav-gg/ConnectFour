@@ -68,33 +68,32 @@ export default function AboutUs() {
               </div>
             </div>
 
-            <div className='flex flex-row flex-wrap gap-2 items-center w-full sm:w-5/6'>
-              <Image src={ivan.src} alt="Ivan" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
-              <div>
-                <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Full Stack Developer • Cybersecurity Consultant</span></h3>
-                <p>
-                  Hi, I'm Ivan, a computer engineering student at Birmingham. I've been programming for nearly a decade, dabbling in everything from encrypted messaging to legal research, and I'm always working on one of my many projects! When I'm not coding, you can find me cycling, experimenting with recipes, or trying to photograph owls (with mixed success). I'm thrilled to bring this game to IC Hack and hope you'll enjoy playing and analysing matches as much as we enjoyed creating it.
-                </p>
-              </div>
+          <div className='flex flex-row flex-wrap gap-2 items-center'>
+            <Image src={ivan.src} alt="Ivan" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
+            <div>
+              <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Full Stack Developer • Cyber-security Consultant</span></h3>
+              <p>
+                Hi, I'm Ivan, a computer engineering student at Birmingham. I've been programming for nearly a decade, dabbling in everything from encrypted messaging to legal research, and I'm always working on one of my many projects! When I'm not coding, you can find me cycling, experimenting with recipes, or trying to photograph owls (with mixed success). I'm thrilled to bring this game to IC Hack and hope you'll enjoy playing and analysing matches as much as we enjoyed creating it.
+              </p>
             </div>
+          </div>
 
-            <div className='flex flex-row flex-wrap gap-2 items-center w-full sm:w-5/6'>
-              <Image src={avery.src} alt="Avery" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
-              <div>
-                <h3 className="text-xl font-medium">Avery <span className='text-gray-400 font-normal'>• Frontend Developer</span></h3>
-                <p>
-                  My name is Avery and I'm currently studying computing and IT at Open University. I was brought onto this project further into its life to help with the art and page design. I have been coding for a long time now and have gone through a fair few personal projects. Outside of coding, I quite like reading and gaming. I'm excited to be a part of this project and I hope you enjoy playing it as much as we enjoyed making it.
-                </p>
-              </div>
+          <div className='flex flex-row flex-wrap gap-2 items-center'>
+            <Image src={avery.src} alt="Avery" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
+            <div>
+              <h3 className="text-xl font-medium">Avery <span className='text-gray-400 font-normal'>• Frontend Developer</span></h3>
+              <p>
+                My name is Avery and I'm currently studying computing and IT at Open University. I was brought onto this project further into its life to help with the art and page design. I have been coding for a long time now and have gone through a fair few personal projects. Outside of coding, I quite like reading and gaming. I'm excited to be a part of this project and I hope you enjoy playing it as much as we enjoyed making it.
+              </p>
             </div>
           </div>
-          <div className="text-center">
-            <Link href="/" className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">
-              Back to Home
-            </Link>
-          </div>
-          <br /><br /><br />
         </div>
+        <div className="text-center">
+          <Link href="/" className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">
+            Back to Home
+          </Link>
+        </div>
+        <br /><br /><br />
       </div>
     </div>
   );

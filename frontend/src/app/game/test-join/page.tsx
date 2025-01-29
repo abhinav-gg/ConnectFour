@@ -1,17 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import { TimeControl, GameMode, GameInfo, SendToRoom } from '@shared/Models/gameInfo';
 import { StandardTimecontrols } from '@shared/constants';
 import AuthPage from '@/components/checkAuth';
+import { JoinGame } from '@shared/Types/websocketData';
 
 const TestJoinPage = () => {
   const [selectedTimeControl, setSelectedTimeControl] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gameType, setGameType] = useState<'standard' | 'friendly' | 'computer' | null>(null);
+  const socket = useRef<WebSocket>();
   const URL = getConfig().backendUrl;
 
   const requestGame = async () => {
@@ -51,8 +53,19 @@ const TestJoinPage = () => {
     });
     if (!response.ok) {
       const data = await response.json();
-      console.error('Failed to request game');
-      setMessage(data.message)
+      console.log('Failed to request game');
+      setMessage(data.error)
+      const backendUrl = getConfig().websocketUrl;
+      const token = localStorage.getItem('token')!;
+      const newSocket = new WebSocket(backendUrl + "/finding-game", [token]);
+      
+      socket.current = newSocket;
+      console.log("set socket", socket, newSocket);
+      newSocket.onopen = () => {
+        console.log('WebSocket connected!');
+
+      };
+
       return;
     }
     else {

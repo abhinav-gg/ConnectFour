@@ -3,7 +3,9 @@ import { GamePlayer } from '@shared/Models/gameInfo';
 
 
 export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout }: { timerActive: boolean; playerNumber: number, getPlayers: GamePlayer[], onTimeout: () => void }) {
+export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout }: { timerActive: boolean; playerNumber: number, getPlayers: GamePlayer[], onTimeout: () => void }) {
     const [displayTime, setDisplayTime] = useState(0);
+    const [startTime, setStartTime] = useState<number | null>(null);
     const [startTime, setStartTime] = useState<number | null>(null);
 
     // Effect to handle player time updates
@@ -21,12 +23,17 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
             if (!startTime){
                 setStartTime(Date.now());
             }
+            const setupTime = getPlayers[playerNumber].time;
+            if (!startTime){
+                setStartTime(Date.now());
+            }
             interval = setInterval(() => {
                 const elapsedTime = Math.floor((Date.now() - startTime!));
                 const newTime = setupTime - elapsedTime;
-                //console.log(timerActive, playerNumber, getPlayers, displayTime, startTime, setupTime, elapsedTime, newTime);
                 setDisplayTime(_ => newTime);
                 if (newTime <= 0) {
+                    // wait half a second before calling onTimeout
+                    setTimeout(() => onTimeout(), 350);
                     clearInterval(interval);
                 }
             }, 35);
@@ -39,6 +46,7 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
                 clearInterval(interval);
             }
         };
+    }, [timerActive, getPlayers, displayTime, startTime, playerNumber]);
     }, [timerActive, getPlayers, displayTime, startTime, playerNumber]);
 
     const formatTime = (ms: number) => {
