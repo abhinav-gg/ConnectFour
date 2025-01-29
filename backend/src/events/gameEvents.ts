@@ -8,8 +8,8 @@ import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade,
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
-import { EloChange, GameMode, PlayerData, TimeControl } from "@shared/Models/gameInfo";
-import { StandardGameStates } from "@shared/constants";
+import { EloChange, GameMode, PlayerData, SendToRoom, TimeControl } from "@shared/Models/gameInfo";
+import { StandardGameStates, StandardReconnectionTime } from "@shared/constants";
 import { GameState } from "@shared/utils/game";
 import { abortGame, assignGame, calculateTimesByMoves, endGame } from "./gameHelper";
 import { replaceProfanities } from 'no-profanity';
@@ -23,7 +23,6 @@ const state : RoomMap = {
 type UserCachedSocket = {
   userID: string;
   username: string | null; // cached for speed
-  disconnectedAt?: number; // TODO: implement later
   socket: WSocket;
 }
 
@@ -263,6 +262,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   
   // Verify the time left here and calculate the time delta
   const moves = await dbOperations.GetMovesByShortCode(roomId);
+  const turn = moves.length + 1;
   room.currentTurn = room.currentTurn === 0 ? 1 : 0;
   
   if (moves.length == 0) {
@@ -276,13 +276,14 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
     } as verificationData;
   }
   
-  const { timeTaken, allowedTime, timeLeft, delta } = calculateTimesByMoves(moves, userId, timecontrol, 
+  let { timeTaken, allowedTime, timeLeft, delta } = calculateTimesByMoves(moves, userId, timecontrol, 
     room.currentTurn === 0);
+  timeLeft += timecontrol.increment * 1000;
   if (timeTaken > allowedTime){
     return {
       delta: delta,
       timeLeft: 0,
-      turn: -1,
+      turn: turn,
       nextPlayer: room.currentTurn,
       draw: false,
       winner: room.currentTurn
@@ -303,7 +304,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
       return {
         delta: delta,
         timeLeft: timeLeft,
-        turn: moves.length + 1,
+        turn: turn,
         nextPlayer: room.currentTurn,
         draw: true,
         winner: null
@@ -312,7 +313,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
     return {
       delta: delta,
       timeLeft: timeLeft,
-      turn: moves.length + 1,
+      turn: turn,
       nextPlayer: room.currentTurn,
       draw: false,
       winner: room.currentTurn ? 0 : 1
@@ -322,7 +323,7 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
     return {
       delta: delta,
       timeLeft: timeLeft,
-      turn: moves.length + 1,
+      turn: turn,
       nextPlayer: room.currentTurn,
       draw: false,
       winner: null
@@ -523,8 +524,12 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                     if (gameLookup !== game.id) {
                       console.log("Found game by player:", userId, gameLookup);
                       const theirGame = await dbOperations.GetGameByID(gameLookup);
-                      ws.send(JSON.stringify({ event: 'error', data: { message: 'Invalid game lookup', redirect: `/game?room=${theirGame.short_id}` } } as Error));
-                      return;
+                      if (theirGame.state === StandardGameStates.ongoing) {
+                        ws.send(JSON.stringify({ event: 'sendToRoom', data: { roomId: theirGame.short_id } } as SendToRoom));
+                        return;
+                      } else {
+                        await dbOperations.FinishedGameLookup(userId);
+                      }
                     }
                   }
                   else {
@@ -630,10 +635,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             } 
             
             if (verification.timeLeft === 0) { 
-              sendToRoom(roomId, {
-                event: "playerTimeout",
-                data: { }
-              } as PlayerTimeout);
               handleGameEnd(roomId, false, `Player ${verification.nextPlayer + 1} timed out`, verification.winner!);
             }
 
@@ -694,24 +695,51 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const roomId = data.data.roomId;
             const room = getRoom(roomId);
             const user = getUser(ws)?.userID
-            if (!getRoomOfPlayer(user)) throw new Error('User is not in the room to timeout');
+            if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
 
             const timecontrol = getTimeControl(roomId)!;
             const moves = await dbOperations.GetMovesByShortCode(roomId);
+            const player = room!.players[room!.currentTurn];
+            const index = room!.currentTurn;
 
-            room!.players.forEach((player, index) => {
-
-              // Check if the player really did timeout
-              const { timeTaken, allowedTime } = calculateTimesByMoves(moves, player, timecontrol, room!.currentTurn === 1);
-              
+            const { timeLeft, allowedTime, timeTaken } = calculateTimesByMoves(moves, player, timecontrol, index===1);
+            if (timeLeft <= 0) {
               const timeOutName = getUsernameByID(room!.players[index]);
-              
-              if (timeTaken > allowedTime) {
-                handleGameEnd(roomId, false, `${timeOutName} timed out`, index);
-              }
+              handleGameEnd(roomId, false, `${timeOutName} timed out`, index);
               return;
-            });
+            }
 
+            break;
+          }
+          case 'opponentAbandoned': {
+            // Check time since they left
+            const roomId = data.data.roomId;
+            const user = getUser(ws)?.userID
+            if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
+            const room = getRoom(roomId)!;
+            const gamemode = getGameMode(roomId)!;
+
+            const findDisconnectedPlayers = room.players.filter(p => !getSocket(p));
+
+            const timeSince = Date.now() - room.lastDisconnect!;
+            if (timeSince < StandardReconnectionTime) {
+              sendToRoom(roomId,
+                { 
+                  event: 'error', 
+                  data: { message: 'Opponent has time to reconnect' } 
+                } as Error);
+              return;
+            }
+
+            switch (gamemode.name.split('-')[0]) {
+              case 'friendly':
+              case 'standard': {
+                if (findDisconnectedPlayers.length === 1) {
+                  handleGameEnd(roomId, false, 'Opponent abandoned', room.players.indexOf(findDisconnectedPlayers[0]));
+                }
+                break;
+              }
+            }
             break;
           }
           //case 'offerDraw': { } // TODO: handle timeouts
@@ -749,6 +777,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
       }
 
       const room = getRoom(roomId!)!;
+
+      room.lastDisconnect = Date.now();
 
       if (room.spectators.includes(userId as UUID)) {
         // simply drop the spectator and continue

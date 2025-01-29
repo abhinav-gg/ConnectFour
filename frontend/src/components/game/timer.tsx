@@ -24,9 +24,10 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
             interval = setInterval(() => {
                 const elapsedTime = Math.floor((Date.now() - startTime!));
                 const newTime = setupTime - elapsedTime;
-                //console.log(timerActive, playerNumber, getPlayers, displayTime, startTime, setupTime, elapsedTime, newTime);
                 setDisplayTime(_ => newTime);
                 if (newTime <= 0) {
+                    // wait half a second before calling onTimeout
+                    setTimeout(() => onTimeout(), 350);
                     clearInterval(interval);
                 }
             }, 35);

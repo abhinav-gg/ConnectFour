@@ -13,8 +13,8 @@ const gameRouter = Router();
 // Create Game Route
 gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
     // Extract the user ID from the request
-    let gamemode : GameMode;
-    let time_control : TimeControl;
+    let gamemode: GameMode;
+    let time_control: TimeControl;
     let userId
     const user = (req as any).user;
     console.log(req.body)
@@ -52,20 +52,22 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
 
     // Check if the user is already in the game lookup
     const gameId = await dbOperations.GetGameByPlayerLookup(userId);
-
+    console.log('Game ID:', gameId);
     if (gameId) {
         // First check if the game is still active
         try {
             const game = await dbOperations.GetGameByID(gameId);
 
             if (game.state === globals.StandardGameStates.ongoing) {
-                res.status(200).json({ message: 'Game is still active', roomId: game.short_id });
+                res.status(200).json({ event: 'sendToRoom', 
+                    data: { roomId: game.short_id }
+            } as SendToRoom);
                 return;
             }
             else if (game.state === globals.StandardGameStates.scheduled) {
                 // User is changing the game they are looking for
                 // Remove the user from the lookup and prepare for new game
-                console.log('Quitting game search');
+                console.log('Quitting game search', game);
                 await quitGameSearch(userId);
             }
             else {
@@ -80,7 +82,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
 
 
     const GMM = gamemode.name;
-    
+
     // TODO: Use gameMode.event and gameMode.name to determine the game mode id from database
     //       Not for exotic gamemodes or events - require database entry
 
@@ -108,8 +110,10 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                     return; // link to frontend waiting room
                 }
 
-                res.status(200).json({ event: "sendToRoom",
-                    data: { roomId } } as SendToRoom);
+                res.status(200).json({
+                    event: "sendToRoom",
+                    data: { roomId }
+                } as SendToRoom);
             }
             catch (error) {
                 console.log('Failed to find competitive match:', error);
@@ -117,7 +121,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
             }
 
             break;
-        
+
         case 'friendly':
 
             try {
@@ -129,8 +133,10 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                 await dbOperations.BeginFindingGame(userId, game.game_info, game.id);
 
                 // tell user to redirect to the game at the shortcode 
-                res.status(200).json({ event: "sendToRoom",
-                    data: { roomId: game.short_id } } as SendToRoom);
+                res.status(200).json({
+                    event: "sendToRoom",
+                    data: { roomId: game.short_id }
+                } as SendToRoom);
             }
             catch (error) {
                 console.log('Failed to create game:', error);
@@ -164,8 +170,10 @@ gameRouter.post('/review', async (req: Request, res: Response) => {
         const game = await dbOperations.GetGameByShortCode(roomId);
         if (game.state === globals.StandardGameStates.ongoing
             || game.state === globals.StandardGameStates.scheduled) {
-            res.status(200).json({ event: "sendToRoom",
-                data: { roomId } } as SendToRoom);
+            res.status(200).json({
+                event: "sendToRoom",
+                data: { roomId }
+            } as SendToRoom);
             return;
         }
     }
@@ -175,11 +183,12 @@ gameRouter.post('/review', async (req: Request, res: Response) => {
     }
     const moves = await dbOperations.GetMovesByShortCode(roomId);
 
-    // extract col from moves for now
+    const moveList = moves.map((move) => { move.col });
 
-
-    res.status(200).json({ event: "sendToRoom",
-        data: { roomId, moves } } as SendToRoom); // change as needed to return the moves
+    res.status(200).json({
+        event: "something",
+        data: { roomId, moves: moveList }
+    }); // change as needed to return the moves
 });
 
 
@@ -201,14 +210,16 @@ gameRouter.post('/status', authenticateJWT, async (req: Request, res: Response) 
             const game = await dbOperations.GetGameByID(gameId);
             if (game.state === globals.StandardGameStates.ongoing) {
                 // return an error with the shortcode of the ongoing game to redirect to
-                res.status(200).json({ event: "sendToRoom",
-                    data: { roomId: game.short_id } } as SendToRoom);
+                res.status(200).json({
+                    event: "sendToRoom",
+                    data: { roomId: game.short_id }
+                } as SendToRoom);
                 return;
             } else if (game.state === globals.StandardGameStates.scheduled) {
                 // User is changing the game they are looking for
                 // Remove the user from the lookup and prepare for new game
                 await quitGameSearch(userId);
-                
+
             } else {
                 throw new Error('GameLookup is not in a state');
             }
@@ -239,7 +250,7 @@ gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response)
     }
 
     const elo = await dbOperations.GetPlayerStats(userId, gamemodeId);
-    
+
 });
 
 export default gameRouter;

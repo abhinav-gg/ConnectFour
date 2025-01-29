@@ -11,6 +11,16 @@ import { adjustRD, calculateGlickoRatings } from "./matchmaking";
 
 export async function quitGameSearch(userId: string) {
     try {
+        const gameId = await dbOperations.GetGameByPlayerLookup(userId);
+        if (!gameId) {
+            throw new Error('Game not found');
+        }
+        const game = await dbOperations.GetGameByID(gameId);
+        if (game.state === StandardGameStates.ongoing) {
+            throw new Error('Game is ongoing');
+        } else if (game.state === StandardGameStates.scheduled) {
+            await dbOperations.UnassignGame(gameId, userId);
+        }
         await dbOperations.FinishedGameLookup(userId);
     }
     catch (error) {
@@ -158,7 +168,7 @@ export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol
     const lastMoveMadeTime = moves[moves.length - 1].played_at * 1000; // db stores in seconds
     const currentTime = new Date().getTime(); // debug this
     const delta = currentTime - lastMoveMadeTime;
-    const timeLeft = allowedTime - timeTaken - delta + timecontrol.increment * 1000;
+    const timeLeft = allowedTime - timeTaken - delta;
     return {timeTaken, allowedTime, timeLeft, delta} as TimeInfo;
 }
 
@@ -211,3 +221,4 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         throw error;
     }
 }
+

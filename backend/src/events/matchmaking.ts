@@ -1,23 +1,22 @@
-import { GameMode, TimeControl } from '@shared/Models/gameInfo';
+import { EloChange, GameMode, TimeControl } from '@shared/Models/gameInfo';
 import { dbOperations } from '@/db/operations';
 import { assignGame, createGame } from './gameHelper';
-import { EloChange } from '@shared/Models/gameInfo';
 import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/constants';
 import { Glicko } from '@/types/types';
+import type expressWs from "express-ws";
+import type { WebSocket as WSocket } from "ws";
+import { verifyAccessToken } from '@/lib/auth';
+import type { SendToRoom } from '@shared/Models/gameInfo';
+
 // file to control all elements of user matchmaking and game creation
-
-
 
 
 // TODO: figure out what GameOperations is and why it keeps trying to be used for this function
 // FindCompetitiveMatch takes the userID and timeControlId and returns a match or null if they need to wait
 export async function FindCompetitiveMatch(userId: string, time_control: TimeControl, gamemode: GameMode): Promise<string | null> {
-    
-    try {
-        // get current time in seconds and calculate time since last played as priority
-        
-        // Can safely assume the player is not in a game (checked before call)
 
+    // Can safely assume the player is not in a game (checked before call)
+    try {
         // Add player to matchmaking queue
         const gamemodeId = await dbOperations.GetGameModeID(gamemode);
         const timeControlId = await dbOperations.GetExactTimeControl(time_control);
@@ -25,15 +24,17 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
         const playerElo = await dbOperations.GetPlayerStats(userId, gamemodeId);
 
         await dbOperations.SetPlayerElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
-        
+
         // Look for potential opponents with same time control and closest rating
         // Orders by absolute difference from ideal rating gap (50)
         const potentialMatch = await dbOperations.QueryMatckmaking(userId, gamemodeId);
         console.log('Potential Matches:', potentialMatch);
+
+        // get current time in seconds and calculate time since last played as priority
         const priority = await dbOperations.GetTimeSinceLastGameLookup(userId);
 
         await dbOperations.BeginFindingGame(userId, game_info);
-        
+
         // If we found a match
         if (potentialMatch) {
 
@@ -77,11 +78,9 @@ export const adjustRD = (player: Glicko): number => {
 
 // Calculate new ratings for both players based on Glicko system
 export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
-    const q = Math.log(10) / 400;  // System constant
-    
-    // Adjust RD based on time since last played (increases uncertainty)
-    
+    const q = Math.log(10) / 400; // System constant (what)
 
+    // Adjust RD based on time since last played (increases uncertainty)
     const p1RD = adjustRD(me);
     const p2RD = adjustRD(them);
 
@@ -100,124 +99,57 @@ export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
     // Calculate new ratings for all scenarios and round to 2 decimal places
     // For draws, use 0.5 as the score (halfway between 0 and 1)
     const ratingChanges: EloChange = {
-        win : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
-        loss : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
-        draw : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
+        win: Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
+        loss: Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
+        draw: Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
     };
     return ratingChanges;
 }
-// import expressWs from "express-ws";
-// import { verifyAccessToken } from "@/lib/auth";
+
+// Create a websocket connection for the waiting room
+// Store the user id and the websocket connection
+// Be prepared to send the user to a room when they are matched
+// Also allow for waiting when the game is finished for a rematch or new game
+
+export const SendUserToRoom = (userId: string, roomId: string) => {
+
+    if (!userMap.has(userId)) {
+        console.error('User not found in map');
+        return;
+    }
+
+    const ws = userMap.get(userId)!;
+    ws.send(JSON.stringify(
+        {
+            event: 'sendToRoom',
+            data: { roomId }
+        } as SendToRoom
+    ));
+}
+
+// make a room map from id to ws
+const userMap = new Map<string, WSocket>();
+
+export function setupWaitingRoom(app: expressWs.Application) {
+    app.ws('/waiting', (ws, req) => {
+
+        const token = req.header('Sec-WebSocket-Protocol') as string;
+        const user = verifyAccessToken(token as string);
+        if (!user) {
+            ws.close();
+            return;
+        } else {
+            // this userId -> user.userId;
+            // add to map to ws
+            userMap.set(user.userId, ws);
+        }
+
+        ws.on('message', (msg) => { }); // no messages expected
 
 
-// // Create a new websocket server for when the player is waiting for the game to start or for a rematch
-// // This will be a separate websocket server to the in-game server
-// export const setupWaitingEvents = async (app: expressWs.Application) => {
-//     app.ws('/waiting', (ws, req) => {
-//       console.log('Client connected to waiting room');
-//       const token = req.header('Sec-WebSocket-Protocol') as string;
-//       const user = verifyAccessToken(token as string);
-//       if (!user) {
-//         ws.close();
-//         return;
-//       }
-  
-//       // Handle incoming messages
-//       ws.on('message', async (message) => {
-//         try {
-//           console.log('Received message in waiting room:', message);
-//           const data = JSON.parse(message.toString());
-//           console.log('Parsed message:', data);
-  
-//           switch (data.event) {
-//             case 'joinWaitingRoom': {
-//               // Logic for joining the waiting room
-//               const userId = user.userId;
-//               addSocket(userId, ws);
-//               ws.send(JSON.stringify({ event: 'waiting', data: { message: 'You are now in the waiting room.' } }));
-//               break;
-//             }
-  
-//             case 'offerRematch': {
-//               const { roomId } = data.data;
-//               const room = getRoom(roomId);
-//               if (!room) {
-//                 ws.send(JSON.stringify({ event: 'error', data: { message: 'Room does not exist.' } }));
-//                 return;
-//               }
-  
-//               // Notify the other player about the rematch offer
-//               sendToRoom(roomId, {
-//                 event: 'rematchOffered',
-//                 data: { playerId: user.userId }
-//               });
-//               break;
-//             }
-  
-//             case 'acceptRematch': {
-//               const { roomId } = data.data;
-//               const room = getRoom(roomId);
-//               if (!room) {
-//                 ws.send(JSON.stringify({ event: 'error', data: { message: 'Room does not exist.' } }));
-//                 return;
-//               }
-  
-//               // Notify both players that the rematch is accepted
-//               sendToRoom(roomId, {
-//                 event: 'rematchAccepted',
-//                 data: { message: 'Both players accepted the rematch.' }
-//               });
-  
-//               // Logic to reset the game state for a new game
-//               // This could involve resetting the room state, players, etc.
-//               resetRoomForRematch(roomId);
-//               break;
-//             }
-  
-//             case 'rejectRematch': {
-//               const { roomId } = data.data;
-//               const room = getRoom(roomId);
-//               if (!room) {
-//                 ws.send(JSON.stringify({ event: 'error', data: { message: 'Room does not exist.' } }));
-//                 return;
-//               }
-  
-//               // Notify both players that the rematch is rejected
-//               sendToRoom(roomId, {
-//                 event: 'rematchRejected',
-//                 data: { message: 'One player rejected the rematch.' }
-//               });
-  
-//               // Logic to handle the rejection, e.g., dropping the room or returning to waiting state
-//               dropRoom(roomId);
-//               break;
-//             }
-  
-//             default:
-//               console.log('Unknown event in waiting room:', JSON.stringify(data));
-//               break;
-//           }
-//         } catch (error) {
-//           console.error('Error handling message in waiting room:', error);
-//           ws.send(JSON.stringify({ event: 'error', data: { message: 'Error processing your request.' } }));
-//         }
-//       });
-  
-//       ws.on('close', () => {
-//         const userId = user.userId;
-//         console.log('Client disconnected from waiting room:', userId);
-//         removeSocket(userId);
-//       });
-//     });
-//   };
-  
-//   // Helper function to reset the room for a rematch
-//   function resetRoomForRematch(roomId: string) {
-//     const room = getRoom(roomId);
-//     if (room) {
-//       // Reset the game state, players, etc.
-//       room.players = []; // Clear players for a new game
-//       // Additional logic to reset game state can be added here
-//     }
-//   }
-    
+        ws.on('close', () => {
+            // remove from map
+            userMap.delete(user.userId);
+        });
+    });
+}
