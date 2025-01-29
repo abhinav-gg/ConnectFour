@@ -4,9 +4,8 @@ import { Game, Move } from "@/models/Game";
 import { Glicko, TimeInfo } from "@/types/types";
 import { genRandomGameKey } from "@/utils/helper";
 import { validateTimeControl } from "@/utils/validation";
-import { AvgGameLength, StandardGameStates } from "@shared/constants";
-import { GameInfo, GameMode, GMStats, TimeControl } from "@shared/Models/gameInfo";
-import { boolean } from "zod";
+import { AvgGameLength, StandardGameStates, StandardStartingElo, StandardStartingRatingDeviation } from "@shared/constants";
+import { GameInfo, GameMode, TimeControl } from "@shared/Models/gameInfo";
 import { adjustRD, calculateGlickoRatings } from "./matchmaking";
 
 export async function quitGameSearch(userId: string) {
@@ -143,6 +142,24 @@ export function CategoriseTime(timeControl: TimeControl): string {
     }
 }
 
+export async function safeGetElo(userId: string, gamemodeId: string): Promise<Glicko> {
+    let playerElo: Glicko;
+    try {
+        playerElo = await dbOperations.GetPlayerStats(userId, gamemodeId)
+    } catch (error) {
+        if (error instanceof PlayerEloNotFound) {
+            await dbOperations.SafeCreateElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
+            playerElo = { 
+                elo: StandardStartingElo, 
+                rating_deviation: StandardStartingRatingDeviation , 
+                updated_at: Date.now() } as Glicko;
+        } else {
+            throw error;
+        }
+    }
+    return playerElo;
+}
+
 export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol: TimeControl, hasDisadvantage: boolean) {
     
     if (moves.length === 0) {
@@ -188,8 +205,8 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
         switch (gamemode.name.split('-')[0]) {
             case 'standard':
-                const p1Stats = await dbOperations.GetPlayerStats(gamePlayers[0], gamemodeid) as Glicko;
-                const p2Stats = await dbOperations.GetPlayerStats(gamePlayers[1], gamemodeid) as Glicko;
+                const p1Stats = await safeGetElo(gamePlayers[0], gamemodeid) as Glicko;
+                const p2Stats = await safeGetElo(gamePlayers[1], gamemodeid) as Glicko;
                 const p1Changes = calculateGlickoRatings(p1Stats, p2Stats);
                 const p2Changes = calculateGlickoRatings(p2Stats, p1Stats);
                 const p1rd = adjustRD(p1Stats);

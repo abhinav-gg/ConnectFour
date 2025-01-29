@@ -127,8 +127,9 @@ CREATE TABLE IF NOT EXISTS con4_schema.Elo (
   player UUID NOT NULL REFERENCES con4_schema.users(id),
   mode UUID NOT NULL REFERENCES con4_schema.GameModes(id),
   elo FLOAT NOT NULL CHECK (elo > 0), -- no default as it varies
-  rating_deviation FLOAT NOT NULL
-  updated_at TIMESTAMP DEFAULT now() NOT NULL -- used for analytics
+  rating_deviation FLOAT NOT NULL CHECK (0 <= rating_deviation AND rating_deviation <= 350),
+  updated_at TIMESTAMP DEFAULT now() NOT NULL, -- used for analytics
+  UNIQUE (player, mode)
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.GameInfo (

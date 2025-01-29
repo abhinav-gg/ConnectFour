@@ -1,12 +1,13 @@
 import { EloChange, GameMode, TimeControl } from '@shared/Models/gameInfo';
 import { dbOperations } from '@/db/operations';
-import { assignGame, createGame } from './gameHelper';
+import { assignGame, createGame, safeGetElo } from './gameHelper';
 import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/constants';
 import { Glicko } from '@/types/types';
 import type expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
 import { verifyAccessToken } from '@/lib/auth';
 import type { SendToRoom } from '@shared/Models/gameInfo';
+import { PlayerEloNotFound } from '@/db/dbErrors';
 
 // file to control all elements of user matchmaking and game creation
 
@@ -21,23 +22,20 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
         const gamemodeId = await dbOperations.GetGameModeID(gamemode);
         const timeControlId = await dbOperations.GetExactTimeControl(time_control);
         const game_info = await dbOperations.GetGameInfoID(gamemodeId, timeControlId);
-        const playerElo = await dbOperations.GetPlayerStats(userId, gamemodeId);
-
-        await dbOperations.SetPlayerElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
+        const playerElo = await safeGetElo(userId, gamemodeId);
 
         // Look for potential opponents with same time control and closest rating
         // Orders by absolute difference from ideal rating gap (50)
-        const potentialMatch = await dbOperations.QueryMatckmaking(userId, gamemodeId);
+        const potentialMatch = await dbOperations.QueryMatckmaking(userId, game_info);
         console.log('Potential Matches:', potentialMatch);
 
-        // get current time in seconds and calculate time since last played as priority
-        const priority = await dbOperations.GetTimeSinceLastGameLookup(userId);
-
         await dbOperations.BeginFindingGame(userId, game_info);
-
+        
         // If we found a match
         if (potentialMatch) {
-
+            
+            // get current time in seconds and calculate time since last played as priority
+            const priority = await dbOperations.GetTimeSinceLastGameLookup(userId);
             console.log('Best Opponent:', potentialMatch, 'Priority:', priority);
 
             // Check time current player has been in queue

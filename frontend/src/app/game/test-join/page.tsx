@@ -52,7 +52,7 @@ const TestJoinPage = () => {
     if (!response.ok) {
       const data = await response.json();
       console.error('Failed to request game');
-      setMessage(data.message)
+      setMessage(data.error)
       return;
     }
     else {

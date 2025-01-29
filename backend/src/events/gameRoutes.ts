@@ -4,7 +4,7 @@ import { dbOperations } from '@/db/operations';
 import { GameMode, SendToRoom, TimeControl } from '@shared/Models/gameInfo';
 import { authenticateJWT } from '@/lib/auth/middleware';
 import * as globals from '@shared/constants';
-import { CategoriseTime, createGame, quitGameSearch } from './gameHelper';
+import { abortGame, CategoriseTime, createGame, quitGameSearch } from './gameHelper';
 import { GameInfo } from '@shared/Models/gameInfo';
 import { FindCompetitiveMatch } from './matchmaking';
 
@@ -15,28 +15,31 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
     // Extract the user ID from the request
     let gamemode: GameMode;
     let time_control: TimeControl;
-    let userId
-    const user = (req as any).user;
-    console.log(req.body)
+    const userId = (req as any).user.userId;
+    if (!userId) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
     try {
-        userId = user?.userId;
         gamemode = (req.body as GameInfo).gamemode;
         time_control = (req.body as GameInfo).time_control;
         if (!gamemode || !time_control || !userId) {
             throw new Error('Invalid Data');
         }
         if (gamemode.name !== globals.StandardGameModes.friendly) {
-            if (user!.is_anonymous)
-                throw new Error('User is not logged in for competitive games');
 
             const timeMode = CategoriseTime(time_control);
+            console.log('Time Mode:', timeMode);
             switch (timeMode) {
                 case 'blitz':
                     gamemode.name = globals.StandardGameModes.standard.blitz;
+                    break;
                 case 'rapid':
                     gamemode.name = globals.StandardGameModes.standard.rapid;
+                    break;
                 case 'bullet':
                     gamemode.name = globals.StandardGameModes.standard.bullet;
+                    break;
                 default:
                     throw new Error('Invalid Time Control');
             }
@@ -65,10 +68,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                 return;
             }
             else if (game.state === globals.StandardGameStates.scheduled) {
-                // User is changing the game they are looking for
-                // Remove the user from the lookup and prepare for new game
-                console.log('Quitting game search', game);
-                await quitGameSearch(userId);
+                await abortGame(userId);
             }
             else {
                 throw new Error('Game is over, let them review the game');
@@ -79,12 +79,9 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
             return;
         }
     }
-
+    else await dbOperations.FinishedGameLookup(userId);
 
     const GMM = gamemode.name;
-
-    // TODO: Use gameMode.event and gameMode.name to determine the game mode id from database
-    //       Not for exotic gamemodes or events - require database entry
 
     const mainMade = GMM.split('-')[0];
     console.log('Game Mode:', GMM, mainMade);
@@ -93,14 +90,12 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
             //////////////////////////////////////////////////////////////////
             // Call Matchmaking if they are looking for a competitive game
             //////////////////////////////////////////////////////////////////
+            const user = await dbOperations.getUserByID(userId);
             if (user.is_anonymous) {
                 res.status(403).json({ error: 'User is not logged in for competitive games' });
                 return;
             }
-            // If that fails then go to waiting room
-
-
-            // README: Make the game after the matchamking is done incase of a failure 
+            // README: Make the game after the matchmaking is done incase of a failure 
             //                          / two people in different games are matched
             try {
                 const roomId = await FindCompetitiveMatch(userId, time_control, gamemode);
@@ -119,7 +114,6 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                 console.log('Failed to find competitive match:', error);
                 res.status(500).json({ error: 'Failed to find competitive match' });
             }
-
             break;
 
         case 'friendly':

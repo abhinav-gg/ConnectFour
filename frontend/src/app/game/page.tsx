@@ -13,6 +13,7 @@ import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
 import EndPopup from '@/components/game/endPopup';
 import { Move, Player } from '@shared/Types/gameData';
+import { StandardReconnectionTime } from '@shared/constants';
 
 export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
@@ -62,6 +63,14 @@ export default function TestingWebsockets() {
   }
 
   const turnText = (nextPlayer: number, p1?: number) => {
+    if (playerNumber.current === -1) {
+      if (nextPlayer === 0) {
+        setGameStatus('Red\'s move!'); 
+      } else {
+        setGameStatus('Yellow\'s move!'); 
+      }
+    }
+
     if (p1 === nextPlayer) {
       setGameStatus('Your move!');    
     } else if (playerNumber.current === nextPlayer) {
@@ -192,7 +201,7 @@ export default function TestingWebsockets() {
           setTimeUpdate(timeUpdate + 1);
           break;
         case 'playerDisconnected': {
-          let timeRemaining = 10;
+          let timeRemaining = StandardReconnectionTime / 1000;
           pushAnnouncement('Opponent disconnected...');
           waitingForRecconect.current = true;
           const interval = setInterval(() => {
@@ -216,21 +225,23 @@ export default function TestingWebsockets() {
           handleMessageReceived(data.data);
           break;
         case 'reconnection':
-          pushAnnouncement('You Reconnected!');
           data.data.players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
+          if (data.data.playerNumber === -1) pushAnnouncement('You Are Spectating!');
+          else pushAnnouncement('You Reconnected!');
           eloChangeRef.current = data.data.eloChanges;
           playerNumber.current = data.data.playerNumber;
           gameBoardRef.current?.setMoves(data.data.moves);
+          turnText(data.data.currentTurn);
           setGameStarted(true);
+          setTimeStarted(data.data.moves.length > 0);
           setTimeUpdate(timeUpdate + 1);
-          setTimeStarted(true);
           break;
         case "opponentReconnect":
-          turnText(gameBoardRef.current?.currentPlayer ?? 0);
-          pushAnnouncement('Opponent Reconnected!');
           waitingForRecconect.current = false;
+          pushAnnouncement('Opponent Reconnected!');
+          turnText(gameBoardRef.current?.currentPlayer ?? 0);
           break;
         default:
           console.log('Unknown message:', data);

@@ -11,7 +11,7 @@ import { UUID } from "crypto";
 import { EloChange, GameMode, PlayerData, SendToRoom, TimeControl } from "@shared/Models/gameInfo";
 import { StandardGameStates, StandardReconnectionTime } from "@shared/constants";
 import { GameState } from "@shared/utils/game";
-import { abortGame, assignGame, calculateTimesByMoves, endGame } from "./gameHelper";
+import { abortGame, assignGame, calculateTimesByMoves, endGame, safeGetElo } from "./gameHelper";
 import { replaceProfanities } from 'no-profanity';
 import { Game } from "@/models/Game";
 import { calculateGlickoRatings } from "./matchmaking";
@@ -34,7 +34,7 @@ function getRoom(room: string) {
 }
 
 function getUsernameByID(userID: string): string {
-  return SocketIDs.find(s => s.userID === userID)!.username!;
+  return SocketIDs.find(s => s.userID === userID)!.username ?? 'Anonymous';
 }
 
 function getSocket(userID: string): UserCachedSocket | undefined {
@@ -93,11 +93,12 @@ function setupRematch(roomid: string, GMM: string) {
     // use new websocket server for this 
 }
 
-async function getCompetitiveEloChange(gameId: string, userId: string, roomId: string): Promise<EloChange> {
-  const me = await dbOperations.GetPlayerStats(gameId, userId);
-  const room = getRoom(roomId)!;
-  const opponentId = room.players.find(p => p !== userId);
-  const them = await dbOperations.GetPlayerStats(gameId, opponentId!);
+async function getCompetitiveEloChange(userId: string, roomId: string): Promise<EloChange> {
+  const gamemodeId = await dbOperations.GetGameModeID(getGameMode(roomId)!);
+  const me = await safeGetElo(userId, gamemodeId);
+  const players = await dbOperations.GetPlayersByShortCode(roomId);
+  const opponentId = players.find(p => p !== userId);
+  const them = await safeGetElo(opponentId!, gamemodeId);
   return calculateGlickoRatings(me, them);
 }
 
@@ -166,7 +167,7 @@ async function reconnect(roomId: string, userId: string, newSocket: WSocket, isS
 
     switch (gameMode.name.split('-')[0]) {
       case 'standard': {
-        eloChanges = await getCompetitiveEloChange(game.id, userId, roomId);
+        eloChanges = await getCompetitiveEloChange(userId, roomId);
         break;
       }
       case 'friendly': {
@@ -427,13 +428,19 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             try {
               game = await dbOperations.GetGameByShortCode(roomId);
+
+              if (!game) {
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game not found', redirect: '/game' } }));
+                return;
+              }
+
               if (game.state === StandardGameStates.ongoing) {
                 // else let the user spectate the game
                 await reconnect(roomId, userId, ws, true);
                 return;
               } else if (game.state !== StandardGameStates.scheduled) {
                 // TODO: replace with analysis later
-                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game is not scheduled' } }));
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game is not scheduled', redirect: "/game/test-join" } }));
                 return;
               }
             }
@@ -496,7 +503,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   }
                 } as PlayerJoined)); // Use the types for type checking
 
-                const eloChanges = await getCompetitiveEloChange(game.id, userId, roomId);
+                const eloChanges = await getCompetitiveEloChange(userId, roomId);
                   
                 // standard friendly gamemode starts with 2 players (current socket added above)
                 if (room.players.length === 2) {
@@ -702,7 +709,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const player = room!.players[room!.currentTurn];
             const index = room!.currentTurn;
 
-            const { timeLeft, allowedTime, timeTaken } = calculateTimesByMoves(moves, player, timecontrol, index===1);
+            const { timeLeft } = calculateTimesByMoves(moves, player, timecontrol, index===1);
             if (timeLeft <= 0) {
               const timeOutName = getUsernameByID(room!.players[index]);
               handleGameEnd(roomId, false, `${timeOutName} timed out`, index);
