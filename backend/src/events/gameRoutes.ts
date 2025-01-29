@@ -235,7 +235,6 @@ gameRouter.post('/get-game-history', async (req: Request, res: Response) => {
 });
 
 gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response) => {
-gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response) => {
     // Check the user ID and fetch the user profile from the database
     const userId = req.body.userId;
     const gamemodeId = req.body.gamemodeId;

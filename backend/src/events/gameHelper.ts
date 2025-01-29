@@ -169,12 +169,6 @@ export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol
             allowedTime: time, 
             timeLeft: time, 
             delta: 0} as TimeInfo;
-        const time = timecontrol.base_time * 60000 + (hasDisadvantage ? timecontrol.disadvantage * 1000 : 0);
-        return {
-            timeTaken: 0, 
-            allowedTime: time, 
-            timeLeft: time, 
-            delta: 0} as TimeInfo;
     }
     
     let timeTaken = 0; // calculate time taken
