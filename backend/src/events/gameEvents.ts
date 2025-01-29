@@ -15,6 +15,7 @@ import { abortGame, assignGame, calculateTimesByMoves, endGame, safeGetElo } fro
 import { replaceProfanities } from 'no-profanity';
 import { Game } from "@/models/Game";
 import { calculateGlickoRatings } from "./matchmaking";
+import { set } from "zod";
 
 const state : RoomMap = {
   rooms: new Map<string, Room>()
@@ -23,6 +24,7 @@ const state : RoomMap = {
 type UserCachedSocket = {
   userID: string;
   username: string | null; // cached for speed
+  eloChange: EloChange;
   socket: WSocket;
 }
 
@@ -46,7 +48,20 @@ function getUser(socket: WSocket): UserCachedSocket {
 }
 
 function addSocket(userID: string, socket: WSocket) {
-  SocketIDs.push({ userID, username: null, socket });
+  SocketIDs.push({ userID, username: null, eloChange: {win: -0, draw: -0, loss: -0}, socket });
+}
+
+function getEloChange(userID: string): EloChange {
+  return SocketIDs.find(s => s.userID === userID)!.eloChange;
+}
+
+function setEloChange(userID: string, eloChange: EloChange) {
+  for (let i = 0; i < SocketIDs.length; i++) {
+    if (SocketIDs[i].userID === userID) {
+      SocketIDs[i].eloChange = eloChange;
+      return;
+    }
+  }
 }
 
 function removeSocket(userID: string) {
@@ -93,12 +108,10 @@ function setupRematch(roomid: string, GMM: string) {
     // use new websocket server for this 
 }
 
-async function getCompetitiveEloChange(userId: string, roomId: string): Promise<EloChange> {
+async function getCompetitiveEloChange(userId: string, opponentId: string, roomId: string): Promise<EloChange> {
   const gamemodeId = await dbOperations.GetGameModeID(getGameMode(roomId)!);
   const me = await safeGetElo(userId, gamemodeId);
-  const players = await dbOperations.GetPlayersByShortCode(roomId);
-  const opponentId = players.find(p => p !== userId);
-  const them = await safeGetElo(opponentId!, gamemodeId);
+  const them = await safeGetElo(opponentId, gamemodeId);
   return calculateGlickoRatings(me, them);
 }
 
@@ -167,7 +180,8 @@ async function reconnect(roomId: string, userId: string, newSocket: WSocket, isS
 
     switch (gameMode.name.split('-')[0]) {
       case 'standard': {
-        eloChanges = await getCompetitiveEloChange(userId, roomId);
+        const opponentId = room.players[0] === userId ? room.players[1] : room.players[0];
+        eloChanges = await getCompetitiveEloChange(userId, opponentId, roomId);
         break;
       }
       case 'friendly': {
@@ -359,15 +373,50 @@ async function handleGameEnd(roomId: string, draw: boolean, message: string, win
   // Mark game as finished depending on state
 };
 
-async function startStandardGame(room: Room, game: Game, time_control: TimeControl, eloChanges: EloChange) {
+async function startNormalGame(room: Room, game: Game, gamemode: GameMode, time_control: TimeControl) {
   const p1Time: number = time_control!.base_time*60000;
   const p2Time: number = p1Time + time_control!.disadvantage*1000; 
-  room.players.forEach((player, index) => {
-    getSocket(player)!.socket.send(JSON.stringify({
+
+  switch (gamemode.name.split('-')[0]) {
+    case 'standard': {
+      room.players.forEach(async (player, index) => {
+        getSocket(player)!.socket.send(JSON.stringify({
+        event: "gameStart",
+        data: {
+          eloChanges: getEloChange(player),
+          playerNumber: index,
+          players: [
+            { username: getUsernameByID(room.players[0]!), time: p1Time } as PlayerData,
+            { username: getUsernameByID(room.players[1]!), time: p2Time } as PlayerData
+            ]
+          }
+        } as GameStart));
+      });
+      break;
+    }
+    case 'friendly': {
+      room.players.forEach((player, index) => {
+        getSocket(player)!.socket.send(JSON.stringify({
+        event: "gameStart",
+        data: {
+          eloChanges: {},
+          playerNumber: index,
+          players: [
+            { username: getUsernameByID(room.players[0]!), time: p1Time } as PlayerData,
+            { username: getUsernameByID(room.players[1]!), time: p2Time } as PlayerData
+            ]
+          }
+        } as GameStart));
+      });
+      break;
+    }
+  }
+  room.spectators.forEach(spectator => {
+    getSocket(spectator)!.socket.send(JSON.stringify({
     event: "gameStart",
     data: {
-      eloChanges: eloChanges,
-      playerNumber: index,
+      eloChanges: {},
+      playerNumber: -1,
       players: [
         { username: getUsernameByID(room.players[0]!), time: p1Time } as PlayerData,
         { username: getUsernameByID(room.players[1]!), time: p2Time } as PlayerData
@@ -424,7 +473,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
 
             // Check if the current room is ongoing in database - if not then close websocket and instead use old game viewer
-            let game;
+            let game: Game;
 
             try {
               game = await dbOperations.GetGameByShortCode(roomId);
@@ -469,7 +518,23 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
             const room = getRoom(roomId)!;
             await setupPlayer(userId);
-            let eloChanges: EloChange;
+
+            const StandardConnectUser = () => {
+              joinRoom(roomId, userId);
+              const room = getRoom(roomId)!;
+                            
+              ws.send(JSON.stringify({
+                event: 'playerJoined',
+                data: { 
+                  gameInfo: room.gameInfo,
+                }
+              } as PlayerJoined)); // Use the types for type checking
+              
+              // standard friendly gamemode starts with 2 players (current socket added above)
+              if (room.players.length === 2) {
+                startNormalGame(room, game, gamemode!, time_control!);
+              }
+            }
 
             ///////////////////// IMPORTANT ////////////////////////
             // Check the user is one of the two players in the game
@@ -481,7 +546,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
                 // Check if the user is one of the players in the game
                 const gameLookup = await dbOperations.GetGameByPlayerLookup(userId);
-                const game = await dbOperations.GetGameByShortCode(roomId);
 
                 if (!gameLookup || gameLookup !== game.id) {
                   // If not then enter spectating mode, for now return
@@ -489,26 +553,16 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   return;
                 }
 
+                room.players.forEach(async (player, index) => {
+                  const eloChange = await getCompetitiveEloChange(player, room.players[index == 0 ? 1 : 0], game.short_id);
+                  setEloChange(player, eloChange);
+                });
+
                 // All checks have passed, the player may be added to the game
                 // Player is connecting to the game for the first time.
                 // Send the game state to the player and update the room state
                 
-                
-                joinRoom(roomId, userId);
-                
-                ws.send(JSON.stringify({
-                  event: 'playerJoined',
-                  data: { 
-                    gameInfo: room.gameInfo,
-                  }
-                } as PlayerJoined)); // Use the types for type checking
-
-                const eloChanges = await getCompetitiveEloChange(userId, roomId);
-                  
-                // standard friendly gamemode starts with 2 players (current socket added above)
-                if (room.players.length === 2) {
-                  startStandardGame(room, game, time_control!, eloChanges);
-                }
+                StandardConnectUser();
                 break;
               }
               case 'friendly': {
@@ -552,22 +606,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 // Player is connecting to the game for the first time.
                 // Send the game state to the player and update the room state
 
-                joinRoom(roomId, userId);
-                
-                ws.send(JSON.stringify({
-                  event: 'playerJoined',
-                  data: { 
-                    gameInfo: room.gameInfo,
-                  }
-                } as PlayerJoined)); // Use the types for type checking
-                
-                eloChanges = { win: 0, draw: 0, loss: 0 }
-                  
-                // standard friendly gamemode starts with 2 players (current socket added above)
-                if (room.players.length === 2) {
-                  startStandardGame(room, game, time_control!, eloChanges);
-                }
-
+                StandardConnectUser();
                 break;
               }
               default : {
@@ -712,7 +751,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const { timeLeft } = calculateTimesByMoves(moves, player, timecontrol, index===1);
             if (timeLeft <= 0) {
               const timeOutName = getUsernameByID(room!.players[index]);
-              handleGameEnd(roomId, false, `${timeOutName} timed out`, index);
+              handleGameEnd(roomId, false, `${timeOutName} timed out`, index===0 ? 1 : 0);
               return;
             }
 
@@ -742,7 +781,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               case 'friendly':
               case 'standard': {
                 if (findDisconnectedPlayers.length === 1) {
-                  handleGameEnd(roomId, false, 'Opponent abandoned', room.players.indexOf(findDisconnectedPlayers[0]));
+                  const winner = room.players.indexOf(findDisconnectedPlayers[0]) === 0 ? 1 : 0;
+                  handleGameEnd(roomId, false, 'Opponent abandoned', winner);
+                } else {
+                  throw new Error('Both players are disconnected or something stranger is happening');
                 }
                 break;
               }

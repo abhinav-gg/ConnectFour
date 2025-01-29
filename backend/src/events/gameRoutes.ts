@@ -101,7 +101,7 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
                 const roomId = await FindCompetitiveMatch(userId, time_control, gamemode);
 
                 if (!roomId) {
-                    res.status(200).json({ message: 'No match found, player must wait' });
+                    res.status(404).json({ message: 'No match found, player must wait' });
                     return; // link to frontend waiting room
                 }
 

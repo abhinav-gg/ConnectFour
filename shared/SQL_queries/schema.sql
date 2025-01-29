@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS con4_schema.GamePlayers (
   player UUID NOT NULL REFERENCES con4_schema.Users(id),
   player_number INT NOT NULL, -- can be higher than 2 in custom gamemodes
   elo_change FLOAT NOT NULL DEFAULT 0, -- the change in elo for the player
-  created_at TIMESTAMP DEFAULT now()
+  created_at TIMESTAMP DEFAULT now(),
+  UNIQUE (game_id, player_number)
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.Moves (

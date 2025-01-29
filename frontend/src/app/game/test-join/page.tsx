@@ -51,8 +51,11 @@ const TestJoinPage = () => {
     });
     if (!response.ok) {
       const data = await response.json();
-      console.error('Failed to request game');
+      console.log('Failed to request game');
       setMessage(data.error)
+
+      // CONNECT TO WEB SOCKET HERE
+
       return;
     }
     else {

@@ -268,7 +268,6 @@ export default function TestingWebsockets() {
       console.log('You won!');
     } else {
       deltaElo = eloChangeRef.current.loss;
-      console.log('You lost!');
     }
     console.log('Elo change:', deltaElo, winner);
     resultRef.current = { winner: winner ?? -1, deltaElo };
