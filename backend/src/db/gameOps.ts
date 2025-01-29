@@ -7,25 +7,24 @@ import { PlayerEloNotFound } from './dbErrors';
 import { StandardStartingRatingDeviation } from '@shared/constants';
 import { Glicko } from '@/types/types';
 
-// Load .env from project root
+// Load .env from project root (prob should find a better way for this)
 dotenv.config({ path: "../../.env" });
 const application_name = "con-four";
 
 
 export class GameOperations {
-  private static pool: Pool;
   private client: PoolClient | null = null;
 
   private async getClient(): Promise<PoolClient> {
-    if (!GameOperations.pool || GameOperations.pool.ended) {
-      GameOperations.pool = new Pool({
-        connectionString: process.env.DB_URL,
-        application_name: application_name
-      });
-    }
+    const pool = new Pool({
+      connectionString: process.env.DB_URL,
+      application_name: application_name
+    });
+
     if (!this.client) {
-      this.client = await GameOperations.pool.connect();
+      this.client = await pool.connect();
     }
+
     return this.client;
   }
 
