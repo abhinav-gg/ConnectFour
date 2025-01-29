@@ -213,20 +213,20 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
                 const p2rd = adjustRD(p2Stats);
                 dbOperations.UpdateRD(gamePlayers[0], gamemodeid, p1rd);
                 dbOperations.UpdateRD(gamePlayers[1], gamemodeid, p2rd);
-                let p1New, p2New;
+                let p1Delta, p2Delta;
                 if (draw) {
-                    p1New = p1Stats.elo + p1Changes.draw;
-                    p2New = p2Stats.elo + p2Changes.draw;
+                    p1Delta = p1Changes.draw;
+                    p2Delta = p2Changes.draw;
                 } else if (winner === 0) {
-                    p1New = p1Stats.elo + p1Changes.win;
-                    p2New = p2Stats.elo + p2Changes.loss;
+                    p1Delta = p1Changes.win;
+                    p2Delta = p2Changes.loss;
                 } else {
-                    p1New = p1Stats.elo + p1Changes.loss;
-                    p2New = p2Stats.elo + p2Changes.win;
+                    p1Delta = p1Changes.loss;
+                    p2Delta = p2Changes.win;
                 }
 
-                dbOperations.UpdateElo(gamePlayers[0], gamemodeid, p1New);
-                dbOperations.UpdateElo(gamePlayers[1], gamemodeid, p2New);
+                dbOperations.UpdateElo(gamePlayers[0], gamemodeid, p1Delta);
+                dbOperations.UpdateElo(gamePlayers[1], gamemodeid, p2Delta);
                 break;                
         }
         gamePlayers.forEach(async (player) => {

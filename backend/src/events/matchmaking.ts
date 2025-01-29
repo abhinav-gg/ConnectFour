@@ -52,6 +52,11 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
                 const thisPNum = Math.random() > 0.5 ? 0 : 1;
                 await assignGame(game.id, userId, thisPNum);
                 await assignGame(game.id, potentialMatch.user_id, Math.abs(thisPNum - 1));
+                try {
+                    SendUserToRoom(potentialMatch.user_id, game.short_id);
+                } catch (error) {
+                    console.error('Failed to send user to room:', error);
+                }
                 return game.short_id;
             }
         }
@@ -70,15 +75,17 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
 
 export const adjustRD = (player: Glicko): number => {
     const daysSinceLastGame = (player.updated_at) / (1000 * 60 * 60 * 24);
-    const newRD = Math.min(350, Math.sqrt(Math.pow(player.rating_deviation, 2) + daysSinceLastGame * 5));
+    const newRD = Math.min(350, Math.sqrt(Math.pow(player.rating_deviation, 2) + daysSinceLastGame * 35));
     return newRD;
 };
 
 // Calculate new ratings for both players based on Glicko system
 export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
-    const q = Math.log(10) / 400; // System constant (what)
-
+    const q = Math.log(10) / 400;  // System constant
+    
     // Adjust RD based on time since last played (increases uncertainty)
+    
+
     const p1RD = adjustRD(me);
     const p2RD = adjustRD(them);
 
@@ -87,8 +94,8 @@ export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
     const g2 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p1RD, 2) / Math.pow(Math.PI, 2));
 
     // Calculate expected scores
-    const E1 = 1 / (1 + Math.pow(10, g1 * (them.elo - me.elo) / 400));
-    const E2 = 1 / (1 + Math.pow(10, g2 * (me.elo - them.elo) / 400));
+    const E1 = 1 / (1 + Math.pow(10, g1 * (them.elo - me.elo) * p2RD / 400));
+    const E2 = 1 / (1 + Math.pow(10, g2 * (me.elo - them.elo) * p1RD / 400));
 
     // Calculate rating changes for win/loss
     const d1 = 1 / (Math.pow(q, 2) * Math.pow(g1, 2) * E1 * (1 - E1));
@@ -97,9 +104,9 @@ export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
     // Calculate new ratings for all scenarios and round to 2 decimal places
     // For draws, use 0.5 as the score (halfway between 0 and 1)
     const ratingChanges: EloChange = {
-        win: Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
-        loss: Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
-        draw: Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
+        win : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (1 - E1)).toFixed(2)),
+        loss : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0 - E1)).toFixed(2)),
+        draw : Number((me.elo + (q / (1 / Math.pow(p1RD, 2) + 1 / d1)) * g1 * (0.5 - E1)).toFixed(2)),
     };
     return ratingChanges;
 }
@@ -129,7 +136,7 @@ export const SendUserToRoom = (userId: string, roomId: string) => {
 const userMap = new Map<string, WSocket>();
 
 export function setupWaitingRoom(app: expressWs.Application) {
-    app.ws('/waiting', (ws, req) => {
+    app.ws('/finding-game', (ws, req) => {
 
         const token = req.header('Sec-WebSocket-Protocol') as string;
         const user = verifyAccessToken(token as string);

@@ -15,7 +15,6 @@ import { abortGame, assignGame, calculateTimesByMoves, endGame, safeGetElo } fro
 import { replaceProfanities } from 'no-profanity';
 import { Game } from "@/models/Game";
 import { calculateGlickoRatings } from "./matchmaking";
-import { set } from "zod";
 
 const state : RoomMap = {
   rooms: new Map<string, Room>()
@@ -789,6 +788,16 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 break;
               }
             }
+            break;
+          }
+          case 'resign': {
+            const roomId = data.data.roomId;
+            const user = getUser(ws)?.userID
+            if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
+            const room = getRoom(roomId)!;
+            const player = room.players.indexOf(user as UUID);
+            const winner = player === 0 ? 1 : 0;
+            handleGameEnd(roomId, false, 'Player resigned', winner);
             break;
           }
           //case 'offerDraw': { } // TODO: handle timeouts
