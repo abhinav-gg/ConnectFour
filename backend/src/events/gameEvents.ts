@@ -730,7 +730,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               event: 'receiveMessage',
               data: { playerNumber: playerNum, message: cleanedMessage }
             } as ReceiveMessage);
-
+            
+            break;
           } // TODO: allow chatting, not a priority, messages are not stored, use profanity filter
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

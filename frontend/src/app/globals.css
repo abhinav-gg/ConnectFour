@@ -46,6 +46,11 @@ body {
   src: URL('../assets/ic-hack.ttf') format('truetype');
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .font-ichack {
   font-family: 'ICHack';
 }

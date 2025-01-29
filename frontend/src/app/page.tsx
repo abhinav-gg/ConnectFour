@@ -116,6 +116,15 @@ export default function Home() {
       // Update velocity
       dragState.velocityX = (e.clientX - lastX) / timeElapsed * 16; // Scale to roughly 60fps
       dragState.velocityY = (e.clientY - lastY) / timeElapsed * 16;
+      const MaxVelocity = 45;
+      // Using vector magnitude, limit the velocity
+      const velocity = Math.sqrt(dragState.velocityX ** 2 + dragState.velocityY ** 2);
+      if (velocity > MaxVelocity) {
+        // Normalize the velocity vector
+        dragState.velocityX = dragState.velocityX / velocity * MaxVelocity;
+        dragState.velocityY = dragState.velocityY / velocity * MaxVelocity;
+      }
+      console.log(dragState.velocityX, dragState.velocityY);
 
       // Update position
       element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
@@ -146,7 +155,7 @@ export default function Home() {
       <div className="flex-1 relative overflow-hidden">
         {/* Main Logo */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-1/2 h-1/2">
+          <div className="w-1/3 h-1/3">
             <MainLogoAnimated />
           </div>
         </div>
@@ -187,6 +196,7 @@ export default function Home() {
           onMouseDown={(e) => handleDrag(e, dragRef3)}
         >
           <p className="text-lg whitespace-nowrap">Contact Us: support@con4.uk</p>
+          <p className="text-lg whitespace-nowrap">Our Discord: @con4.uk</p>
         </div>
       </div>
     </div>
