@@ -3,9 +3,7 @@ import { GamePlayer } from '@shared/Models/gameInfo';
 
 
 export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout }: { timerActive: boolean; playerNumber: number, getPlayers: GamePlayer[], onTimeout: () => void }) {
-export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout }: { timerActive: boolean; playerNumber: number, getPlayers: GamePlayer[], onTimeout: () => void }) {
     const [displayTime, setDisplayTime] = useState(0);
-    const [startTime, setStartTime] = useState<number | null>(null);
     const [startTime, setStartTime] = useState<number | null>(null);
 
     // Effect to handle player time updates
@@ -19,10 +17,6 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (timerActive && displayTime > 0 && getPlayers.length > 0) {
-            const setupTime = getPlayers[playerNumber].time;
-            if (!startTime){
-                setStartTime(Date.now());
-            }
             const setupTime = getPlayers[playerNumber].time;
             if (!startTime){
                 setStartTime(Date.now());
@@ -46,7 +40,6 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
                 clearInterval(interval);
             }
         };
-    }, [timerActive, getPlayers, displayTime, startTime, playerNumber]);
     }, [timerActive, getPlayers, displayTime, startTime, playerNumber]);
 
     const formatTime = (ms: number) => {
