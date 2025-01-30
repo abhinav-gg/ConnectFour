@@ -135,7 +135,6 @@ export default function TestingWebsockets() {
     // Pass the token as a protocol
     console.log('Connecting to:', backendUrl);
     const newSocket = new WebSocket(backendUrl + "/in-game"); // ioc: check
-    setSocket(newSocket);
     console.log("set socket", socket, newSocket);
     newSocket.onopen = () => {
       console.log('WebSocket connected!');
