@@ -5,7 +5,7 @@ import * as DBError from './dbErrors';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
-const application_name = "con-four";
+export const application_name = "con-four";
 
 export class UserOperations {
   client: PoolClient | null = null;

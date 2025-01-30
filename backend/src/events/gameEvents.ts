@@ -4,7 +4,8 @@ import type { Room, RoomMap } from "@/types/types";
 import type { Error, GameStart, JoinGame, MakeMove, ServerMessage, MoveMade, 
   PlayerDisconnected, PlayerJoined, StartTimer, ClientMessage, EndGame, PlayerTimeout, ReceiveMessage, SendMessage, 
   PlayerReconnected,
-  OpponentReconnect} from "@shared/Types/websocketData";
+  OpponentReconnect,
+  DrawOffer} from "@shared/Types/websocketData";
 import { dbOperations } from "@/db/operations";
 import { verifyAccessToken } from "@/lib/auth";
 import { UUID } from "crypto";
@@ -19,6 +20,8 @@ import { calculateGlickoRatings } from "./matchmaking";
 const state : RoomMap = {
   rooms: new Map<string, Room>()
 };
+
+const emptyEloChange: EloChange = { win: -0, draw: -0, loss: -0 };
 
 type UserCachedSocket = {
   userID: string;
@@ -47,7 +50,7 @@ function getUser(socket: WSocket): UserCachedSocket {
 }
 
 function addSocket(userID: string, socket: WSocket) {
-  SocketIDs.push({ userID, username: null, eloChange: {win: -0, draw: -0, loss: -0}, socket });
+  SocketIDs.push({ userID, username: null, eloChange: emptyEloChange, socket });
 }
 
 function getEloChange(userID: string): EloChange {
@@ -160,7 +163,7 @@ async function reconnect(roomId: string, userId: string, newSocket: WSocket, isS
     return { username: getUsernameByID(p),
       time: calculateTimesByMoves(moves, p, timeControl, p!==p1).timeLeft
     }});
-  let eloChanges: EloChange = { win: -0, draw: -0, loss: -0 };
+  let eloChanges: EloChange = emptyEloChange;
 
   if (isSpectator) {
     room.spectators.push(userId as UUID);
@@ -278,11 +281,13 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
   const moves = await dbOperations.GetMovesByShortCode(roomId);
   const turn = moves.length + 1;
   room.currentTurn = room.currentTurn === 0 ? 1 : 0;
+  let { timeTaken, allowedTime, timeLeft, delta } = calculateTimesByMoves(moves, userId, timecontrol, 
+    room.currentTurn === 0);
   
   if (moves.length == 0) {
     return {
       delta: 0,
-      timeLeft: -1,
+      timeLeft: timeLeft,
       turn: 1,
       nextPlayer: room.currentTurn,
       draw: false,
@@ -290,10 +295,8 @@ async function verifyStandardGame(roomId: string, userId: string, col: number): 
     } as verificationData;
   }
   
-  let { timeTaken, allowedTime, timeLeft, delta } = calculateTimesByMoves(moves, userId, timecontrol, 
-    room.currentTurn === 0);
   timeLeft += timecontrol.increment * 1000;
-  if (timeTaken > allowedTime){
+  if (timeTaken >= allowedTime){
     return {
       delta: delta,
       timeLeft: 0,
@@ -398,7 +401,7 @@ async function startNormalGame(room: Room, game: Game, gamemode: GameMode, time_
         getSocket(player)!.socket.send(JSON.stringify({
         event: "gameStart",
         data: {
-          eloChanges: {},
+          eloChanges: emptyEloChange,
           playerNumber: index,
           players: [
             { username: getUsernameByID(room.players[0]!), time: p1Time } as PlayerData,
@@ -613,10 +616,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 throw new Error('Game mode does not exist');
               }
             }
-            
             break;
           }
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
           case 'makeMove': {
 
@@ -642,7 +643,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             }
 
             // The player and room have been fully verified
-
+            room.drawing = false; // cancel any draw offers
             const userId = getUser(ws)?.userID;
             const gamemode = getGameMode(roomId);
 
@@ -679,7 +680,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               } as StartTimer);
             } 
             
-            if (verification.timeLeft === 0) { 
+            if (verification.timeLeft <= 0) { 
               handleGameEnd(roomId, false, `Player ${verification.nextPlayer + 1} timed out`, verification.winner!);
             }
 
@@ -707,10 +708,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               throw new Error('Failed to send move to database');
             }
             break;
-
           }
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
           case 'sendMessage': { 
             const { roomId, message } = data.data as SendMessage["data"];
@@ -795,13 +793,40 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const roomId = data.data.roomId;
             const user = getUser(ws)?.userID
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
+            const moves = await dbOperations.GetMovesByShortCode(roomId);
+            if (moves.length === 0) {
+              ws.send(JSON.stringify({ event: 'error', data: { message: 'Cannot resign on the first move (ya nerd)' } }));
+            }
             const room = getRoom(roomId)!;
             const player = room.players.indexOf(user as UUID);
             const winner = player === 0 ? 1 : 0;
             handleGameEnd(roomId, false, 'Player resigned', winner);
             break;
           }
-          //case 'offerDraw': { } // TODO: handle timeouts
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+          case 'offerDraw': { 
+            const roomId = data.data.roomId;
+            const user = getUser(ws)?.userID
+            if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
+            const room = getRoom(roomId)!;
+            const player = room.players.indexOf(user as UUID);
+            const opponent = player === 0 ? 1 : 0;
+            getSocket(room.players[opponent])?.socket.send(JSON.stringify({
+              event: 'drawOffer',
+            } as DrawOffer));
+            room.drawing = true;
+            break;
+          }
+          case 'acceptDraw': {
+            const roomId = data.data.roomId;
+            const user = getUser(ws)?.userID
+            if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
+            const room = getRoom(roomId)!;
+            console.log(room)
+            if (!room.drawing) return;
+            handleGameEnd(roomId, true, 'Draw by agreement');
+            break;
+          }
 
           default:
             console.log('Unknown event:', JSON.stringify(data));

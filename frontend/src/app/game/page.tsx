@@ -6,14 +6,16 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
 import { GameState } from '@shared/utils/game';
-import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut, OpponentAbandoned } from '@shared/Types/websocketData';
+import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut, OpponentAbandoned, Resign, OfferDraw, AcceptDraw } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
 import EndPopup from '@/components/game/endPopup';
-import { Move, Player } from '@shared/Types/gameData';
+import { DrawMatrix, Move, Player } from '@shared/Types/gameData';
 import { StandardReconnectionTime } from '@shared/constants';
+import { eventEmitter } from '@shared/utils/eventEmitter'
+
 
 export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
@@ -33,6 +35,7 @@ export default function TestingWebsockets() {
   const eloChangeRef = useRef<EloChange>({ draw: -0, loss: -0, win: -0 });
   const gameBoardRef = useRef<GameState>();
   const messageRef = useRef<ChatMessage[]>([]);
+  const drawState = useRef<DrawMatrix>({ confirmAction: false, acceptAction: false, offerAction: false });
   const resultRef = useRef({winner: -1, deltaElo: 0 });
 
   const addPlayer = async (username: string, time: number) => {
@@ -104,10 +107,6 @@ export default function TestingWebsockets() {
     // Update timer active state
     setCurrentPlayer(data.nextPlayer as Player);
     setTimeUpdate(timeUpdate + 1);
-  }
-
-  const handlePossibleTimeOut = () => {
-    sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
   }
 
   const pushAnnouncement = (message: string) => {
@@ -202,7 +201,9 @@ export default function TestingWebsockets() {
         case 'moveMade':
           handleMoveReceived(data.data);
           turnText(data.data.nextPlayer);
-          turnText(data.data.nextPlayer);
+          drawState.current.offerAction = false; // reset draw state
+          drawState.current.acceptAction = false;
+          drawState.current.confirmAction = false;
           setTimeUpdate(timeUpdate + 1);
           break;
         case 'playerDisconnected': {
@@ -248,6 +249,10 @@ export default function TestingWebsockets() {
           pushAnnouncement('Opponent Reconnected!');
           turnText(gameBoardRef.current?.currentPlayer ?? 0);
           break;
+        case 'drawOffer':
+          pushAnnouncement('Opponent offered a draw (you\'re probably winning)!');
+          eventEmitter.emit('drawOffered');
+          break;
         default:
           console.log('Unknown message:', data);
           break;
@@ -255,8 +260,51 @@ export default function TestingWebsockets() {
     }
   }
 
+  const handlePossibleTimeOut = () => {
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
+  }
+
+  const handleDrawAccept = () => {
+    // get roomId form params
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    pushAnnouncement('You agreed to a draw (cringe)!');
+    if (playerNumber.current === -1) return;
+    sendToServer({ event: 'acceptDraw', data: { roomId: room } } as AcceptDraw);
+  }
+
+  const handleAttemptResign = () => {
+    // get roomId form params
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    pushAnnouncement('You resigned (haha loser)!');
+    if (playerNumber.current === -1) return;
+    sendToServer({ event: 'resign', data: { roomId: room } } as Resign);
+  }
+
+  const handleDrawOffer = () => {
+    // get roomId form params
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    pushAnnouncement('You offered to draw (cringe)!');
+    if (playerNumber.current === -1) return;
+    sendToServer({ event: 'offerDraw', data: { roomId: room } } as OfferDraw);
+  }
+
   useEffect(() => {
+
+    eventEmitter.on('tryResign', handleAttemptResign);
+    eventEmitter.on('tryDraw', handleDrawOffer);
+    eventEmitter.on('acceptDraw', handleDrawAccept);
+
     return () => {
+
+      eventEmitter.off('tryResign', handleAttemptResign);
+      eventEmitter.off('tryDraw', handleDrawOffer);
+      eventEmitter.off('acceptDraw', handleDrawAccept);
+
       console.log('Closing WebSocket connection...');
       socket.current?.close();
     };
@@ -402,13 +450,8 @@ export default function TestingWebsockets() {
                 key={chatUpdate}
                 pNum={playerNumber.current}
                 pMessages={messageRef.current}
+                pDrawMatrix={drawState.current}
                 onSendMessage={handleSendMessage}
-                onOfferDraw={() => {
-                    // Handle draw offer
-                }}
-                onResign={() => {
-                    // Handle resignation
-                }}
               />
             </div>
           </div>
