@@ -29,6 +29,8 @@ export default function TestingWebsockets() {
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const [showEndPopup, setShowEndPopup] = useState(false);
   const [chatUpdate, setChatUpdate] = useState(0);
+  const [showWaitingPopup, setShowWaitingPopup] = useState(false);
+  const [copied, setCopied] = useState(false);
   const socket = useRef<WebSocket>();
   const waitingForRecconect = useRef(false);
   const playerNumber = useRef(-1);
@@ -156,8 +158,10 @@ export default function TestingWebsockets() {
       switch (data.event) {
         case 'playerJoined':
           setGameStatus('Waiting for opponent...');
+          setShowWaitingPopup(true);
           break;
         case 'gameStart':
+          setShowWaitingPopup(false);
           // parse players and add them to the list
           const players = data.data.players;
           eloChangeRef.current = data.data.eloChanges;
@@ -292,6 +296,14 @@ export default function TestingWebsockets() {
     if (playerNumber.current === -1) return;
     sendToServer({ event: 'offerDraw', data: { roomId: room } } as OfferDraw);
   }
+
+  const handleCopyLink = () => {
+    const roomLink = `${window.location.origin}/game?room=${roomId}`;
+    navigator.clipboard.writeText(roomLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   useEffect(() => {
 
@@ -429,6 +441,26 @@ export default function TestingWebsockets() {
             }}
             onClose={() => setShowEndPopup(false)}
           />
+        </div>
+      )}
+      {showWaitingPopup && (
+        <div className="absolute z-50 bg-white p-4 border rounded shadow-lg w-1/4 left-1/2 transform -translate-x-1/2 top-1/4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Waiting for Opponent...</h2>
+            <button 
+              onClick={() => setShowWaitingPopup(false)} 
+              className="text-gray-500 hover:text-gray-800"
+            >
+              &times;
+            </button>
+          </div>
+          <p>Please wait while your opponent joins the game.</p>
+          <button 
+            onClick={handleCopyLink} 
+            className="mt-4 bg-blue-500 text-white p-2 rounded transition-transform transform hover:scale-105"
+          >
+            {copied ? 'Copied!' : 'Copy Game Link'}
+          </button>
         </div>
       )}
       <Dashboard />

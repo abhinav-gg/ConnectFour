@@ -125,7 +125,6 @@ async function setupPlayer(userId: string) {
   }
   else {
     SocketIDs.forEach(s => {
-      console.log(s.userID, s.username)
       if (s.userID === userId) {
         s.username = user.username ? user.username : 'Anonymous';
       }
