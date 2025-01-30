@@ -1,7 +1,7 @@
 import argon2 from 'argon2';
-import jwt, { Jwt, JwtPayload } from 'jsonwebtoken';
 import { dbOperations } from '@/db/operations';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -13,39 +13,21 @@ export async function verifyPassword(hash: string, password: string): Promise<bo
   return argon2.verify(hash, password);
 }
 
-export function generateAccessToken(userId: string): string {
-  const JWT_SECRET = process.env.JWT_SECRET;
-  const JWT_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES;
-
-  if (!JWT_SECRET) {
-    throw new Error('Missing JWT_SECRET');
-  }
-
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN || '15m' });
+async function generateSessionToken(): Promise<string> {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Buffer.from(bytes).toString('base64');
 }
 
-export function generateRefreshToken(userId: string): string {
-  const JWT_REFRESH_SECRET = process.env.REFRESH_SECRET;
-  const JWT_REFRESH_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES;
-
-  if (!JWT_REFRESH_SECRET) {
-    throw new Error('Missing JWT_REFRESH_SECRET');
-  }
-
-  return jwt.sign({ userId }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN || '7d' });
+export async function createSession(userId: string): Promise<string> {
+  const token = await generateSessionToken();
+  await dbOperations.createUserSession(userId, token);
+  return token;
 }
 
-export function verifyAccessToken(token: string): JwtPayload | null {
-  const JWT_SECRET = process.env.JWT_SECRET;
+export async function revokeSession(token: string): Promise<void> {
+  await dbOperations.revokeSessionByToken(token);
+}
 
-  if (!JWT_SECRET) {
-    throw new Error('Missing JWT_SECRET');
-  }
-
-  try {
-    return jwt.verify(token, JWT_SECRET) as JwtPayload;
-  } catch (err) {
-    return null;
-  }
-
+export async function getUserFromSession(token: string): Promise<{ userId: string | null; }> {
+  return { userId: await dbOperations.getUserFromSession(token) };
 }

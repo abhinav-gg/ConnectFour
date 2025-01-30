@@ -19,25 +19,20 @@ const HomePage = () => {
     } else {
       window.location.href = '/game?room=' + roomFromUrl;
     }
-  }
+  };
 
   useEffect(() => {
     const checkAuthentication = async () => {
-      const token = localStorage.getItem('token'); // Check for token in local storage
       // get room form params if exists
-      if (token) {
-        const response = await fetch(`${getConfig().backendUrl}/api/auth/protected-route`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
-          },
-        });
-        if (!response.ok) {
-          console.log('User not authenticated');
-        } else {
-          sendToJoin();
-          return;
-        }
+      const response = await fetch(`${getConfig().backendUrl}/api/auth/protected-route`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        console.log('User not authenticated');
+      } else {
+        sendToJoin();
+        return;
       }
       // If no token, show choice buttons
       setShowChoice(true);
@@ -52,7 +47,7 @@ const HomePage = () => {
   };
 
   const handleLogin = () => {
-    window.location.href='/login'; // Redirect to login page
+    window.location.href = '/login'; // Redirect to login page
   };
 
   return (

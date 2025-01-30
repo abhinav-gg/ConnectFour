@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getConfig } from '@/config/env'
 import Dashboard from '@/components/dashboard'
@@ -11,6 +11,26 @@ export default function Login() {
   const [error, setError] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const config = getConfig()
+        const response = await fetch(`${config.backendUrl}/api/auth/protected-route`, {
+          method: 'GET',
+          credentials: 'include',
+        })
+
+        if (response.ok) {
+          router.push('/dashboard') // Redirect to dashboard or another page after login
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    checkLoginStatus()
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -22,6 +42,7 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           username,
           password,
@@ -30,13 +51,11 @@ export default function Login() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.message || 'Login failed')
+        throw new Error(data.error || 'Login failed')
       }
 
-      const data = await response.json()
-      // Store token if needed
-      console.log(data, data.data, data.token)
-      localStorage.setItem('token', data.data.accessToken)
+      const data = await response.json();
+      
       router.push('/dashboard') // Redirect to dashboard or another page after login
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')

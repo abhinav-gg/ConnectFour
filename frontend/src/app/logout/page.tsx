@@ -8,25 +8,16 @@ export default function Logout() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token'); // Assuming the token is stored in local storage
 
-    if (!token) {
-    router.push('/login'); // Redirect to login if no token
-    return;
-    }
-
-    const logoutUser = async () => {
+      const logoutUser = async () => {
       try {
 
         const response = await fetch(`${getConfig().backendUrl}/api/auth/logout`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          credentials: 'include',
         });
 
         if (response.ok) {
-          localStorage.removeItem('token'); // Remove token from local storage
           router.push('/'); // Redirect to homepage
         } else {
           const data = await response.json();

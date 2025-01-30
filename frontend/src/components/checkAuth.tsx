@@ -18,33 +18,25 @@ export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckA
 
     setLoading(true);
 
-    const token = localStorage.getItem('token'); // Check for token in local storage
-    if (token) {
-      const response = await fetch(`${await getConfig().backendUrl}/api/auth/protected-route`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
-        },
-      });
+    const response = await fetch(`${await getConfig().backendUrl}/api/auth/protected-route`, {
+      method: 'GET',
+      credentials: 'include',
+    });
 
-      if (!response.ok) {
-        if (onAuthFail) {
-          onAuthFail();
-        }
-      } else {
-        setVerified(true);
-        if (onAuthSuccess) {
-          onAuthSuccess();
-        }
-      }
-    } else {
+    if (!response.ok) {
       if (onAuthFail) {
         onAuthFail();
       }
+    } else {
+      setVerified(true);
+      if (onAuthSuccess) {
+        onAuthSuccess();
+      }
     }
 
+
     setLoading(false);
-  }
+  };
 
   useEffect(() => {
     checkAuthentication();

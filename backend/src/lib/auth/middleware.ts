@@ -1,30 +1,27 @@
 import { dbOperations } from '@/db/operations';
 import type { DiscordUserRequest, RecaptchaResponse, RequestWithRecaptcha } from '@/types/types';
 import express, { NextFunction, Request, Response } from 'express';
-import { JwtPayload } from 'jsonwebtoken';
-import { verifyAccessToken } from './index';
+import { getUserFromSession } from './index';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
 const MODE = process.env.NODE_ENV || 'development'; // Default to development mode, ensure this is set to 'production' in prod
 
 
 interface AuthenticatedRequest extends Request {
-  user?: JwtPayload;
+  user?: { userId: string | null; };
 }
 
-export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-  const token = req.headers.authorization?.split(' ')[1]; // Extract the token from the header
-  // TODO: ivan to check for "NONE" signing algorithm (should NOT be accepted)
+export const authenticateSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const token = req.cookies.sessionToken; // Get the session token from the request cookies
   if (!token) {
-    res.status(401).json({ error: 'Access token required' });
+    res.status(401).json({ error: 'Session token required' });
     return; // Ensure we return here to avoid further execution
   }
 
   try {
-    const decoded = verifyAccessToken(token); // Verify the token
+    const decoded = await getUserFromSession(token); // Decode the token
     // check if decoded is promise null and raise error
-    if (!decoded) {
-      throw new Error('Unable to decode token');
+    if (!decoded.userId) {
+      throw new Error('Invalid or expired token');
     }
     else {
       req.user = decoded; // Attach user info to the request

@@ -16,20 +16,10 @@ export default function CheckAdmin({ children }: CheckAdminProps) { // Accept ch
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      const token = localStorage.getItem('token'); // Retrieve the token
-
-      if (!token) {
-        // display the page not found error to the user to hide the fact that the page exists
-        setIsAdmin(false);
-        return;
-      }
-
       try {
         const response = await fetch(`${getConfig().backendUrl}/api/auth/isadmin`, {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
-          },
+          credentials: 'include',
         });
 
         if (!response.ok) {
