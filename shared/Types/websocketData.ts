@@ -133,6 +133,11 @@ export type PlayerTimeOut = {
   data: { roomId: RoomID; };
 }
 
+export type OpponentAbandoned = {
+  event: 'opponentAbandoned';
+  data: { roomId: RoomID; };
+}
+
 export type SendMessage = {
   event: 'sendMessage';
   data: { roomId: RoomID; message: string; };
@@ -140,3 +145,4 @@ export type SendMessage = {
 
 export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | DeclineDraw | Resign
                           | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage
+                          | OpponentAbandoned

@@ -41,6 +41,12 @@ export class GameOperations {
           VALUES ($1, $2, $3)`,
           [playerid, game_id, game_info]
         );
+      else
+        result = await client.query(
+          `INSERT INTO con4_schema.GameLookup (player, game_info)
+          VALUES ($1, $2)`,
+          [playerid, game_info]
+        );
       return;
     } catch (error) {
       console.error('Failed to fetch id by email:', error);
@@ -393,7 +399,6 @@ export class GameOperations {
       }
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to fetch player game info:', error);
       throw error;
     } finally {
       client.release();
@@ -401,13 +406,13 @@ export class GameOperations {
     }
   }
 
-  async SetPlayerElo(playerid: string, gameModeId: string, elo: number, rd: number): Promise<void> {
+  async SafeCreateElo(playerid: string, gameModeId: string, elo: number, rd: number): Promise<void> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `IF NOT EXISTS
-          INSERT INTO con4_schema.Elo (player, mode, elo, rating_deviation)
-          VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO con4_schema.Elo (player, mode, elo, rating_deviation)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT DO NOTHING`,
         [playerid, gameModeId, elo, rd]
       );
       return result.rows[0];
@@ -498,19 +503,19 @@ export class GameOperations {
     }
   }
 
-  async QueryMatckmaking(playerid: string, gamemodeId: string): Promise<{user_id: string, elo: number}> {
+  async QueryMatckmaking(playerid: string, gameInfoID: string): Promise<{user_id: string, elo: number}> {
     const client = await this.getClient();
     try {
       const result = await client.query(
-        `SELECT player AS user_id, con4_schema.Elo.elo AS elo FROM con4_schema.GameLookup
+        `SELECT con4_schema.GameLookup.player AS user_id, con4_schema.Elo.elo AS elo FROM con4_schema.GameLookup
           INNER JOIN con4_schema.Elo ON con4_schema.Elo.player = con4_schema.GameLookup.player
           INNER JOIN con4_schema.GameInfo ON con4_schema.GameLookup.game_info = con4_schema.GameInfo.id
-          WHERE con4_schema.Elo.mode = $1
-          AND con4_schema.GameInfo.gamemode = $1
-          AND player != $2
+          WHERE con4_schema.Elo.mode = con4_schema.GameInfo.gamemode
+          AND con4_schema.GameInfo.id = $1
+          AND con4_schema.GameLookup.player != $2
           ORDER BY ABS(ABS(con4_schema.Elo.elo - (SELECT elo FROM con4_schema.Elo WHERE player = $2 AND mode = $1)) - 30) ASC
           LIMIT 10`,
-        [gamemodeId, playerid]
+        [gameInfoID, playerid]
       );
       return result.rows?.[0];
     } catch (error) {
