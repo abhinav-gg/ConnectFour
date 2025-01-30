@@ -28,14 +28,17 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
         // Orders by absolute difference from ideal rating gap (50)
         const potentialMatch = await dbOperations.QueryMatckmaking(userId, game_info);
         console.log('Potential Matches:', potentialMatch);
-
-        await dbOperations.BeginFindingGame(userId, game_info);
+        let priority = 0;
+        try {
+            priority = await dbOperations.GetTimeSinceLastGameLookup(userId);
+        } catch {
+            await dbOperations.BeginFindingGame(userId, game_info);
+        }
         
         // If we found a match
         if (potentialMatch) {
             
             // get current time in seconds and calculate time since last played as priority
-            const priority = await dbOperations.GetTimeSinceLastGameLookup(userId);
             console.log('Best Opponent:', potentialMatch, 'Priority:', priority);
 
             // Check time current player has been in queue
