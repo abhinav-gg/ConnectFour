@@ -39,6 +39,15 @@ authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => 
   try {
     const passwordHash = await hashPassword(passwordNormalised);
     const result = await dbOperations.createUser(usernameNormalised, emailNormalised, passwordHash);
+    const sessionToken = await createSession(result.id);
+
+    res.cookie('sessionToken', sessionToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
     return res.json({ status: 'Success', data: result });
   } catch (error) {
     console.error('Failed to create user:', error);

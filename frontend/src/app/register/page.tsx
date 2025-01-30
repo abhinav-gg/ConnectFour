@@ -58,6 +58,7 @@ function RegistrationPage(): React.ReactElement {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           username: formData.get('username'),
           email: formData.get('email'),
