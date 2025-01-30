@@ -830,7 +830,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
           case 'offerDraw': { 
             const roomId = data.data.roomId;
-            const user = getUser(ws)?.userID
+            const user = getUser(ws)?.userID!
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
             const room = getRoom(roomId)!;
             const player = room.players.indexOf(user as UUID);
@@ -843,7 +843,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
           }
           case 'acceptDraw': {
             const roomId = data.data.roomId;
-            const user = getUser(ws)?.userID
+            const user = getUser(ws)?.userID!
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
             const room = getRoom(roomId)!;
             console.log(room)

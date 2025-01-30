@@ -1,8 +1,6 @@
 // src/routes/authRoutes.ts
 import { dbOperations } from '@/db/operations';
-import { NextFunction, Request, Response, Router } from 'express';
-import { JwtPayload } from 'jsonwebtoken';
-import { DiscordUserRequest } from './types/types';
+import { Request, Response, Router } from 'express';
 
 
 
