@@ -23,6 +23,12 @@ export const validateUsername = (username: string): boolean => {
 export const validateEmail = (email: string): boolean => {
   if (!email) return false;
   const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+  /**
+   * use zod's regex:
+   * /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i
+   */
+
   return emailRegex.test(email);
 };
 

@@ -46,13 +46,16 @@ export class UserOperations {
     isAnonymous: boolean = false
   ): Promise<User> {
     const client = await this.getClient();
+    const normUser = username.toLowerCase();
+    const normEmail = email.toLowerCase();
+
     try {
       await client.query('BEGIN');
 
       // Check if username already exists
       const userCheckResult = await client.query(
         `SELECT id FROM con4_schema.Users WHERE username = $1`,
-        [username]
+        [normUser]
       );
 
       if (userCheckResult.rows.length > 0) {
@@ -62,7 +65,7 @@ export class UserOperations {
       // Check if email already exists
       const emailCheckResult = await client.query(
         `SELECT id FROM con4_schema.Users WHERE email = $1`,
-        [email]
+        [normEmail]
       );
 
       if (emailCheckResult.rows.length > 0) {
@@ -75,7 +78,7 @@ export class UserOperations {
         `INSERT INTO con4_schema.Users (username, email, password_hash, is_anonymous, created_at, updated_at)
          VALUES ($1, $2, $3, $4, NOW(), NOW())
          RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
-        [username, email, passwordHash, isAnonymous]
+        [normUser, normEmail, passwordHash, isAnonymous]
       );
 
       await client.query('COMMIT');
@@ -116,7 +119,7 @@ export class UserOperations {
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
                  FROM con4_schema.users
                  WHERE username = $1`,
-        [username]
+        [username.toLowerCase()]
       );
 
       return result.rows[0];
@@ -136,7 +139,7 @@ export class UserOperations {
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
                  FROM con4_schema.users
                  WHERE email = $1`,
-        [email]
+        [email.toLowerCase()]
       );
 
       return result.rows[0];
@@ -176,7 +179,7 @@ export class UserOperations {
         `SELECT password_hash
                  FROM con4_schema.users
                  WHERE username = $1`,
-        [username]
+        [username.toLowerCase()]
       );
 
       return result.rows[0]?.password_hash ?? "";
@@ -196,7 +199,7 @@ export class UserOperations {
         `SELECT password_hash
                  FROM users
                  WHERE email = $1`,
-        [email]
+        [email.toLowerCase()]
       );
 
       return result.rows[0]?.password_hash ?? "";
@@ -216,7 +219,7 @@ export class UserOperations {
         `SELECT id
                  FROM users
                  WHERE username = $1`,
-        [username]
+        [username.toLowerCase()]
       );
 
       return result.rows[0]?.id ?? "";
@@ -236,7 +239,7 @@ export class UserOperations {
         `SELECT id
                  FROM users
                  WHERE email = $1`,
-        [email]
+        [email.toLowerCase()]
       );
 
       return result.rows[0]?.id ?? "";
