@@ -6,7 +6,7 @@ import { dbOperations } from '@/db/operations';
 import authRouter from '@/authRoutes'; // Import the auth routes
 import gameRouter from '@/events/gameRoutes'; // Import the game routes
 import { setupGameEvents } from '@/events/gameEvents';
-import { authenticateAdmin, authenticateJWT, handleDiscordCallback } from '@/lib/auth/middleware';
+import { authenticateAdmin, authenticateJWT } from '@/lib/auth/middleware';
 import { DiscordUserRequest } from '@/types/types';
 
 dotenv.config();
@@ -72,17 +72,6 @@ type Data = {
   success: boolean,
   score: number;
 };
-
-
-
-app.get('/auth/discord', handleDiscordCallback, (req, res) => {
-  const ureq = req as DiscordUserRequest;
-  if (ureq.user) {
-    res.status(200).json({ message: 'Authenticated' });
-  } else {
-    res.status(500).json({ error: 'Failed to authenticate' });
-  }
-});
 
 app.use('/api/auth', authRouter);
 app.use('/api/game', gameRouter);

@@ -3,10 +3,6 @@ import { Player, Cell, Move } from '../Types/gameData';
 export const ROWS = 6
 export const COLS = 7
 
-export function removeEventListener(listener: EventListener) {
-  // remove listener from the event
-}
-
 export class GameState {
   currentPlayer: Player
   currentMoveIndex: number

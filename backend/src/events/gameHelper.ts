@@ -2,7 +2,6 @@ import { PlayerEloNotFound } from "@/db/dbErrors";
 import { dbOperations } from "@/db/operations";
 import { Game, Move } from "@/models/Game";
 import { Glicko, TimeInfo } from "@/types/types";
-import { genRandomGameKey } from "@/utils/helper";
 import { validateTimeControl } from "@/utils/validation";
 import { AvgGameLength, StandardGameStates, StandardStartingElo, StandardStartingRatingDeviation } from "@shared/constants";
 import { GameInfo, GameMode, TimeControl } from "@shared/Models/gameInfo";
@@ -237,5 +236,14 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
         console.log('Failed to end game:', error);
         throw error;
     }
+}
+export function genRandomGameKey(): string {
+  // return a random 8 character string with numbers and letters (case sensitive)
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789";
+  let key = "";
+  for (let i = 0; i < 8; i++) {
+    key += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return key;
 }
 

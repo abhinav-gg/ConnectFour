@@ -19,7 +19,7 @@ const EndPopup: React.FC<EndPopupProps> = ({ playerNumber, result, players, onRe
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
       <div className="bg-white p-6 rounded-lg shadow-lg z-50">
         <h2 className="text-xl font-bold text-center mb-4">
-          {(winner !== -1) ? `Winner: ${players[winner]?.username}` : 'Draw'}
+          {(!draw) ? `Winner: ${players[winner]?.username}` : 'Draw'}
         </h2>
         <div>
           <p className="text-center">
@@ -29,9 +29,9 @@ const EndPopup: React.FC<EndPopupProps> = ({ playerNumber, result, players, onRe
           </p>
         </div>
         <div className="mt-4 flex justify-around">
-          <button onClick={onRematch} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-            Rematch
-          </button>
+          <a href="/game/test-join" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            New Game
+          </a>
           <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
             Close
           </button>
