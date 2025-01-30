@@ -411,6 +411,24 @@ export class UserOperations {
     }
   }
 
+  async getSessionFromUserId(id: string): Promise<string | null> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT token FROM con4_schema.sessions
+         WHERE user_id = $1`,
+        [id]
+      );
+
+      return result.rows[0]?.token ?? null;
+    } catch (error) {
+      console.error('Failed to check user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
 
   //DELETE FROM con4_schema.users 
   //WHERE username IS NULL;

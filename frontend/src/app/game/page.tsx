@@ -135,7 +135,9 @@ export default function TestingWebsockets() {
     // Pass the token as a protocol
     console.log('Connecting to:', backendUrl);
     const newSocket = new WebSocket(backendUrl + "/in-game"); // ioc: check
-    console.log("set socket", socket, newSocket);
+    socket.current = newSocket;
+    console.log(socket.current);
+
     newSocket.onopen = () => {
       console.log('WebSocket connected!');
       setIsConnected(true);
@@ -161,11 +163,9 @@ export default function TestingWebsockets() {
           const players = data.data.players;
           eloChangeRef.current = data.data.eloChanges;
           playerNumber.current = data.data.playerNumber;
-          playerNumber.current = data.data.playerNumber;
           players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
-          turnText(0, data.data.playerNumber);
           turnText(0, data.data.playerNumber);
           setGameStarted(true);
           pushAnnouncement('Game started!');
@@ -183,8 +183,6 @@ export default function TestingWebsockets() {
         case 'endGame':
           if (playerNumber.current === -1) 
             break;
-          if (playerNumber.current === -1) 
-            break;
           pushAnnouncement("Game Ended")
           waitingForRecconect.current = false;
           setGameStatus(data.data.message);
@@ -199,7 +197,6 @@ export default function TestingWebsockets() {
           break;
         case 'moveMade':
           handleMoveReceived(data.data);
-          turnText(data.data.nextPlayer);
           turnText(data.data.nextPlayer);
           setTimeUpdate(timeUpdate + 1);
           break;

@@ -18,7 +18,6 @@ export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckA
 
     setLoading(true);
 
-
     const response = await fetch(`${await getConfig().backendUrl}/api/auth/protected-route`, {
       method: 'GET',
       credentials: 'include',

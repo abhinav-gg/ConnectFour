@@ -25,6 +25,7 @@ export const dbOperations = {
   revokeSessionByUID: databaseOps.revokeSessionByUID.bind(databaseOps),
   revokeSessionByToken: databaseOps.revokeSessionByToken.bind(databaseOps),
   getUserFromSession: databaseOps.getUserFromSession.bind(databaseOps),
+  getSessionFromUserId: databaseOps.getSessionFromUserId.bind(databaseOps),
 
   // Opening Operations
   GetOpening: openingOps.GetOpening.bind(openingOps),

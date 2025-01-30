@@ -1,6 +1,7 @@
 import argon2 from 'argon2';
 import { dbOperations } from '@/db/operations';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 

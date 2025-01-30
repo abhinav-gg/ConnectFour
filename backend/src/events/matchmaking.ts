@@ -116,14 +116,21 @@ export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
 // Be prepared to send the user to a room when they are matched
 // Also allow for waiting when the game is finished for a rematch or new game
 
-export const SendUserToRoom = (userId: string, roomId: string) => {
+export const SendUserToRoom = async (userId: string, roomId: string) => {
 
-    if (!userMap.has(userId)) {
+    const token = await dbOperations.getSessionFromUserId(userId);
+
+    if (!token) {
+        console.error('No token found');
+        return;
+    }
+
+    if (!userMap.has(token)) {
         console.error('User not found in map');
         return;
     }
 
-    const ws = userMap.get(userId)!;
+    const ws = userMap.get(token)!;
     ws.send(JSON.stringify(
         {
             event: 'sendToRoom',
@@ -136,7 +143,7 @@ export const SendUserToRoom = (userId: string, roomId: string) => {
 const userMap = new Map<string, WSocket>();
 
 export function setupWaitingRoom(app: expressWs.Application) {
-    app.ws('/finding-game', async (ws, req) => {
+    app.ws('/finding-game', (ws, req) => {
 
         // TODO
         const token = req.cookies.sessionToken;
@@ -147,24 +154,11 @@ export function setupWaitingRoom(app: expressWs.Application) {
           return;
         }
 
-        const user = await getUserFromSession(token);
-        if (!user.userId) {
-            ws.close();
-            return;
-        } else {
-            // this userId -> user.userId;
-            // add to map to ws
-            userMap.set(user.userId, ws);
-        }
+        userMap.set(token, ws);
 
-        ws.on('message', (msg) => { }); // no messages expected
-
-
-        ws.on('close', () => {
+        ws.on('close', async () => {
             // remove from map
-            if (user.userId) {
-                userMap.delete(user.userId);
-            }
+            userMap.delete(token);
         });
     });
 }
