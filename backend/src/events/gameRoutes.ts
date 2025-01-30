@@ -50,8 +50,6 @@ gameRouter.post('/request', authenticateSession, async (req: Request, res: Respo
         res.status(500).json({ error: 'Invalid Data' });
         return;
     }
-
-    console.log('Create Game:', userId, time_control, gamemode);
     console.log('Create Game:', userId, time_control, gamemode);
 
     // Check if the user is already in the game lookup

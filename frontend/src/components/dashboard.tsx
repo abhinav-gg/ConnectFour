@@ -20,7 +20,7 @@ export default function Dashboard(props: TestProps) {
         setIsOpen(true);
       }
     };
-    console.log(isOpen, props.closed)
+
     if (props.closed) {
       setIsOpen(false);
     } else {

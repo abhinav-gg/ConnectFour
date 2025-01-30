@@ -7,26 +7,37 @@ import { PlayerEloNotFound } from './dbErrors';
 import { StandardStartingRatingDeviation } from '@shared/constants';
 import { Glicko } from '@/types/types';
 
-// Load .env from project root
+// Load .env from project root (prob should find a better way for this)
 dotenv.config({ path: "../../.env" });
 const application_name = "con-four";
 
 
 export class GameOperations {
-  private static pool: Pool;
   private client: PoolClient | null = null;
 
   private async getClient(): Promise<PoolClient> {
-    if (!GameOperations.pool || GameOperations.pool.ended) {
-      GameOperations.pool = new Pool({
-        connectionString: process.env.DB_URL,
-        application_name: application_name
-      });
-    }
+    const pool = new Pool({
+      connectionString: process.env.DB_URL,
+      application_name: application_name
+    });
+
     if (!this.client) {
-      this.client = await GameOperations.pool.connect();
+      this.client = await pool.connect();
     }
+
     return this.client;
+  }
+
+  private async safeRelease(): Promise<void> {
+    if (this.client) {
+      try {
+        this.client.release(); // Attempt to release the client
+      } catch (error) {
+        console.error('Error releasing client:', error); // Log any errors during release
+      } finally {
+        this.client = null; // Ensure client is set to null after release
+      }
+    }
   }
 
   // Look for game
@@ -52,8 +63,7 @@ export class GameOperations {
       console.error('Failed to fetch id by email:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -72,8 +82,7 @@ export class GameOperations {
         console.error('Could not delete user from game search:', error);
         throw error;
       } finally {
-        client.release();
-        this.client = null;
+        this.safeRelease();
       }
     }
 
@@ -97,8 +106,7 @@ export class GameOperations {
       console.error('Failed to make the game:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
   
@@ -115,8 +123,7 @@ export class GameOperations {
       console.error('Failed to fetch game by id:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -136,8 +143,7 @@ export class GameOperations {
       console.error('Failed to fetch moves by game id:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
   
@@ -158,8 +164,7 @@ export class GameOperations {
       console.error('Failed to fetch ongoing games by player:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -177,8 +182,7 @@ export class GameOperations {
       console.error('Failed to make move:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -196,8 +200,7 @@ export class GameOperations {
       console.error('Failed to fetch time control:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -221,8 +224,7 @@ export class GameOperations {
       console.error('Failed to fetch game mode id:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -239,8 +241,7 @@ export class GameOperations {
       console.error('Failed to fetch game by short code:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -266,8 +267,7 @@ export class GameOperations {
       console.error('Failed to fetch game info id:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -287,8 +287,7 @@ export class GameOperations {
       console.error('Failed to fetch time since last game:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -308,8 +307,7 @@ export class GameOperations {
       console.error('Failed to fetch game info:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -329,8 +327,7 @@ export class GameOperations {
       console.error('Failed to fetch game mode:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -354,8 +351,7 @@ export class GameOperations {
       console.error('Failed to assign game:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -380,8 +376,7 @@ export class GameOperations {
       console.error('Failed to unassign game:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -401,8 +396,7 @@ export class GameOperations {
     } catch (error) {
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -420,8 +414,7 @@ export class GameOperations {
       console.error('Failed to set player elo:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -440,8 +433,7 @@ export class GameOperations {
       console.error('Failed to update player elo:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -460,8 +452,7 @@ export class GameOperations {
       console.error('Failed to update player rd:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
   
@@ -479,8 +470,7 @@ export class GameOperations {
       console.error('Failed to fetch players by game id:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -498,8 +488,7 @@ export class GameOperations {
       console.error('Failed to update game status:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -522,8 +511,7 @@ export class GameOperations {
       console.error('Failed to query matchmaking:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -542,8 +530,7 @@ export class GameOperations {
       console.error('Failed to fetch time since last game lookup:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 

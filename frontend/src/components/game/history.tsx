@@ -33,7 +33,6 @@ export default function MoveHistory({
 
     const handleBoardUpdate = () => {
       returnToPresent();
-      console.log("HISTORY POV:", ref.getMoves());
       setUpdateCount(prev => prev + 1);
     };
   

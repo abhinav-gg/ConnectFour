@@ -4,18 +4,22 @@ import Dashboard from '@/components/dashboard';
 import IchackLogo from '@/components/ichacklogo';
 import { animated, config, useSpring } from '@react-spring/web';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-const eventDate = new Date('2025-02-01T09:00:00');
+// temporarily set the data to 10 seconds from now for testing
+const eventDate = new Date(new Date().getTime() + 10000);
+//new Date('2025-02-01T09:00:00');
 
 const calculateTimeLeft = (eventDate: Date) => {
   const difference = +eventDate - +new Date();
-
+  console.log(difference, eventDate, new Date());
   return {
     days: Math.floor(difference / (1000 * 60 * 60 * 24)),
     hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
     minutes: Math.floor((difference / 1000 / 60) % 60),
-    seconds: Math.floor((difference / 1000) % 60)
+    seconds: Math.floor((difference / 1000) % 60),
+    finished: difference <= 0
   };
 };
 
@@ -45,12 +49,6 @@ export default function ICHack25() {
     config: config.gentle
   });
 
-  const registeredAnimation = useSpring({
-    from: { opacity: 0, scale: 0.9 },
-    to: { opacity: registered ? 1 : 0, scale: registered ? 1 : 0.9 },
-    config: config.gentle
-  });
-
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -66,7 +64,21 @@ export default function ICHack25() {
   const renderCountdown = () => (
     <div className="bg-black p-8 rounded-lg">
       <div className="flex justify-center space-x-4">
-        {[
+        {timeLeft.finished ? 
+        [<div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
+            <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Join Event</Link>
+          </div>,
+          <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
+            <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Create Game</Link>
+          </div>,
+          <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
+            <div className="bg-yellow-500 rounded-lg p-2 text-white h-1/2 flex items-center justify-center">
+              <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Leaderboard</Link>
+            </div>
+            <div className="bg-white rounded-lg p-2 text-black h-1/2 flex items-center justify-center">
+              
+            </div>
+          </div>] : [
           <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
             <div className="flex items-end">
               <div className="text-6xl font-bold text-white">{timeLeft.days}</div>
@@ -227,16 +239,6 @@ IC Hack covers food and swag for all hackers, not to mention the opportunity to 
                 Sign Up
               </button>
             </animated.form>
-
-            {registered && (
-              <animated.div
-                style={registeredAnimation}
-                className="bg-green-500 bg-opacity-20 rounded-lg p-8 mb-12 text-center"
-              >
-                <h2 className="text-3xl font-bold mb-4">Thank You!</h2>
-                <p>Your registration for ICHack25 has been received. We can't wait to see you there!</p>
-              </animated.div>
-            )}
           </div>
         </main>
       </div>

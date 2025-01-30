@@ -27,7 +27,7 @@ export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout
                 setDisplayTime(_ => newTime);
                 if (newTime <= 0) {
                     // wait half a second before calling onTimeout
-                    setTimeout(() => onTimeout(), 350);
+                    setTimeout(() => onTimeout(), 500);
                     clearInterval(interval);
                 }
             }, 35);

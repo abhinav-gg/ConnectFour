@@ -14,6 +14,7 @@ export type Room = {
   gameInfo: GameInfo;
   lastDisconnect?: number;
   gameOver?: boolean;
+  drawing?: boolean;
   currentTurn: number;
 };
 

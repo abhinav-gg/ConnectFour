@@ -9,7 +9,7 @@ import { TimeControl } from "@shared/Models/gameInfo";
  */
 export const validateUsername = (username: string): boolean => {
   if (!username) return false;
-  const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
+  const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{3,19}$/;
   return usernameRegex.test(username);
 };
 

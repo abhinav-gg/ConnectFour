@@ -6,11 +6,6 @@ export type RoomID = string;
 
 /////////// SENT TO FRONTEND BY SERVER ///////////
 
-
-export  type RoomFull = {
-  event: 'roomFull';
-};
-
 export type GameStart = {
   event: 'gameStart';
   data: { 
@@ -53,7 +48,12 @@ export type MoveMade = {
 
 export type Draw = {
   event: 'draw';
-  // Is data needed?
+  data: {  };
+}
+
+export type DrawOffer = {
+  event: 'drawOffer';
+  data: {  };
 }
 
 export type StartTimer = {
@@ -82,8 +82,8 @@ export type ReceiveMessage = {
 
 
 export type ClientMessage = GameStart | PlayerJoined | MoveMade | EndGame 
-                          | RoomFull | GameStart | ReceiveMessage | Error | PlayerDisconnected 
-                          | StartTimer | Draw | PlayerTimeout | PlayerReconnected
+                          | GameStart | ReceiveMessage | Error | PlayerDisconnected 
+                          | StartTimer | Draw | DrawOffer| PlayerTimeout | PlayerReconnected
                           | OpponentReconnect
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
@@ -100,11 +100,6 @@ export type OfferDraw = {
 
 export type AcceptDraw = {
   event: 'acceptDraw';
-  data: { roomId: RoomID; };
-};
-
-export type DeclineDraw = {
-  event: 'declineDraw';
   data: { roomId: RoomID; };
 };
 
@@ -143,6 +138,6 @@ export type SendMessage = {
   data: { roomId: RoomID; message: string; };
 };
 
-export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | DeclineDraw | Resign
+export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | Resign
                           | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage
                           | OpponentAbandoned
