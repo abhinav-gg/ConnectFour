@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link'
-import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight, LogOut, UserCircle } from 'lucide-react'
 import Image from 'next/image'
 
 interface TestProps {
