@@ -5,9 +5,9 @@ import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/co
 import { Glicko } from '@/types/types';
 import type expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
-import { verifyAccessToken } from '@/lib/auth';
 import type { SendToRoom } from '@shared/Models/gameInfo';
 import { PlayerEloNotFound } from '@/db/dbErrors';
+import { getUserFromSession } from '@/lib/auth';
 
 // file to control all elements of user matchmaking and game creation
 
@@ -119,14 +119,21 @@ export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
 // Be prepared to send the user to a room when they are matched
 // Also allow for waiting when the game is finished for a rematch or new game
 
-export const SendUserToRoom = (userId: string, roomId: string) => {
+export const SendUserToRoom = async (userId: string, roomId: string) => {
 
-    if (!userMap.has(userId)) {
+    const token = await dbOperations.getSessionFromUserId(userId);
+
+    if (!token) {
+        console.error('No token found');
+        return;
+    }
+
+    if (!userMap.has(token)) {
         console.error('User not found in map');
         return;
     }
 
-    const ws = userMap.get(userId)!;
+    const ws = userMap.get(token)!;
     ws.send(JSON.stringify(
         {
             event: 'sendToRoom',
@@ -141,23 +148,20 @@ const userMap = new Map<string, WSocket>();
 export function setupWaitingRoom(app: expressWs.Application) {
     app.ws('/finding-game', (ws, req) => {
 
-        const token = req.header('Sec-WebSocket-Protocol') as string;
-        const user = verifyAccessToken(token as string);
-        if (!user) {
-            ws.close();
-            return;
-        } else {
-            // this userId -> user.userId;
-            // add to map to ws
-            userMap.set(user.userId, ws);
+        // TODO
+        const token = req.cookies.sessionToken;
+
+        if (!token) {
+          console.log('No token');
+          ws.close();
+          return;
         }
 
-        ws.on('message', (msg) => { }); // no messages expected
+        userMap.set(token, ws);
 
-
-        ws.on('close', () => {
+        ws.on('close', async () => {
             // remove from map
-            userMap.delete(user.userId);
+            userMap.delete(token);
         });
     });
 }

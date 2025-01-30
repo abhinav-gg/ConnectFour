@@ -38,7 +38,6 @@ const TestJoinPage = () => {
 
   const requestGame = async () => {
       
-    const token = localStorage.getItem('token');
     const selectedControl = StandardTimecontrols.find((control) => control.id === selectedTimeControl);
 
     if (!selectedControl) {
@@ -58,8 +57,8 @@ const TestJoinPage = () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
       },
+      credentials: 'include',
       body: JSON.stringify({
         gamemode: {
           name: gameType,

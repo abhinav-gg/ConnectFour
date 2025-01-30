@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { dbOperations } from '@/db/operations';
 import { GameMode, SendToRoom, TimeControl } from '@shared/Models/gameInfo';
-import { authenticateJWT } from '@/lib/auth/middleware';
+import { authenticateSession } from '@/lib/auth/middleware';
 import * as globals from '@shared/constants';
 import { abortGame, CategoriseTime, createGame, quitGameSearch } from './gameHelper';
 import { GameInfo } from '@shared/Models/gameInfo';
@@ -11,7 +11,7 @@ import { FindCompetitiveMatch } from './matchmaking';
 const gameRouter = Router();
 
 // Create Game Route
-gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response, next: NextFunction) => {
+gameRouter.post('/request', authenticateSession, async (req: Request, res: Response, next: NextFunction) => {
     // Extract the user ID from the request
     let gamemode: GameMode;
     let time_control: TimeControl;
@@ -186,7 +186,7 @@ gameRouter.post('/review', async (req: Request, res: Response) => {
 });
 
 
-gameRouter.post('/status', authenticateJWT, async (req: Request, res: Response) => {
+gameRouter.post('/status', authenticateSession, async (req: Request, res: Response) => {
     // Check if the player is already in a game
     const userId = (req as any).user?.userId;
 
@@ -233,7 +233,7 @@ gameRouter.post('/get-leaderboard', async (req: Request, res: Response) => {
 gameRouter.post('/get-game-history', async (req: Request, res: Response) => {
 });
 
-gameRouter.post('/profile', authenticateJWT, async (req: Request, res: Response) => {
+gameRouter.post('/profile', authenticateSession, async (req: Request, res: Response) => {
     // Check the user ID and fetch the user profile from the database
     const userId = req.body.userId;
     const gamemodeId = req.body.gamemodeId;

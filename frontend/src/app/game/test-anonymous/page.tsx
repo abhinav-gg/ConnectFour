@@ -26,16 +26,16 @@ export default function TestAnonymousPage () {
     console.log("Creating anonymous account...");
     try {
       const response = await fetch(`${config.backendUrl}/api/auth/anonymous`, {
-        method: 'GET'
+        method: 'GET',
+        credentials: 'include', // accept cookies from server
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create anonymous account');
+        throw new Error(errorData.error || 'Failed to create anonymous account');
       }
 
       const data = await response.json();
-      localStorage.setItem('token', data.data.accessToken);
       onSuccess();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred');
