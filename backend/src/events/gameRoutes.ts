@@ -78,12 +78,13 @@ gameRouter.post('/request', authenticateJWT, async (req: Request, res: Response,
             return;
         }
     }
-    else await dbOperations.FinishedGameLookup(userId);
-
+    else {
+        await dbOperations.FinishedGameLookup(userId);
+    }
+    
     const GMM = gamemode.name;
 
     const mainMade = GMM.split('-')[0];
-    console.log('Game Mode:', GMM, mainMade);
     switch (mainMade) {
         case 'standard':
             //////////////////////////////////////////////////////////////////

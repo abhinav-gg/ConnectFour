@@ -329,7 +329,6 @@ export default function TestingWebsockets() {
     if (draw) {
       deltaElo = eloChangeRef.current.draw;
     } else if (winner === playerNumber.current) {
-    } else if (winner === playerNumber.current) {
       deltaElo = eloChangeRef.current.win;
       console.log('You won!');
     } else {
