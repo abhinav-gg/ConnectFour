@@ -4,12 +4,18 @@ import { createSession, revokeSession, hashPassword, verifyPassword } from '@/li
 import { authenticateAdmin, authenticateSession, verifyRecaptcha } from '@/lib/auth/middleware';
 import { NextFunction, Request, Response, Router } from 'express';
 import { z } from 'zod';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const authRouter = Router();
+const disallowedUsernames = new Set(fs.readFileSync(path.join('..', 'shared', 'reserved_usernames.txt'), 'utf-8').split('\n').map((line) => line.trim().toLowerCase()));
 
 // Registration Route
 authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => {
-  const { username, email, password } = req.body;
+  const { username, email, password } = req.body as { username: string, email: string, password: string; };
+  const usernameNormalised = username.trim().toLowerCase();
+  const emailNormalised = email.trim().toLowerCase();
+  const passwordNormalised = password.trim();
 
   const schema = z.object({
     username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_.]*$/),
@@ -18,15 +24,21 @@ authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => 
   });
 
   try {
-    schema.parse({ username, email, password });
+    schema.parse({ username: usernameNormalised, email: emailNormalised, password: passwordNormalised });
   } catch (error) {
-    console.log(error);
+    // commented out as too verbose
+    // console.log(error);
     return res.status(400).json({ error: 'Invalid input' });
   }
 
+  // check against disallowed usernames
+  if (disallowedUsernames.has(usernameNormalised)) {
+    return res.status(400).json({ error: 'Username is already taken' });
+  }
+
   try {
-    const passwordHash = await hashPassword(password);
-    const result = await dbOperations.createUser(username, email, passwordHash);
+    const passwordHash = await hashPassword(passwordNormalised);
+    const result = await dbOperations.createUser(usernameNormalised, emailNormalised, passwordHash);
     return res.json({ status: 'Success', data: result });
   } catch (error) {
     console.error('Failed to create user:', error);
@@ -75,7 +87,7 @@ authRouter.post('/login', async (req: Request, res: any) => {
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days in milliseconds
     });
-   
+
     res.json({ status: 'Success' });
   } catch (error) {
     console.error('Failed to login:', error);

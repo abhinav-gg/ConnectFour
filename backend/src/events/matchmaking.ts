@@ -5,9 +5,9 @@ import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/co
 import { Glicko } from '@/types/types';
 import type expressWs from "express-ws";
 import type { WebSocket as WSocket } from "ws";
-import { verifyAccessToken } from '@/lib/auth';
 import type { SendToRoom } from '@shared/Models/gameInfo';
 import { PlayerEloNotFound } from '@/db/dbErrors';
+import { getUserFromSession } from '@/lib/auth';
 
 // file to control all elements of user matchmaking and game creation
 
@@ -136,11 +136,19 @@ export const SendUserToRoom = (userId: string, roomId: string) => {
 const userMap = new Map<string, WSocket>();
 
 export function setupWaitingRoom(app: expressWs.Application) {
-    app.ws('/finding-game', (ws, req) => {
+    app.ws('/finding-game', async (ws, req) => {
 
-        const token = req.header('Sec-WebSocket-Protocol') as string;
-        const user = verifyAccessToken(token as string);
-        if (!user) {
+        // TODO
+        const token = req.cookies.sessionToken;
+
+        if (!token) {
+          console.log('No token');
+          ws.close();
+          return;
+        }
+
+        const user = await getUserFromSession(token);
+        if (!user.userId) {
             ws.close();
             return;
         } else {
@@ -154,7 +162,9 @@ export function setupWaitingRoom(app: expressWs.Application) {
 
         ws.on('close', () => {
             // remove from map
-            userMap.delete(user.userId);
+            if (user.userId) {
+                userMap.delete(user.userId);
+            }
         });
     });
 }
