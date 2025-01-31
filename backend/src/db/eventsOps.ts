@@ -1,6 +1,7 @@
 import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
+import { ICHacker, leaderboardPlayer } from '@shared/Models/eventInfo';
 
 
 // Load .env from project root (prob should find a better way for this)
@@ -35,14 +36,23 @@ export class EventOperations {
     }
   }
 
-    async getLeaderboard(gamemodeId: string, event: string): Promise<any> {
+    async getLeaderboard(gamemodeId: string, event: string): Promise<leaderboardPlayer[]> {
         const client = await this.getClient();
         try {
-        const results = await client.query(`SELECT * FROM con4_schema.Elo
-            WHERE gamemode_id = $1
-            ORDER BY elo DESC
-            LIMIT 10;`, [gamemodeId]);
-            return results.rows;
+            const results = await client.query(`SELECT elo, con4_schema.Users.username AS username FROM con4_schema.Elo
+                INNER JOIN con4_schema.Users ON con4_schema.Elo.player = con4_schema.Users.id
+                WHERE mode = $1
+                ORDER BY elo DESC
+                LIMIT 10;`, [gamemodeId]);
+            if (results.rows.length === 0)
+                return [];
+            return results.rows.map((row: any, index: number) => {
+                return {
+                    rank: index + 1,
+                    username: row.username,
+                    elo: row.elo
+                    } as leaderboardPlayer
+                });
         } catch (error) {
             console.error('Error in getLeaderboard:', error);
             throw error;
@@ -99,13 +109,32 @@ export class EventOperations {
     ////////////////////////////////////////////
 
 
-    async registerToICHACK25(userId: string): Promise<void> {
+    async registerToICHACK25(hacker: ICHacker, discId: string): Promise<void> {
         const client = await this.getClient();
         try {
-            await client.query(`INSERT INTO con4_schema.ichack25participants (user_id)
-            VALUES ($1);`, [userId]);
+            await client.query(`INSERT INTO events_schema.ichack25 (id, user_id, discord_id, full_name, hackspace)
+            VALUES ($1);`, [hacker.id, hacker.user_id, discId, hacker.name, hacker.hackspace]);
         } catch (error) {
             console.error('Error in registerToICHACK25:', error);
+            throw error;
+        } finally {
+            this.safeRelease();
+        }
+    }
+
+    async getAllICHackers(): Promise<ICHacker[]> {
+        const client = await this.getClient();
+        try {
+            const results = await client.query(`SELECT * FROM events_schema.ichack25;`);
+            return results.rows.map((row: any) => {
+                return {
+                    id: row.id,
+                    user_id: row.user_id,
+                    name: row.full_name,
+                    hackspace: row.hackspace
+                } as ICHacker });
+        } catch (error) {
+            console.error('Error in getICHACK25Users:', error);
             throw error;
         } finally {
             this.safeRelease();

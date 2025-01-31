@@ -63,4 +63,12 @@ export const dbOperations = {
   registerForEvent: eventOps.registerForEvent.bind(eventOps),
   isMemberOfEvent: eventOps.isMemberOfEvent.bind(eventOps),
   exitEvent: eventOps.exitEvent.bind(eventOps),
+
+
+  // Admin Operations
+
+
+  // Custom Operations
+  registerToICHACK25: eventOps.registerToICHACK25.bind(eventOps),
+  getAllICHackers: eventOps.getAllICHackers.bind(eventOps),
 };
