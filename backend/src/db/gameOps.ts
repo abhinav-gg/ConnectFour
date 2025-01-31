@@ -11,7 +11,6 @@ import { Glicko } from '@/types/types';
 dotenv.config({ path: "../../.env" });
 const application_name = "con-four";
 
-
 export class GameOperations {
   private client: PoolClient | null = null;
 

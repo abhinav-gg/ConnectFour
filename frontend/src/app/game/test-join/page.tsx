@@ -138,10 +138,11 @@ const TestJoinPage = () => {
     <AuthPage onAuthFail={handleNotAuth}>
       <div className="flex min-h-screen bg-gray-100">
         <Dashboard />
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <h1 className="text-3xl font-bold mb-6">Search for a Game</h1>
-          {message && <p className="text-lg">{message}</p>}
-          <form onSubmit={handleRoomIdSubmit} className="w-full max-w-md bg-white p-8 rounded-lg shadow-md mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 overflow-y-auto">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-center">Search for a Game</h1>
+          {message && <p className="text-base sm:text-lg text-center px-2">{message}</p>}
+          
+          <form onSubmit={handleRoomIdSubmit} className="w-full max-w-md bg-white p-4 sm:p-8 rounded-lg shadow-md mb-4 mx-2">
             <input
               type="text"
               placeholder="Enter Room ID"
@@ -153,34 +154,43 @@ const TestJoinPage = () => {
               Join Room
             </button>
           </form>
-          <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Select Time Control</h2>
-            <div className="flex flex-wrap justify-center mb-4">
+
+          <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-4 sm:p-8 rounded-lg shadow-md mx-2">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">Select Time Control</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
               {StandardTimecontrols.map((control, index) => (
-                <div className="flex justify-center mb-2 mx-2" key={control.id}>
-                  <button
-                    type="button"
-                    className={`py-2 px-4 rounded-lg ${selectedTimeControl === control.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}
-                    onClick={() => setSelectedTimeControl(control.id)}
-                    style={{ opacity: opacities[index] }}
-                  >
-                    {control.label}{`(${control.base}+${control.increment}-${control.disadvantage})`}
-                  </button>
-                </div>
+                <button
+                  key={control.id}
+                  type="button"
+                  className={`py-2 px-3 rounded-lg text-sm sm:text-base break-words ${
+                    selectedTimeControl === control.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
+                  }`}
+                  onClick={() => setSelectedTimeControl(control.id)}
+                  style={{ opacity: opacities[index] }}
+                >
+                  {control.label}{`(${control.base}+${control.increment}-${control.disadvantage})`}
+                </button>
               ))}
             </div>
+
             <div className="flex flex-col space-y-2">
-              <button className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors transform hover:scale-105"
+              <button 
+                type="button"
+                className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors transform hover:scale-105 text-sm sm:text-base"
                 onClick={() => setGameType('standard')}>
                 Create Game
               </button>
-              <button className="w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600 transition-colors transform hover:scale-105"
+              <button 
+                type="button"
+                className="w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600 transition-colors transform hover:scale-105 text-sm sm:text-base"
                 onClick={() => setGameType('friendly')}>
                 Play with Friends
               </button>
-              <button className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition-colors transform hover:scale-105"
-                onClick={() => setGameType('computer')}>
-                Play Computer
+              <button 
+                type="button"
+                className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition-colors transform hover:scale-105 text-sm sm:text-base"
+                onClick={(e) => e.preventDefault()}>
+                (Coming Soon)
               </button>
             </div>
           </form>
