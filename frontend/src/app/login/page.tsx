@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { getConfig } from '@/config/env'
 import Dashboard from '@/components/dashboard'
 import { ReCaptchaWrapper } from '@/components/captcha';
@@ -17,7 +16,6 @@ export default function Login() {
 }
 
 function LoginPage() {
-  const router = useRouter()
   const [error, setError] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -33,7 +31,7 @@ function LoginPage() {
         })
 
         if (response.ok) {
-          router.push('/dashboard') // Redirect to dashboard or another page after login
+          window.location.href = '/dashboard'; // Redirect to dashboard or another page after login
         }
       } catch (err) {
         console.error(err)
@@ -41,7 +39,7 @@ function LoginPage() {
     }
 
     checkLoginStatus()
-  }, [router])
+  })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -74,7 +72,7 @@ function LoginPage() {
 
       const data = await response.json();
       
-      router.push('/dashboard') // Redirect to dashboard or another page after login
+      window.location.href = '/dashboard' // Redirect to dashboard or another page after login
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     }
