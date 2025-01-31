@@ -2,15 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link'
-import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight, LogOut, UserCircle } from 'lucide-react'
+import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 
 interface TestProps {
   closed?: boolean
 }
 
+// Centralized dashboard items configuration
+const DASHBOARD_ITEMS = [
+  { path: '/', label: 'Home', icon: Home },
+  { path: '/game', label: 'Game', icon: PlayCircle },
+  { path: '/analysis', label: 'Analysis', icon: BarChart2 },
+  { path: '/openings', label: 'Opening Book', icon: Book },
+  { path: '/about-us', label: 'About', icon: Info },
+  { path: '/login', label: 'Login', icon: LogIn },
+] as const;
+
 export default function Dashboard(props: TestProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [visibleRows, setVisibleRows] = useState<number[]>([]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -32,7 +43,19 @@ export default function Dashboard(props: TestProps) {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [props.closed]);
+
+  useEffect(() => {
+    // Reset visible rows when dashboard is opened
+    if (isOpen) {
+      setVisibleRows([]);
+      DASHBOARD_ITEMS.forEach((_, index) => {
+        setTimeout(() => {
+          setVisibleRows((prev) => [...prev, index]);
+        }, index * 200); // Slightly faster timing for smoother appearance
+      });
+    }
+  }, [isOpen]);
 
   const toggleDashboard = () => {
     setIsOpen(!isOpen);
@@ -65,35 +88,26 @@ export default function Dashboard(props: TestProps) {
           </div>
           
           <div className="space-y-4">
-            <Link href="/" className="flex items-center text-gray-600 hover:text-gray-800">
-              <Home className="mr-2" />
-              Home
-            </Link>
-            
-            <Link href="/game" className="flex items-center text-gray-600 hover:text-gray-800">
-              <PlayCircle className="mr-2" />
-              Game
-            </Link>
-            
-            <Link href="/analysis" className="flex items-center text-gray-600 hover:text-gray-800">
-              <BarChart2 className="mr-2" />
-              Analysis
-            </Link>
-
-            <Link href="/openings" className="flex items-center text-gray-600 hover:text-gray-800">
-              <Book className="mr-2" />
-              Opening Book
-            </Link>
-            
-            <Link href="/about-us" className="flex items-center text-gray-600 hover:text-gray-800">
-              <Info className="mr-2" />
-              About
-            </Link>
-            
-            <Link href="/login" className="flex items-center text-gray-600 hover:text-gray-800">
-              <LogIn className="mr-2" />
-              Login
-            </Link>
+            {DASHBOARD_ITEMS.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={index}
+                  href={item.path}
+                  className={`
+                    flex items-center text-gray-600 hover:text-gray-800 transform
+                    ${visibleRows.includes(index) ? 'animate-slide-in opacity-100' : 'opacity-0 translate-x-[-50px]'}
+                    transition-all duration-500 ease-out
+                  `}
+                  style={{
+                    transitionDelay: `${index * 100}ms`
+                  }}
+                >
+                  <Icon className="mr-2" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

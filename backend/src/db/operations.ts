@@ -57,6 +57,7 @@ export const dbOperations = {
   UpdateGameStatusByShortCode: gameOps.UpdateGameStatusByShortCode.bind(gameOps),
   GetTimeSinceLastGameLookup: gameOps.GetTimeSinceLastGameLookup.bind(gameOps),
   UpdateRD: gameOps.UpdateRD.bind(gameOps),
+  KillGame: gameOps.killGame.bind(gameOps),
 
   // Event Operations
   getLeaderboard: eventOps.getLeaderboard.bind(eventOps),

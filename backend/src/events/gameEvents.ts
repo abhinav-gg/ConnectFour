@@ -374,7 +374,7 @@ async function handleGameEnd(roomId: string, draw: boolean, message: string, win
   // Mark game as finished depending on state
 };
 
-async function startNormalGame(room: Room, game: Game, gamemode: GameMode, time_control: TimeControl) {
+async function startNormalGame(room: Room, gamemode: GameMode, time_control: TimeControl) {
   const p1Time: number = time_control!.base_time*60000;
   const p2Time: number = p1Time + time_control!.disadvantage*1000; 
 
@@ -491,7 +491,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               game = await dbOperations.GetGameByShortCode(roomId);
 
               if (!game) {
-                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game not found', redirect: '/game' } }));
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game not found', redirect: '/game/test-join' } }));
+                return;
+              } else if (game.short_id !== roomId) {
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Player in another game', redirect: `/game?room=${game.short_id}` } }));
                 return;
               }
 
@@ -501,7 +504,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 return;
               } else if (game.state !== StandardGameStates.scheduled) {
                 // TODO: replace with analysis later
-                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game is not scheduled', redirect: "/game/test-join" } }));
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game Ended', redirect: "/game/test-join" } }));
                 return;
               }
             }
@@ -544,7 +547,12 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               
               // standard friendly gamemode starts with 2 players (current socket added above)
               if (room.players.length === 2) {
-                startNormalGame(room, game, gamemode!, time_control!);
+                if (gamemode!.name === "friendly") { // friendly game
+                  room.players.forEach((player, index) => {
+                    assignGame(game.id, player, index);
+                  });
+                }
+                startNormalGame(room, gamemode!, time_control!);
               }
             }
 
@@ -552,7 +560,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             // Check the user is one of the two players in the game
             // If not then enter spectating mode, for now return
 
-            switch (gamemode?.name.split('-')[0]) {
+            switch (gamemode!.name.split('-')[0]) {
 
               case 'standard': {
 
@@ -586,9 +594,9 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   // REWRITE THE BELOW
                     // Check if the user is already in a game
                     // If not add them to gamelookup if they are not already in it
-                  const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId);
                   // Check that the room has room for another player
-                  if (gamePlayers.length >= 2){
+                  
+                  if (room.players.length >= 2){
                     reconnect(roomId, userId, ws, true);
                     return;
                   }
@@ -601,7 +609,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                       if (theirGame.state === StandardGameStates.ongoing) {
                         ws.send(JSON.stringify({ event: 'sendToRoom', data: { roomId: theirGame.short_id } } as SendToRoom));
                         return;
-                      } else {
+                      } else if (theirGame.state === StandardGameStates.scheduled) {
                         await dbOperations.FinishedGameLookup(userId);
                       }
                     }
@@ -621,9 +629,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
                 StandardConnectUser();
                 // Assign the game to the players (for friendly game no elo change)
-                room.players.forEach((player, num) => {
-                  assignGame(game.id, player, num);
-                });
+                
                 break;
               }
               default : {
@@ -880,6 +886,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
       }
 
       if (!roomId) {
+        console.log("User was not in a room", state.rooms.keys());
         ws.close();
         return; // player was between rooms or seomthing
       }
@@ -906,10 +913,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
       console.log('Game is scheduled:', game);
       if (game.state === StandardGameStates.scheduled) {
-        const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId!);
-        gamePlayers.forEach(async (p) => {
-          await abortGame(p, game.id);
-        });
+        dbOperations.KillGame(game.id);
         dropRoom(roomId);
         ws.close();
         return;

@@ -347,6 +347,7 @@ export class GameOperations {
     ); // now insert into gameplayers
       return;
     } catch (error) {
+      console.log(gameid, playerNum, playerid);
       console.error('Failed to assign game:', error);
       throw error;
     } finally {
@@ -528,6 +529,38 @@ export class GameOperations {
       return result.rows[0].diff;
     } catch (error) {
       throw PlayerNotLookingForGame
+    } finally {
+      this.safeRelease();
+    }
+  }
+
+  async killGame(gameid: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `DELETE FROM con4_schema.GamePlayers
+          WHERE game_id = $1`,
+        [gameid]
+      );
+      const result2 = await client.query(
+        `DELETE FROM con4_schema.Moves
+          WHERE game_id = $1`,
+        [gameid]
+      );
+      const result3 = await client.query(
+        `DELETE FROM con4_schema.GameLookup
+          WHERE game = $1`,
+        [gameid]
+      );
+      const result4 = await client.query(
+        `DELETE FROM con4_schema.Games
+          WHERE id = $1`,
+        [gameid]
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to kill game:', error);
+      throw error;
     } finally {
       this.safeRelease();
     }

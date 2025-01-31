@@ -99,8 +99,7 @@ gameRouter.post('/request', authenticateSession, async (req: Request, res: Respo
     
     const GMM = gamemode.name;
 
-    const mainMade = GMM.split('-')[0];
-    switch (mainMade) {
+    switch (GMM.split('-')[0]) {
         case 'standard':
             //////////////////////////////////////////////////////////////////
             // Call Matchmaking if they are looking for a competitive game
