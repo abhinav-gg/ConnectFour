@@ -316,7 +316,7 @@ Running for the 1st year, we're bringing the same energy through our hackspace c
                 e.preventDefault();
                 setRegistered(true);
               }}
-              className="bg-white bg-opacity-10 rounded-lg p-4 sm:p-8 mb-8 sm:mb-12 mx-2 max-w-lg mx-auto"
+              className="bg-white bg-opacity-10 rounded-lg p-4 sm:p-8 mb-8 sm:mb-12 max-w-lg mx-auto"
             >
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4">Register Now</h2>
               <input

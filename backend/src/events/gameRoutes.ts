@@ -100,7 +100,7 @@ gameRouter.post('/request', authenticateSession, async (req: Request, res: Respo
     const GMM = gamemode.name;
 
     switch (GMM.split('-')[0]) {
-        case 'standard':
+        case 'standard': {
             //////////////////////////////////////////////////////////////////
             // Call Matchmaking if they are looking for a competitive game
             //////////////////////////////////////////////////////////////////
@@ -130,6 +130,7 @@ gameRouter.post('/request', authenticateSession, async (req: Request, res: Respo
                 res.status(500).json({ error: 'Failed to find competitive match' });
             }
             break;
+          }
 
         case 'friendly':
 
@@ -165,7 +166,7 @@ gameRouter.get('/test', async (req: Request, res: Response) => {
     res.json({ message: 'Game routes are working!' });
 });
 
-gameRouter.post('/review', async (req: Request, res: Response) => {
+gameRouter.post('/review', authenticateSession, async (req: Request, res: Response) => {
     // extract the roomId from the request
     const roomId = req.body.roomId;
 

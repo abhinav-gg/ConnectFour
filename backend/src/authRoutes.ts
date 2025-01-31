@@ -4,11 +4,10 @@ import { createSession, revokeSession, hashPassword, verifyPassword } from '@/li
 import { authenticateAdmin, authenticateSession, verifyRecaptcha } from '@/lib/auth/middleware';
 import { NextFunction, Request, Response, Router } from 'express';
 import { z } from 'zod';
-import fs from 'node:fs';
-import path from 'node:path';
+import { RESERVED_USERNAMES } from '@shared/reserved_usernames';
 
 const authRouter = Router();
-const disallowedUsernames = new Set(fs.readFileSync(path.join('..', 'shared', 'reserved_usernames.txt'), 'utf-8').split('\n').map((line) => line.trim().toLowerCase()));
+const disallowedUsernames = new Set(RESERVED_USERNAMES);
 
 // Registration Route
 authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => {
@@ -56,7 +55,7 @@ authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => 
 });
 
 // Login Route
-authRouter.post('/login', async (req: Request, res: any) => {
+authRouter.post('/login', verifyRecaptcha, async (req: Request, res: any) => {
   const { username, email, password } = req.body;
   if (!username && !email) {
     return res.status(400).json({ error: 'Username or email is required' });
@@ -105,7 +104,7 @@ authRouter.post('/login', async (req: Request, res: any) => {
 });
 
 // TODO: stop bots from creating multiple anonymous users
-authRouter.get('/anonymous', async (req: Request, res: Response) => {
+authRouter.get('/anonymous', verifyRecaptcha, async (req: Request, res: Response) => {
   // Create a new user called Anonymous
   // Add security to prevent multiple anonymous users by bots
   console.log("Creating anonymous user");
