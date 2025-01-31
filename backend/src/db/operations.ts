@@ -21,6 +21,11 @@ export const dbOperations = {
   getUserByID: databaseOps.getUserByID.bind(databaseOps),
   getAllUserTagNames: databaseOps.getAllUserTagNames.bind(databaseOps),
   getAnonymousUser: databaseOps.getAnonymousUser.bind(databaseOps),
+  createUserSession: databaseOps.createUserSession.bind(databaseOps),
+  revokeSessionByUID: databaseOps.revokeSessionByUID.bind(databaseOps),
+  revokeSessionByToken: databaseOps.revokeSessionByToken.bind(databaseOps),
+  getUserFromSession: databaseOps.getUserFromSession.bind(databaseOps),
+  getSessionFromUserId: databaseOps.getSessionFromUserId.bind(databaseOps),
 
   // Opening Operations
   GetOpening: openingOps.GetOpening.bind(openingOps),
@@ -43,7 +48,7 @@ export const dbOperations = {
   AssignGame: gameOps.AssignGame.bind(gameOps),
   UnassignGame: gameOps.UnassignGame.bind(gameOps),
   GetPlayerStats: gameOps.GetPlayerStats.bind(gameOps),
-  SetPlayerElo: gameOps.SetPlayerElo.bind(gameOps),
+  SafeCreateElo: gameOps.SafeCreateElo.bind(gameOps),
   GetPlayersByShortCode: gameOps.GetPlayersByShortCode.bind(gameOps),
   UpdateElo: gameOps.UpdateElo.bind(gameOps),
   QueryMatckmaking: gameOps.QueryMatckmaking.bind(gameOps),

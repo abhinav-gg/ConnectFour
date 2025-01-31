@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,13 +17,12 @@ export default function AddOpening() {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem('token'); // Retrieve the token
       const response = await fetch(`${getConfig().backendUrl}/api/make-opening`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Include the token in the Authorization header
         },
+        credentials: 'include',
         body: JSON.stringify({ position, description }),
       });
 

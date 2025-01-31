@@ -9,7 +9,7 @@ import { TimeControl } from "@shared/Models/gameInfo";
  */
 export const validateUsername = (username: string): boolean => {
   if (!username) return false;
-  const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/;
+  const usernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{3,19}$/;
   return usernameRegex.test(username);
 };
 
@@ -23,6 +23,12 @@ export const validateUsername = (username: string): boolean => {
 export const validateEmail = (email: string): boolean => {
   if (!email) return false;
   const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+  /**
+   * use zod's regex:
+   * /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i
+   */
+
   return emailRegex.test(email);
 };
 

@@ -6,18 +6,20 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import MoveHistory from '@/components/game/history';
 import { GameState } from '@shared/utils/game';
-import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut } from '@shared/Types/websocketData';
+import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut, OpponentAbandoned, Resign, OfferDraw, AcceptDraw } from '@shared/Types/websocketData';
 import AuthPage from '@/components/checkAuth';
 import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
 import EndPopup from '@/components/game/endPopup';
-import { Move, Player } from '@shared/Types/gameData';
+import { DrawMatrix, Move, Player } from '@shared/Types/gameData';
+import { StandardReconnectionTime } from '@shared/constants';
+import { eventEmitter } from '@shared/utils/eventEmitter'
+
 
 export default function TestingWebsockets() {
   const [timeUpdate, setTimeUpdate] = useState(0);
   const [roomId, setRoomId] = useState('');
-  const [socket, setSocket] = useState<WebSocket>();
   const [currentPlayer, setCurrentPlayer] = useState<Player>(0);
   const [isConnected, setIsConnected] = useState(false);
   const [gameStatus, setGameStatus] = useState('Waiting for players...');
@@ -27,11 +29,15 @@ export default function TestingWebsockets() {
   const [gamePlayers, setGamePlayers] = useState<GamePlayer[]>([]);
   const [showEndPopup, setShowEndPopup] = useState(false);
   const [chatUpdate, setChatUpdate] = useState(0);
-  const [waitingForRecconect, setWaitingForReconnect] = useState(false);
+  const [showWaitingPopup, setShowWaitingPopup] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const socket = useRef<WebSocket>();
+  const waitingForRecconect = useRef(false);
   const playerNumber = useRef(-1);
   const eloChangeRef = useRef<EloChange>({ draw: -0, loss: -0, win: -0 });
   const gameBoardRef = useRef<GameState>();
   const messageRef = useRef<ChatMessage[]>([]);
+  const drawState = useRef<DrawMatrix>({ confirmAction: false, acceptAction: false, offerAction: false });
   const resultRef = useRef({winner: -1, deltaElo: 0 });
 
   const addPlayer = async (username: string, time: number) => {
@@ -42,8 +48,10 @@ export default function TestingWebsockets() {
   }
 
   const sendToServer = (data: ServerMessage) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(data));
+    if (socket && socket.current!.readyState === WebSocket.OPEN) {
+      socket.current!.send(JSON.stringify(data));
+    } else {
+      console.error('Socket not connected!');
     }
   }
 
@@ -60,6 +68,14 @@ export default function TestingWebsockets() {
   }
 
   const turnText = (nextPlayer: number, p1?: number) => {
+    if (playerNumber.current === -1) {
+      if (nextPlayer === 0) {
+        setGameStatus('Red\'s move!'); 
+      } else {
+        setGameStatus('Yellow\'s move!'); 
+      }
+    }
+
     if (p1 === nextPlayer) {
       setGameStatus('Your move!');    
     } else if (playerNumber.current === nextPlayer) {
@@ -95,10 +111,6 @@ export default function TestingWebsockets() {
     setTimeUpdate(timeUpdate + 1);
   }
 
-  const handlePossibleTimeOut = () => {
-    sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
-  }
-
   const pushAnnouncement = (message: string) => {
     messageRef.current.push({
       playerNumber: -1,
@@ -122,11 +134,11 @@ export default function TestingWebsockets() {
     setRoomId(roomFromUrl);
 
     // Pass the token as a protocol
-    const token = localStorage.getItem('token')!
-    console.log('Connecting to:', backendUrl, token);
-    const newSocket = new WebSocket(backendUrl + "/in-game", [token]);
-    setSocket(newSocket);
-    console.log("set socket", socket, newSocket);
+    console.log('Connecting to:', backendUrl);
+    const newSocket = new WebSocket(backendUrl + "/in-game"); // ioc: check
+    socket.current = newSocket;
+    console.log(socket.current);
+
     newSocket.onopen = () => {
       console.log('WebSocket connected!');
       setIsConnected(true);
@@ -146,8 +158,10 @@ export default function TestingWebsockets() {
       switch (data.event) {
         case 'playerJoined':
           setGameStatus('Waiting for opponent...');
+          setShowWaitingPopup(true);
           break;
         case 'gameStart':
+          setShowWaitingPopup(false);
           // parse players and add them to the list
           const players = data.data.players;
           eloChangeRef.current = data.data.eloChanges;
@@ -173,6 +187,7 @@ export default function TestingWebsockets() {
           if (playerNumber.current === -1) 
             break;
           pushAnnouncement("Game Ended")
+          waitingForRecconect.current = false;
           setGameStatus(data.data.message);
           if (data.data.draw) {
             console.log('Game ended in a draw!');
@@ -188,31 +203,52 @@ export default function TestingWebsockets() {
           turnText(data.data.nextPlayer);
           setTimeUpdate(timeUpdate + 1);
           break;
-        case 'playerDisconnected':
+        case 'playerDisconnected': {
+          let timeRemaining = StandardReconnectionTime / 1000;
           pushAnnouncement('Opponent disconnected...');
-          setGameStatus('Opponent disconnected. Waiting for reconnect or timeout...');
-          setWaitingForReconnect(true);
-          waitForOpponentReconnect();
+          waitingForRecconect.current = true;
+          const interval = setInterval(() => {
+            console.log('Time remaining:', timeRemaining, waitingForRecconect);
+            if (!waitingForRecconect) {
+              clearInterval(interval);
+              return
+            };
+            setGameStatus(`Waiting for opponent to reconnect. ${timeRemaining}${timeRemaining !== 1 ? 's' : ''} Left!`);
+            timeRemaining -= 1;
+            if (timeRemaining <= -1) {
+              waitingForRecconect.current = false;
+              sendToServer({ event: 'opponentAbandoned', data: { roomId: roomFromUrl } } as OpponentAbandoned);
+              setGameStatus('Opponent did not reconnect in time!');
+              clearInterval(interval);
+            }
+          }, 1000);
           break;
+        }
         case 'receiveMessage':
           handleMessageReceived(data.data);
           break;
         case 'reconnection':
-          pushAnnouncement('You Reconnected!');
           data.data.players.forEach((player) => {
             addPlayer(player.username, player.time)
           });
+          if (data.data.playerNumber === -1) pushAnnouncement('You Are Spectating!');
+          else pushAnnouncement('You Reconnected!');
           eloChangeRef.current = data.data.eloChanges;
           playerNumber.current = data.data.playerNumber;
           gameBoardRef.current?.setMoves(data.data.moves);
+          turnText(data.data.currentTurn);
           setGameStarted(true);
+          setTimeStarted(data.data.moves.length > 0);
           setTimeUpdate(timeUpdate + 1);
-          setTimeStarted(true);
           break;
         case "opponentReconnect":
-          turnText(gameBoardRef.current?.currentPlayer ?? 0);
+          waitingForRecconect.current = false;
           pushAnnouncement('Opponent Reconnected!');
-          setWaitingForReconnect(false);
+          turnText(gameBoardRef.current?.currentPlayer ?? 0);
+          break;
+        case 'drawOffer':
+          pushAnnouncement('Opponent offered a draw (you\'re probably winning)!');
+          eventEmitter.emit('drawOffered');
           break;
         default:
           console.log('Unknown message:', data);
@@ -221,10 +257,61 @@ export default function TestingWebsockets() {
     }
   }
 
+  const handlePossibleTimeOut = () => {
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
+  }
+
+  const handleDrawAccept = () => {
+    // get roomId form params
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    pushAnnouncement('You agreed to a draw (cringe)!');
+    if (playerNumber.current === -1) return;
+    sendToServer({ event: 'acceptDraw', data: { roomId: room } } as AcceptDraw);
+  }
+
+  const handleAttemptResign = () => {
+    // get roomId form params
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    pushAnnouncement('You resigned (haha loser)!');
+    if (playerNumber.current === -1) return;
+    sendToServer({ event: 'resign', data: { roomId: room } } as Resign);
+  }
+
+  const handleDrawOffer = () => {
+    // get roomId form params
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room')!;
+    pushAnnouncement('You offered to draw (cringe)!');
+    if (playerNumber.current === -1) return;
+    sendToServer({ event: 'offerDraw', data: { roomId: room } } as OfferDraw);
+  }
+
+  const handleCopyLink = () => {
+    const roomLink = `${window.location.origin}/game?room=${roomId}`;
+    navigator.clipboard.writeText(roomLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   useEffect(() => {
+
+    eventEmitter.on('tryResign', handleAttemptResign);
+    eventEmitter.on('tryDraw', handleDrawOffer);
+    eventEmitter.on('acceptDraw', handleDrawAccept);
+
     return () => {
+
+      eventEmitter.off('tryResign', handleAttemptResign);
+      eventEmitter.off('tryDraw', handleDrawOffer);
+      eventEmitter.off('acceptDraw', handleDrawAccept);
+
       console.log('Closing WebSocket connection...');
-      socket?.close();
+      socket.current?.close();
     };
   }, []);
 
@@ -235,11 +322,11 @@ export default function TestingWebsockets() {
     if (draw) {
       deltaElo = eloChangeRef.current.draw;
     } else if (winner === playerNumber.current) {
+    } else if (winner === playerNumber.current) {
       deltaElo = eloChangeRef.current.win;
       console.log('You won!');
     } else {
       deltaElo = eloChangeRef.current.loss;
-      console.log('You lost!');
     }
     console.log('Elo change:', deltaElo, winner);
     resultRef.current = { winner: winner ?? -1, deltaElo };
@@ -268,22 +355,6 @@ export default function TestingWebsockets() {
     
     sendToServer({ event: 'makeMove', data: { roomId, col } } as MakeMove);
   }
-
-  const waitForOpponentReconnect = () => {
-    let timeRemaining = 10;
-    const interval = setInterval(() => {
-      if (!waitingForRecconect) return;
-      console.log('Time remaining:', timeRemaining);
-      setGameStatus(`Waiting for opponent to reconnect. ${timeRemaining}${timeRemaining !== 1 ? 's' : ''} Left!`);
-      timeRemaining -= 1;
-      if (timeRemaining < 0) {
-        setWaitingForReconnect(false);
-        clearInterval(interval);
-        sendToServer({ event: 'playerTimeOut', data: { roomId } } as PlayerTimeOut);
-        setGameStatus('Opponent did not reconnect in time!');
-      }
-    }, 1000);
-  };
 
   const handleSendMessage = (inputMessage: string) => {
     
@@ -337,7 +408,7 @@ export default function TestingWebsockets() {
           <Timer 
             key={playerNumber.current}
             timerActive={timeStarted && currentPlayer===bottomPlayer} 
-            playerNumber={bottomPlayer} 
+            playerNumber={bottomPlayer}
             getPlayers={gamePlayers} 
             onTimeout={handlePossibleTimeOut}
           />
@@ -365,6 +436,26 @@ export default function TestingWebsockets() {
           />
         </div>
       )}
+      {showWaitingPopup && (
+        <div className="absolute z-50 bg-white p-4 border rounded shadow-lg w-1/4 left-1/2 transform -translate-x-1/2 top-1/4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Waiting for Opponent...</h2>
+            <button 
+              onClick={() => setShowWaitingPopup(false)} 
+              className="text-gray-500 hover:text-gray-800"
+            >
+              &times;
+            </button>
+          </div>
+          <p>Please wait while your opponent joins the game.</p>
+          <button 
+            onClick={handleCopyLink} 
+            className="mt-4 bg-blue-500 text-white p-2 rounded transition-transform transform hover:scale-105"
+          >
+            {copied ? 'Copied!' : 'Copy Game Link'}
+          </button>
+        </div>
+      )}
       <Dashboard />
       <div className="flex-1 flex flex-col">
         <div className="flex w-full">
@@ -384,13 +475,8 @@ export default function TestingWebsockets() {
                 key={chatUpdate}
                 pNum={playerNumber.current}
                 pMessages={messageRef.current}
+                pDrawMatrix={drawState.current}
                 onSendMessage={handleSendMessage}
-                onOfferDraw={() => {
-                    // Handle draw offer
-                }}
-                onResign={() => {
-                    // Handle resignation
-                }}
               />
             </div>
           </div>

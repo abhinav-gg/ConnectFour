@@ -28,14 +28,18 @@ function RegistrationPage(): React.ReactElement {
   const handleReCaptchaVerify = useCallback(async ($event: any) => {
     $event.preventDefault();
 
-    if (!executeRecaptcha) {
-      console.log('executeRecaptcha not yet available');
-      return;
-    }
+    if (getConfig().mode === 'development') {
+      handleSubmit($event, 'development-nocaptcha');
+    } else {
+      if (!executeRecaptcha) {
+        console.log('executeRecaptcha not yet available');
+        return;
+      }
 
-    const token = await executeRecaptcha('signup');
-    console.log('token is ', token);
-    handleSubmit($event, token);
+      const token = await executeRecaptcha('signup');
+      console.log('token is ', token);
+      handleSubmit($event, token);
+    }
   }, [executeRecaptcha]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, reCaptchaToken: string) => {
@@ -54,6 +58,7 @@ function RegistrationPage(): React.ReactElement {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           username: formData.get('username'),
           email: formData.get('email'),
@@ -64,12 +69,10 @@ function RegistrationPage(): React.ReactElement {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(data.error || 'Registration failed');
       }
 
       const data = await response.json();
-      // Store token if needed
-      localStorage.setItem('token', data.token);
       router.push('/login');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

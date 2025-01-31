@@ -12,6 +12,9 @@ export type Room = {
   players: UUID[];
   spectators: UUID[];
   gameInfo: GameInfo;
+  lastDisconnect?: number;
+  gameOver?: boolean;
+  drawing?: boolean;
   currentTurn: number;
 };
 

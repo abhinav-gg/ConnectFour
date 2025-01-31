@@ -6,8 +6,9 @@ import { dbOperations } from '@/db/operations';
 import authRouter from '@/authRoutes'; // Import the auth routes
 import gameRouter from '@/events/gameRoutes'; // Import the game routes
 import { setupGameEvents } from '@/events/gameEvents';
-import { authenticateAdmin, authenticateJWT, handleDiscordCallback } from '@/lib/auth/middleware';
+import { authenticateAdmin, authenticateSession } from '@/lib/auth/middleware';
 import { DiscordUserRequest } from '@/types/types';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use(cors({
   origin: process.env.CLIENT_URL || "http://localhost:3000",
   credentials: true
 }));
+app.use(cookieParser());
 app.use(express.json());
 
 app.head('/health', (req, res) => {
@@ -54,7 +56,7 @@ app.post('/api/openings', async (req, res) => {
   }
 });
 
-app.post('/api/make-opening', authenticateJWT, authenticateAdmin, async (req, res) => {
+app.post('/api/make-opening', authenticateSession, authenticateAdmin, async (req, res) => {
   const { position, description } = req.body;
   console.log('Position:', position, 'Description:', description);
   try {
@@ -72,17 +74,6 @@ type Data = {
   success: boolean,
   score: number;
 };
-
-
-
-app.get('/auth/discord', handleDiscordCallback, (req, res) => {
-  const ureq = req as DiscordUserRequest;
-  if (ureq.user) {
-    res.status(200).json({ message: 'Authenticated' });
-  } else {
-    res.status(500).json({ error: 'Failed to authenticate' });
-  }
-});
 
 app.use('/api/auth', authRouter);
 app.use('/api/game', gameRouter);

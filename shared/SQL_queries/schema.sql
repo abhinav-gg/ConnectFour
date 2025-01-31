@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS con4_schema.UserTags (
   created_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS con4_schema.Sessions (
+  user_id UUID PRIMARY KEY REFERENCES con4_schema.Users(id),
+  token STRING(32) NOT NULL,
+  expires TIMESTAMP NOT NULL
+);
+
 ----------------------------------------------
 
 
@@ -57,7 +63,8 @@ CREATE TABLE IF NOT EXISTS con4_schema.GamePlayers (
   player UUID NOT NULL REFERENCES con4_schema.Users(id),
   player_number INT NOT NULL, -- can be higher than 2 in custom gamemodes
   elo_change FLOAT NOT NULL DEFAULT 0, -- the change in elo for the player
-  created_at TIMESTAMP DEFAULT now()
+  created_at TIMESTAMP DEFAULT now(),
+  UNIQUE (game_id, player_number)
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.Moves (
@@ -127,8 +134,9 @@ CREATE TABLE IF NOT EXISTS con4_schema.Elo (
   player UUID NOT NULL REFERENCES con4_schema.users(id),
   mode UUID NOT NULL REFERENCES con4_schema.GameModes(id),
   elo FLOAT NOT NULL CHECK (elo > 0), -- no default as it varies
-  rating_deviation FLOAT NOT NULL
-  updated_at TIMESTAMP DEFAULT now() NOT NULL -- used for analytics
+  rating_deviation FLOAT NOT NULL CHECK (0 <= rating_deviation AND rating_deviation <= 350),
+  updated_at TIMESTAMP DEFAULT now() NOT NULL, -- used for analytics
+  UNIQUE (player, mode)
 );
 
 CREATE TABLE IF NOT EXISTS con4_schema.GameInfo (

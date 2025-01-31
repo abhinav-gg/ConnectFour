@@ -5,7 +5,7 @@ import * as DBError from './dbErrors';
 
 // Load .env from project root
 dotenv.config({ path: "../../.env" });
-const application_name = "con-four";
+export const application_name = "con-four";
 
 export class UserOperations {
   client: PoolClient | null = null;
@@ -46,13 +46,16 @@ export class UserOperations {
     isAnonymous: boolean = false
   ): Promise<User> {
     const client = await this.getClient();
+    const normUser = username.toLowerCase();
+    const normEmail = email.toLowerCase();
+
     try {
       await client.query('BEGIN');
 
       // Check if username already exists
       const userCheckResult = await client.query(
         `SELECT id FROM con4_schema.Users WHERE username = $1`,
-        [username]
+        [normUser]
       );
 
       if (userCheckResult.rows.length > 0) {
@@ -62,7 +65,7 @@ export class UserOperations {
       // Check if email already exists
       const emailCheckResult = await client.query(
         `SELECT id FROM con4_schema.Users WHERE email = $1`,
-        [email]
+        [normEmail]
       );
 
       if (emailCheckResult.rows.length > 0) {
@@ -75,7 +78,7 @@ export class UserOperations {
         `INSERT INTO con4_schema.Users (username, email, password_hash, is_anonymous, created_at, updated_at)
          VALUES ($1, $2, $3, $4, NOW(), NOW())
          RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
-        [username, email, passwordHash, isAnonymous]
+        [normUser, normEmail, passwordHash, isAnonymous]
       );
 
       await client.query('COMMIT');
@@ -116,7 +119,7 @@ export class UserOperations {
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
                  FROM con4_schema.users
                  WHERE username = $1`,
-        [username]
+        [username.toLowerCase()]
       );
 
       return result.rows[0];
@@ -136,7 +139,7 @@ export class UserOperations {
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
                  FROM con4_schema.users
                  WHERE email = $1`,
-        [email]
+        [email.toLowerCase()]
       );
 
       return result.rows[0];
@@ -176,7 +179,7 @@ export class UserOperations {
         `SELECT password_hash
                  FROM con4_schema.users
                  WHERE username = $1`,
-        [username]
+        [username.toLowerCase()]
       );
 
       return result.rows[0]?.password_hash ?? "";
@@ -196,7 +199,7 @@ export class UserOperations {
         `SELECT password_hash
                  FROM users
                  WHERE email = $1`,
-        [email]
+        [email.toLowerCase()]
       );
 
       return result.rows[0]?.password_hash ?? "";
@@ -216,7 +219,7 @@ export class UserOperations {
         `SELECT id
                  FROM users
                  WHERE username = $1`,
-        [username]
+        [username.toLowerCase()]
       );
 
       return result.rows[0]?.id ?? "";
@@ -236,7 +239,7 @@ export class UserOperations {
         `SELECT id
                  FROM users
                  WHERE email = $1`,
-        [email]
+        [email.toLowerCase()]
       );
 
       return result.rows[0]?.id ?? "";
@@ -279,7 +282,7 @@ export class UserOperations {
     //INSERT INTO con4_schema.usertags (user_id,tag_id) 
     //SELECT $1, id FROM con4_schema.utags WHERE name = $2;
 
-    return 
+    return;
   }
 
   async getAnonymousUser(): Promise<User> {
@@ -326,6 +329,106 @@ export class UserOperations {
     }
   }
 
+  async createUserSession(id: string, token: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `INSERT INTO con4_schema.sessions (user_id, token, expires)
+         VALUES ($1, $2, NOW() + INTERVAL '7 days')
+         ON CONFLICT (user_id) DO UPDATE SET token = $2, expires = NOW() + INTERVAL '7 days'`,
+        [id, token]
+      );
+    } catch (error) {
+      console.error('Failed to create user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async revokeSessionByUID(id: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `DELETE FROM con4_schema.sessions
+          WHERE user_id = $1`,
+        [id]
+      );
+    } catch (error) {
+      console.error('Failed to revoke user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async revokeSessionByToken(token: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `DELETE FROM con4_schema.sessions
+          WHERE token = $1`,
+        [token]
+      );
+    } catch (error) {
+      console.error('Failed to revoke user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getUserFromSession(token: string): Promise<string | null> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT user_id FROM con4_schema.sessions
+         WHERE token = $1`,
+        [token]
+      );
+
+      const sessionExists = result.rows.length > 0;
+      if (!sessionExists) {
+        return null;
+      }
+
+      const expired = result.rows[0].expires < new Date();
+      if (expired) {
+        await this.revokeSessionByToken(token);
+        return null;
+      }
+
+      return result.rows[0].user_id;
+    } catch (error) {
+      console.error('Failed to check user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async getSessionFromUserId(id: string): Promise<string | null> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `SELECT token FROM con4_schema.sessions
+         WHERE user_id = $1`,
+        [id]
+      );
+
+      return result.rows[0]?.token ?? null;
+    } catch (error) {
+      console.error('Failed to check user session:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
 
   //DELETE FROM con4_schema.users 
   //WHERE username IS NULL;
