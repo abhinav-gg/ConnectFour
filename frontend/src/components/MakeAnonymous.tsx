@@ -33,16 +33,14 @@ function AnonymousPage () {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (!roomFromUrl) {
-      //window.location.href = '/game/test-join';
+      window.location.href = '/game/test-join';
       return;
     } else {
-      //window.location.href = '/game?room=' + roomFromUrl;
+      window.location.href = '/game?room=' + roomFromUrl;
     }
   }
 
   const createAnonymousAccount = async () => {
-
-    if (isCreatingAccount.current) return;
 
     console.log("Creating anonymous account...");
 

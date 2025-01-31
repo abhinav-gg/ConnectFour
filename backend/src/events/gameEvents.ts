@@ -433,6 +433,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
   app.ws('/in-game', (ws, req) => {
     console.log('Client connected');
 
+    console.log(req.cookies); // debug
+
     const token = req.cookies.sessionToken;
 
     if (!token) {

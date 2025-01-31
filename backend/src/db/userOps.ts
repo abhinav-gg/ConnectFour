@@ -269,6 +269,25 @@ export class UserOperations {
     }
   }
 
+  async dropUserByID(id: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await this.revokeSessionByUID(id);
+      await client.query(
+        `UPDATE FROM con4_schema.users
+          SET username = NULL, email = NULL, password_hash = NULL, email_verified = FALSE, updated_at = NOW()
+          WHERE id = $1`,
+        [id]
+      );
+      // There is no delete query
+    } catch (error) {
+      console.error('Failed to drop user by ID:', error);
+      throw error;
+    } finally {
+      this.safeRelease();
+    }
+  }
+
   async getIDByEmail(email: string): Promise<string> {
     const client = await this.getClient();
     try {

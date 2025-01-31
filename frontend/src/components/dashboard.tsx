@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link'
-import { Home, LogIn, BarChart2, PlayCircle, Info, Book, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Home, LogIn, BarChart2, PlayCircle, Info, Book, 
+  LogOut, ChevronLeft, ChevronRight, Calendar, Trophy } from 'lucide-react'
 import Image from 'next/image'
 
 interface TestProps {
@@ -13,10 +14,13 @@ interface TestProps {
 const DASHBOARD_ITEMS = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/game', label: 'Game', icon: PlayCircle },
+  { path: '/events', label: 'Events', icon: Calendar },
+  { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/analysis', label: 'Analysis', icon: BarChart2 },
   { path: '/openings', label: 'Opening Book', icon: Book },
   { path: '/about-us', label: 'About', icon: Info },
   { path: '/login', label: 'Login', icon: LogIn },
+  { path: '/logout', label: 'Logout', icon: LogOut },
 ] as const;
 
 export default function Dashboard(props: TestProps) {
