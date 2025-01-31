@@ -42,11 +42,9 @@ ichack28
 ichack29
 ichack30
 docsoc
-uob
 icl
 imperial
 imperialcollege
-imperialcollegelondon
 ivan
 palchio
 testuser
@@ -57,7 +55,6 @@ info
 information
 contact
 pgclient
-cockroachdb
 express
 react
 next
@@ -73,7 +70,6 @@ gresearch
 helsingai
 helsing
 hadean
-hadeansupercomputing
 mwam
 marshallwace
 qrt
