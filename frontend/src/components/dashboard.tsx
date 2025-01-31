@@ -64,16 +64,16 @@ export default function Dashboard(props: TestProps) {
   return (
     <div className="flex">
       {isOpen && (
-        <div className="relative w-64 bg-gradient-to-b from-blue-700 to-blue-800 p-6 flex flex-col shadow-lg min-h-screen">
+        <div className="relative w-64 bg-gradient-to-b p-6 flex flex-col shadow-lg min-h-screen">
           <div className="flex flex-col items-center mb-8 relative">
             <div className="mb-4">
               <button 
                 onClick={toggleDashboard} 
                 className="absolute p-2 bg-blue-600 rounded-full hover:bg-blue-500 transition-colors"
                 aria-label="Close Dashboard"
-                style={{ width: '2rem', height: '2rem' }}
+                style={{ width: '2.5rem', height: '2.5rem' }}
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-5 w-5 text-white mx-auto" style={{ margin: 'auto' }} />
               </button>
             </div>
             <div className="bg-white p-2 rounded-full mb-4 shadow-md">
@@ -84,7 +84,7 @@ export default function Dashboard(props: TestProps) {
                 height={100}
               />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-black">Dashboard</h2>
           </div>
           
           <div className="space-y-4">
@@ -95,7 +95,7 @@ export default function Dashboard(props: TestProps) {
                   key={index}
                   href={item.path}
                   className={`
-                    flex items-center text-gray-600 hover:text-gray-800 transform
+                    test-black flex items-center transform scale-100 hover:scale-105
                     ${visibleRows.includes(index) ? 'animate-slide-in opacity-100' : 'opacity-0 translate-x-[-50px]'}
                     transition-all duration-500 ease-out
                   `}
@@ -115,10 +115,10 @@ export default function Dashboard(props: TestProps) {
       {!isOpen && (
         <button 
           onClick={toggleDashboard} 
-          className="absolute top-4 left-4 p-2 bg-blue-700 text-white rounded-full hover:bg-blue-600 z-10 transition-colors shadow hover:shadow-md"
+          className="absolute top-4 left-4 p-2 bg-blue-700 rounded-full hover:bg-blue-600 z-10 transition-colors shadow hover:shadow-md flex items-center justify-center"
           aria-label="Open Dashboard"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-5 w-5 text-white" />
         </button>
       )}
     </div>
