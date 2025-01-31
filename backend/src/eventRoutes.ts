@@ -1,11 +1,12 @@
 // src/routes/authRoutes.ts
 import { dbOperations } from '@/db/operations';
 import { Request, Response, Router } from 'express';
-import { authenticateSession, authenticateSessionRedirect } from './lib/auth/middleware';
+import { authenticateSession } from './lib/auth/middleware';
 import { GameMode } from '@shared/Models/gameInfo';
 import { ICHacker } from '@shared/Models/eventInfo';
 import { register } from 'module';
 import { ICHACK25 } from '@shared/events';
+import { getUserFromSession } from './lib/auth';
 
 
 
@@ -21,94 +22,119 @@ const eventRouter = Router();
 // Prefix: /api/events
 
 
-eventRouter.get('/ichack25/discord', authenticateSessionRedirect, async (req: Request, res: Response) => {
+eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
 
     try { 
-        const code = req.query.code as string;
-        const userId = (req as any).user?.userId;
-        const current = await dbOperations.getUserByID(userId);
-        if (!current) {
-            res.status(400).json({ error: 'User not found' });
-            return;
-        } else if (current.is_anonymous) {
-            res.status(400).json({ error: 'Anonymous user cannot register for events' });
-            return;
-        }
 
-        if (!code) {
-            res.status(400).json({ error: 'Authorization code not provided' });
-            return;
+        const token = req.cookies.sessionToken; // Get the session token from the request cookies
+        if (!token) {
+          console.log('No token found');
+          res.status(401).json({ error: 'Session token required' });
+          return; // Ensure we return here to avoid further execution
         }
-    
-        // Exchange the authorization code for an access token
-        const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-            client_id: ICHACK_DISCORD_CLIENT_ID,
-            client_secret: ICHACK_DISCORD_CLIENT_SECRET,
-            grant_type: 'authorization_code',
-            code: code,
-            redirect_uri: ICHACK_DISCORD_REDIRECT_URI,
-            }).toString()
-        });
-    
-        if (!tokenResponse.ok) {
-            throw new Error(`HTTP error! status: ${tokenResponse.status}`);
-        }
-    
-        const tokenData = await tokenResponse.json();
-        const accessToken = tokenData.access_token;
-    
-        // Use the access token to fetch the user's information
-        const userResponse = await fetch('https://discord.com/api/users/@me', {
-            headers: {
-            Authorization: `Bearer ${accessToken}`,
-            }
-        });
-    
-        if (!userResponse.ok) {
-            throw new Error(`HTTP error! status: ${userResponse.status}`);
-        }
-    
-        const user = await userResponse.json();
-        
-        console.log('User ID:', user.id);
-        user.id = '211186900386578432'
+      
+        try {
+          const decoded = await getUserFromSession(token); // Decode the token
+          // check if decoded is promise null and raise error
+          if (!decoded.userId) {
+            throw new Error('Invalid or expired token');
+          }
+          else {
+            // valid token
+            // verify the user is ICH
 
-        const ichackResponse = await fetch(`https://my.ichack.org/api/profile/discord/${user.id}`, {
-            method: 'GET', 
-            headers: {
-            'Authorization': MY_ICHACK_API_KEY
-            }
-        });
+            const code = req.body.code;
+            const con4UserId = decoded.userId;
 
-        if (!ichackResponse.ok) {
-            // get 404 response only
-            if (ichackResponse.status === 404) {
-                res.redirect(`${CLIENT_URL}/events/ichack25?error=not-ichack`);
+            const current = await dbOperations.getUserByID(con4UserId);
+            if (!current) {
+                res.status(400).json({ error: 'User not found' });
+                return;
+            } else if (current.is_anonymous) {
+                res.status(400).json({ error: 'Anonymous user cannot register for events' });
                 return;
             }
-            throw new Error(`HTTP error! status: ${ichackResponse.status}`);
-        } else {
-            const ichackData: ICHacker = await ichackResponse.json();
-            console.log(ichackData); 
 
-            // Register the user to the event
-            try {
+            if (!code) {
+                res.status(400).json({ error: 'Authorization code not provided' });
+                return;
+            }
+        
+            // Exchange the authorization code for an access token
+            const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                client_id: ICHACK_DISCORD_CLIENT_ID,
+                client_secret: ICHACK_DISCORD_CLIENT_SECRET,
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: ICHACK_DISCORD_REDIRECT_URI,
+                }).toString()
+            });
 
-                await dbOperations.registerForEvent(userId, ICHACK25);
-    
-                await dbOperations.registerToICHACK25(ichackData, user.id);
-    
-                res.redirect(`${CLIENT_URL}/events/ichack25?success=true`);
+            if (!tokenResponse.ok) {
+                throw new Error(`HTTP error! status: ${tokenResponse.status}`);
             }
-            catch (error) {
-                console.error('Error during registration:', error);
-                throw error;
+        
+            const tokenData = await tokenResponse.json();
+            const accessToken = tokenData.access_token;
+        
+            // Use the access token to fetch the user's information
+            const userResponse = await fetch('https://discord.com/api/users/@me', {
+                headers: {
+                Authorization: `Bearer ${accessToken}`,
+                }
+            });
+        
+            if (!userResponse.ok) {
+                throw new Error(`HTTP error! status: ${userResponse.status}`);
             }
+        
+            const discordUserInfo = await userResponse.json();
+            
+            // ioc: debug
+            console.log('User ID:', discordUserInfo.id);
+
+            const ichackResponse = await fetch(`https://my.ichack.org/api/profile/discord/${discordUserInfo.id}`, {
+                method: 'GET', 
+                headers: {
+                'Authorization': MY_ICHACK_API_KEY
+                }
+            });
+
+            if (!ichackResponse.ok) {
+                // get 404 response only
+                if (ichackResponse.status === 404) {
+                    res.status(403).json({ error: 'User not found in ICHACK database' });
+                    return;
+                }
+                throw new Error(`HTTP error! status: ${ichackResponse.status}`);
+            } else {
+                const ichackData: ICHacker = await ichackResponse.json();
+                ichackData.user_id = con4UserId; // ioc: check
+                console.log(ichackData);
+
+                // Register the user to the event
+                try {
+
+                    await dbOperations.registerForEvent(con4UserId, ICHACK25);
+        
+                    await dbOperations.registerToICHACK25(ichackData, discordUserInfo.id);
+        
+                    res.status(200).json({ message: 'Successfully registered for ICHACK25' });
+                }
+                catch (error) {
+                    console.error('Error during registration:', error);
+                    throw error;
+                }
+            }
+          }
+        } catch (err) {
+          res.status(400).json({ error: 'Invalid or expired token' });
+          return; // Ensure we return here to avoid further execution
         }
     } catch (error) {
         console.error('Error during authentication:', error);

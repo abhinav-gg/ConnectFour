@@ -22,8 +22,8 @@ export type ICHackLeaderboardPlayer = {
 };
 
 export type ICHacker = {
-    user_id: string;
-    id: string;
-    name: string;
-    hackspace: hackspace;
+    user_id: string; // con4 user id (?)
+    id: string; // ICH id (must confirm)
+    name: string; // full name
+    hackspace: hackspace; // hackspace room at ICH
 }

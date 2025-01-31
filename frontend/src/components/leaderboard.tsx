@@ -54,7 +54,7 @@ function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
                   {player.username || 'Empty'}
                 </td>
                 <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
-                  {player.elo}
+                  {Math.round(player.elo)}
                 </td>
               </tr>
             ))}

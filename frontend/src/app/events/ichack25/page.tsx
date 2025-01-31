@@ -39,6 +39,8 @@ export default function ICHack25() {
   const [updateCount, setUpdateCount] = useState(0);
   const displayedTextRef = useRef<string>(''); // Use ref to persist text
 
+  const REDIRECT_URI = getConfig().discordRedirectUri;
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'not-ichack') {
@@ -123,14 +125,14 @@ export default function ICHack25() {
         {hasStarted ?
           [
             <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-6 flex items-center justify-center">
-              <Link href="https://discord.com/oauth2/authorize?client_id=1334635525985796136&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fevents%2Fichack25%2Fdiscord&scope=identify" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Join Event</Link>
+              <Link href={`https://discord.com/oauth2/authorize?client_id=1334635525985796136&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=identify`} className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Join Event</Link>
             </div>,
             <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-6 flex items-center justify-center">
               <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Create Game</Link>
             </div>,
             <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
               <div className="bg-yellow-500 rounded-lg p-4 text-white h-1/2 flex items-center justify-center">
-                <Link href="/events/ichack/leaderboard" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Leaderboard</Link>
+                <Link href="/events/ichack25/leaderboard" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Leaderboard</Link>
               </div>
               <div className="bg-white rounded-lg p-4 text-black h-1/2 flex items-center justify-center">
                 <Link href="https://ichack.org" className="w-full h-full text-black font-bold hover:scale-105 transition-transform">ICHack</Link>

@@ -113,7 +113,8 @@ export class EventOperations {
         const client = await this.getClient();
         try {
             await client.query(`INSERT INTO events_schema.ichack25 (id, user_id, discord_id, full_name, hackspace)
-            VALUES ($1);`, [hacker.id, hacker.user_id, discId, hacker.name, hacker.hackspace]);
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO UPDATE SET user_id = $2, discord_id = $3, full_name = $4, hackspace = $5;`, [hacker.id, hacker.user_id, discId, hacker.name, hacker.hackspace]);
         } catch (error) {
             console.error('Error in registerToICHACK25:', error);
             throw error;

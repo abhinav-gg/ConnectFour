@@ -24,6 +24,7 @@ export default function Leaderboard() {
             headers: {
             'Content-Type': 'application/json'
             },
+            credentials: 'include', // required for cookies
             body: JSON.stringify({ 
                 gamemode: {
                     name: tab,
