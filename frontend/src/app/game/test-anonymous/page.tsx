@@ -4,12 +4,23 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 import AuthPage from '@/components/checkAuth';
+import { useReCaptcha } from '@/components/usecaptcha';
+import { ReCaptchaWrapper } from '@/components/captcha';
+
+export default function TestAnonymousPage() {
+  return (
+    <ReCaptchaWrapper>
+      <AnonymousPage />
+    </ReCaptchaWrapper>
+  );
+}
 
 // add a variable onSuccess to this component
-export default function TestAnonymousPage () {
+function AnonymousPage () {
   const router = useRouter();
   const config = getConfig();
   const [error, setError] = useState<string | null>(null);
+  const handleReCaptcha = useReCaptcha('anonymous');
 
   const onSuccess = () => {
     const params = new URLSearchParams(window.location.search);
@@ -24,8 +35,15 @@ export default function TestAnonymousPage () {
 
   const createAnonymousAccount = async () => {
     console.log("Creating anonymous account...");
+
+    const token = await handleReCaptcha();
+    if (!token) {
+      setError('ReCaptcha verification failed');
+      return;
+    }
+
     try {
-      const response = await fetch(`${config.backendUrl}/api/auth/anonymous`, {
+      const response = await fetch(`${config.backendUrl}/api/auth/anonymous?token=${token}`, {
         method: 'GET',
         credentials: 'include', // accept cookies from server
       });

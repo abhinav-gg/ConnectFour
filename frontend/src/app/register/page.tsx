@@ -3,17 +3,17 @@
 import Link from 'next/link';
 import { Home, LogIn, Eye, EyeOff } from 'lucide-react';
 import Dashboard from '@/components/dashboard';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ReCaptchaWrapper } from '@/components/captcha';
+import { useReCaptcha } from '@/components/usecaptcha';
 import { getConfig } from '@/config/env';
-import { useGoogleReCaptcha, GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
-
 
 export default function Register() {
   return (
-    <GoogleReCaptchaProvider reCaptchaKey={getConfig().recaptchaSiteKey}>
+    <ReCaptchaWrapper>
       <RegistrationPage />
-    </GoogleReCaptchaProvider>
+    </ReCaptchaWrapper>
   );
 }
 
@@ -23,33 +23,23 @@ function RegistrationPage(): React.ReactElement {
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [password, setPassword] = useState('');
-  const { executeRecaptcha } = useGoogleReCaptcha();
+  const handleReCaptcha = useReCaptcha('signup');
 
-  const handleReCaptchaVerify = useCallback(async ($event: any) => {
-    $event.preventDefault();
-
-    if (getConfig().mode === 'development') {
-      handleSubmit($event, 'development-nocaptcha');
-    } else {
-      if (!executeRecaptcha) {
-        console.log('executeRecaptcha not yet available');
-        return;
-      }
-
-      const token = await executeRecaptcha('signup');
-      console.log('token is ', token);
-      handleSubmit($event, token);
-    }
-  }, [executeRecaptcha]);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, reCaptchaToken: string) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(password, confirmPassword);
-    const formData = new FormData(e.target as HTMLFormElement);
+
+    const token = await handleReCaptcha();
+    if (!token) {
+      setError('ReCaptcha verification failed');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
+
+    const formData = new FormData(e.target as HTMLFormElement);
 
     try {
       const config = getConfig();
@@ -63,7 +53,7 @@ function RegistrationPage(): React.ReactElement {
           username: formData.get('username'),
           email: formData.get('email'),
           password: formData.get('password'),
-          token: reCaptchaToken,
+          token,
         }),
       });
 
@@ -93,7 +83,7 @@ function RegistrationPage(): React.ReactElement {
               {error}
             </div>
           )}
-          <form onSubmit={handleReCaptchaVerify} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
               <input type="text" id="username" name="username" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />

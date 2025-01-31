@@ -3,6 +3,7 @@ type UUID = `${string}-${string}-${string}-${string}-${string}`;
 export type GameInfo = {
     gamemode: GameMode;
     time_control: TimeControl;
+    token?: string;
 };
 
 export type GameMode = {

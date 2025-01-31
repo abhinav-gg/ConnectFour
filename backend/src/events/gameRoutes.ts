@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { dbOperations } from '@/db/operations';
 import { GameMode, SendToRoom, TimeControl } from '@shared/Models/gameInfo';
-import { authenticateSession } from '@/lib/auth/middleware';
+import { authenticateSession, verifyRecaptcha } from '@/lib/auth/middleware';
 import * as globals from '@shared/constants';
 import { abortGame, CategoriseTime, createGame, quitGameSearch } from './gameHelper';
 import { GameInfo } from '@shared/Models/gameInfo';
@@ -12,7 +12,7 @@ import * as dbError from '@/db/dbErrors'
 const gameRouter = Router();
 
 // Create Game Route
-gameRouter.post('/request', authenticateSession, async (req: Request, res: Response, next: NextFunction) => {
+gameRouter.post('/request', authenticateSession, verifyRecaptcha, async (req: Request, res: Response, next: NextFunction) => {
     // Extract the user ID from the request
     let gamemode: GameMode;
     let time_control: TimeControl;

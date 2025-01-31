@@ -6,8 +6,18 @@ import Dashboard from '@/components/dashboard';
 import { TimeControl, GameMode, GameInfo, SendToRoom } from '@shared/Models/gameInfo';
 import { StandardTimecontrols } from '@shared/constants';
 import AuthPage from '@/components/checkAuth';
+import { ReCaptchaWrapper } from '@/components/captcha';
+import { useReCaptcha } from '@/components/usecaptcha';
 
-const TestJoinPage = () => {
+export default function TestJoinPage() {
+  return (
+    <ReCaptchaWrapper>
+      <JoinPage />
+    </ReCaptchaWrapper>
+  );
+}
+
+const JoinPage = () => {
   const [selectedTimeControl, setSelectedTimeControl] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,6 +26,7 @@ const TestJoinPage = () => {
   const URL = getConfig().backendUrl;
   const [roomId, setRoomId] = useState('');
   const [opacities, setOpacities] = useState<number[]>([]);
+  const handleReCaptcha = useReCaptcha('join');
 
   useEffect(() => {
     const duration = 2000;
@@ -51,6 +62,13 @@ const TestJoinPage = () => {
       return;
     }
 
+    const token = await handleReCaptcha();
+
+    if (!token) {
+      setMessage('ReCaptcha verification failed');
+      return;
+    }
+
     const { base, increment, disadvantage } = selectedControl;
     const response = await fetch(`${URL}/api/game/request`, {
       method: 'POST',
@@ -67,6 +85,7 @@ const TestJoinPage = () => {
           base_time: base,
           increment: increment,
           disadvantage: disadvantage } as TimeControl,
+        token: token,
       } as GameInfo),
     });
     if (!response.ok) {
@@ -195,5 +214,3 @@ const TestJoinPage = () => {
     </AuthPage>
   );
 };
-
-export default TestJoinPage;
