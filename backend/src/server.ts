@@ -9,6 +9,7 @@ import { setupGameEvents } from '@/events/gameEvents';
 import { authenticateAdmin, authenticateSession } from '@/lib/auth/middleware';
 import { DiscordUserRequest } from '@/types/types';
 import cookieParser from 'cookie-parser';
+import eventRouter from './eventRoutes';
 
 dotenv.config();
 
@@ -77,6 +78,8 @@ type Data = {
 
 app.use('/api/auth', authRouter);
 app.use('/api/game', gameRouter);
+// app.use('/api/admin', authenticateSession, authenticateAdmin, adminRouter);
+app.use('/api/events', eventRouter);
 
 setupGameEvents(app);
 

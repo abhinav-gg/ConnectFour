@@ -33,6 +33,29 @@ export const authenticateSession = async (req: AuthenticatedRequest, res: Respon
   }
 };
 
+export const authenticateSessionRedirect = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const token = req.cookies.sessionToken; // Get the session token from the request cookies
+  if (!token) {
+    res.redirect('/login');
+    return; // Ensure we return here to avoid further execution
+  }
+
+  try {
+    const decoded = await getUserFromSession(token); // Decode the token
+    // check if decoded is promise null and raise error
+    if (!decoded.userId) {
+      throw new Error('Invalid or expired token');
+    }
+    else {
+      req.user = decoded; // Attach user info to the request
+      next(); // Call next to pass control to the next middleware
+    }
+  } catch (err) {
+    res.redirect('/login');
+    return; // Ensure we return here to avoid further execution
+  }
+};
+
 export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
   console.log('User ID:', userId, req);

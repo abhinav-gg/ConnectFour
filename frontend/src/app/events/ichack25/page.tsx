@@ -6,14 +6,19 @@ import { animated, config, useSpring } from '@react-spring/web';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { getConfig } from '@/config/env';
+import Confetti from 'react-confetti';
+import IchackBanner from '@/components/ichackbanner';
+import duck from "@/assets/duck.svg";
+import { useCallback } from 'react';
 
 // temporarily set the data to 10 seconds from now for testing
 const eventDate = new Date(new Date().getTime() + 10000);
 //new Date('2025-02-01T09:00:00');
+const endDate = new Date('2025-02-02T11:00:00');
 
-const calculateTimeLeft = (eventDate: Date) => {
-  const difference = +eventDate - +new Date();
-  console.log(difference, eventDate, new Date());
+const calculateTimeLeft = (time: Date) => {
+  const difference = +time - +new Date();
   return {
     days: Math.floor(difference / (1000 * 60 * 60 * 24)),
     hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
@@ -27,6 +32,17 @@ export default function ICHack25() {
   const [registered, setRegistered] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(eventDate));
+  const [hasStarted, setHasStarted] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [isConfettiComplete, setIsConfettiComplete] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'not-ichack') {
+      setShowError(true);
+    }
+  }, []);
 
   // Define animations
   const titleAnimation = useSpring({
@@ -55,8 +71,19 @@ export default function ICHack25() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft(eventDate));
-    }, 1000);
+      const hasStarted = (new Date() >= eventDate);
+      const tl = calculateTimeLeft(eventDate);
+      if (tl.finished) {
+        setTimeLeft(calculateTimeLeft(endDate));
+        if (!isConfettiComplete) {
+          setShowConfetti(true);
+          setIsConfettiComplete(true);
+        }
+      } else {
+        setTimeLeft(tl);
+      }
+      setHasStarted(hasStarted);
+    }, 100);
 
     return () => clearInterval(timer);
   }, []);
@@ -64,54 +91,72 @@ export default function ICHack25() {
   const renderCountdown = () => (
     <div className="bg-black p-8 rounded-lg">
       <div className="flex justify-center space-x-4">
-        {timeLeft.finished ? 
-        [<div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
-            <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Join Event</Link>
-          </div>,
-          <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
-            <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Create Game</Link>
-          </div>,
-          <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
-            <div className="bg-yellow-500 rounded-lg p-2 text-white h-1/2 flex items-center justify-center">
-              <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Leaderboard</Link>
-            </div>
-            <div className="bg-white rounded-lg p-2 text-black h-1/2 flex items-center justify-center">
-              
-            </div>
-          </div>] : [
-          <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
-            <div className="flex items-end">
-              <div className="text-6xl font-bold text-white">{timeLeft.days}</div>
-              <div className="text-sm text-white ml-2 mb-2">Days</div>
-            </div>
-          </div>,
-          <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
-            <div className="flex items-end">
-              <div className="text-6xl font-bold text-white">{timeLeft.hours}</div>
-              <div className="text-sm text-white ml-2 mb-2">Hours</div>
-            </div>
-          </div>,
-          <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
-            <div className="bg-yellow-500 rounded-lg p-2 text-white h-1/2 flex items-center justify-center">
+        {hasStarted ?
+          [
+            <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-6 flex items-center justify-center">
+              <Link href="https://discord.com/oauth2/authorize?client_id=1334635525985796136&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fevents%2Fichack25%2Fdiscord&scope=identify" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Join Event</Link>
+            </div>,
+            <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-6 flex items-center justify-center">
+              <Link href="/login" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Create Game</Link>
+            </div>,
+            <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
+              <div className="bg-yellow-500 rounded-lg p-4 text-white h-1/2 flex items-center justify-center">
+                <Link href="/events/ichack/leaderboard" className="w-full h-full text-white font-bold hover:scale-105 transition-transform">Leaderboard</Link>
+              </div>
+              <div className="bg-white rounded-lg p-4 text-black h-1/2 flex items-center justify-center">
+                <Link href="https://ichack.org" className="w-full h-full text-black font-bold hover:scale-105 transition-transform">ICHack</Link>
+              </div>
+            </div>] : [
+            <div key="days" className="bg-blue-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
               <div className="flex items-end">
-                <div className="text-4xl font-bold">{timeLeft.minutes}</div>
-                <div className="text-sm ml-2 mb-1">Minutes</div>
+                <div className="text-6xl font-bold text-white">{timeLeft.days}</div>
+                <div className="text-sm text-white ml-2 mb-2">Days</div>
+              </div>
+            </div>,
+            <div key="hours" className="bg-red-500 w-1/3 rounded-lg p-4 flex items-center justify-center">
+              <div className="flex items-end">
+                <div className="text-6xl font-bold text-white">{timeLeft.hours}</div>
+                <div className="text-sm text-white ml-2 mb-2">Hours</div>
+              </div>
+            </div>,
+            <div key="minutes-seconds" className="w-1/3 flex flex-col space-y-2">
+              <div className="bg-yellow-500 rounded-lg p-2 text-white h-1/2 flex items-center justify-center">
+                <div className="flex items-end">
+                  <div className="text-4xl font-bold">{timeLeft.minutes}</div>
+                  <div className="text-sm ml-2 mb-1">Minutes</div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-2 text-black h-1/2 flex items-center justify-center">
+                <div className="flex items-end">
+                  <div className="text-4xl font-bold">{timeLeft.seconds}</div>
+                  <div className="text-sm ml-2 mb-1">Seconds</div>
+                </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-2 text-black h-1/2 flex items-center justify-center">
-              <div className="flex items-end">
-                <div className="text-4xl font-bold">{timeLeft.seconds}</div>
-                <div className="text-sm ml-2 mb-1">Seconds</div>
-              </div>
-            </div>
-          </div>
-        ]}
+          ]}
       </div>
     </div>
   );
 
+  const handleConfettiComplete = useCallback(() => {
+    setShowConfetti(false);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-200 to-purple-300 text-gray-800">
+      {showError && (
+        <div className="fixed top-0 left-0 w-full bg-red-500 text-white p-4 text-center z-50">
+          Failed to verify Discord account
+        </div>
+      )}
+      {showConfetti && (
+        <Confetti
+          numberOfPieces={500}
+          recycle={false}
+          run={showConfetti}
+          onConfettiComplete={handleConfettiComplete}
+        />
+      )}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin='anonymous' />
       <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Jost:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
@@ -119,6 +164,7 @@ export default function ICHack25() {
         <Dashboard />
 
         <main className="flex-1 px-4 py-8">
+          <IchackBanner />
           <div className="container mx-auto">
             <animated.h1
               style={titleAnimation}
@@ -146,6 +192,27 @@ export default function ICHack25() {
               className="text-center mb-12"
             >
               {isClient ? renderCountdown() : <div>Loading...</div>}
+              <br /><br />
+              {hasStarted && <div className="w-full flex space-x-4 justify-center">
+                <div className="bg-gradient-to-r from-green-400 to-blue-500 rounded-lg p-4 flex items-center justify-center shadow-lg">
+                  <div className="flex items-end">
+                    <div className="text-6xl font-bold text-white">{timeLeft.hours}</div>
+                    <div className="text-sm text-white ml-2 mb-2">Hours</div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-yellow-400 to-red-500 rounded-lg p-4 flex items-center justify-center shadow-lg">
+                  <div className="flex items-end">
+                    <div className="text-6xl font-bold text-white">{timeLeft.minutes}</div>
+                    <div className="text-sm text-white ml-2 mb-2">Minutes</div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg p-4 flex items-center justify-center shadow-lg">
+                  <div className="flex items-end">
+                    <div className="text-6xl font-bold text-white">{timeLeft.seconds}</div>
+                    <div className="text-sm text-white ml-2 mb-2">Seconds</div>
+                  </div>
+                </div>
+              </div>}
             </animated.div>
 
             <animated.div
@@ -157,12 +224,11 @@ export default function ICHack25() {
                   {[0, 1, 2].map((i) => (
                     <Image
                       key={i}
-                      src="/duck.svg"
+                      src={duck.src}
                       alt="Duck"
                       width={32}
                       height={32}
                       priority
-                      unoptimized
                     />
                   ))}
                 </div>
@@ -198,13 +264,12 @@ IC Hack covers food and swag for all hackers, not to mention the opportunity to 
                   {[0, 1, 2].map((i) => (
                     <Image
                       key={i}
-                      src="/duck.svg"
+                      src={duck.src}
                       alt="Duck"
                       width={32}
                       height={32}
                       className="scale-x-[-1]"
                       priority
-                      unoptimized
                     />
                   ))}
                 </div>

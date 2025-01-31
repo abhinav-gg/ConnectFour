@@ -1,14 +1,14 @@
-import { Player } from '@/types';
+import { ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
 import Dashboard from '@/components/dashboard';
 
 interface LeaderboardTableProps {
-  players: Player[];
-  darkMode: boolean;
+  players: ICHackLeaderboardPlayer[];
+  darkMode: boolean; // lol
 }
 
 interface LeaderboardLayoutProps {
   darkMode: boolean;
-  players: Player[];
+  players: ICHackLeaderboardPlayer[];
   children?: React.ReactNode;
 }
 
@@ -41,10 +41,10 @@ function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
                   {player.rank}
                 </td>
                 <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
-                  {player.name}
+                  {player.username || 'Empty'}
                 </td>
                 <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
-                  {player.score}
+                  {player.elo}
                 </td>
               </tr>
             ))}

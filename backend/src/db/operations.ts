@@ -2,10 +2,12 @@ import { UserOperations } from './userOps';
 import * as DBError from './dbErrors';
 import { GameOperations } from './gameOps';
 import { OpeningOperations } from './openingOps';
+import { EventOperations } from './eventsOps';
 
 const databaseOps = new UserOperations();
 const openingOps = new OpeningOperations();
 const gameOps = new GameOperations();
+const eventOps = new EventOperations();
 
 export const dbOperations = {
   // User Operations
@@ -55,4 +57,10 @@ export const dbOperations = {
   UpdateGameStatusByShortCode: gameOps.UpdateGameStatusByShortCode.bind(gameOps),
   GetTimeSinceLastGameLookup: gameOps.GetTimeSinceLastGameLookup.bind(gameOps),
   UpdateRD: gameOps.UpdateRD.bind(gameOps),
+
+  // Event Operations
+  getLeaderboard: eventOps.getLeaderboard.bind(eventOps),
+  registerForEvent: eventOps.registerForEvent.bind(eventOps),
+  isMemberOfEvent: eventOps.isMemberOfEvent.bind(eventOps),
+  exitEvent: eventOps.exitEvent.bind(eventOps),
 };

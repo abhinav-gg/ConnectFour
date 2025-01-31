@@ -51,19 +51,3 @@ export interface ChatMessage {
     isAnnouncement: boolean;
 }
 
-/////////////////////////////////////////////////////////
-
-enum hackspace {
-    "QRT",
-    "SCR",
-    "JCR"
-}
-
-export type ICHACK25 = {
-    event: 'ICHACK25';
-    data: { 
-        userId: string;
-        name: string;
-        hackspace: hackspace,
-    };
-}

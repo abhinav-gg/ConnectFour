@@ -132,6 +132,24 @@ export class UserOperations {
     }
   }
 
+  async updateUsernameByID(id: string, newUsername: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `UPDATE con4_schema.users
+         SET username = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [newUsername.toLowerCase(), id]
+      );
+    } catch (error) {
+      console.error('Failed to update username by ID:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
   async getUserByEmail(email: string): Promise<User> {
     const client = await this.getClient();
     try {
@@ -145,6 +163,24 @@ export class UserOperations {
       return result.rows[0];
     } catch (error) {
       console.error('Failed to fetch user by email:', error);
+      throw error;
+    } finally {
+      client.release();
+      this.client = null;
+    }
+  }
+
+  async updateEmailByID(id: string, newEmail: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `UPDATE con4_schema.users
+         SET email = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [newEmail.toLowerCase(), id]
+      );
+    } catch (error) {
+      console.error('Failed to update email by ID:', error);
       throw error;
     } finally {
       client.release();
@@ -278,7 +314,6 @@ export class UserOperations {
     // id is the user uuid
     // tag = 'IM', 'Admin' etc
 
-
     //INSERT INTO con4_schema.usertags (user_id,tag_id) 
     //SELECT $1, id FROM con4_schema.utags WHERE name = $2;
 
@@ -328,6 +363,8 @@ export class UserOperations {
       this.client = null;
     }
   }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 
   async createUserSession(id: string, token: string): Promise<void> {
     const client = await this.getClient();

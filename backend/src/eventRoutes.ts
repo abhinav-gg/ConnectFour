@@ -1,6 +1,9 @@
 // src/routes/authRoutes.ts
 import { dbOperations } from '@/db/operations';
 import { Request, Response, Router } from 'express';
+import { authenticateSession, authenticateSessionRedirect } from './lib/auth/middleware';
+import { GameMode } from '@shared/Models/gameInfo';
+import { ICHacker } from '@shared/Models/eventInfo';
 
 
 
@@ -8,14 +11,19 @@ import { Request, Response, Router } from 'express';
 const ICHACK_DISCORD_CLIENT_ID = process.env.ICHACK_DISCORD_CLIENT_ID || '';
 const ICHACK_DISCORD_CLIENT_SECRET = process.env.ICHACK_DISCORD_CLIENT_SECRET || '';
 const ICHACK_DISCORD_REDIRECT_URI = process.env.ICHACK_DISCORD_REDIRECT_URI || '';
-const ICHACK_DISCORD_API_KEY = process.env.ICHACK_DISCORD_API_KEY || '';
+const MY_ICHACK_API_KEY = process.env.MY_ICHACK_API_KEY || '';
+const CLIENT_URL = process.env.CLIENT_URL || 'https://con4.uk';
 
 const eventRouter = Router();
 
-eventRouter.get('/ichack25/discord', async (req: Request, res: Response) => {
+// Prefix: /api/events
 
-    try {
+
+eventRouter.get('/ichack25/discord', authenticateSessionRedirect, async (req: Request, res: Response) => {
+
+    try { 
         const code = req.query.code as string;
+        const userId = (req as any).user?.userId;
     
         if (!code) {
             res.status(400).json({ error: 'Authorization code not provided' });
@@ -58,28 +66,31 @@ eventRouter.get('/ichack25/discord', async (req: Request, res: Response) => {
         const user = await userResponse.json();
         
         console.log('User ID:', user.id);
-        // call ICH database here
-        
+        user.id = '211186900386578432'
+
         const ichackResponse = await fetch(`https://my.ichack.org/api/profile/discord/${user.id}`, {
-            method: 'POST',
+            method: 'GET', 
             headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-            token: ICHACK_DISCORD_API_KEY
-            }).toString()
+            'Authorization': MY_ICHACK_API_KEY
+            }
         });
 
         if (!ichackResponse.ok) {
             // get 404 response only
             if (ichackResponse.status === 404) {
-            res.status(404).json({ error: 'User not found' });
-            return;
+                res.redirect(`${CLIENT_URL}/events/ichack25?error=not-ichack`);
+                return;
             }
             throw new Error(`HTTP error! status: ${ichackResponse.status}`);
         } else {
-            const ichackData = await ichackResponse.json();
+            const ichackData: ICHacker = await ichackResponse.json();
             console.log(ichackData); 
+
+            
+
+
+
+
         }
     } catch (error) {
         console.error('Error during authentication:', error);
@@ -88,3 +99,50 @@ eventRouter.get('/ichack25/discord', async (req: Request, res: Response) => {
 });
 
 
+
+
+async function GetLeaderboard(gamemode: GameMode, event: string) {
+    // Check the gamemode and event and fetch the leaderboard from database
+    try {
+        const gamemodeId = await dbOperations.GetGameModeID(gamemode);
+        const leaderboard = await dbOperations.getLeaderboard(gamemodeId, event);
+        return leaderboard;
+    } catch (error) {
+        console.error('Failed to get leaderboard:', error);
+        throw error;
+    }
+}
+
+
+eventRouter.get('/get-leaderboard', async (req: Request, res: Response) => {
+    // Check the gamemode and event and fetch the leaderboard from database
+    const gamemode = req.body.gamemode;
+    if (!gamemode) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
+    const lb = await GetLeaderboard(gamemode, '');
+});
+
+
+eventRouter.get('/get-ichack25-leaderboard', authenticateSession, async (req: Request, res: Response) => {
+    // extract token
+    const token = (req as any).user?.userId;
+
+    
+    const gamemode = req.body.gamemode;
+    const event = req.body.event;
+    if (!gamemode) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
+
+    // verify the user is ICH
+
+
+    const lb = await GetLeaderboard(gamemode, '');
+});
+
+
+
+export default eventRouter;
