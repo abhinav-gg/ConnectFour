@@ -3,20 +3,20 @@
 import { useEffect, useState } from 'react';
 import MainLogoAnimated from '@/components/mainlogo_animated';
 import Dashboard from '@/components/dashboard';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 export default function Home() {
   const text = "Made by Abhinav and Friends";
   const [showText, setShowText] = useState(false);
   const [opacities, setOpacities] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('Starting text animation timer...');
     const timer = setTimeout(() => {
-      console.log('Text animation should start now');
+      setLoading(false);
       setShowText(true);
-      // Initialize opacities to 0
       setOpacities(new Array(text.length).fill(0));
-    }, 300);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -24,10 +24,9 @@ export default function Home() {
   useEffect(() => {
     if (showText) {
       text.split('').forEach((_, index) => {
-        // Gradually increase opacity for each character
-        const duration = 2000; // 2 seconds for each character fade
-        const staggerDelay = 200; // Increased delay between characters
-        const steps = 20; // Number of steps for smooth transition
+        const duration = 2000;
+        const staggerDelay = 200;
+        const steps = 20;
         const stepTime = duration / steps;
 
         for (let step = 1; step <= steps; step++) {
@@ -37,14 +36,22 @@ export default function Home() {
               newOpacities[index] = step / steps;
               return newOpacities;
             });
-          }, index * staggerDelay + step * stepTime); // More pronounced stagger
+          }, index * staggerDelay + step * stepTime);
         }
       });
     }
   }, [showText]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-800 flex">
+        <LoadingAnimation />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-gray-800 flex">
       <Dashboard />
       <div className="flex-1 relative">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -55,7 +62,7 @@ export default function Home() {
           </div>
         </div>
         <div 
-          className="absolute inset-x-0 bottom-12 text-center font-bold text-black text-lg z-50"
+          className="absolute inset-x-0 bottom-12 text-center font-bold text-white text-lg z-50"
         >
           {showText && text.split('').map((char, index) => (
             <span
