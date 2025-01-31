@@ -84,7 +84,7 @@ export default function Dashboard(props: TestProps) {
                 height={100}
               />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-black">Dashboard</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">Dashboard</h2>
           </div>
           
           <div className="space-y-4">
@@ -95,7 +95,7 @@ export default function Dashboard(props: TestProps) {
                   key={index}
                   href={item.path}
                   className={`
-                    test-black flex items-center transform scale-100 hover:scale-105
+                    flex items-center transform scale-100 hover:scale-105
                     ${visibleRows.includes(index) ? 'animate-slide-in opacity-100' : 'opacity-0 translate-x-[-50px]'}
                     transition-all duration-500 ease-out
                   `}

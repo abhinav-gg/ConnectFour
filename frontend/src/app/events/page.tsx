@@ -26,25 +26,11 @@ const upcomingEvents: Event[] = [
 ]
 
 const currentEvents: Event[] = [
-  {
-    id: '2',
-    name: 'Example Current Event',
-    startDate: '2024-03-01',
-    endDate: '2024-03-31',
-    description: 'This is an example of a currently running event',
-    link: '/events/example-current'
-  }
+
 ]
 
 const pastEvents: Event[] = [
-  {
-    id: '3',
-    name: 'Example Past Event',
-    startDate: '2024-01-15',
-    endDate: '2024-01-16',
-    description: 'This is an example of a past event',
-    link: '/events/example-past'
-  }
+
 ]
 
 function formatDate(dateString: string) {
@@ -105,9 +91,9 @@ function EventTable({ events, title, isPast }: { events: Event[], title: string,
 
 export default function Events() {
   return (
-    <div className="min-h-screen bg-black flex">
+    <div className="bg-gray-800 min-h-screen flex text-white">
       <Dashboard />
-      <div className="flex-1 p-6 bg-gray-800 text-white">
+      <div className="flex-1 p-6 text-white">
         <h1 className="text-4xl font-bold mb-6 text-center text-blue-300">Events</h1>
         
         <EventTable events={upcomingEvents} title="Upcoming Events" />

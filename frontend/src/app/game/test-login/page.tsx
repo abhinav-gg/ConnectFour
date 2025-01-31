@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { getConfig } from '@/config/env';
-import TestAnonymousPage from '../test-anonymous/page';
+import AnonymousLogin from '@/components/MakeAnonymous';
 
 const HomePage = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showChoice, setShowChoice] = useState(false); // New state for showing choice buttons
-  const [isLoading, setIsLoading] = useState(true);
   const [anonymousPageVisible, setAnonymousPageVisible] = useState(false); // New state for showing the anonymous page
 
   const sendToJoin = () => {
@@ -42,6 +40,7 @@ const HomePage = () => {
   });
 
   const handleAnonymous = () => {
+    if (anonymousPageVisible) return; // Prevent multiple anonymous page displays
     console.log("THIS MESSAGE SHOULD BE SHOWN ONCE");
     setAnonymousPageVisible(true); // Set the state to show the anonymous page
   };
@@ -73,7 +72,7 @@ const HomePage = () => {
           </div>
         )}
         {anonymousPageVisible && ( // Conditionally render the TestAnonymousPage
-          <TestAnonymousPage />
+          <AnonymousLogin />
         )}
       </div>
     </div>

@@ -8,8 +8,6 @@ import { register } from 'module';
 import { ICHACK25 } from '@shared/events';
 import { getUserFromSession } from './lib/auth';
 
-
-
 // discord stuff
 const ICHACK_DISCORD_CLIENT_ID = process.env.ICHACK_DISCORD_CLIENT_ID || '';
 const ICHACK_DISCORD_CLIENT_SECRET = process.env.ICHACK_DISCORD_CLIENT_SECRET || '';
@@ -133,7 +131,8 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
             }
           }
         } catch (err) {
-          res.status(400).json({ error: 'Invalid or expired token' });
+            console.log("discord auth error:", err);
+          res.status(500).json({ error: 'Auth failed' });
           return; // Ensure we return here to avoid further execution
         }
     } catch (error) {

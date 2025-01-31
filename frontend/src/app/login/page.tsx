@@ -20,8 +20,10 @@ function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const handleReCaptcha = useReCaptcha('login')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (loading) return
     const checkLoginStatus = async () => {
       try {
         const config = getConfig()
@@ -37,8 +39,8 @@ function LoginPage() {
         console.error(err)
       }
     }
-
     checkLoginStatus()
+    setLoading(true);
   })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

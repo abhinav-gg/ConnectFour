@@ -9,7 +9,6 @@ interface DragState {
   velocityY: number;
   isAnimating: boolean;
 }
-import LoadingAnimation from '@/components/LoadingAnimation';
 
 export default function Home() {
   const text = "Made by Abhinav and Friends";
@@ -19,11 +18,9 @@ export default function Home() {
   const dragRef2 = useRef<HTMLDivElement>(null);
   const dragRef3 = useRef<HTMLDivElement>(null);
   const dragStates = useRef<Map<HTMLDivElement, DragState>>(new Map());
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setLoading(false);
       setShowText(true);
       setOpacities(new Array(text.length).fill(0));
     }, 3000);
@@ -148,14 +145,6 @@ export default function Home() {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-800 flex">
-        <LoadingAnimation />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
