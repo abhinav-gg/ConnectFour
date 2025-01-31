@@ -1,7 +1,6 @@
-# ConnectFour
-Chess.com, but Game of the Mind!
+# Con4!
 =======
-Closed Source Connect Four Online!
+Repository for the codebase of Connect Four Online!
 
 ## Directory Structure
 ```
