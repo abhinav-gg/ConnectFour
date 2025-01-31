@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
 import { Game, Move } from '@/models/Game';
 import { GameMode, GMStats, TimeControl } from '@shared/Models/gameInfo';
-import { PlayerEloNotFound } from './dbErrors';
+import { PlayerEloNotFound, PlayerNotLookingForGame } from './dbErrors';
 import { StandardStartingRatingDeviation } from '@shared/constants';
 import { Glicko } from '@/types/types';
 
@@ -502,6 +502,7 @@ export class GameOperations {
           WHERE con4_schema.Elo.mode = con4_schema.GameInfo.gamemode
           AND con4_schema.GameInfo.id = $1
           AND con4_schema.GameLookup.player != $2
+          AND con4_schema.GameLookup.game IS NULL
           ORDER BY ABS(ABS(con4_schema.Elo.elo - (SELECT elo FROM con4_schema.Elo WHERE player = $2 AND mode = $1)) - 30) ASC
           LIMIT 10`,
         [gameInfoID, playerid]
@@ -525,10 +526,9 @@ export class GameOperations {
           LIMIT 1`,
         [playerid]
       );
-      return result.rows[0]?.diff;
+      return result.rows[0].diff;
     } catch (error) {
-      console.error('Failed to fetch time since last game lookup:', error);
-      throw error;
+      throw PlayerNotLookingForGame
     } finally {
       this.safeRelease();
     }

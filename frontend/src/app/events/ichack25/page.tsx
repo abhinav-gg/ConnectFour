@@ -5,7 +5,7 @@ import IchackLogo from '@/components/ichacklogo';
 import { animated, config, useSpring } from '@react-spring/web';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getConfig } from '@/config/env';
 import Confetti from 'react-confetti';
 import IchackBanner from '@/components/ichackbanner';
@@ -36,6 +36,8 @@ export default function ICHack25() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showError, setShowError] = useState(false);
   const [isConfettiComplete, setIsConfettiComplete] = useState(false);
+  const [updateCount, setUpdateCount] = useState(0);
+  const displayedTextRef = useRef<string>(''); // Use ref to persist text
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -66,6 +68,24 @@ export default function ICHack25() {
   });
 
   useEffect(() => {
+    const text = "To participate in this event, you must be a member of ICHack25! You must also register a free account with con4.uk so we can keep track of your progress and link you to your ICHack discord account! Good Luck and have fun <3"
+        
+    if (displayedTextRef.current.length !== 0) return; // Skip if text is already displayed
+    const intervalId = setInterval(() => {
+      let currentIndex = displayedTextRef.current.length; // Start at the current length of the displayed text
+      console.log(text, currentIndex)
+      if (currentIndex < text.length) {
+        displayedTextRef.current += text[currentIndex]; // Append character
+        currentIndex++;
+      } else {
+        clearInterval(intervalId);
+      }
+    }, 30); // Adjust speed here (lower = faster)
+    return () => clearInterval(intervalId);
+  }, []); // Only run effect once at the beginning
+
+
+  useEffect(() => {
     setIsClient(true);
   }, []);
 
@@ -75,7 +95,7 @@ export default function ICHack25() {
       const tl = calculateTimeLeft(eventDate);
       if (tl.finished) {
         setTimeLeft(calculateTimeLeft(endDate));
-        if (!isConfettiComplete) {
+        if (!isConfettiComplete && !showConfetti) {
           setShowConfetti(true);
           setIsConfettiComplete(true);
         }
@@ -86,7 +106,16 @@ export default function ICHack25() {
     }, 100);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [showConfetti, isConfettiComplete]);
+
+  const RenderDisclaimer = () => {
+    return <animated.div className="bg-white p-4 rounded-lg shadow-md mb-8" style={formAnimation}>
+    <h3 className="text-mid font-bold">Disclaimer</h3>
+    <p className="text-gray-700 text-sm">
+      <span>{displayedTextRef.current}</span>
+    </p>
+  </animated.div>; // Display the current text
+  };
 
   const renderCountdown = () => (
     <div className="bg-black p-8 rounded-lg">
@@ -155,6 +184,9 @@ export default function ICHack25() {
           recycle={false}
           run={showConfetti}
           onConfettiComplete={handleConfettiComplete}
+          width={window.innerWidth - 20}
+          height={window.innerHeight}
+          style={{ position: 'fixed', top: 0, left: 0, zIndex: 100 }}
         />
       )}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -191,7 +223,12 @@ export default function ICHack25() {
               style={logoAnimation}
               className="text-center mb-12"
             >
-              {isClient ? renderCountdown() : <div>Loading...</div>}
+              {isClient ? (
+                <>
+                  <RenderDisclaimer key={updateCount} />
+                  {renderCountdown()}
+                </>
+              ) : <div>Loading...</div>}
               <br /><br />
               {hasStarted && <div className="w-full flex space-x-4 justify-center">
                 <div className="bg-gradient-to-r from-green-400 to-blue-500 rounded-lg p-4 flex items-center justify-center shadow-lg">
@@ -256,7 +293,7 @@ export default function ICHack25() {
 
 Running for the 13th year, they're bringing over 700 of the UK's most creative and talented students together for 24 hours of learning, building, fun, and networking.
 
-IC Hack covers food and swag for all hackers, not to mention the opportunity to win some incredible prizes from their sponsors!`}
+Running for the 1st year, we're bringing the same energy through our hackspace challenge! The top three of each of our time controls will win prizes, and the top three overall will earn some hackspace points to get them closer to custom prizes!`}
                   </div>
                 </div>
 

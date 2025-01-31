@@ -35,8 +35,10 @@ export const authenticateSession = async (req: AuthenticatedRequest, res: Respon
 
 export const authenticateSessionRedirect = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const token = req.cookies.sessionToken; // Get the session token from the request cookies
+  const redirect = (process.env.CLIENT_URL || 'http://localhost:3000') + '/login';
   if (!token) {
-    res.redirect('/login');
+    console.log('No token found, redirecting to login');
+    res.redirect(redirect);
     return; // Ensure we return here to avoid further execution
   }
 
@@ -51,7 +53,7 @@ export const authenticateSessionRedirect = async (req: AuthenticatedRequest, res
       next(); // Call next to pass control to the next middleware
     }
   } catch (err) {
-    res.redirect('/login');
+    res.redirect(redirect);
     return; // Ensure we return here to avoid further execution
   }
 };

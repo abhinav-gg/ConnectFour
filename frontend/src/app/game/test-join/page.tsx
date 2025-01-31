@@ -52,7 +52,6 @@ const TestJoinPage = () => {
     }
 
     const { base, increment, disadvantage } = selectedControl;
-
     const response = await fetch(`${URL}/api/game/request`, {
       method: 'POST',
       headers: {
@@ -74,17 +73,25 @@ const TestJoinPage = () => {
       const data = await response.json();
       console.log('Failed to request game');
       setMessage(data.error)
-      const backendUrl = getConfig().websocketUrl;
-      const token = localStorage.getItem('token')!;
-      const newSocket = new WebSocket(backendUrl + "/finding-game", [token]);
-      
-      socket.current = newSocket;
-      console.log("set socket", socket, newSocket);
-      newSocket.onopen = () => {
-        console.log('WebSocket connected!');
 
-      };
+      if (!socket.current?.readyState || socket.current.readyState === 3) {  
+        const backendUrl = getConfig().websocketUrl;
+        const newSocket = new WebSocket(backendUrl + "/finding-game");
+        
+        socket.current = newSocket;
+        console.log("set socket", socket, newSocket);
+        newSocket.onopen = () => {
+          console.log('WebSocket connected!');
 
+        };
+
+        newSocket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.event === 'sendToRoom') {
+            window.location.href = '/game?room=' + data.data.roomId;
+          }
+        }
+      }
       return;
     }
     else {

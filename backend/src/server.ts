@@ -10,6 +10,7 @@ import { authenticateAdmin, authenticateSession } from '@/lib/auth/middleware';
 import { DiscordUserRequest } from '@/types/types';
 import cookieParser from 'cookie-parser';
 import eventRouter from './eventRoutes';
+import { setupWaitingRoom } from './events/waitingRoom';
 
 dotenv.config();
 
@@ -82,6 +83,7 @@ app.use('/api/game', gameRouter);
 app.use('/api/events', eventRouter);
 
 setupGameEvents(app);
+setupWaitingRoom(app);
 
 app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);

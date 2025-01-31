@@ -425,11 +425,6 @@ async function startNormalGame(room: Room, game: Game, gamemode: GameMode, time_
       }
     } as GameStart));
   });
-
-  // Assign the game to the players (for friendly game no elo change)
-  room.players.forEach((player, num) => {
-    assignGame(game.id, player, num);
-  });
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -574,6 +569,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   const eloChange = await getCompetitiveEloChange(player, room.players[index == 0 ? 1 : 0], game.short_id);
                   setEloChange(player, eloChange);
                 });
+                console.log(room)
 
                 // All checks have passed, the player may be added to the game
                 // Player is connecting to the game for the first time.
@@ -624,6 +620,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 // Send the game state to the player and update the room state
 
                 StandardConnectUser();
+                // Assign the game to the players (for friendly game no elo change)
+                room.players.forEach((player, num) => {
+                  assignGame(game.id, player, num);
+                });
                 break;
               }
               default : {
@@ -904,33 +904,40 @@ export const setupGameEvents = async (app: expressWs.Application) => {
         return;
       }
 
+      console.log('Game is scheduled:', game);
       if (game.state === StandardGameStates.scheduled) {
-        abortGame(userId);
-        room.players = room.players.filter(p => p !== userId);
-      }
-
-      if (roomId) {
-        
-        sendToRoom(roomId, {
-          event: 'playerDisconnected',
-          data: {}
-        } as PlayerDisconnected);
-
-        let active = 0;
-
-        room.players.forEach(player => {
-          if (getSocket(player)) {
-            active++;
-          }
+        const gamePlayers = await dbOperations.GetPlayersByShortCode(roomId!);
+        gamePlayers.forEach(async (p) => {
+          await abortGame(p, game.id);
         });
-    
-        // the player has some time to return if there are other players so do nothing
-        if (active === 0) {
-          handleGameEnd(roomId, true, 'abandoned'); // IMPORTANT - TODO: handle this
-          dropRoom(roomId);
-        }
+        dropRoom(roomId);
+        ws.close();
+        return;
       }
+
+      // Therefore the user is in a ongoing game
+       
+      sendToRoom(roomId, {
+        event: 'playerDisconnected',
+        data: {}
+      } as PlayerDisconnected);
+
+      let active = 0;
+
+      room.players.forEach(player => {
+        if (getSocket(player)) {
+          active++;
+        }
+      });
+  
+      // the player has some time to return if there are other players so do nothing
+      if (active === 0) {
+        await handleGameEnd(roomId, true, 'abandoned');
+        dropRoom(roomId);
+      }
+
       ws.close();
+   
     });
   });
 };

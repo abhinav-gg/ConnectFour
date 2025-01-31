@@ -99,12 +99,14 @@ export async function assignGame(gameId: string, userId: string, num: number) {
     }
 }
 
-export async function abortGame(userId: string) {
+export async function abortGame(userId: string, game?: string) {
     // user did not play a single move
     try {
-        const game = await dbOperations.GetGameByPlayerLookup(userId);
         if (!game) {
-            throw new Error('Game not found');
+            game = await dbOperations.GetGameByPlayerLookup(userId) ?? '';
+            if (!game) {
+                throw new Error('Game not found');
+            }
         }
         //Update the game lookup here
         await dbOperations.FinishedGameLookup(userId);
@@ -191,17 +193,24 @@ export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol
 export async function endGame(short_id: string, gamemode: GameMode, draw: boolean, winner?: number): Promise<void> {
     try {
         const game = await dbOperations.GetGameByShortCode(short_id);
-        const gamemodeid = await dbOperations.GetGameModeID(gamemode);
+        const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
         if (!game) {
             throw new Error('Game not found???');
+        }
+        if (!draw && winner === undefined) {
+            // game was abandoned
+            gamePlayers.forEach(async (player) => {
+                abortGame(player, short_id);
+            });
+            return;
         }
         if (draw) {
             await dbOperations.UpdateGameStatusByShortCode(short_id, StandardGameStates.draw);
         } else {
             await dbOperations.UpdateGameStatusByShortCode(short_id, `win: ${winner}`);
         }
-
-        const gamePlayers = await dbOperations.GetPlayersByShortCode(short_id);
+        
+        const gamemodeid = await dbOperations.GetGameModeID(gamemode);
         switch (gamemode.name.split('-')[0]) {
             case 'standard':
                 const p1Stats = await safeGetElo(gamePlayers[0], gamemodeid) as Glicko;

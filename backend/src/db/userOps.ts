@@ -23,6 +23,18 @@ export class UserOperations {
     return this.client;
   }
 
+  private async safeRelease(): Promise<void> {
+    if (this.client) {
+      try {
+        this.client.release(); // Attempt to release the client
+      } catch (error) {
+        console.error('Error releasing client:', error); // Log any errors during release
+      } finally {
+        this.client = null; // Ensure client is set to null after release
+      }
+    }
+  }
+
   async __getAllUsers(): Promise<User[]> {
     const client = await this.getClient();
     try {
@@ -34,8 +46,7 @@ export class UserOperations {
       console.error('Failed to fetch users:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -89,8 +100,7 @@ export class UserOperations {
       console.error('Failed to create user:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -107,8 +117,7 @@ export class UserOperations {
       console.error('Failed to record user login:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -127,8 +136,7 @@ export class UserOperations {
       console.error('Failed to fetch user by username:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -145,8 +153,7 @@ export class UserOperations {
       console.error('Failed to update username by ID:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -165,8 +172,7 @@ export class UserOperations {
       console.error('Failed to fetch user by email:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -183,8 +189,7 @@ export class UserOperations {
       console.error('Failed to update email by ID:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -201,8 +206,7 @@ export class UserOperations {
       console.error('Failed to fetch user by ID:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -223,8 +227,7 @@ export class UserOperations {
       console.error('Failed to fetch password hash by username:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -243,8 +246,7 @@ export class UserOperations {
       console.error('Failed to fetch password hash by email:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -263,8 +265,7 @@ export class UserOperations {
       console.error('Failed to fetch id by username:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -283,8 +284,7 @@ export class UserOperations {
       console.error('Failed to fetch id by email:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -304,8 +304,7 @@ export class UserOperations {
       console.error('Failed to fetch all user tag names:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -335,8 +334,7 @@ export class UserOperations {
       console.error('Failed to create anonymous user:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
 
   }
@@ -359,8 +357,7 @@ export class UserOperations {
       console.error('Failed to delete anonymous users:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -379,8 +376,7 @@ export class UserOperations {
       console.error('Failed to create user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -396,8 +392,7 @@ export class UserOperations {
       console.error('Failed to revoke user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -413,8 +408,7 @@ export class UserOperations {
       console.error('Failed to revoke user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -443,8 +437,7 @@ export class UserOperations {
       console.error('Failed to check user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -462,11 +455,12 @@ export class UserOperations {
       console.error('Failed to check user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
   //DELETE FROM con4_schema.users 
   //WHERE username IS NULL;
+
+  
 }

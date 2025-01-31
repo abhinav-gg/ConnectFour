@@ -7,6 +7,7 @@ import * as globals from '@shared/constants';
 import { abortGame, CategoriseTime, createGame, quitGameSearch } from './gameHelper';
 import { GameInfo } from '@shared/Models/gameInfo';
 import { FindCompetitiveMatch } from './matchmaking';
+import * as dbError from '@/db/dbErrors'
 
 const gameRouter = Router();
 
@@ -50,36 +51,50 @@ gameRouter.post('/request', authenticateSession, async (req: Request, res: Respo
         res.status(500).json({ error: 'Invalid Data' });
         return;
     }
-    console.log('Create Game:', userId, time_control, gamemode);
 
     // Check if the user is already in the game lookup
-    const gameId = await dbOperations.GetGameByPlayerLookup(userId);
-    console.log('Game ID:', gameId);
-    if (gameId) {
-        // First check if the game is still active
-        try {
-            const game = await dbOperations.GetGameByID(gameId);
-
-            if (game.state === globals.StandardGameStates.ongoing) {
-                res.status(200).json({ event: 'sendToRoom', 
-                    data: { roomId: game.short_id }
-            } as SendToRoom);
-                return;
-            }
-            else if (game.state === globals.StandardGameStates.scheduled) {
-                await abortGame(userId);
-            }
-            else {
-                throw new Error('Game is over, let them review the game');
-            }
-        }
-        catch (error) {
-            console.log('Failed to remove user from game search:', error);
-            return;
+    let priority = 0;
+    try {
+        priority = await dbOperations.GetTimeSinceLastGameLookup(userId);
+    }
+    catch (error) {
+        if (error === dbError.PlayerNotLookingForGame) {
+            console.log('User is not in the game lookup');
+        } else {
+            throw error;
         }
     }
-    else {
-        await dbOperations.FinishedGameLookup(userId);
+
+    if (priority > 0) {
+        const gameId = await dbOperations.GetGameByPlayerLookup(userId);
+        if (!gameId) {
+            await dbOperations.FinishedGameLookup(userId); // remove from game lookup if they are not in a game
+        } else {
+
+            try {
+                const game = await dbOperations.GetGameByID(gameId!);
+    
+                if (game.state === globals.StandardGameStates.ongoing) {
+                    res.status(200).json({ event: 'sendToRoom', 
+                        data: { roomId: game.short_id }
+                } as SendToRoom);
+                    return;
+                }
+                else if (game.state === globals.StandardGameStates.scheduled) {
+                    //Update the game lookup here
+                    await dbOperations.FinishedGameLookup(userId);
+                    //Delete the game player entry here
+                    await dbOperations.UnassignGame(game.id, userId);
+                }
+                else {
+                    await dbOperations.FinishedGameLookup(userId);
+                }
+            }
+            catch (error) {
+                console.log('Failed to remove user from game search:', error);
+                return;
+            }
+        }
     }
     
     const GMM = gamemode.name;
@@ -98,7 +113,8 @@ gameRouter.post('/request', authenticateSession, async (req: Request, res: Respo
             // README: Make the game after the matchmaking is done incase of a failure 
             //                          / two people in different games are matched
             try {
-                const roomId = await FindCompetitiveMatch(userId, time_control, gamemode);
+
+                const roomId = await FindCompetitiveMatch(userId, time_control, gamemode, priority);
 
                 if (!roomId) {
                     res.status(404).json({ message: 'No match found, player must wait' });

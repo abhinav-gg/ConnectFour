@@ -16,6 +16,12 @@ export class PlayerEloNotFound extends Error {
   }
 }
 
+export class PlayerNotLookingForGame extends Error {
+  constructor() {
+    super('Player not looking for game');
+  }
+}
+
 export class EmailExists extends Error {
   constructor() {
     super('An account with this email already exists');
