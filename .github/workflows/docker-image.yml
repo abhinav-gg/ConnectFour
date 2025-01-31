@@ -2,7 +2,7 @@ name: deploy website
 
 on:
   push:
-    branches: [ "main", "DO-test" ]
+    branches: [ "main" ]
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+-[0-9]+-website*'
   pull_request:

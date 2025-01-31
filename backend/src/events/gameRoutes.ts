@@ -8,6 +8,7 @@ import { abortGame, CategoriseTime, createGame, quitGameSearch } from './gameHel
 import { GameInfo } from '@shared/Models/gameInfo';
 import { FindCompetitiveMatch } from './matchmaking';
 import * as dbError from '@/db/dbErrors'
+import { ICHACK25 } from '@shared/events';
 
 const gameRouter = Router();
 
@@ -27,6 +28,22 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, async (req: Re
         if (!gamemode || !time_control || !userId) {
             throw new Error('Invalid Data');
         }
+
+        if (gamemode.event) {
+            const event = gamemode.event;
+            if (event === ICHACK25) {
+                try {
+                    const inEvent = await dbOperations.isMemberOfEvent(userId, event);
+                    if (!inEvent) {
+                        throw new Error('User is not in the event');
+                    }
+                } catch {
+                    res.status(403).json({ error: 'User is not in the event' });
+                    return;
+                }
+            }
+        }
+
         if (gamemode.name !== globals.StandardGameModes.friendly) {
 
             const timeMode = CategoriseTime(time_control);

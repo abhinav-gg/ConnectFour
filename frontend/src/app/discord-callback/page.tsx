@@ -1,17 +1,15 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getConfig } from '@/config/env';
+import Loading from '@/components/loading';
 
 export default function DiscordCallback() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    const code = searchParams.get('code');
+    const code = new URLSearchParams(window.location.search).get('code');
     if (!code) {
       setStatus('error');
       setError('No code parameter found');
@@ -33,7 +31,7 @@ export default function DiscordCallback() {
           setStatus('error');
           setError('Authentication required, redirecting to login...');
           setTimeout(() => {
-            router.push('/login');
+            window.location.href = '/login';
           }, 2000);
           return;
         }
@@ -42,7 +40,7 @@ export default function DiscordCallback() {
           setStatus('error');
           setError('Not registered for ICHack 25');
           setTimeout(() => {
-            router.push('/events/ichack25?error=not-ichack');
+            window.location.href = '/events/ichack25?error=not-ichack';
           }, 2000);
           return;
         }
@@ -50,7 +48,7 @@ export default function DiscordCallback() {
         if (res.status >= 200 && res.status < 300) {
           setStatus('success');
           setTimeout(() => {
-            router.push('/events/ichack25/leaderboard');
+            window.location.href = '/events/ichack25/leaderboard';
           }, 2000);
           return;
         }
@@ -63,10 +61,10 @@ export default function DiscordCallback() {
         setStatus('error');
         setError(err.message);
       });
-  }, [searchParams, router]);
+  });
 
   if (status === 'loading') {
-    return <div className="p-8 text-center">Connecting your Discord account...</div>;
+    return <Loading/>;
   }
 
   if (status === 'error') {

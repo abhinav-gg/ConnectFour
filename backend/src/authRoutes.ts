@@ -62,7 +62,7 @@ authRouter.post('/login', verifyRecaptcha, async (req: Request, res: any) => {
   } else if (!password) {
     return res.status(400).json({ error: 'Password is required' });
   }
-  console.log('Login:', username, password);
+  console.log('Login:', username);
 
   try {
     let fetchedHash: string | null = null;
