@@ -35,6 +35,8 @@ const Setup = () => {
   const [roomId, setRoomId] = useState('');
   const [opacities, setOpacities] = useState<number[]>([]);
   const handleReCaptcha = useReCaptcha('join');
+  const [lastRequestTime, setLastRequestTime] = useState<number>(0);
+  const COOLDOWN_PERIOD = 5000; // 3 seconds in milliseconds
 
   // Check authentication status on mount
   useEffect(() => {
@@ -134,7 +136,10 @@ const requestGame = async () => {
         window.location.href = '/game?room=' + data.data.roomId;
       } else {
         const data = await response.json();
-        setMessage(data.error);
+        if (data.error)
+          setMessage(data.error);
+        else
+          setMessage('Failed to find match, you are in queue');
         setupWebSocket();
       }
     } catch (error) {
@@ -170,10 +175,18 @@ const requestGame = async () => {
     e.preventDefault();
     if (isSubmitting) return;
     
+    // Check if enough time has passed since last request
+    const currentTime = Date.now();
+    if (currentTime - lastRequestTime < COOLDOWN_PERIOD) {
+      setMessage(`Please wait ${Math.ceil((COOLDOWN_PERIOD - (currentTime - lastRequestTime)) / 1000)} seconds before requesting another game`);
+      return;
+    }
+    
     console.log('Requesting game...', selectedTimeControl, gameType);
     try {
       setIsSubmitting(true);
       setMessage('Requesting game...');
+      setLastRequestTime(currentTime);
       await requestGame();
     } catch (error) {
       setMessage('Error requesting game');

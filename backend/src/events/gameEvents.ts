@@ -588,8 +588,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   return;
                 }
 
-                
-                console.log(room)
+                console.log(room.players.length)
                 StandardConnectUser();
                 break;
               }
@@ -683,7 +682,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
                 try {
                   verification = await verifyStandardGame(roomId, userId!, col);
-                  console.log('Verification:', verification);
                 }
                 catch (error) {
                   console.error('Failed to verify standard game:', error);
@@ -801,7 +799,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const gamemode = getGameMode(roomId)!;
 
             const findDisconnectedPlayers = room.players.filter(p => !getSocket(p));
-
+            if (findDisconnectedPlayers.length === 0) {
+              reconnect(roomId, user!, ws, true);
+              return;
+            }
             const timeSince = Date.now() - room.lastDisconnect!;
             if (timeSince < StandardReconnectionTime) {
               sendToRoom(roomId,
