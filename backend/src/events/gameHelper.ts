@@ -217,10 +217,10 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
                 const p2Stats = await safeGetElo(gamePlayers[1], gamemodeid) as Glicko;
                 const p1Changes = calculateGlickoRatings(p1Stats, p2Stats);
                 const p2Changes = calculateGlickoRatings(p2Stats, p1Stats);
-                const p1rd = adjustRD(p1Stats);
-                const p2rd = adjustRD(p2Stats);
-                dbOperations.UpdateRD(gamePlayers[0], gamemodeid, p1rd);
-                dbOperations.UpdateRD(gamePlayers[1], gamemodeid, p2rd);
+                // const p1rd = adjustRD(p1Stats);
+                // const p2rd = adjustRD(p2Stats);
+                // dbOperations.UpdateRD(gamePlayers[0], gamemodeid, p1rd);
+                // dbOperations.UpdateRD(gamePlayers[1], gamemodeid, p2rd);
                 let p1Delta, p2Delta;
                 if (draw) {
                     p1Delta = p1Changes.draw;
@@ -234,9 +234,7 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
                 }
 
                 dbOperations.UpdateElo(gamePlayers[0], gamemodeid, p1Delta);
-                dbOperations.UpdateRD(gamePlayers[0], gamemodeid, p1rd);
                 dbOperations.UpdateElo(gamePlayers[1], gamemodeid, p2Delta);
-                dbOperations.UpdateRD(gamePlayers[1], gamemodeid, p2rd);
                 break;                
         }
         gamePlayers.forEach(async (player) => {

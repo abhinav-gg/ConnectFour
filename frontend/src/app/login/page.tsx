@@ -6,6 +6,7 @@ import { getConfig } from '@/config/env'
 import Dashboard from '@/components/dashboard'
 import { ReCaptchaWrapper } from '@/components/captcha';
 import { useReCaptcha } from '@/components/usecaptcha';
+import Loading from '@/components/loading';
 
 export default function Login() {
   return (
@@ -20,7 +21,7 @@ function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const handleReCaptcha = useReCaptcha('login')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (loading) return
@@ -33,15 +34,20 @@ function LoginPage() {
         })
 
         if (response.ok) {
-          window.location.href = '/dashboard'; // Redirect to dashboard or another page after login
+          window.location.href = '/dashboard';
         }
       } catch (err) {
         console.error(err)
+      } finally {
+        setLoading(false)
       }
     }
     checkLoginStatus()
-    setLoading(true);
-  })
+  }, [])
+
+  if (loading) {
+    return <Loading />
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { FaSun, FaMoon } from 'react-icons/fa';
-import type { leaderboardPlayer, ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
+import type { ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
 import LeaderboardLayout from '@/components/ichleaderboard';
 import { StandardGameModes } from '@shared/constants';
 import { GameMode } from '@shared/Models/gameInfo';
@@ -10,39 +10,45 @@ import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
 import IchackBanner from '@/components/ichackbanner';
 import { ICHACK25 } from '@shared/events';
+import Loading from '@/components/loading';
 
 export default function Leaderboard() {
   const stdModes = StandardGameModes.standard;
   const [darkMode, setDarkMode] = useState(false);
   const [selectedTab, setSelectedTab] = useState(stdModes.rapid);
-  const backendUrl = getConfig().backendUrl;
   const [playersData, setPlayersData] = useState<ICHackLeaderboardPlayer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const backendUrl = getConfig().backendUrl;
 
   const getLeaderboard = async (tab: string): Promise<void> => {
-    const res = await fetch(`${backendUrl}/api/events/get-ichack25-leaderboard`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          gamemode: {
-            name: tab,
-            event: ICHACK25
-          } as GameMode
-        })
-      }
-    );
-    if (!res.ok) {
-      // check for 403 error and redirect
-      console.log('Error fetching leaderboard data', res);
-      //window.location.href = '/login'; // Redirect to a 403 error page
-      return;
-    }   
-    const data = await res.json() as ICHackLeaderboardPlayer[];
-    console.log(data);
-    setPlayersData(data);
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${backendUrl}/api/events/get-ichack25-leaderboard`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            gamemode: {
+              name: tab,
+              event: ICHACK25
+            } as GameMode
+          })
+        }
+      );
+      if (!res.ok) {
+        window.location.href = '/login';
+        return;
+      }   
+      const data = await res.json() as ICHackLeaderboardPlayer[];
+      setPlayersData(data);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -91,7 +97,11 @@ export default function Leaderboard() {
           </div>
 
           <div className={`leaderboard-box transition-all duration-500 ${darkMode ? 'bg-gray-800' : 'bg-white'} p-4 md:p-8 rounded-lg shadow-lg`}>
-            <LeaderboardLayout darkMode={darkMode} players={playersData}>
+            <LeaderboardLayout 
+              darkMode={darkMode} 
+              players={playersData}
+              isLoading={isLoading}
+            >
               <button
                 onClick={toggleDarkMode}
                 className="absolute top-4 right-4 p-3 rounded-full bg-gray-100 dark:bg-gray-700 

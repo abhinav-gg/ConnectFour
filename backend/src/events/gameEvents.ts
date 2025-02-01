@@ -192,7 +192,7 @@ async function reconnect(roomId: string, userId: string, newSocket: WSocket, isS
       }
     }
     playerNumber = room.players.indexOf(userId as UUID);
-    console.log(room, userId, playerNumber);
+    // console.log(room, userId, playerNumber);
     newSocket.send(JSON.stringify({
       event: 'reconnection',
       data: {
@@ -590,7 +590,6 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   return;
                 }
 
-                console.log(room.players.length)
                 await StandardConnectUser();
                 break;
               }

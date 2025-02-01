@@ -43,9 +43,10 @@ export class UserOperations {
       );
       return result.rows;
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      //console.error('Failed to fetch users:', error);
       throw error;
     } finally {
+      this.safeRelease();
       this.safeRelease();
     }
   }
@@ -97,7 +98,7 @@ export class UserOperations {
       return result.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Failed to create user:', error);
+      //console.error('Failed to create user:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -114,7 +115,7 @@ export class UserOperations {
         [id]
       );
     } catch (error) {
-      console.error('Failed to record user login:', error);
+      //console.error('Failed to record user login:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -133,7 +134,7 @@ export class UserOperations {
 
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to fetch user by username:', error);
+      //console.error('Failed to fetch user by username:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -169,7 +170,7 @@ export class UserOperations {
 
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to fetch user by email:', error);
+      //console.error('Failed to fetch user by email:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -203,7 +204,7 @@ export class UserOperations {
       );
       return result.rows[0] as User;
     } catch (error) {
-      console.error('Failed to fetch user by ID:', error);
+      //console.error('Failed to fetch user by ID:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -224,7 +225,7 @@ export class UserOperations {
 
       return result.rows[0]?.password_hash ?? "";
     } catch (error) {
-      console.error('Failed to fetch password hash by username:', error);
+      //console.error('Failed to fetch password hash by username:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -243,7 +244,7 @@ export class UserOperations {
 
       return result.rows[0]?.password_hash ?? "";
     } catch (error) {
-      console.error('Failed to fetch password hash by email:', error);
+      //console.error('Failed to fetch password hash by email:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -262,7 +263,7 @@ export class UserOperations {
 
       return result.rows[0]?.id ?? "";
     } catch (error) {
-      console.error('Failed to fetch id by username:', error);
+      //console.error('Failed to fetch id by username:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -300,7 +301,7 @@ export class UserOperations {
 
       return result.rows[0]?.id ?? "";
     } catch (error) {
-      console.error('Failed to fetch id by email:', error);
+      //console.error('Failed to fetch id by email:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -320,7 +321,7 @@ export class UserOperations {
 
       return result.rows.map((row) => row.name) as [string];
     } catch (error) {
-      console.error('Failed to fetch all user tag names:', error);
+      //console.error('Failed to fetch all user tag names:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -350,7 +351,7 @@ export class UserOperations {
       return result.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Failed to create anonymous user:', error);
+      //console.error('Failed to create anonymous user:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -373,7 +374,7 @@ export class UserOperations {
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Failed to delete anonymous users:', error);
+      //console.error('Failed to delete anonymous users:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -392,7 +393,7 @@ export class UserOperations {
         [id, token]
       );
     } catch (error) {
-      console.error('Failed to create user session:', error);
+      //console.error('Failed to create user session:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -408,7 +409,7 @@ export class UserOperations {
         [id]
       );
     } catch (error) {
-      console.error('Failed to revoke user session:', error);
+      //console.error('Failed to revoke user session:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -424,7 +425,7 @@ export class UserOperations {
         [token]
       );
     } catch (error) {
-      console.error('Failed to revoke user session:', error);
+      //console.error('Failed to revoke user session:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -453,7 +454,7 @@ export class UserOperations {
 
       return result.rows[0].user_id;
     } catch (error) {
-      console.error('Failed to check user session:', error);
+      //console.error('Failed to check user session:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -471,7 +472,7 @@ export class UserOperations {
 
       return result.rows[0]?.token ?? null;
     } catch (error) {
-      console.error('Failed to check user session:', error);
+      //console.error('Failed to check user session:', error);
       throw error;
     } finally {
       this.safeRelease();

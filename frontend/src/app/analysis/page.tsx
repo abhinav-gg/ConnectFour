@@ -30,7 +30,7 @@ export default function AnalysisPage() {
     };
 
     const handleImport = () => {
-        console.log(moveString);
+        // console.log(moveString);
         setMoves(moveString);
     };
 

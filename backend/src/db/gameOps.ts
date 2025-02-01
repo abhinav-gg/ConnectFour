@@ -32,7 +32,7 @@ export class GameOperations {
       try {
         this.client.release(); // Attempt to release the client
       } catch (error) {
-        console.error('Error releasing client:', error); // Log any errors during release
+        //console.error('Error releasing client:', error); // Log any errors during release
       } finally {
         this.client = null; // Ensure client is set to null after release
       }
@@ -59,7 +59,7 @@ export class GameOperations {
         );
       return;
     } catch (error) {
-      console.error('Failed to fetch id by email:', error);
+      //console.error('Failed to fetch id by email:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -78,7 +78,7 @@ export class GameOperations {
         );
         return;
       } catch (error) {
-        console.error('Could not delete user from game search:', error);
+        //console.error('Could not delete user from game search:', error);
         throw error;
       } finally {
         this.safeRelease();
@@ -102,7 +102,7 @@ export class GameOperations {
       }
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to make the game:', error);
+      //console.error('Failed to make the game:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -119,7 +119,7 @@ export class GameOperations {
       );
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to fetch game by id:', error);
+      //console.error('Failed to fetch game by id:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -139,7 +139,7 @@ export class GameOperations {
       );
       return result.rows as Move[];
     } catch (error) {
-      console.error('Failed to fetch moves by game id:', error);
+      //console.error('Failed to fetch moves by game id:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -160,7 +160,7 @@ export class GameOperations {
       }
       return result.rows[0]?.game ?? null;
     } catch (error) {
-      console.error('Failed to fetch ongoing games by player:', error);
+      //console.error('Failed to fetch ongoing games by player:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -178,7 +178,7 @@ export class GameOperations {
       );
       return result.rows as Move[];
     } catch (error) {
-      console.error('Failed to make move:', error);
+      //console.error('Failed to make move:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -196,7 +196,7 @@ export class GameOperations {
       );
       return result.rows[0]?.id;
     } catch (error) {
-      console.error('Failed to fetch time control:', error);
+      //console.error('Failed to fetch time control:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -220,7 +220,7 @@ export class GameOperations {
       };
       return result.rows[0]?.id;
     } catch (error) {
-      console.error('Failed to fetch game mode id:', error);
+      //console.error('Failed to fetch game mode id:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -237,7 +237,7 @@ export class GameOperations {
       );
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to fetch game by short code:', error);
+      //console.error('Failed to fetch game by short code:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -263,7 +263,7 @@ export class GameOperations {
       return result.rows[0]?.id;
       
     } catch (error) {
-      console.error('Failed to fetch game info id:', error);
+      //console.error('Failed to fetch game info id:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -283,7 +283,7 @@ export class GameOperations {
       );
       return result.rows[0]?.diff ;
     } catch (error) {
-      console.error('Failed to fetch time since last game:', error);
+      //console.error('Failed to fetch time since last game:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -303,7 +303,7 @@ export class GameOperations {
       );
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to fetch game info:', error);
+      //console.error('Failed to fetch game info:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -323,7 +323,7 @@ export class GameOperations {
       );
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to fetch game mode:', error);
+      //console.error('Failed to fetch game mode:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -347,8 +347,8 @@ export class GameOperations {
     ); // now insert into gameplayers
       return;
     } catch (error) {
-      console.log(gameid, playerNum, playerid);
-      console.error('Failed to assign game:', error);
+      // //console.log(gameid, playerNum, playerid);
+      //console.error('Failed to assign game:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -373,7 +373,7 @@ export class GameOperations {
       );
       return;
     } catch (error) {
-      console.error('Failed to unassign game:', error);
+      //console.error('Failed to unassign game:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -411,7 +411,7 @@ export class GameOperations {
       );
       return result.rows[0];
     } catch (error) {
-      console.error('Failed to set player elo:', error);
+      //console.error('Failed to set player elo:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -430,7 +430,7 @@ export class GameOperations {
       );
       return;
     } catch (error) {
-      console.error('Failed to update player elo:', error);
+      //console.error('Failed to update player elo:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -449,7 +449,7 @@ export class GameOperations {
       );
       return;
     } catch (error) {
-      console.error('Failed to update player rd:', error);
+      //console.error('Failed to update player rd:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -467,7 +467,7 @@ export class GameOperations {
       );
       return result.rows.map(row => row.player) as string[];
     } catch (error) {
-      console.error('Failed to fetch players by game id:', error);
+      //console.error('Failed to fetch players by game id:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -485,7 +485,7 @@ export class GameOperations {
       );
       return;
     } catch (error) {
-      console.error('Failed to update game status:', error);
+      //console.error('Failed to update game status:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -509,7 +509,7 @@ export class GameOperations {
       );
       return result.rows?.[0];
     } catch (error) {
-      console.error('Failed to query matchmaking:', error);
+      //console.error('Failed to query matchmaking:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -559,7 +559,7 @@ export class GameOperations {
       );
       return;
     } catch (error) {
-      console.error('Failed to kill game:', error);
+      //console.error('Failed to kill game:', error);
       throw error;
     } finally {
       this.safeRelease();
