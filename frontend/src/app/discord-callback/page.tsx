@@ -29,10 +29,7 @@ export default function DiscordCallback() {
 
         if (res.status === 400 || res.status === 401) {
           setStatus('error');
-          setError('Authentication required, redirecting to login...');
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 2000);
+          setError('Authentication Failed, Ensure you are not logged into an Anonymous account...');
           return;
         }
 

@@ -29,7 +29,7 @@ export class EventOperations {
       try {
         this.client.release(); // Attempt to release the client
       } catch (error) {
-        console.error('Error releasing client:', error); // Log any errors during release
+        //console.error('Error releasing client:', error); // Log any errors during release
       } finally {
         this.client = null; // Ensure client is set to null after release
       }
@@ -54,7 +54,7 @@ export class EventOperations {
                     } as leaderboardPlayer
                 });
         } catch (error) {
-            console.error('Error in getLeaderboard:', error);
+            //console.error('Error in getLeaderboard:', error);
             throw error;
         } finally {
             this.safeRelease();
@@ -68,7 +68,7 @@ export class EventOperations {
             VALUES ($1, $2)
             ON CONFLICT DO NOTHING`, [userId, event]);
         } catch (error) {
-            console.error('Error in registerForEvent:', error);
+            //console.error('Error in registerForEvent:', error);
             throw error;
         } finally {
             this.safeRelease();
@@ -83,7 +83,7 @@ export class EventOperations {
                     WHERE user_id = $1 AND event_id = $2;`, [userId, event]);
             return results.rows.length > 0;
         } catch (error) {
-            console.error('Error in isMemberOfEvent:', error);
+            //console.error('Error in isMemberOfEvent:', error);
             throw error;
         } finally {
             this.safeRelease();
@@ -96,7 +96,7 @@ export class EventOperations {
             await client.query(`DELETE FROM con4_schema.eventparticipants
             WHERE user_id = $1 AND event_id = $2;`, [userId, event]);
         } catch (error) {
-            console.error('Error in exitEvent:', error);
+            //console.error('Error in exitEvent:', error);
             throw error;
         } finally {
             this.safeRelease();
@@ -117,7 +117,7 @@ export class EventOperations {
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (id) DO UPDATE SET user_id = $2, discord_id = $3, full_name = $4, hackspace = $5;`, [hacker.id, hacker.user_id, discId, hacker.name, hacker.hackspace]);
         } catch (error) {
-            console.error('Error in registerToICHACK25:', error);
+            //console.error('Error in registerToICHACK25:', error);
             throw error;
         } finally {
             this.safeRelease();
@@ -136,7 +136,7 @@ export class EventOperations {
                     hackspace: row.hackspace
                 } as ICHacker });
         } catch (error) {
-            console.error('Error in getICHACK25Users:', error);
+            //console.error('Error in getICHACK25Users:', error);
             throw error;
         } finally {
             this.safeRelease();

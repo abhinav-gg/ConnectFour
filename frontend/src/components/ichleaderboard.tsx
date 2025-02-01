@@ -7,17 +7,18 @@ import Loading from '@/components/loading';
 
 interface LeaderboardTableProps {
   players: ICHackLeaderboardPlayer[];
-  darkMode: boolean; 
+  darkMode: boolean;
+  isLoading?: boolean;
 }
 
 interface LeaderboardLayoutProps {
   darkMode: boolean;
   players: ICHackLeaderboardPlayer[];
+  isLoading?: boolean;
   children?: React.ReactNode;
 }
 
 function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
-  // Ensure players is an array
   const playerArray = Array.isArray(players) ? players : [];
 
   const getRankStyle = (rank: number) => {
@@ -41,71 +42,75 @@ function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
   return (
     <div className="overflow-x-auto">
       <h1 className={`text-3xl font-bold mb-6 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Leaderboard</h1>
-      <div className={`${darkMode ? 'bg-gray-900' : 'bg-white'} shadow-md rounded-lg p-4`}>
-        <table className="min-w-full">
-          <thead>
-            <tr>
-              <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Rank</th>
-              <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Player</th>
-              <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Name</th>
-              <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Elo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {playerArray.map((player, index) => (
-              <tr 
-                key={player.rank}
-                className={`
-                  border-b dark:border-gray-700
-                  opacity-0
-                  animate-fadeInUp
-                `}
-                style={{ 
-                  animationDelay: `${index * 100}ms`,
-                  animationFillMode: 'forwards'
-                }}
-              >
-                <td className={`border-t dark:border-gray-700 px-4 py-2 text-center font-bold ${getRankStyle(player.rank)}`}>
-                  {player.rank}
-                </td>
-                <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
-                  {player.username || 'Empty'}
-                </td>
-                <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
-                  <div className="flex items-center justify-center gap-2">
-                    {getHackspaceIcon(player.hackspace) && (
-                      <Image 
-                        src={getHackspaceIcon(player.hackspace).src} 
-                        alt={player.hackspace} 
-                        width={20} 
-                        height={20} 
-                      />
-                    )}
-                    {player.fullname}
-                  </div>
-                </td>
-                <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
-                  {player.elo}
-                </td>
+      <div className={`${darkMode ? 'bg-gray-900' : 'bg-white'} shadow-md rounded-lg p-4 relative min-h-[400px]`}>
+          <table className="min-w-full">
+            <thead>
+              <tr>
+                <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Rank</th>
+                <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Player</th>
+                <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Name</th>
+                <th className={`px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>Elo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {playerArray.map((player, index) => (
+                <tr 
+                  key={player.username}
+                  className={`
+                    border-b dark:border-gray-700
+                    opacity-0
+                    animate-fadeInUp
+                  `}
+                  style={{ 
+                    animationDelay: `${index * 100}ms`,
+                    animationFillMode: 'forwards'
+                  }}
+                >
+                  <td className={`border-t dark:border-gray-700 px-4 py-2 text-center font-bold ${getRankStyle(player.rank)}`}>
+                    {player.rank}
+                  </td>
+                  <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
+                    {player.username || 'Empty'}
+                  </td>
+                  <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
+                    <div className="flex items-center justify-center gap-2">
+                      {getHackspaceIcon(player.hackspace) && (
+                        <Image 
+                          src={getHackspaceIcon(player.hackspace).src} 
+                          alt={player.hackspace} 
+                          width={20} 
+                          height={20} 
+                        />
+                      )}
+                      {player.fullname}
+                    </div>
+                  </td>
+                  <td className={`border-t dark:border-gray-700 px-4 py-2 text-center ${darkMode ? 'text-white' : 'text-black'}`}>
+                    {player.elo}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
       </div>
     </div>
   );
 }
 
-export default function LeaderboardLayout({ darkMode, players, children }: LeaderboardLayoutProps) {
-  if (!players || players.length === 0) {
-    return <Loading />;
-  }
-
+export default function LeaderboardLayout({ darkMode, players, isLoading, children }: LeaderboardLayoutProps) {
   return (
     <div className={`flex min-h-screen ${darkMode ? 'bg-black' : 'bg-white'}`}>
       <div className="flex-1 p-8 relative">
-        <LeaderboardTable players={players} darkMode={darkMode} />
-        {children}
+        {isLoading ? (
+          <div>
+            <Loading />
+          </div>
+        ) : (
+          <>
+            <LeaderboardTable players={players} darkMode={darkMode} />
+            {children}
+          </>
+        )}
       </div>
     </div>
   );

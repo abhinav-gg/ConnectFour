@@ -107,7 +107,7 @@ export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
         loss : -20,
         draw : 0,
     };
-    console.log(me, them, ratingChanges)
+    // console.log(me, them, ratingChanges)
     return ratingChanges;
 }
 

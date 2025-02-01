@@ -45,7 +45,7 @@ export default function Opening({ ref }: OpeningProps) {
     console.log("Call OpeningBook")
     fetchMarkdownContent(ref.getMoves().map(({ col }) => col.toString()).join(''))
       .then((data: string) => {
-        console.log(data);
+        // console.log(data);
         setContent(data);
       });
   };

@@ -110,7 +110,7 @@ authRouter.get('/anonymous', verifyRecaptcha, async (req: Request, res: Response
   console.log("Creating anonymous user");
   try {
     const user = await dbOperations.getAnonymousUser();
-    console.log(user);
+    // console.log(user);
     const sessionToken = await createSession(user.id);
 
     res.cookie('sessionToken', sessionToken, {
