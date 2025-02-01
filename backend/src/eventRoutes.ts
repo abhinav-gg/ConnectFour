@@ -20,8 +20,8 @@ const eventRouter = Router();
 
 eventRouter.use(cors({
     origin: CLIENT_URL, // Uses the existing CLIENT_URL env variable
-    credentials: true,  // Important! This allows cookies to be sent
-  }));
+    credentials: true,  // Important! This allows cookies to be sent  
+}));
 
 // Prefix: /api/events
 
@@ -110,7 +110,17 @@ eventRouter.post('/ichack25/discord', authenticateSession, async (req: Request, 
                 // console.log("used key: ", MY_ICHACK_API_KEY);
                 throw new Error(`ICH HTTP error! status: ${ichackResponse.status}`);
             } else {
-                const ichackData: ICHacker = await ichackResponse.json();
+                let ichackData: ICHacker;
+                try {
+                    ichackData = await ichackResponse.json();
+                    if (!ichackData)
+                        throw new Error('ICHACK data not found'); 
+
+                } catch {
+                    res.status(403).json({ error: 'User has no hackspace' });
+                    return;
+                }
+
                 ichackData.user_id = user; // ioc: check
 
                 // Register the user to the event
