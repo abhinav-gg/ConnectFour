@@ -118,10 +118,10 @@ export default function Dashboard(props: TestProps) {
       {!isOpen && (
         <button 
           onClick={toggleDashboard} 
-          className="absolute top-4 left-4 p-2 bg-transparent border border-zinc-700 rounded-full hover:bg-blue-600 z-10 transition-colors shadow hover:shadow-md flex items-center justify-center"
+          className="hover:text-white text-zinc-700 absolute top-4 left-4 p-2 bg-transparent border border-zinc-700 rounded-full hover:bg-blue-600 z-10 transition-colors shadow hover:shadow-md flex items-center justify-center"
           aria-label="Open Dashboard"
         >
-          <ChevronRight className="h-5 w-5 text-white" />
+          <ChevronRight className="h-5 w-5" />
         </button>
       )}
     </div>

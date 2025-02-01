@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 
 export default function Logout() {
-  const router = useRouter();
 
   useEffect(() => {
 
@@ -18,20 +16,20 @@ export default function Logout() {
         });
 
         if (response.ok) {
-          router.push('/'); // Redirect to homepage
+          window.location.href = '/'; // Redirect to homepage on success
         } else {
           const data = await response.json();
           console.error(data.error); // Handle error if needed
-          router.push('/'); // Redirect to homepage even on error
+          window.location.href = '/'; // Redirect to homepage on success
         }
       } catch (error) {
         console.error('Logout failed:', error);
-        router.push('/'); // Redirect to homepage on error
+        window.location.href = '/'; // Redirect to homepage on success
       }
     };
 
     logoutUser();
-  }, [router]);
+  }, []);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">

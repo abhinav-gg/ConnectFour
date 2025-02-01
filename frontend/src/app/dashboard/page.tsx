@@ -60,7 +60,7 @@ export default function UserDashboard() {
   });
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    (async () => {
       try {
         const response = await fetch(`${getConfig().backendUrl}/api/auth/profile`, {
           credentials: 'include',
@@ -72,26 +72,26 @@ export default function UserDashboard() {
         setFormData({ ...formData, username: data.username, email: data.email });
       } catch (err: any) {
         setError(err.message);
-        router.push('/login');
+        window.location.href = '/login';
       }
-    };
+    })();
+  }, []);
+  //   const fetchEloHistory = async () => {
+  //     try {
+  //       const response = await fetch(`${getConfig().backendUrl}/api/player-elo`, {
+  //         credentials: 'include',
+  //       });
+  //       if (!response.ok) throw new Error('Failed to fetch ELO history');
+  //       const data = await response.json();
+  //       setEloHistory(data);
+  //     } catch (err: any) {
+  //       console.error('Error fetching ELO history:', err);
+  //     }
+  //   };
 
-    const fetchEloHistory = async () => {
-      try {
-        const response = await fetch(`${getConfig().backendUrl}/api/player-elo`, {
-          credentials: 'include',
-        });
-        if (!response.ok) throw new Error('Failed to fetch ELO history');
-        const data = await response.json();
-        setEloHistory(data);
-      } catch (err: any) {
-        console.error('Error fetching ELO history:', err);
-      }
-    };
-
-    fetchUserProfile();
-    fetchEloHistory();
-  }, [router]);
+  //   fetchUserProfile();
+  //   fetchEloHistory();
+  // }, [router]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,7 +131,7 @@ export default function UserDashboard() {
   };
 
   if (error) return <div className="text-red-500">{error}</div>;
-  if (!user) return <Loading/>;
+  if (!user) return <Loading />;
 
   return (
     <div className="flex min-h-screen bg-gray-100">
