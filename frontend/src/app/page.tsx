@@ -122,7 +122,6 @@ export default function Home() {
         dragState.velocityX = dragState.velocityX / velocity * MaxVelocity;
         dragState.velocityY = dragState.velocityY / velocity * MaxVelocity;
       }
-      console.log(dragState.velocityX, dragState.velocityY);
 
       // Update position
       element.style.transform = `translate3d(${x}px, ${y}px, 0)`;

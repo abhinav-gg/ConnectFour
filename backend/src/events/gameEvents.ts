@@ -924,6 +924,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
       console.log('Game is scheduled:', game);
       if (game.state === StandardGameStates.scheduled) {
         dbOperations.KillGame(game.id);
+        sendToRoom(roomId, {
+          event: 'endGame',
+          data: { draw: true, message: 'Game Was Abandoned', winner: null }
+        });
         dropRoom(roomId);
         ws.close();
         return;

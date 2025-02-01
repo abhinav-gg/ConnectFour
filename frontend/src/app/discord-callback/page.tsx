@@ -61,7 +61,7 @@ export default function DiscordCallback() {
         setStatus('error');
         setError(err.message);
       });
-  });
+  }, []);
 
   if (status === 'loading') {
     return <Loading/>;

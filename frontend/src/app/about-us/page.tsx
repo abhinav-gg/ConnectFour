@@ -11,7 +11,7 @@ import Link from 'next/link';
 
 export default function AboutUs() {
   return (
-    <div className="min-h-screen bg-black flex w-full">
+    <div className="min-h-screen bg-gray-100 flex w-full">
       <Dashboard />
       <div className="w-full flex flex-col items-center p-4">
         <div className="w-full max-w-6xl">
@@ -71,7 +71,7 @@ export default function AboutUs() {
           <div className='flex flex-row flex-wrap gap-4 items-center'>
             <Image src={ivan.src} alt="Ivan" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
             <div>
-              <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Co-Founder</span></h3>
+              <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Full-Stack Developer • Cyber-Security Consultant</span></h3>
               <p>
                 Hi, I'm Ivan, a computer engineering student at Birmingham. I've been programming for nearly a decade, dabbling in everything from encrypted messaging to legal research, and I'm always working on one of my many projects! When I'm not coding, you can find me cycling, experimenting with recipes, or trying to photograph owls (with mixed success). I'm thrilled to bring this game to IC Hack and hope you'll enjoy playing and analysing matches as much as we enjoyed creating it.
               </p>

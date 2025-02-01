@@ -15,7 +15,6 @@ import EndPopup from '@/components/game/endPopup';
 import { DrawMatrix, Player } from '@shared/Types/gameData';
 import { StandardReconnectionTime } from '@shared/constants';
 import { eventEmitter } from '@shared/utils/eventEmitter'
-import MainLogoAnimated from '@/components/mainlogo_animated';
 
 
 export default function GamePage() {

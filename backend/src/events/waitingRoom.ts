@@ -1,4 +1,5 @@
 import { dbOperations } from '@/db/operations';
+import { getUserFromSession } from '@/lib/auth';
 import type { SendToRoom } from '@shared/Models/gameInfo';
 import { eventEmitter } from '@shared/utils/eventEmitter';
 import type expressWs from 'express-ws';
@@ -73,10 +74,16 @@ export function setupWaitingRoom(app: expressWs.Application) {
         addToken(token, ws);
         console.log('UserMap:', state.userMap);
 
-        ws.on('close', () => {
+        ws.on('close', async () => {
             // remove from map
             console.log("REMOVING USER FROM MAP", token);
-            removeToken(token);
+            try {
+                const user = await getUserFromSession(token);
+                await dbOperations.FinishedGameLookup(user.userId!)
+                removeToken(token);
+            } catch (error) {
+                console.error('Failed to remove user from map:', error);
+            }
         });
     });
 }
