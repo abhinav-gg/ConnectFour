@@ -91,9 +91,7 @@ eventRouter.post('/ichack25/discord', authenticateSession, async (req: Request, 
         
             const discordUserInfo = await userResponse.json();
             
-            // ioc: debug
             console.log('User ID:', discordUserInfo.id);
-            discordUserInfo.id = '582906581470019598' // ivannnn
 
             const ichackResponse = await fetch(`https://my.ichack.org/api/profile/discord/${discordUserInfo.id}`, {
                 method: 'GET', 
