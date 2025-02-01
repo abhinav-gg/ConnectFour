@@ -73,6 +73,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
     // --------------------------
 
     if (!secret || !token) {
+      console.log("missing secret or token");
       res.status(403).json({
         success: false,
         message: 'reCAPTCHA verification failed'
@@ -94,6 +95,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
     const apiResponse: RecaptchaResponse = await query.json();
 
     if (!apiResponse.success || apiResponse.score < 0.5) {
+      console.log('reCAPTCHA verification failed:', apiResponse);
       res.status(403).json({
         success: false,
         message: 'reCAPTCHA verification failed',

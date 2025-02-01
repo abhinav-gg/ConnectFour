@@ -2,38 +2,48 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { FaSun, FaMoon } from 'react-icons/fa';
-import type { leaderboardPlayer } from "@shared/Models/eventInfo";
-import LeaderboardLayout from '@/components/leaderboard';
+import type { leaderboardPlayer, ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
+import LeaderboardLayout from '@/components/ichleaderboard';
 import { StandardGameModes } from '@shared/constants';
 import { GameMode } from '@shared/Models/gameInfo';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
+import IchackBanner from '@/components/ichackbanner';
+import { ICHACK25 } from '@shared/events';
 
 export default function Leaderboard() {
   const stdModes = StandardGameModes.standard;
   const [darkMode, setDarkMode] = useState(false);
   const [selectedTab, setSelectedTab] = useState(stdModes.rapid);
   const backendUrl = getConfig().backendUrl;
-  const [playersData, setPlayersData] = useState<leaderboardPlayer[]>([]);
+  const [playersData, setPlayersData] = useState<ICHackLeaderboardPlayer[]>([]);
 
   const getLeaderboard = async (tab: string): Promise<void> => {
-    const res = await fetch(`${backendUrl}/api/events/get-leaderboard`,
-        {
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                gamemode: {
-                    name: tab,
-                    event: null
-                } as GameMode })
-        }
+    const res = await fetch(`${backendUrl}/api/events/get-ichack25-leaderboard`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          gamemode: {
+            name: tab,
+            event: ICHACK25
+          } as GameMode
+        })
+      }
     );
-    const data = await res.json() as leaderboardPlayer[];
+    if (!res.ok) {
+      // check for 403 error and redirect
+      console.log('Error fetching leaderboard data', res);
+      //window.location.href = '/login'; // Redirect to a 403 error page
+      return;
+    }   
+    const data = await res.json() as ICHackLeaderboardPlayer[];
     console.log(data);
     setPlayersData(data);
-  }
+  };
 
   useEffect(() => {
     const isDark = localStorage.getItem('darkMode') === 'true';
@@ -56,6 +66,8 @@ export default function Leaderboard() {
 
       <div className="flex-1 flex flex-col items-center p-4 md:p-8">
         <div className="w-full max-w-6xl mx-auto">
+          <IchackBanner />
+          
           <div className="tabs flex justify-center gap-2 mb-6 animate-slideDown">
             {[
               { mode: stdModes.rapid, label: 'Rapid' },
@@ -68,8 +80,8 @@ export default function Leaderboard() {
                 className={`
                   px-6 py-2 rounded-full font-semibold transform transition-all duration-300
                   hover:scale-105 hover:shadow-lg
-                  ${selectedTab === mode 
-                    ? 'bg-blue-500 text-white shadow-md scale-105' 
+                  ${selectedTab === mode
+                    ? 'bg-blue-500 text-white shadow-md scale-105'
                     : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'}
                 `}
               >

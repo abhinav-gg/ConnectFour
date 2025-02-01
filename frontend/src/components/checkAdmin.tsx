@@ -4,6 +4,7 @@ import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 import NotFound from '@/app/not-found'; // Import the NotFound component
+import Loading from './loading';
 
 interface CheckAdminProps {
   children: ReactNode; // Define children prop
@@ -42,7 +43,7 @@ export default function CheckAdmin({ children }: CheckAdminProps) { // Accept ch
   }
 
   if (isAdmin === null) {
-    return <div>Loading...</div>; // Show loading state while checking admin status
+    return <Loading />; // Show loading state while checking admin status
   }
 
   // If the user is not an admin, render the NotFound page

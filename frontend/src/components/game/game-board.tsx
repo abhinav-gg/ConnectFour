@@ -139,55 +139,54 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   return (
-    <div className="min-h bg-gray-100 flex">
-      {/* Game Board */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            {/* Chevron indicators */}
-            <div className="absolute top-[-24px] left-0 right-0 flex justify-around">
-              {Array(7).fill(null).map((_, colIndex) => (
-                <div key={`chevron-${colIndex}`} className="w-12 flex justify-center">
-                  {highlightedColumn === colIndex && !gameState!.gameOver && !fallingPiece && 
-                   gameState!.currentMoveIndex === gameState!.getMoves().length - 1 && (
-                    <ChevronDown className="text-orange-500 animate-bounce" />
-                  )}
-                </div>
-              ))}
-            </div>
+    <div className="flex-col flex items-center justify-center w-full">
+      <div className="w-full max-w-[600px]">
+        <div className="relative w-full aspect-square">
+          {/* Chevron indicators */}
+          <div className="absolute top-[-24px] left-0 right-0 flex justify-around">
+            {Array(7).fill(null).map((_, colIndex) => (
+              <div key={`chevron-${colIndex}`} className="w-12 flex justify-center">
+                {highlightedColumn === colIndex && !gameState!.gameOver && !fallingPiece && 
+                 gameState!.currentMoveIndex === gameState!.getMoves().length - 1 && (
+                  <ChevronDown className="text-orange-500 animate-bounce" />
+                )}
+              </div>
+            ))}
+          </div>
 
-            {/* Game board with invisible input areas */}
-            <div className="bg-blue-500 p-4 rounded-lg shadow-lg">
-              <div className="relative">
-                {/* Invisible input areas */}
-                <div className="absolute top-0 left-0 right-0 bottom-0 flex">
-                  {Array(7).fill(null).map((_, colIndex) => (
-                    <div
-                      key={`input-${colIndex}`}
-                      className="flex-1 cursor-pointer"
-                      onClick={() => {
-                        handleColumnHover(colIndex)
-                        if (highlightedColumn !== null) {
-                          websocketMove(highlightedColumn);
-                        }
-                      }}
-                      onMouseEnter={() => handleColumnHover(colIndex)}
-                      onMouseLeave={handleColumnLeave}
-                    />
-                  ))}
-                </div>
+          {/* Game board with invisible input areas */}
+          <div className="bg-blue-500 p-4 rounded-lg shadow-lg">
+            <div className="relative">
+              {/* Invisible input areas */}
+              <div className="absolute top-0 left-0 right-0 bottom-0 flex">
+                {Array(7).fill(null).map((_, colIndex) => (
+                  <div
+                    key={`input-${colIndex}`}
+                    className="flex-1 cursor-pointer"
+                    onClick={() => {
+                      handleColumnHover(colIndex)
+                      if (highlightedColumn !== null) {
+                        websocketMove(highlightedColumn);
+                      }
+                    }}
+                    onMouseEnter={() => handleColumnHover(colIndex)}
+                    onMouseLeave={handleColumnLeave}
+                  />
+                ))}
+              </div>
 
-                {/* Game grid */}
+              {/* Game grid */}
+              <div className="grid grid-cols-7 gap-1">
                 {gameState!.getBoard().map((row, rowIndex) => (
-                  <div key={rowIndex} className="flex">
+                  <React.Fragment key={rowIndex}>
                     {row.map((cell, colIndex) => (
                       <div
                         key={colIndex}
-                        className="w-12 h-12 bg-blue-300 border-2 border-blue-600 rounded-full m-1 flex items-center justify-center overflow-hidden"
+                        className="aspect-square w-full bg-blue-300 border-2 border-blue-600 rounded-full flex items-center justify-center overflow-hidden"
                       >
                         {(cell !== null || (fallingPiece && fallingPiece.col === colIndex && rowIndex <= fallingPiece.row)) && (
                           <div
-                            className={`w-10 h-10 rounded-full ${
+                            className={`w-3/4 h-3/4 rounded-full ${
                               cell !== null 
                                 ? (cell === 0 ? 'bg-red-500' : 'bg-yellow-400')
                                 : (fallingPiece?.player === 1 ? 'bg-red-500' : 'bg-yellow-400')
@@ -204,7 +203,7 @@ export default function GameBoard (props: GameBoardProps)  {
                         )}
                       </div>
                     ))}
-                  </div>
+                  </React.Fragment>
                 ))}
               </div>
             </div>

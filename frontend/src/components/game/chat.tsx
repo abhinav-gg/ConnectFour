@@ -33,7 +33,6 @@ export default function LiveChat({
     }, [messages]);
 
     useEffect(() => {
-      console.log(drawMatrix);
         const interval = setInterval(() => {
             setChatCooldown((prev) => Math.max(0, prev - 0.1));
         }, 100);
@@ -94,11 +93,11 @@ export default function LiveChat({
     };
 
     const ControlButtons = (
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2">
               <button
               onClick={handleDrawButton}
               disabled={drawMatrix.offerAction}
-              className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+              className={`flex-1 px-2 md:px-4 py-2 text-sm md:text-base rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
                   ${drawMatrix.offerAction 
                       ? 'bg-gray-300 cursor-not-allowed'
                       : drawMatrix.confirmAction
@@ -114,7 +113,7 @@ export default function LiveChat({
           </button>
             <button
                 onClick={handleResign}
-                className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+                className={`flex-1 px-2 md:px-4 py-2 text-sm md:text-base rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
                     ${confirmResign 
                         ? 'bg-red-600 hover:bg-red-700'
                         : 'bg-red-500 hover:bg-red-600'
@@ -127,11 +126,11 @@ export default function LiveChat({
 
     // Rest of the component remains the same...
     return (
-        <div className="bg-white p-4 rounded-lg shadow-lg w-full h-[400px] flex flex-col">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Live Chat</h2>
+        <div className="bg-white p-3 md:p-4 rounded-lg shadow-lg w-full flex flex-col">
+            <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-2">Live Chat</h2>
             <div 
                 id="chatContainer"
-                className="flex-1 overflow-y-auto mb-4 scrollbar-thin"
+                className="flex-1 overflow-y-auto mb-2 md:mb-4 scrollbar-thin min-h-[200px] max-h-[300px]"
                 style={{
                     scrollbarWidth: 'thin',
                     scrollbarColor: '#E5E7EB transparent'
@@ -158,17 +157,17 @@ export default function LiveChat({
             </div>
             {pNum !== -1 && (
                 <div>
-                    <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <form onSubmit={handleSendMessage} className="flex gap-2 mb-2">
                         <input
                             type="text"
                             value={inputMessage}
                             onChange={(e) => setInputMessage(e.target.value)}
                             placeholder="Type a message..."
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <button
                             type="submit"
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="px-3 md:px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             Send
                         </button>

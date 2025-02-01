@@ -20,12 +20,10 @@ export default function Home() {
   const dragStates = useRef<Map<HTMLDivElement, DragState>>(new Map());
 
   useEffect(() => {
-    console.log('Starting text animation timer...');
     const timer = setTimeout(() => {
-      console.log('Text animation should start now');
       setShowText(true);
       setOpacities(new Array(text.length).fill(0));
-    }, 300);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -124,7 +122,6 @@ export default function Home() {
         dragState.velocityX = dragState.velocityX / velocity * MaxVelocity;
         dragState.velocityY = dragState.velocityY / velocity * MaxVelocity;
       }
-      console.log(dragState.velocityX, dragState.velocityY);
 
       // Update position
       element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
@@ -185,8 +182,8 @@ export default function Home() {
           style={{ right: '10%', top: '10%', transform: 'translate3d(0, 0, 0)' }}
           onMouseDown={(e) => handleDrag(e, dragRef2)}
         >
-          <p className="text-lg whitespace-nowrap">Live Users: 4</p>
-          <p className="text-lg whitespace-nowrap">Games Played: 4</p>
+          <p className="text-lg whitespace-nowrap font-mono">IN DEVELOPMENT</p>
+          <p className="text-lg whitespace-nowrap">Con4 is under construction 🚧</p>
         </div>
 
         <div 

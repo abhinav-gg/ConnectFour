@@ -3,14 +3,13 @@ import dotenv from 'dotenv';
 import * as DBError from './dbErrors';
 import { Game, Move } from '@/models/Game';
 import { GameMode, GMStats, TimeControl } from '@shared/Models/gameInfo';
-import { PlayerEloNotFound } from './dbErrors';
+import { PlayerEloNotFound, PlayerNotLookingForGame } from './dbErrors';
 import { StandardStartingRatingDeviation } from '@shared/constants';
 import { Glicko } from '@/types/types';
 
 // Load .env from project root (prob should find a better way for this)
 dotenv.config({ path: "../../.env" });
 const application_name = "con-four";
-
 
 export class GameOperations {
   private client: PoolClient | null = null;
@@ -348,6 +347,7 @@ export class GameOperations {
     ); // now insert into gameplayers
       return;
     } catch (error) {
+      console.log(gameid, playerNum, playerid);
       console.error('Failed to assign game:', error);
       throw error;
     } finally {
@@ -423,7 +423,7 @@ export class GameOperations {
     try {
       const result = await client.query(
         `UPDATE con4_schema.Elo
-          SET elo = $3
+          SET elo = elo + $3
           WHERE player = $1
           AND mode = $2`,
         [playerid, gameModeId, elo]
@@ -502,6 +502,7 @@ export class GameOperations {
           WHERE con4_schema.Elo.mode = con4_schema.GameInfo.gamemode
           AND con4_schema.GameInfo.id = $1
           AND con4_schema.GameLookup.player != $2
+          AND con4_schema.GameLookup.game IS NULL
           ORDER BY ABS(ABS(con4_schema.Elo.elo - (SELECT elo FROM con4_schema.Elo WHERE player = $2 AND mode = $1)) - 30) ASC
           LIMIT 10`,
         [gameInfoID, playerid]
@@ -525,9 +526,40 @@ export class GameOperations {
           LIMIT 1`,
         [playerid]
       );
-      return result.rows[0]?.diff;
+      return result.rows[0].diff;
     } catch (error) {
-      console.error('Failed to fetch time since last game lookup:', error);
+      throw PlayerNotLookingForGame
+    } finally {
+      this.safeRelease();
+    }
+  }
+
+  async killGame(gameid: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(
+        `DELETE FROM con4_schema.GamePlayers
+          WHERE game_id = $1`,
+        [gameid]
+      );
+      const result2 = await client.query(
+        `DELETE FROM con4_schema.Moves
+          WHERE game_id = $1`,
+        [gameid]
+      );
+      const result3 = await client.query(
+        `DELETE FROM con4_schema.GameLookup
+          WHERE game = $1`,
+        [gameid]
+      );
+      const result4 = await client.query(
+        `DELETE FROM con4_schema.Games
+          WHERE id = $1`,
+        [gameid]
+      );
+      return;
+    } catch (error) {
+      console.error('Failed to kill game:', error);
       throw error;
     } finally {
       this.safeRelease();

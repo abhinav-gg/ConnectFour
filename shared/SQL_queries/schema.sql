@@ -157,43 +157,13 @@ CREATE TABLE IF NOT EXISTS con4_schema.puzzles (
   updated_at TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS con4_schema.ICHack25 (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS events_schema.ICHack25 (
+  id STRING(64) PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES con4_schema.Users(id),
   discord_id STRING(50) NOT NULL,
   full_name STRING(100) NOT NULL,
-  hackspace ENUM('QTR', 'SCR', "JCR") NOT NULL
+  hackspace events_schema.hackspace NOT NULL
 );
-
-/*
-CREATE OR REPLACE FUNCTION con4_schema.update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END
-$$ LANGUAGE PLpgSQL;
-
-CREATE TRIGGER update_games_updated_at
-  BEFORE UPDATE ON con4_schema.games
-  FOR EACH ROW
-  EXECUTE FUNCTION con4_schema.update_updated_at_column(); 
-
-CREATE TRIGGER update_users_updated_at
-  BEFORE UPDATE ON con4_schema.users
-  FOR EACH ROW
-  EXECUTE FUNCTION con4_schema.update_updated_at_column();
-
-CREATE TRIGGER update_events_updated_at
-  BEFORE UPDATE ON con4_schema.events
-  FOR EACH ROW
-  EXECUTE FUNCTION con4_schema.update_updated_at_column();
-
-CREATE TRIGGER update_puzzles_updated_at
-  BEFORE UPDATE ON con4_schema.puzzles
-  FOR EACH ROW
-  EXECUTE FUNCTION con4_schema.update_updated_at_column();
-*/
 
 -- Create the public openings database
 CREATE DATABASE IF NOT EXISTS openings;

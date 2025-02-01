@@ -21,6 +21,18 @@ export class OpeningOperations {
   
       return this.client;
     }
+    
+    private async safeRelease(): Promise<void> {
+      if (this.client) {
+        try {
+          this.client.release(); // Attempt to release the client
+        } catch (error) {
+          console.error('Error releasing client:', error); // Log any errors during release
+        } finally {
+          this.client = null; // Ensure client is set to null after release
+        }
+      }
+    }
   
     /*private async getPublicClient(): Promise<PoolClient> {
       console.log(process.env.OPENING_PUBLIC_DB_URL);
@@ -52,8 +64,7 @@ export class OpeningOperations {
           console.error('Failed to make opening:', error);
           throw error;
       } finally {
-          client.release();
-          this.client = null;
+          this.safeRelease();
       }
       return {"status": "Success"};
     }
@@ -70,8 +81,7 @@ export class OpeningOperations {
         console.error('Failed to fetch opening:', error);
         throw error;
       } finally {
-        client.release();
-        this.client = null;
+        this.safeRelease();
       }
       return result.rows[0]?.description || '# Unknown Opening';
     }
@@ -95,8 +105,7 @@ export class OpeningOperations {
         console.error('Failed to change opening:', error);
         throw error;
       } finally {
-        client.release();
-        this.client = null;
+        this.safeRelease();
       }
       return {"status": "Success"};
     }
@@ -114,8 +123,7 @@ export class OpeningOperations {
         console.error('Failed to add opening connection:', error);
         throw error;
       } finally {
-        client.release();
-        this.client = null;
+        this.safeRelease();
       }
       return {"status": "Success"};
     }

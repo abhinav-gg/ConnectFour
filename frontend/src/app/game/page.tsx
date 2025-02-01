@@ -12,12 +12,12 @@ import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
 import EndPopup from '@/components/game/endPopup';
-import { DrawMatrix, Move, Player } from '@shared/Types/gameData';
+import { DrawMatrix, Player } from '@shared/Types/gameData';
 import { StandardReconnectionTime } from '@shared/constants';
 import { eventEmitter } from '@shared/utils/eventEmitter'
 
 
-export default function TestingWebsockets() {
+export default function GamePage() {
   const [timeUpdate, setTimeUpdate] = useState(0);
   const [roomId, setRoomId] = useState('');
   const [currentPlayer, setCurrentPlayer] = useState<Player>(0);
@@ -60,10 +60,10 @@ export default function TestingWebsockets() {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (!roomFromUrl) {
-      window.location.href = '/game/test-join';
+      window.location.href = '/game/setup';
       return;
     } else {
-      window.location.href = '/game/test-join?room=' + roomFromUrl;
+      window.location.href = '/game/setup?room=' + roomFromUrl;
     }
   }
 
@@ -127,7 +127,7 @@ export default function TestingWebsockets() {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (!roomFromUrl) {
-      window.location.href = '/game/test-join';
+      window.location.href = '/game/setup';
       return;
     }
     
@@ -184,9 +184,9 @@ export default function TestingWebsockets() {
             window.location.href = data.data.redirect;
           break;
         case 'endGame':
+          pushAnnouncement("Game Ended")
           if (playerNumber.current === -1) 
             break;
-          pushAnnouncement("Game Ended")
           waitingForRecconect.current = false;
           setGameStatus(data.data.message);
           if (data.data.draw) {
@@ -206,6 +206,7 @@ export default function TestingWebsockets() {
         case 'playerDisconnected': {
           let timeRemaining = StandardReconnectionTime / 1000;
           pushAnnouncement('Opponent disconnected...');
+          if (!gameStarted) return;
           waitingForRecconect.current = true;
           const interval = setInterval(() => {
             console.log('Time remaining:', timeRemaining, waitingForRecconect);
@@ -322,7 +323,6 @@ export default function TestingWebsockets() {
     if (draw) {
       deltaElo = eloChangeRef.current.draw;
     } else if (winner === playerNumber.current) {
-    } else if (winner === playerNumber.current) {
       deltaElo = eloChangeRef.current.win;
       console.log('You won!');
     } else {
@@ -384,10 +384,10 @@ export default function TestingWebsockets() {
 />;
   const HISTORY = <MoveHistory ref={gameBoardRef.current!} />;
   const BOARD_WITH_TIMERS = (
-    <div className="flex flex-col items-center">
-      <div className="flex justify-between items-center w-full mb-1">
-        <div className={`text-2xl font-mono ${(topPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
-        {gamePlayers[topPlayer]?.username}
+    <div className="flex flex-col items-center w-full max-w-[600px]">
+      <div className="flex justify-between items-center w-full mb-1 px-2">
+        <div className={`text-lg sm:text-2xl font-mono ${(topPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+          {gamePlayers[topPlayer]?.username}
         </div>
         <div className={`font-mono ${(topPlayer === 0) ? 'text-red-600' : 'text-gray-600'}`}>
           <Timer 
@@ -399,9 +399,12 @@ export default function TestingWebsockets() {
           />
         </div>
       </div>
-      {BOARD}
-      <div className="flex justify-between items-center w-full mt-1">
-        <div className={`text-2xl font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+      <br/>
+      <div className="flex items-center justify-center w-[90%] h-[90%]">
+          {BOARD}
+        </div>
+      <div className="flex justify-between items-center w-full mt-1 px-2">
+        <div className={`text-lg sm:text-2xl font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
           {gamePlayers[bottomPlayer]?.username}
         </div>
         <div className={`font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
@@ -419,9 +422,10 @@ export default function TestingWebsockets() {
 
   return (
   <AuthPage
-    onAuthSuccess={ connectedUser }
-    onAuthFail={ notLoggedIn }>
-    <div className="flex min-h-screen bg-gray-100 relative">
+    onAuthSuccess={connectedUser}
+    onAuthFail={notLoggedIn}>
+  <div className="bg-gray-100 w-full">
+    <div className="flex min-h-screen bg-gray-100 relative w-full">
       {showEndPopup && (
         <div className="absolute z-50">
           <EndPopup
@@ -437,7 +441,7 @@ export default function TestingWebsockets() {
         </div>
       )}
       {showWaitingPopup && (
-        <div className="absolute z-50 bg-white p-4 border rounded shadow-lg w-1/4 left-1/2 transform -translate-x-1/2 top-1/4">
+        <div className="absolute z-50 bg-white p-4 border rounded shadow-lg w-11/12 md:w-1/4 left-1/2 transform -translate-x-1/2 top-1/4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Waiting for Opponent...</h2>
             <button 
@@ -447,7 +451,8 @@ export default function TestingWebsockets() {
               &times;
             </button>
           </div>
-          <p>Please wait while your opponent joins the game.</p>
+          <p className="text-gray-600">Please wait while your opponent joins the game.</p>
+          <h2 className="text-2xl font-bold mt-4" style={{ fontFamily: 'Courier New, monospace' }}>Room ID: {roomId}</h2>
           <button 
             onClick={handleCopyLink} 
             className="mt-4 bg-blue-500 text-white p-2 rounded transition-transform transform hover:scale-105"
@@ -456,21 +461,25 @@ export default function TestingWebsockets() {
           </button>
         </div>
       )}
-      <Dashboard />
-      <div className="flex-1 flex flex-col">
-        <div className="flex w-full">
+      <Dashboard 
+        closed={true}/>
+      <div className="flex-1 flex flex-col w-full">
+        <div className="flex flex-col lg:flex-row w-full p-2 md:p-4 gap-4">
           <div className="flex-1 flex flex-col items-center">
-            <h2 className="text-xl font-semibold">Room: {roomId}</h2>
-            <p className="text-gray-600">{gameStatus}</p>
-            <p className="text-blue-600">
+            <h2 className="text-xl md:text-2xl font-bold mt-2 md:mt-4" style={{ fontFamily: 'Courier New, monospace' }}>Room ID: {roomId}</h2>
+            <p className="text-gray-600 text-center">{gameStatus}</p>
+            <p className="text-blue-600 text-center mb-2 md:mb-4">
               {playerNumber.current === -1 ? 'You are Spectating' : `You are Player ${playerNumber.current + 1}`}
             </p>
-            { BOARD_WITH_TIMERS }
+            <div className="w-full flex justify-center px-2">
+              {BOARD_WITH_TIMERS}
+            </div>
           </div>
-          <div className="w-1/3 flex flex-col items-center justify-center">
-            <div className="p-4 w-full">
-              { HISTORY }
-              <br/><br/><br/>
+          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4">
+            <div className="w-full">
+              {HISTORY}
+            </div>
+            <div className="w-full">
               <LiveChat 
                 key={chatUpdate}
                 pNum={playerNumber.current}
@@ -483,6 +492,7 @@ export default function TestingWebsockets() {
         </div>
       </div>
     </div>
+  </div>
   </AuthPage>
   );
 }

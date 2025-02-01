@@ -2,17 +2,28 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { getConfig } from '@/config/env'
 import Dashboard from '@/components/dashboard'
+import { ReCaptchaWrapper } from '@/components/captcha';
+import { useReCaptcha } from '@/components/usecaptcha';
 
 export default function Login() {
-  const router = useRouter()
+  return (
+  <ReCaptchaWrapper>
+    <LoginPage />
+  </ReCaptchaWrapper>
+  )
+}
+
+function LoginPage() {
   const [error, setError] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const handleReCaptcha = useReCaptcha('login')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (loading) return
     const checkLoginStatus = async () => {
       try {
         const config = getConfig()
@@ -22,18 +33,24 @@ export default function Login() {
         })
 
         if (response.ok) {
-          router.push('/dashboard') // Redirect to dashboard or another page after login
+          window.location.href = '/dashboard'; // Redirect to dashboard or another page after login
         }
       } catch (err) {
         console.error(err)
       }
     }
-
     checkLoginStatus()
-  }, [router])
+    setLoading(true);
+  })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    const token = await handleReCaptcha()
+    if (!token) {
+      setError('ReCaptcha verification failed')
+      return
+    }
 
     try {
       const config = getConfig()
@@ -46,6 +63,7 @@ export default function Login() {
         body: JSON.stringify({
           username,
           password,
+          token,
         }),
       })
 
@@ -54,9 +72,9 @@ export default function Login() {
         throw new Error(data.error || 'Login failed')
       }
 
-      const data = await response.json();
+      // const data = await response.json();
       
-      router.push('/dashboard') // Redirect to dashboard or another page after login
+      window.location.href = '/dashboard' // Redirect to dashboard or another page after login
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     }

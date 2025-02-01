@@ -23,6 +23,18 @@ export class UserOperations {
     return this.client;
   }
 
+  private async safeRelease(): Promise<void> {
+    if (this.client) {
+      try {
+        this.client.release(); // Attempt to release the client
+      } catch (error) {
+        console.error('Error releasing client:', error); // Log any errors during release
+      } finally {
+        this.client = null; // Ensure client is set to null after release
+      }
+    }
+  }
+
   async __getAllUsers(): Promise<User[]> {
     const client = await this.getClient();
     try {
@@ -34,8 +46,7 @@ export class UserOperations {
       console.error('Failed to fetch users:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -89,8 +100,7 @@ export class UserOperations {
       console.error('Failed to create user:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -107,8 +117,7 @@ export class UserOperations {
       console.error('Failed to record user login:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -127,8 +136,24 @@ export class UserOperations {
       console.error('Failed to fetch user by username:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
+    }
+  }
+
+  async updateUsernameByID(id: string, newUsername: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `UPDATE con4_schema.users
+         SET username = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [newUsername.toLowerCase(), id]
+      );
+    } catch (error) {
+      console.error('Failed to update username by ID:', error);
+      throw error;
+    } finally {
+      this.safeRelease();
     }
   }
 
@@ -147,8 +172,24 @@ export class UserOperations {
       console.error('Failed to fetch user by email:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
+    }
+  }
+
+  async updateEmailByID(id: string, newEmail: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await client.query(
+        `UPDATE con4_schema.users
+         SET email = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [newEmail.toLowerCase(), id]
+      );
+    } catch (error) {
+      console.error('Failed to update email by ID:', error);
+      throw error;
+    } finally {
+      this.safeRelease();
     }
   }
 
@@ -165,8 +206,7 @@ export class UserOperations {
       console.error('Failed to fetch user by ID:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -187,8 +227,7 @@ export class UserOperations {
       console.error('Failed to fetch password hash by username:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -207,8 +246,7 @@ export class UserOperations {
       console.error('Failed to fetch password hash by email:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -227,8 +265,26 @@ export class UserOperations {
       console.error('Failed to fetch id by username:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
+    }
+  }
+
+  async dropUserByID(id: string): Promise<void> {
+    const client = await this.getClient();
+    try {
+      await this.revokeSessionByUID(id);
+      await client.query(
+        `UPDATE FROM con4_schema.users
+          SET username = NULL, email = NULL, password_hash = NULL, email_verified = FALSE, updated_at = NOW()
+          WHERE id = $1`,
+        [id]
+      );
+      // There is no delete query
+    } catch (error) {
+      console.error('Failed to drop user by ID:', error);
+      throw error;
+    } finally {
+      this.safeRelease();
     }
   }
 
@@ -247,8 +303,7 @@ export class UserOperations {
       console.error('Failed to fetch id by email:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -268,8 +323,7 @@ export class UserOperations {
       console.error('Failed to fetch all user tag names:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -277,7 +331,6 @@ export class UserOperations {
 
     // id is the user uuid
     // tag = 'IM', 'Admin' etc
-
 
     //INSERT INTO con4_schema.usertags (user_id,tag_id) 
     //SELECT $1, id FROM con4_schema.utags WHERE name = $2;
@@ -300,8 +353,7 @@ export class UserOperations {
       console.error('Failed to create anonymous user:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
 
   }
@@ -324,10 +376,11 @@ export class UserOperations {
       console.error('Failed to delete anonymous users:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 
   async createUserSession(id: string, token: string): Promise<void> {
     const client = await this.getClient();
@@ -342,8 +395,7 @@ export class UserOperations {
       console.error('Failed to create user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -359,8 +411,7 @@ export class UserOperations {
       console.error('Failed to revoke user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -376,8 +427,7 @@ export class UserOperations {
       console.error('Failed to revoke user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -406,8 +456,7 @@ export class UserOperations {
       console.error('Failed to check user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
@@ -425,11 +474,12 @@ export class UserOperations {
       console.error('Failed to check user session:', error);
       throw error;
     } finally {
-      client.release();
-      this.client = null;
+      this.safeRelease();
     }
   }
 
   //DELETE FROM con4_schema.users 
   //WHERE username IS NULL;
+
+  
 }

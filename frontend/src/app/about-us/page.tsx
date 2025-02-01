@@ -68,17 +68,17 @@ export default function AboutUs() {
               </div>
             </div>
 
-          <div className='flex flex-row flex-wrap gap-2 items-center'>
+          <div className='flex flex-row flex-wrap gap-4 items-center'>
             <Image src={ivan.src} alt="Ivan" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
             <div>
-              <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Full Stack Developer • Cyber-security Consultant</span></h3>
+              <h3 className="text-xl font-medium">Ivan <span className='text-gray-400 font-normal'>• Full-Stack Developer • Cyber-Security Consultant</span></h3>
               <p>
                 Hi, I'm Ivan, a computer engineering student at Birmingham. I've been programming for nearly a decade, dabbling in everything from encrypted messaging to legal research, and I'm always working on one of my many projects! When I'm not coding, you can find me cycling, experimenting with recipes, or trying to photograph owls (with mixed success). I'm thrilled to bring this game to IC Hack and hope you'll enjoy playing and analysing matches as much as we enjoyed creating it.
               </p>
             </div>
           </div>
 
-          <div className='flex flex-row flex-wrap gap-2 items-center'>
+          <div className='flex flex-row flex-wrap gap-4 items-center'>
             <Image src={avery.src} alt="Avery" className="rounded-full w-32 h-32 hover:drop-shadow-lg hover:scale-105 transition-all duration-200" width={128} height={128} />
             <div>
               <h3 className="text-xl font-medium">Avery <span className='text-gray-400 font-normal'>• Frontend Developer</span></h3>
@@ -89,7 +89,7 @@ export default function AboutUs() {
           </div>
         </div>
         <div className="text-center">
-          <Link href="/" className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">
+          <Link href="/" className="inline-block bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors shadow hover:shadow-md">
             Back to Home
           </Link>
         </div>

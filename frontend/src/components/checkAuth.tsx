@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import { getConfig } from '@/config/env';
+import Loading from './loading';
 
 interface CheckAuthProps {
   children: ReactNode; // Define children prop
@@ -44,7 +45,7 @@ export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckA
 
   return (
     <div>
-      {verified ? children : <div>Checking your authentication status...</div>}
+      {verified ? children : <Loading/>}
     </div>
   );
 }
