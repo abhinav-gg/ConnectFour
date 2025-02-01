@@ -74,8 +74,8 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
             });
 
             if (!tokenResponse.ok) {
-                throw new Error(`Discord OAuth HTTP error! status: ${tokenResponse.status}`);
                 console.log("Disc OAuth resp:", await tokenResponse.text());
+                throw new Error(`Discord OAuth HTTP error! status: ${tokenResponse.status}`);
             }
         
             const tokenData = await tokenResponse.json();
@@ -89,8 +89,8 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
             });
         
             if (!userResponse.ok) {
-                throw new Error(`Discord API HTTP error! status: ${userResponse.status}`);
                 console.log("Disc API resp:", await userResponse.text());
+                throw new Error(`Discord API HTTP error! status: ${userResponse.status}`);
             }
         
             const discordUserInfo = await userResponse.json();
@@ -111,8 +111,8 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
                     res.status(403).json({ error: 'User not found in ICHACK database' });
                     return;
                 }
-                throw new Error(`ICH HTTP error! status: ${ichackResponse.status}`);
                 console.log("ICH resp:", await ichackResponse.text());
+                throw new Error(`ICH HTTP error! status: ${ichackResponse.status}`);
             } else {
                 const ichackData: ICHacker = await ichackResponse.json();
                 ichackData.user_id = con4UserId; // ioc: check
