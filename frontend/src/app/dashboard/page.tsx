@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
-import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -138,7 +137,7 @@ export default function UserDashboard() {
       <Dashboard /> {/* Render the Dashboard component on the side */}
       <div className="flex-1 p-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">User Dashboard</h1>
-        <p className="text-gray-700">Welcome, {user.username}!</p>
+        <p className="text-gray-700">Welcome, {user.username ? user.username : "Anonymous"}!</p>
         <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded">Delete Account</button>
         <p className="text-gray-700 mt-6">More coming soon</p>
       </div>

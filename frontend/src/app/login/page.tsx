@@ -72,7 +72,7 @@ function LoginPage() {
         throw new Error(data.error || 'Login failed')
       }
 
-      const data = await response.json();
+      // const data = await response.json();
       
       window.location.href = '/dashboard' // Redirect to dashboard or another page after login
     } catch (err) {

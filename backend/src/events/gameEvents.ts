@@ -359,6 +359,7 @@ async function handleGameEnd(roomId: string, draw: boolean, message: string, win
   const room = getRoom(roomId);
   if (!room) return; // Strange error
 
+  room.gameOver = true;
   sendToRoom(roomId, {
     event: "endGame",
     data: { 
@@ -433,7 +434,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
   app.ws('/in-game', (ws, req) => {
     console.log('Client connected');
 
-    console.log(req.cookies); // debug
+    console.log("cookies:", req.cookies); // debug
 
     const token = req.cookies.sessionToken;
 
@@ -841,6 +842,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const user = getUser(ws)?.userID!
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
             const room = getRoom(roomId)!;
+            if (room.gameOver) return;
             const player = room.players.indexOf(user as UUID);
             const opponent = player === 0 ? 1 : 0;
             getSocket(room.players[opponent])?.socket.send(JSON.stringify({
@@ -854,7 +856,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const user = getUser(ws)?.userID!
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
             const room = getRoom(roomId)!;
-            console.log(room)
+            if (room.gameOver) return;
             if (!room.drawing) return;
             handleGameEnd(roomId, true, 'Draw by agreement');
             break;

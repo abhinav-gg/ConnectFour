@@ -185,9 +185,9 @@ export default function GamePage() {
             window.location.href = data.data.redirect;
           break;
         case 'endGame':
+          pushAnnouncement("Game Ended")
           if (playerNumber.current === -1) 
             break;
-          pushAnnouncement("Game Ended")
           waitingForRecconect.current = false;
           setGameStatus(data.data.message);
           if (data.data.draw) {
