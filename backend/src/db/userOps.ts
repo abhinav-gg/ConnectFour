@@ -28,7 +28,7 @@ export class UserOperations {
       try {
         this.client.release(); // Attempt to release the client
       } catch (error) {
-        //console.error('Error releasing client:', error); // Log any errors during release
+        console.error('Error releasing client:', error); // Log any errors during release
       } finally {
         this.client = null; // Ensure client is set to null after release
       }
@@ -46,6 +46,7 @@ export class UserOperations {
       //console.error('Failed to fetch users:', error);
       throw error;
     } finally {
+      this.safeRelease();
       this.safeRelease();
     }
   }
@@ -150,7 +151,7 @@ export class UserOperations {
         [newUsername.toLowerCase(), id]
       );
     } catch (error) {
-      //console.error('Failed to update username by ID:', error);
+      console.error('Failed to update username by ID:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -186,7 +187,7 @@ export class UserOperations {
         [newEmail.toLowerCase(), id]
       );
     } catch (error) {
-      //console.error('Failed to update email by ID:', error);
+      console.error('Failed to update email by ID:', error);
       throw error;
     } finally {
       this.safeRelease();
@@ -281,7 +282,7 @@ export class UserOperations {
       );
       // There is no delete query
     } catch (error) {
-      //console.error('Failed to drop user by ID:', error);
+      console.error('Failed to drop user by ID:', error);
       throw error;
     } finally {
       this.safeRelease();

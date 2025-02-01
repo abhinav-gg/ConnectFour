@@ -24,6 +24,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (loading) return
     const checkLoginStatus = async () => {
       try {
         const config = getConfig()

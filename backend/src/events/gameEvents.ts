@@ -382,6 +382,7 @@ async function startNormalGame(room: Room, gamemode: GameMode, time_control: Tim
 
   switch (gamemode.name.split('-')[0]) {
     case 'standard': {
+      console.log(SocketIDs)
       room.players.forEach(async (player, index) => {
         getSocket(player)!.socket.send(JSON.stringify({
         event: "gameStart",
