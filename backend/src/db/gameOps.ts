@@ -423,7 +423,7 @@ export class GameOperations {
     try {
       const result = await client.query(
         `UPDATE con4_schema.Elo
-          SET elo = $3
+          SET elo = elo + $3
           WHERE player = $1
           AND mode = $2`,
         [playerid, gameModeId, elo]

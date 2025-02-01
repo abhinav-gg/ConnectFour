@@ -37,16 +37,13 @@ const SendUserToRoom = async (data: any) => {
 
     const { userId, roomId } = data;
     const token = await dbOperations.getSessionFromUserId(userId);
-    console.log(state.userMap.keys());
-    console.log('Token:', token);
-
     if (!token) {
         console.error('No token found');
         return;
     }
-
+    
     const ws = getToken(token);
-
+    
     if (!ws) {
         console.error('User not found in map');
         return;
@@ -76,14 +73,8 @@ export function setupWaitingRoom(app: expressWs.Application) {
 
         ws.on('close', async () => {
             // remove from map
-            console.log("REMOVING USER FROM MAP", token);
-            try {
-                const user = await getUserFromSession(token);
-                await dbOperations.FinishedGameLookup(user.userId!)
-                removeToken(token);
-            } catch (error) {
-                console.error('Failed to remove user from map:', error);
-            }
+            removeToken(token);
+            ws.close();
         });
     });
 }

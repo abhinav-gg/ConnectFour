@@ -65,6 +65,7 @@ function setEloChange(userID: string, eloChange: EloChange) {
       return;
     }
   }
+  console.log("Cant find", userID);
 }
 
 function removeSocket(userID: string) {
@@ -381,6 +382,7 @@ async function startNormalGame(room: Room, gamemode: GameMode, time_control: Tim
 
   switch (gamemode.name.split('-')[0]) {
     case 'standard': {
+      console.log(SocketIDs)
       room.players.forEach(async (player, index) => {
         getSocket(player)!.socket.send(JSON.stringify({
         event: "gameStart",
@@ -537,7 +539,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             const room = getRoom(roomId)!;
             await setupPlayer(userId);
 
-            const StandardConnectUser = () => {
+            const StandardConnectUser = async () => {
               joinRoom(roomId, userId);
               const room = getRoom(roomId)!;
                             
@@ -552,10 +554,10 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               if (room.players.length === 2) {
                 switch (gamemode!.name.split('-')[0]) {
                   case 'standard': {
-                    room.players.forEach(async (player, index) => {
-                      const eloChange = await getCompetitiveEloChange(player, room.players[index == 0 ? 1 : 0], game.short_id);
-                      setEloChange(player, eloChange);
-                    });
+                    const p1EChange = await getCompetitiveEloChange(room.players[0], room.players[1], roomId);
+                    const p2EChange = await getCompetitiveEloChange(room.players[1], room.players[0], roomId);
+                    setEloChange(room.players[0], p1EChange);
+                    setEloChange(room.players[1], p2EChange);
                     break;
                   }
                   case 'friendly': {
@@ -567,7 +569,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                     break;
                   }
                 }
-                startNormalGame(room, gamemode!, time_control!);
+                await startNormalGame(room, gamemode!, time_control!);
               }
             }
 
@@ -589,7 +591,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 }
 
                 console.log(room.players.length)
-                StandardConnectUser();
+                await StandardConnectUser();
                 break;
               }
               case 'friendly': {
@@ -633,7 +635,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 // Player is connecting to the game for the first time.
                 // Send the game state to the player and update the room state
 
-                StandardConnectUser();
+                await StandardConnectUser();
                 // Assign the game to the players (for friendly game no elo change)
                 
                 break;

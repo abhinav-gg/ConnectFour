@@ -36,10 +36,9 @@ export default function Leaderboard() {
     );
     if (!res.ok) {
       // check for 403 error and redirect
-      console.log('Error fetching leaderboard data');
-      if (res.status === 403) {
-        window.location.href = '/login'; // Redirect to a 403 error page
-      }
+      console.log('Error fetching leaderboard data', res);
+      //window.location.href = '/login'; // Redirect to a 403 error page
+      return;
     }   
     const data = await res.json() as ICHackLeaderboardPlayer[];
     console.log(data);

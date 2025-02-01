@@ -1,9 +1,9 @@
 import { hackspace, ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
-import Dashboard from '@/components/dashboard';
 import QTRIcon from "@/assets/ICH25_QTR.svg";
 import SCRIcon from "@/assets/ICH25_SCR.svg";
 import JCRIcon from "@/assets/ICH25_JCR.svg";
 import Image from 'next/image';
+import Loading from '@/components/loading';
 
 interface LeaderboardTableProps {
   players: ICHackLeaderboardPlayer[];
@@ -17,21 +17,15 @@ interface LeaderboardLayoutProps {
 }
 
 function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
+  // Ensure players is an array
+  const playerArray = Array.isArray(players) ? players : [];
+
   const getRankStyle = (rank: number) => {
     switch (rank) {
       case 1: return 'text-yellow-500';
       case 2: return 'text-gray-400';
       case 3: return 'text-amber-700';
       default: return darkMode ? 'text-white' : 'text-black';
-    }
-  };
-
-  const getHackspaceColor = (hackspace: hackspace) => {
-    switch (hackspace) {
-      case "QTR": return 'bg-red-500';
-      case "SCR": return 'bg-blue-500';
-      case "JCR": return 'bg-yellow-500';
-      default: return 'bg-gray-500'; // fallback color
     }
   };
 
@@ -58,7 +52,7 @@ function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
             </tr>
           </thead>
           <tbody>
-            {players.map((player, index) => (
+            {playerArray.map((player, index) => (
               <tr 
                 key={player.rank}
                 className={`
@@ -103,9 +97,12 @@ function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
 }
 
 export default function LeaderboardLayout({ darkMode, players, children }: LeaderboardLayoutProps) {
+  if (!players || players.length === 0) {
+    return <Loading />;
+  }
+
   return (
     <div className={`flex min-h-screen ${darkMode ? 'bg-black' : 'bg-white'}`}>
-      <Dashboard />
       <div className="flex-1 p-8 relative">
         <LeaderboardTable players={players} darkMode={darkMode} />
         {children}

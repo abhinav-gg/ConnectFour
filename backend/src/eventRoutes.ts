@@ -3,7 +3,7 @@ import { dbOperations } from '@/db/operations';
 import { Request, Response, Router } from 'express';
 import { authenticateSession } from './lib/auth/middleware';
 import { GameMode } from '@shared/Models/gameInfo';
-import { ICHacker } from '@shared/Models/eventInfo';
+import { ICHacker, ICHackLeaderboardPlayer } from '@shared/Models/eventInfo';
 import { register } from 'module';
 import { ICHACK25 } from '@shared/events';
 import { getUserFromSession } from './lib/auth';
@@ -180,14 +180,16 @@ eventRouter.post('/get-ichack25-leaderboard', authenticateSession, async (req: R
     const token = (req as any).user?.userId;
     const user = await dbOperations.getUserByID(token);
     if (!user) {
-        res.status(400).json({ error: 'User not found' });
+        console.log("no user")
+        res.status(403).json({ error: 'User not found' });
         return;
     } 
 
     // verify the user is ICH
     const isICH = await dbOperations.isMemberOfEvent(user.id, ICHACK25);
     if (!isICH) {
-        res.status(400).json({ error: 'User is not a member of ICHACK25' });
+        console.log("not ich")
+        res.status(403).json({ error: 'User is not a member of ICHACK25' });
         return;
     }
 
@@ -197,24 +199,36 @@ eventRouter.post('/get-ichack25-leaderboard', authenticateSession, async (req: R
         res.status(500).json({ error: 'Invalid Data' });
         return;
     }
+    if (gamemode.event !== ICHACK25) {
+        res.status(403).json({ error: 'Invalid event' });
+        return;
+    }
 
-    const lb = await GetLeaderboard(gamemode, ICHACK25);
+    gamemode.event = ''; // I gave up
+    const lb = await GetLeaderboard(gamemode, '');
+    console.log(lb);
 
     // convert to ICHackLeaderboardPlayer
     try {
 
         const allICH = await dbOperations.getAllICHackers();
-        const ichackLeaderboard = lb.map(async (player: any) => {
-            const ich = allICH.find((ich: any) => ich.user_id === player.user_id);
-            return {
-                rank: player.rank,
+        const output = []
+        let rank = 1;
+        for (let i = 0; i < lb.length; i++) {
+            const player = lb[i];
+            const user = await dbOperations.getUserByUsername(player.username);
+            const foundICH = allICH.find((ich: ICHacker) => ich.user_id === user.id);
+            if (!foundICH)
+                continue;
+            output.push({
+                rank: rank++,
                 username: player.username,
-                name: ich!.name,
-                elo: player.elo,
-                hackspace: ich!.hackspace
-            };
-        });
-        res.json(ichackLeaderboard).status(200);
+                elo: Math.round(player.elo),
+                fullname: foundICH.name,
+                hackspace: foundICH.hackspace,
+            } as ICHackLeaderboardPlayer);
+        }
+        res.json(output).status(200);
     } catch (error) {
         console.error('Failed to get ICHACK25 leaderboard:', error);
         res.status(500).json({ error: 'Failed to get ICHACK25 leaderboard' });

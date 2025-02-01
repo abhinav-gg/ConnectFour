@@ -139,7 +139,7 @@ const requestGame = async () => {
         if (data.error)
           setMessage(data.error);
         else
-          setMessage('Failed to find match, you are in queue');
+          setMessage('Failed to find match, you are in queue...');
         setupWebSocket();
       }
     } catch (error) {
@@ -276,7 +276,7 @@ const requestGame = async () => {
               type="submit"
               className="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition-colors transform hover:scale-105 text-sm sm:text-base"
               onClick={() => setGameType('standard')}>
-              Create Game
+              Compete
             </button>
             <button 
               type="submit"

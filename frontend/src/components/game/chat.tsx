@@ -33,7 +33,6 @@ export default function LiveChat({
     }, [messages]);
 
     useEffect(() => {
-      console.log(drawMatrix);
         const interval = setInterval(() => {
             setChatCooldown((prev) => Math.max(0, prev - 0.1));
         }, 100);

@@ -206,6 +206,7 @@ export default function GamePage() {
         case 'playerDisconnected': {
           let timeRemaining = StandardReconnectionTime / 1000;
           pushAnnouncement('Opponent disconnected...');
+          if (!gameStarted) return;
           waitingForRecconect.current = true;
           const interval = setInterval(() => {
             console.log('Time remaining:', timeRemaining, waitingForRecconect);

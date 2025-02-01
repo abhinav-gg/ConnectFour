@@ -14,7 +14,7 @@ import { useCallback } from 'react';
 import Loading from '@/components/loading';
 
 // temporarily set the data to 10 seconds from now for testing
-const eventDate = new Date('2025-02-01T09:00:00');
+const eventDate = new Date('2025-02-01T15:00:00');
 const endDate = new Date('2025-02-02T11:00:00');
 
 const calculateTimeLeft = (time: Date) => {
@@ -130,7 +130,7 @@ export default function ICHack25() {
               </Link>
             </div>,
             <div key="hours" className="bg-red-500 w-full sm:w-1/3 rounded-lg p-3 sm:p-6 flex items-center justify-center">
-              <Link href="/login" className="w-full text-center text-white font-bold hover:scale-105 transition-transform text-sm sm:text-base">
+              <Link href="/game" className="w-full text-center text-white font-bold hover:scale-105 transition-transform text-sm sm:text-base">
                 Create Game
               </Link>
             </div>,

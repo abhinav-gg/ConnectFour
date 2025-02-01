@@ -65,7 +65,8 @@ export class EventOperations {
         const client = await this.getClient();
         try {
             await client.query(`INSERT INTO con4_schema.eventparticipants (user_id, event_id)
-            VALUES ($1, $2);`, [userId, event]);
+            VALUES ($1, $2)
+            ON CONFLICT DO NOTHING`, [userId, event]);
         } catch (error) {
             console.error('Error in registerForEvent:', error);
             throw error;
