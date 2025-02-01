@@ -112,10 +112,11 @@ eventRouter.post('/ichack25/discord', authenticateSession, async (req: Request, 
             } else {
                 let ichackData: ICHacker;
                 try {
-                    ichackData = await ichackResponse.json();
+                    ichackData = await ichackResponse.json() as ICHacker;
                     if (!ichackData)
                         throw new Error('ICHACK data not found'); 
-
+                    if (!ichackData.hackspace)
+                        throw new Error('User has no hackspace');
                 } catch {
                     res.status(403).json({ error: 'User has no hackspace' });
                     return;

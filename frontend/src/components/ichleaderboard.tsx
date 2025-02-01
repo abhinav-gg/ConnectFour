@@ -32,9 +32,9 @@ function LeaderboardTable({ players, darkMode }: LeaderboardTableProps) {
 
   const getHackspaceIcon = (hackspace: hackspace) => {
     switch (hackspace) {
-      case "QTR": return QTRIcon;
-      case "SCR": return SCRIcon;
-      case "JCR": return JCRIcon;
+      case "qtr": return QTRIcon;
+      case "scr": return SCRIcon;
+      case "jcr": return JCRIcon;
       default: return null;
     }
   };
