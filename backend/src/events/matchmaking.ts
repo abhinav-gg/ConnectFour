@@ -70,6 +70,7 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
 // TODO: GlickoPlayer needs to be stored in the database
 
 export const adjustRD = (player: Glicko): number => {
+    return 350;
     // Calculate the number of days since the player’s rating was last updated
     const d = (Date.now() - player.updated_at) / (1000 * 60 * 60 * 24);
     const rd = player.rating_deviation

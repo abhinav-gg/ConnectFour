@@ -20,31 +20,21 @@ const eventRouter = Router();
 // Prefix: /api/events
 
 
-eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
+eventRouter.post('/ichack25/discord', authenticateSession, async (req: Request, res: Response) => {
 
     try { 
 
-        const token = req.cookies.sessionToken; // Get the session token from the request cookies
-        if (!token) {
-          console.log('No token found');
-          res.status(401).json({ error: 'Session token required' });
-          return; // Ensure we return here to avoid further execution
+        const user = (req as any).user?.userId; // Get the session token from the request cookies
+        console.log(req, user)
+        if (!user) {
+            res.status(403).json({ error: 'User not found' });
+            return;
         }
-      
         try {
-          const decoded = await getUserFromSession(token); // Decode the token
-          // check if decoded is promise null and raise error
-          if (!decoded.userId) {
-            throw new Error('Invalid or expired token');
-          }
-          else {
-            // valid token
-            // verify the user is ICH
-
+          
             const code = req.body.code;
-            const con4UserId = decoded.userId;
 
-            const current = await dbOperations.getUserByID(con4UserId);
+            const current = await dbOperations.getUserByID(user);
             if (!current) {
                 res.status(400).json({ error: 'User not found' });
                 return;
@@ -116,13 +106,13 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
                 throw new Error(`ICH HTTP error! status: ${ichackResponse.status}`);
             } else {
                 const ichackData: ICHacker = await ichackResponse.json();
-                ichackData.user_id = con4UserId; // ioc: check
+                ichackData.user_id = user; // ioc: check
                 console.log(ichackData);
 
                 // Register the user to the event
                 try {
 
-                    await dbOperations.registerForEvent(con4UserId, ICHACK25);
+                    await dbOperations.registerForEvent(user, ICHACK25);
         
                     await dbOperations.registerToICHACK25(ichackData, discordUserInfo.id);
         
@@ -133,12 +123,11 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
                     throw error;
                 }
             }
-          }
-        } catch (err) {
+          } catch (err) {
             console.log("discord auth error:", err);
           res.status(500).json({ error: 'Auth failed' });
           return; // Ensure we return here to avoid further execution
-        }
+            }
     } catch (error) {
         console.error('Error during authentication:', error);
         res.status(500).json({ error: 'Authentication failed' });
