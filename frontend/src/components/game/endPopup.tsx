@@ -29,7 +29,7 @@ const EndPopup: React.FC<EndPopupProps> = ({ playerNumber, result, players, onRe
           </p>
         </div>
         <div className="mt-4 flex justify-around">
-          <a href="/game/test-join" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+          <a href="/game/setup" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
             New Game
           </a>
           <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">

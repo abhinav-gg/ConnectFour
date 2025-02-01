@@ -494,7 +494,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               game = await dbOperations.GetGameByShortCode(roomId);
 
               if (!game) {
-                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game not found', redirect: '/game/test-join' } }));
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game not found', redirect: '/game/setup' } }));
                 return;
               } else if (game.short_id !== roomId) {
                 ws.send(JSON.stringify({ event: 'error', data: { message: 'Player in another game', redirect: `/game?room=${game.short_id}` } }));
@@ -507,7 +507,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                 return;
               } else if (game.state !== StandardGameStates.scheduled) {
                 // TODO: replace with analysis later
-                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game Ended', redirect: "/game/test-join" } }));
+                ws.send(JSON.stringify({ event: 'error', data: { message: 'Game Ended', redirect: "/game/setup" } }));
                 return;
               }
             }
@@ -708,6 +708,16 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               handleGameEnd(roomId, false, `Player ${verification.nextPlayer + 1} timed out`, verification.winner!);
             }
 
+            try {
+              // consider speed, will this write to the database in time for the next move??
+              const gameId = (await dbOperations.GetGameByShortCode(roomId))?.id;
+              await dbOperations.MakeMove(gameId, userId, verification.turn, col, verification.delta);
+            }
+            catch (error) {
+              console.error('Failed to send move to database');
+              return;
+            }
+
             sendToRoom(roomId, {
               event: 'moveMade',
               data: { 
@@ -721,16 +731,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               handleGameEnd(roomId, true, 'Game Over', -1);
             } else if (verification.winner !== null) {
               handleGameEnd(roomId, false, 'Game Over', verification.winner);
-            }
-
-            try {
-              // consider speed, will this write to the database in time for the next move??
-              const gameId = (await dbOperations.GetGameByShortCode(roomId))?.id;
-              dbOperations.MakeMove(gameId, userId, verification.turn, col, verification.delta);
-            }
-            catch (error) {
-              throw new Error('Failed to send move to database');
-            }
+            }            
             break;
           }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

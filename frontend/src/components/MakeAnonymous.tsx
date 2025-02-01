@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
-import AuthPage from '@/components/checkAuth';
 import { useReCaptcha } from '@/components/usecaptcha';
 import { ReCaptchaWrapper } from '@/components/captcha';
 
@@ -33,7 +31,8 @@ function AnonymousPage () {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (!roomFromUrl) {
-      window.location.href = '/game/test-join';
+      console.log("Success!");
+      window.location.href = '/game/setup';
       return;
     } else {
       window.location.href = '/game?room=' + roomFromUrl;

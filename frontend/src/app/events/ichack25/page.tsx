@@ -308,35 +308,6 @@ Running for the 1st year, we're bringing the same energy through our hackspace c
                 </div>
               </div>
             </animated.div>
-
-            <animated.form
-              style={formAnimation}
-              onSubmit={(e) => {
-                e.preventDefault();
-                setRegistered(true);
-              }}
-              className="bg-white bg-opacity-10 rounded-lg p-4 sm:p-8 mb-8 sm:mb-12 max-w-lg mx-auto"
-            >
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4">Register Now</h2>
-              <input
-                type="text"
-                placeholder="Name"
-                className="w-full bg-white bg-opacity-20 rounded-lg p-2 mb-4"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                className="w-full bg-white bg-opacity-20 rounded-lg p-2 mb-4"
-                required
-              />
-              <button
-                type="submit"
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-              >
-                Sign Up
-              </button>
-            </animated.form>
           </div>
         </main>
       </div>

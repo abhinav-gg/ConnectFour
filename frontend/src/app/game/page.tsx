@@ -61,10 +61,10 @@ export default function GamePage() {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (!roomFromUrl) {
-      window.location.href = '/game/test-join';
+      window.location.href = '/game/setup';
       return;
     } else {
-      window.location.href = '/game/test-join?room=' + roomFromUrl;
+      window.location.href = '/game/setup?room=' + roomFromUrl;
     }
   }
 
@@ -128,7 +128,7 @@ export default function GamePage() {
     const params = new URLSearchParams(window.location.search);
     const roomFromUrl = params.get('room');
     if (!roomFromUrl) {
-      window.location.href = '/game/test-join';
+      window.location.href = '/game/setup';
       return;
     }
     
