@@ -550,10 +550,22 @@ export const setupGameEvents = async (app: expressWs.Application) => {
               
               // standard friendly gamemode starts with 2 players (current socket added above)
               if (room.players.length === 2) {
-                if (gamemode!.name === "friendly") { // friendly game
-                  room.players.forEach((player, index) => {
-                    assignGame(game.id, player, index);
-                  });
+                switch (gamemode!.name.split('-')[0]) {
+                  case 'standard': {
+                    room.players.forEach(async (player, index) => {
+                      const eloChange = await getCompetitiveEloChange(player, room.players[index == 0 ? 1 : 0], game.short_id);
+                      setEloChange(player, eloChange);
+                    });
+                    break;
+                  }
+                  case 'friendly': {
+                    if (gamemode!.name === "friendly") { // friendly game
+                      room.players.forEach((player, index) => {
+                        assignGame(game.id, player, index);
+                      });
+                    }
+                    break;
+                  }
                 }
                 startNormalGame(room, gamemode!, time_control!);
               }
@@ -576,16 +588,8 @@ export const setupGameEvents = async (app: expressWs.Application) => {
                   return;
                 }
 
-                room.players.forEach(async (player, index) => {
-                  const eloChange = await getCompetitiveEloChange(player, room.players[index == 0 ? 1 : 0], game.short_id);
-                  setEloChange(player, eloChange);
-                });
-                console.log(room)
-
-                // All checks have passed, the player may be added to the game
-                // Player is connecting to the game for the first time.
-                // Send the game state to the player and update the room state
                 
+                console.log(room)
                 StandardConnectUser();
                 break;
               }
