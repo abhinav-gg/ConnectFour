@@ -74,7 +74,6 @@ export default function ICHack25() {
     if (displayedTextRef.current.length !== 0) return; // Skip if text is already displayed
     const intervalId = setInterval(() => {
       let currentIndex = displayedTextRef.current.length; // Start at the current length of the displayed text
-      console.log(text, currentIndex)
       if (currentIndex < text.length) {
         displayedTextRef.current += text[currentIndex]; // Append character
         currentIndex++;

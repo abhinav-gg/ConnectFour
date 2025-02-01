@@ -74,7 +74,8 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
             });
 
             if (!tokenResponse.ok) {
-                throw new Error(`HTTP error! status: ${tokenResponse.status}`);
+                throw new Error(`Discord OAuth HTTP error! status: ${tokenResponse.status}`);
+                console.log(await tokenResponse.text());
             }
         
             const tokenData = await tokenResponse.json();
@@ -88,7 +89,8 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
             });
         
             if (!userResponse.ok) {
-                throw new Error(`HTTP error! status: ${userResponse.status}`);
+                throw new Error(`Discord API HTTP error! status: ${userResponse.status}`);
+                console.log(await userResponse.text());
             }
         
             const discordUserInfo = await userResponse.json();
@@ -109,7 +111,8 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
                     res.status(403).json({ error: 'User not found in ICHACK database' });
                     return;
                 }
-                throw new Error(`HTTP error! status: ${ichackResponse.status}`);
+                throw new Error(`ICH HTTP error! status: ${ichackResponse.status}`);
+                console.log(await ichackResponse.text());
             } else {
                 const ichackData: ICHacker = await ichackResponse.json();
                 ichackData.user_id = con4UserId; // ioc: check
@@ -165,11 +168,11 @@ eventRouter.post('/get-leaderboard', async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Invalid Data' });
         return;
     }
-    const lb = await GetLeaderboard(gamemode, '');
+    
+    const lb = (await GetLeaderboard(gamemode, '')).map((player: any) => ({ ...player, elo: Math.round(player.elo) }));
     res.json(lb).status(200);
     return;
 });
-
 
 eventRouter.post('/get-ichack25-leaderboard', authenticateSession, async (req: Request, res: Response) => {
     // extract token

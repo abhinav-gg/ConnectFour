@@ -234,7 +234,9 @@ export async function endGame(short_id: string, gamemode: GameMode, draw: boolea
                 }
 
                 dbOperations.UpdateElo(gamePlayers[0], gamemodeid, p1Delta);
+                dbOperations.UpdateRD(gamePlayers[0], gamemodeid, p1rd);
                 dbOperations.UpdateElo(gamePlayers[1], gamemodeid, p2Delta);
+                dbOperations.UpdateRD(gamePlayers[1], gamemodeid, p2rd);
                 break;                
         }
         gamePlayers.forEach(async (player) => {

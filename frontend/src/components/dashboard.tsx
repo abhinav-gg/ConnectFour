@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link'
 import { Home, LogIn, BarChart2, PlayCircle, Info, Book, 
   LogOut, ChevronLeft, ChevronRight, Calendar, Trophy } from 'lucide-react'
 import Image from 'next/image'
@@ -95,11 +94,11 @@ export default function Dashboard(props: TestProps) {
             {DASHBOARD_ITEMS.map((item, index) => {
               const Icon = item.icon;
               return (
-                <Link
+                <div
                   key={index}
-                  href={item.path}
+                  onClick={() => { window.location.href = item.path; }}
                   className={`
-                    flex items-center transform scale-100 hover:scale-105
+                    flex items-center transform scale-100 hover:scale-105 cursor-pointer
                     ${visibleRows.includes(index) ? 'animate-slide-in opacity-100' : 'opacity-0 translate-x-[-50px]'}
                     transition-all duration-500 ease-out
                   `}
@@ -109,7 +108,7 @@ export default function Dashboard(props: TestProps) {
                 >
                   <Icon className="mr-2" />
                   {item.label}
-                </Link>
+                </div>
               );
             })}
           </div>
