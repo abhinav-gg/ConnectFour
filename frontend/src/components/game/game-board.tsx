@@ -107,7 +107,6 @@ export default function GameBoard (props: GameBoardProps)  {
   }
 
   const handleColumnHover = (col: number) => {
-    //console.log('Hovering column', col, gameState!.currentPlayer, props.playerNumber, gameState!.gameOver, fallingPiece, gameState!.currentMoveIndex)
     if (gameState!.currentPlayer != props.playerNumber 
       || gameState!.gameOver || fallingPiece
       || gameState!.currentMoveIndex != gameState!.getMoves().length - 1
@@ -115,17 +114,21 @@ export default function GameBoard (props: GameBoardProps)  {
       setHighlightedColumn(null)
       return
     }
-    if (!gameState!.gameOver && !fallingPiece && gameState!.currentMoveIndex === gameState!.getMoves().length - 1) {
-      setHighlightedColumn(col)
+    setHighlightedColumn(col)
+  }
+
+  const handleColumnClick = (col: number) => {
+    if (gameState!.currentPlayer != props.playerNumber 
+      || gameState!.gameOver || fallingPiece
+      || gameState!.currentMoveIndex != gameState!.getMoves().length - 1
+    ) {
+      return
     }
+    websocketMove(col);
   }
 
   const handleColumnLeave = () => {
     setHighlightedColumn(null)
-  }
-
-  const playAgain = () => {
-    window.location.reload()
   }
 
   const playDropSound = () => {
@@ -163,12 +166,9 @@ export default function GameBoard (props: GameBoardProps)  {
                   <div
                     key={`input-${colIndex}`}
                     className="flex-1 cursor-pointer"
-                    onClick={() => {
-                      handleColumnHover(colIndex)
-                      if (highlightedColumn !== null) {
-                        websocketMove(highlightedColumn);
-                      }
-                    }}
+                    onClick={() => handleColumnClick(colIndex)}
+                    onTouchStart={() => handleColumnHover(colIndex)}
+                    onTouchEnd={() => handleColumnLeave()}
                     onMouseEnter={() => handleColumnHover(colIndex)}
                     onMouseLeave={handleColumnLeave}
                   />

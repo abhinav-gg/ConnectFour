@@ -11,7 +11,7 @@ export type leaderboardPlayer = {
 /////////////////////////////////////////////////////////
 import { ICHACK25 } from "@shared/events";
 
-export type hackspace = "QTR" | "SCR" | "JCR";
+export type hackspace = "qtr" | "scr" | "jcr";
 
 export type ICHackLeaderboardPlayer = {
     rank: number;

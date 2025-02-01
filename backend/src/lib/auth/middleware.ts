@@ -11,6 +11,10 @@ interface AuthenticatedRequest extends Request {
 }
 
 export const authenticateSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  
+
+    // v this all sucks and is broken
+  
   const token = req.cookies.sessionToken; // Get the session token from the request cookies
   if (!token) {
     res.status(401).json({ error: 'Session token required' });
