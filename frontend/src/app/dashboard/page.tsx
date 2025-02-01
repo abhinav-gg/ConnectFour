@@ -14,6 +14,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import Loading from '@/components/loading';
 
 // Register ChartJS components
 ChartJS.register(
@@ -130,7 +131,7 @@ export default function UserDashboard() {
   };
 
   if (error) return <div className="text-red-500">{error}</div>;
-  if (!user) return <div>Loading...</div>;
+  if (!user) return <Loading/>;
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -139,7 +140,7 @@ export default function UserDashboard() {
         <h1 className="text-2xl font-bold text-gray-800 mb-6">User Dashboard</h1>
         <p className="text-gray-700">Welcome, {user.username ? user.username : "Anonymous"}!</p>
         <button className="mt-4 bg-red-500 text-white px-4 py-2 rounded">Delete Account</button>
-        <p className="text-gray-700 mt-6">More coming soon</p>
+        <p className="text-gray-700 mt-6">This page is under development (-_- Don't you just hate when that happens)</p>
       </div>
     </div>
   );

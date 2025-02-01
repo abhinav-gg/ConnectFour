@@ -2,22 +2,24 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { FaSun, FaMoon } from 'react-icons/fa';
-import type { leaderboardPlayer } from "@shared/Models/eventInfo";
-import LeaderboardLayout from '@/components/leaderboard';
+import type { leaderboardPlayer, ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
+import LeaderboardLayout from '@/components/ichleaderboard';
 import { StandardGameModes } from '@shared/constants';
 import { GameMode } from '@shared/Models/gameInfo';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/dashboard';
+import IchackBanner from '@/components/ichackbanner';
+import { ICHACK25 } from '@shared/events';
 
 export default function Leaderboard() {
   const stdModes = StandardGameModes.standard;
   const [darkMode, setDarkMode] = useState(false);
   const [selectedTab, setSelectedTab] = useState(stdModes.rapid);
   const backendUrl = getConfig().backendUrl;
-  const [playersData, setPlayersData] = useState<leaderboardPlayer[]>([]);
+  const [playersData, setPlayersData] = useState<ICHackLeaderboardPlayer[]>([]);
 
   const getLeaderboard = async (tab: string): Promise<void> => {
-    const res = await fetch(`${backendUrl}/api/events/get-leaderboard`,
+    const res = await fetch(`${backendUrl}/api/events/get-ichack25-leaderboard`,
       {
         method: 'POST',
         headers: {
@@ -27,12 +29,19 @@ export default function Leaderboard() {
         body: JSON.stringify({
           gamemode: {
             name: tab,
-            event: null
+            event: ICHACK25
           } as GameMode
         })
       }
     );
-    const data = await res.json() as leaderboardPlayer[];
+    if (!res.ok) {
+      // check for 403 error and redirect
+      console.log('Error fetching leaderboard data');
+      if (res.status === 403) {
+        window.location.href = '/login'; // Redirect to a 403 error page
+      }
+    }   
+    const data = await res.json() as ICHackLeaderboardPlayer[];
     console.log(data);
     setPlayersData(data);
   };
@@ -58,6 +67,8 @@ export default function Leaderboard() {
 
       <div className="flex-1 flex flex-col items-center p-4 md:p-8">
         <div className="w-full max-w-6xl mx-auto">
+          <IchackBanner />
+          
           <div className="tabs flex justify-center gap-2 mb-6 animate-slideDown">
             {[
               { mode: stdModes.rapid, label: 'Rapid' },

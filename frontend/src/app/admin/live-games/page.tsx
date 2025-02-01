@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import CheckAdmin from '@/components/checkAdmin';
 import Dashboard from '@/components/dashboard';
+import Loading from '@/components/loading';
 
 interface LiveGame {
   id: string;
@@ -35,7 +36,7 @@ export default function LiveGamesPage() {
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>; // Show loading state
+    return <Loading/>; // Show loading state
   }
 
   if (error) {

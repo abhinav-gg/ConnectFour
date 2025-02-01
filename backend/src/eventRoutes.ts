@@ -112,6 +112,7 @@ eventRouter.post('/ichack25/discord', async (req: Request, res: Response) => {
                     return;
                 }
                 console.log("ICH resp:", await ichackResponse.text());
+                console.log("used key: ", MY_ICHACK_API_KEY);
                 throw new Error(`ICH HTTP error! status: ${ichackResponse.status}`);
             } else {
                 const ichackData: ICHacker = await ichackResponse.json();
@@ -191,11 +192,6 @@ eventRouter.post('/get-ichack25-leaderboard', authenticateSession, async (req: R
     }
 
     const gamemode = req.body.gamemode;
-    const event = req.body.event;
-    if (event !== ICHACK25) {
-        res.status(400).json({ error: 'Invalid Event' });
-        return;
-    }
 
     if (!gamemode) {
         res.status(500).json({ error: 'Invalid Data' });
@@ -205,20 +201,24 @@ eventRouter.post('/get-ichack25-leaderboard', authenticateSession, async (req: R
     const lb = await GetLeaderboard(gamemode, ICHACK25);
 
     // convert to ICHackLeaderboardPlayer
-    const allICH = await dbOperations.getAllICHackers();
-    const ichackLeaderboard = lb.map(async (player: any) => {
-        const ich = allICH.find((ich: any) => ich.user_id === player.user_id);
-        return {
-            rank: player.rank,
-            username: player.username,
-            name: ich!.name,
-            elo: player.elo,
-            hackspace: ich!.hackspace
-        };
-    });
+    try {
 
-    res.json(ichackLeaderboard).status(200);
-    return;
+        const allICH = await dbOperations.getAllICHackers();
+        const ichackLeaderboard = lb.map(async (player: any) => {
+            const ich = allICH.find((ich: any) => ich.user_id === player.user_id);
+            return {
+                rank: player.rank,
+                username: player.username,
+                name: ich!.name,
+                elo: player.elo,
+                hackspace: ich!.hackspace
+            };
+        });
+        res.json(ichackLeaderboard).status(200);
+    } catch (error) {
+        console.error('Failed to get ICHACK25 leaderboard:', error);
+        res.status(500).json({ error: 'Failed to get ICHACK25 leaderboard' });
+    }
 });
 
 

@@ -11,6 +11,7 @@ import Confetti from 'react-confetti';
 import IchackBanner from '@/components/ichackbanner';
 import duck from "@/assets/duck.svg";
 import { useCallback } from 'react';
+import Loading from '@/components/loading';
 
 // temporarily set the data to 10 seconds from now for testing
 const eventDate = new Date('2025-02-01T09:00:00');
@@ -238,7 +239,7 @@ export default function ICHack25() {
                   <RenderDisclaimer key={updateCount} />
                   {renderCountdown()}
                 </>
-              ) : <div>Loading...</div>}
+              ) : <Loading />}
               <br /><br />
               {hasStarted && <div className="w-full flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 justify-center px-2">
                 <div className="bg-gradient-to-r from-green-400 to-blue-500 rounded-lg p-2 sm:p-4 flex items-center justify-center shadow-lg">
