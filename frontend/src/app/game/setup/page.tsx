@@ -266,7 +266,7 @@ const requestGame = async () => {
                 onClick={() => setSelectedTimeControl(control.id)}
                 style={{ opacity: opacities[index] }}
               >
-                {control.label}{`(${control.base}+${control.increment}-${control.disadvantage})`}
+                {control.label}
               </button>
             ))}
           </div>
