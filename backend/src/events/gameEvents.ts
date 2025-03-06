@@ -701,11 +701,11 @@ export const setupGameEvents = async (app: expressWs.Application) => {
             if (verification.turn === -1) {
               return;
             } else if (verification.turn === 1) {
-              dbOperations.UpdateGameStatusByShortCode(roomId, StandardGameStates.ongoing);
               sendToRoom(roomId, {
                 event: 'startTimer',
               } as StartTimer);
-            } 
+              await dbOperations.UpdateGameStatusByShortCode(roomId, StandardGameStates.ongoing);
+            }
             
             if (verification.timeLeft <= 0) { 
               handleGameEnd(roomId, false, `Player ${verification.nextPlayer + 1} timed out`, verification.winner!);

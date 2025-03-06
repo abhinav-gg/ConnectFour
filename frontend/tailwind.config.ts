@@ -32,12 +32,19 @@ module.exports = {
             transform: 'translateX(0)',
             opacity: '1'
           },
-        }
+        },
+        ellipsis: {
+          '0%': { content: '.' },
+          '33%': { content: '..' },
+          '66%': { content: '...' },
+          '100%': { content: '...' },
+        },
       },
       animation: {
         'slide-in': 'slide-in 0.5s ease-out forwards',
         'fade-in': 'fadeIn 0.5s ease-out forwards',
         fadeInUp: 'fadeInUp 0.5s ease-out forwards',
+        'ellipsis': 'ellipsis 2s infinite',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
