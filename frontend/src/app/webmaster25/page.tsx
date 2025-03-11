@@ -15,6 +15,7 @@ export default function WebmasterCampaign() {
     {
       title: "Restore DocSoc Website",
       description: "Rebuilding the DocSoc website with modern designs and user-centric features including a clear timeline of DocSoc's events and ticket releases! Check out a quick revamp I made from the link above.",
+
       icon: <FaCode className="text-3xl" />,
     },
     {
@@ -117,6 +118,7 @@ export default function WebmasterCampaign() {
                   key={index}
                   className={`
                     bg-white/10 backdrop-blur-lg rounded-lg p-4 lg:p-6 cursor-pointer
+
                     transition-all duration-300 ease-in-out
                     hover:scale-105 hover:bg-white/15
                     animate-slideUp
