@@ -8,8 +8,9 @@ import { eventEmitter } from '@shared/utils/eventEmitter';
 // file to control all elements of user matchmaking and game creation
 
 
-// TODO: figure out what GameOperations is and why it keeps trying to be used for this function
-// FindCompetitiveMatch takes the userID and timeControlId and returns a match or null if they need to wait
+// bellow needs to be re-written with Redis
+
+
 export async function FindCompetitiveMatch(userId: string, time_control: TimeControl, gamemode: GameMode, priority: number): Promise<string | null> {
 
     // Can safely assume the player is not in a game (checked before call)
@@ -67,46 +68,70 @@ export async function FindCompetitiveMatch(userId: string, time_control: TimeCon
 }
 
 
+// Values used in calculation
+const skillRange = 10;
+const eloRange = 400;
+const maxEloChange = 32;
+// This means a player 400 elo higher has a 10x higher winning chance
+// These calculations were derived by Arpad Elo based on Bell curves
+
+export function calculatePredictedScore(p1Elo: number, p2Elo: number) {
+    let deltaElo = (p2Elo - p1Elo) / eloRange
+    return 1/(1 + Math.pow(skillRange, deltaElo))
+}
+
+export function calculateUpdatedElo (p1Elo: number, p2Elo: number, result: number) {
+    return p1Elo + maxEloChange * (result - calculatePredictedScore(p1Elo, p2Elo))
+}
+
+//
+
+
+
+///////////////////////////////////////////////////////////////////////////
+
+
 // TODO: GlickoPlayer needs to be stored in the database
 
-export const adjustRD = (player: Glicko): number => {
-    return 350;
-    // Calculate the number of days since the player’s rating was last updated
-    const d = (Date.now() - player.updated_at) / (1000 * 60 * 60 * 24);
-    const rd = player.rating_deviation
-    const c = Math.pow(rd, -2) + Math.pow(d, -2);
-    return Math.sqrt(1/(c))
-};
+// export const adjustRD = (player: Glicko): number => {
+//     return 350;
+//     // Calculate the number of days since the player’s rating was last updated
+//     const d = (Date.now() - player.updated_at) / (1000 * 60 * 60 * 24);
+//     const rd = player.rating_deviation
+//     const c = Math.pow(rd, -2) + Math.pow(d, -2);
+//     return Math.sqrt(1/(c))
+// };
+
 
 // Calculate new ratings for both players based on Glicko system
-export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
-    const q = Math.log(10) / 400;  // System constant
+// export function calculateGlickoRatings(me: Glicko, them: Glicko): EloChange {
+//     const q = Math.log(10) / 400;  // System constant
     
-    // Adjust RD based on time since last played (increases uncertainty)
+//     // Adjust RD based on time since last played (increases uncertainty)
     
 
-    const p1RD = adjustRD(me);
-    const p2RD = adjustRD(them);
+//     const p1RD = adjustRD(me);
+//     const p2RD = adjustRD(them);
 
-    // // Calculate g-factor (impact of rating deviation on updates)
-    // const g1 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p2RD, 2) / Math.pow(Math.PI, 2));
-    // const g2 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p1RD, 2) / Math.pow(Math.PI, 2));
+//     // // Calculate g-factor (impact of rating deviation on updates)
+//     // const g1 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p2RD, 2) / Math.pow(Math.PI, 2));
+//     // const g2 = 1 / Math.sqrt(1 + 3 * Math.pow(q, 2) * Math.pow(p1RD, 2) / Math.pow(Math.PI, 2));
 
-    // // Calculate expected scores
-    // const E1 = 1 / (1 + Math.pow(10, g1 * (them.elo - me.elo) * p2RD / 400));
-    // const E2 = 1 / (1 + Math.pow(10, g2 * (me.elo - them.elo) * p1RD / 400));
+//     // // Calculate expected scores
+//     // const E1 = 1 / (1 + Math.pow(10, g1 * (them.elo - me.elo) * p2RD / 400));
+//     // const E2 = 1 / (1 + Math.pow(10, g2 * (me.elo - them.elo) * p1RD / 400));
 
-    // // Calculate rating changes for win/loss
-    // const d1 = 1 / (Math.pow(q, 2) * Math.pow(g1, 2) * E1 * (1 - E1));
-    // const d2 = 1 / (Math.pow(q, 2) * Math.pow(g2, 2) * E2 * (1 - E2));
+//     // // Calculate rating changes for win/loss
+//     // const d1 = 1 / (Math.pow(q, 2) * Math.pow(g1, 2) * E1 * (1 - E1));
+//     // const d2 = 1 / (Math.pow(q, 2) * Math.pow(g2, 2) * E2 * (1 - E2));
 
-    // Calculate new ratings for all scenarios and round to 2 decimal places
-    // For draws, use 0.5 as the score (halfway between 0 and 1)
-    const ratingChanges: EloChange = {
-        win : 20,
-        loss : -20,
-        draw : 0,
-    };
-    return ratingChanges;
-}
+//     // Calculate new ratings for all scenarios and round to 2 decimal places
+//     // For draws, use 0.5 as the score (halfway between 0 and 1)
+//     const ratingChanges: EloChange = {
+//         win : 20,
+//         loss : -20,
+//         draw : 0,
+//     };
+//     return ratingChanges;
+// }
 

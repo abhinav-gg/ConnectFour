@@ -3,6 +3,14 @@ import { Player, Cell, Move } from '../Types/gameData';
 export const ROWS = 6
 export const COLS = 7
 
+// optimize
+
+// export for Redis
+
+// integrated error throughing
+
+// rename to standardGame
+
 export class GameState {
   currentPlayer: Player
   currentMoveIndex: number

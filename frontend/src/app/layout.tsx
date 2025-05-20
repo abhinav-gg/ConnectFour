@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   },
 };
 
+// Websocket Provider Wrapper!
+
 export default function RootLayout({
   children,
 }: {
