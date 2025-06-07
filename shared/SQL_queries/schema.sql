@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.Users (
 CREATE TABLE IF NOT EXISTS con4_schema.UTags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name STRING(50) NOT NULL UNIQUE
-);
+); -- may later have assignedBy etc
 
 INSERT INTO con4_schema.UTags (name) VALUES
   ('IM'),     -- International Master
@@ -40,14 +40,6 @@ CREATE TABLE IF NOT EXISTS con4_schema.Sessions (
 ----------------------------------------------
 
 
-CREATE TABLE IF NOT EXISTS con4_schema.TimeControls (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  base_time INT NOT NULL,
-  increment INT NOT NULL,
-  disadvantage INT NOT NULL DEFAULT 0,
-  UNIQUE (base_time, increment, disadvantage)
-);
-
 -- a game is between two players and is created when both players have joined
 CREATE TABLE IF NOT EXISTS con4_schema.Games (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -70,20 +62,21 @@ CREATE TABLE IF NOT EXISTS con4_schema.GamePlayers (
 CREATE TABLE IF NOT EXISTS con4_schema.Moves (
   game_id UUID NOT NULL REFERENCES con4_schema.Games(id),
   move INT NOT NULL CHECK (move >= 0), -- 42 moves in a game
-  player UUID NOT NULL REFERENCES con4_schema.Users(id),
+  player_number INT NOT NULL,
   col INT NOT NULL CHECK (col >= 0 AND col < 7),
-  played_at TIMESTAMP DEFAULT now(),
   delta FLOAT NOT NULL, -- time taken to make the move since the last move
   PRIMARY KEY (game_id, move) -- Use a composite key to autogenerate the sql index to speed up queries
-);
+); -- timing should be managed by server-side universal time cached by Redis
 
-CREATE TABLE IF NOT EXISTS con4_schema.GameLookup (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  player UUID NOT NULL REFERENCES con4_schema.Users(id) UNIQUE, -- the player may only have one game at a time
-  game UUID NULL REFERENCES con4_schema.Games(id), -- NULL if the game is not ongoing
-  game_info UUID NOT NULL REFERENCES con4_schema.GameInfo(id),
-  created_at TIMESTAMP DEFAULT now()
-);
+-- CREATE TABLE IF NOT EXISTS con4_schema.GameLookup (
+--   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--   player UUID NOT NULL REFERENCES con4_schema.Users(id) UNIQUE, -- the player may only have one game at a time
+--   game UUID NULL REFERENCES con4_schema.Games(id), -- NULL if the game is not ongoing
+--   game_info UUID NOT NULL REFERENCES con4_schema.GameInfo(id),
+--   created_at TIMESTAMP DEFAULT now()
+-- );
+
+-- The above should be completely removed and changed to a Redis list
 
 ------------------------------------------------------
 
@@ -117,16 +110,6 @@ INSERT INTO con4_schema.GameModes (name) VALUES
   ('standard-rapid'),
   ('friendly')
 ON CONFLICT DO NOTHING;
-
-INSERT INTO con4_schema.TimeControls (base_time, increment, disadvantage) VALUES
-  (10, 0, 30),
-  (5, 2, 25),
-  (5, 0, 20),
-  (3, 2, 15),
-  (2, 0, 10),
-  (1, 1, 5)
-ON CONFLICT DO NOTHING;
-
   
 
 CREATE TABLE IF NOT EXISTS con4_schema.Elo (
@@ -134,7 +117,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.Elo (
   player UUID NOT NULL REFERENCES con4_schema.users(id),
   mode UUID NOT NULL REFERENCES con4_schema.GameModes(id),
   elo FLOAT NOT NULL CHECK (elo > 0), -- no default as it varies
-  rating_deviation FLOAT NOT NULL CHECK (0 <= rating_deviation AND rating_deviation <= 350),
+  -- rating_deviation FLOAT NOT NULL CHECK (0 <= rating_deviation AND rating_deviation <= 350),
   updated_at TIMESTAMP DEFAULT now() NOT NULL, -- used for analytics
   UNIQUE (player, mode)
 );
@@ -142,9 +125,11 @@ CREATE TABLE IF NOT EXISTS con4_schema.Elo (
 CREATE TABLE IF NOT EXISTS con4_schema.GameInfo (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gamemode UUID NOT NULL REFERENCES con4_schema.GameModes(id),
-  time_control UUID NOT NULL REFERENCES con4_schema.TimeControls(id),
-  UNIQUE (gamemode, time_control)
-);
+  base_time INT NOT NULL,
+  increment INT NOT NULL,
+  disadvantage INT NOT NULL DEFAULT 0,
+  UNIQUE gamemode
+); -- add server side verification when accessing and updating
 
 ----------------------------------------------------
 
@@ -165,8 +150,18 @@ CREATE TABLE IF NOT EXISTS events_schema.ICHack25 (
   hackspace events_schema.hackspace NOT NULL
 );
 
+
+
+
+
+---------------------------------------------------------
+
+
 -- Create the public openings database
 CREATE DATABASE IF NOT EXISTS openings;
+
+-- figure out how to cache large amounts to the user's local
+-- maybe firebase?
 
 -- Grant select permission to the readonly_user on the openings table
 -- GRANT SELECT ON openings.openings TO readonly_user; -- why?

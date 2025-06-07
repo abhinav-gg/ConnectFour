@@ -1,4 +1,3 @@
-import { dbOperations } from '@/db/operations';
 import type { DiscordUserRequest, RecaptchaResponse, RequestWithRecaptcha } from '@/types/types';
 import express, { NextFunction, Request, Response } from 'express';
 import { getUserFromSession } from './index';

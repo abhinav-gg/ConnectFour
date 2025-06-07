@@ -36,6 +36,10 @@ export async function quitGameSearch(userId: string) {
  * @returns void
  */
 export async function enterGameSearch(userId: string, gameModeId: string, timeControl: TimeControl) {
+    
+    // use REDIS
+    
+    
     try {
         if (!validateTimeControl(timeControl)) {
             throw new Error('Invalid time control');
@@ -145,6 +149,9 @@ export function CategoriseTime(timeControl: TimeControl): string {
 
 export async function safeGetElo(userId: string, gamemodeId: string): Promise<Glicko> {
     let playerElo: Glicko;
+
+    // use elo and redis
+
     try {
         playerElo = await dbOperations.GetPlayerStats(userId, gamemodeId)
     } catch (error) {
