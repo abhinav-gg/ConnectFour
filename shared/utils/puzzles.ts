@@ -9,10 +9,10 @@ const examplePuzzles = [
 
 export class Puzzle {
     
-    puzStr: String;
+    puzStr: string;
     gameState: game.GameState;
 
-    constructor(puzStr: String) {
+    constructor(puzStr: string) {
         this.puzStr = puzStr;
         this.gameState = new game.GameState();
 

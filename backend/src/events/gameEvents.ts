@@ -830,7 +830,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
           }
           case 'resign': {
             const roomId = data.data.roomId;
-            const user = getUser(ws)?.userID!
+            const user = getUser(ws)?.userID;
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
             const moves = await dbOperations.GetMovesByShortCode(roomId);
             if (moves.length === 0) {
@@ -846,7 +846,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 //////////////////////////////////////////////////////////////////////////////////////////////////////
           case 'offerDraw': { 
             const roomId = data.data.roomId;
-            const user = getUser(ws)?.userID!
+            const user = getUser(ws)?.userID;
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
             const room = getRoom(roomId)!;
             if (room.gameOver) return;
@@ -860,7 +860,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
           }
           case 'acceptDraw': {
             const roomId = data.data.roomId;
-            const user = getUser(ws)?.userID!
+            const user = getUser(ws)?.userID;
             if (!(getRoomOfPlayer(user) === roomId)) throw new Error('User is not in the room to timeout');
             const room = getRoom(roomId)!;
             if (room.gameOver) return;
@@ -885,7 +885,7 @@ export const setupGameEvents = async (app: expressWs.Application) => {
 
     ws.on('close', async () => {
       // gracefully handle disconnections as player may reconnect
-      const userId = getUser(ws)?.userID!;
+      const userId = getUser(ws)?.userID;
       console.log('Client disconnected:', userId);
       
       // check if the user was in a game - if so then send a message to the other player

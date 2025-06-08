@@ -19,6 +19,10 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-require-imports': 'off',
-    '@typescript-eslint/no-unused-expressions': 'off'
+    '@typescript-eslint/no-unused-expressions': 'off',
+    'no-useless-catch': 'warn',
+    'no-extra-semi': 'warn',
+    // 'no-case-declarations': 'warn',
+    'prefer-const': 'warn',
   }
 }; 

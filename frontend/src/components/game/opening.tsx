@@ -15,7 +15,7 @@ interface FetchResponse {
 }
 
 // Update the fetchMarkdownContent function to use the new type
-async function fetchMarkdownContent(position: String): Promise<string> {
+async function fetchMarkdownContent(position: string): Promise<string> {
   // send request to a backend URL
   try {
     const response = await fetch(`${getConfig().backendUrl}/api/openings`, {

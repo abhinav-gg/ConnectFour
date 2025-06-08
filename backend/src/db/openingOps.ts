@@ -48,7 +48,7 @@ export class OpeningOperations {
       return this.client;
     }*/
   
-    async CreateOpening(position: String, description: String): Promise<any> {
+    async CreateOpening(position: string, description: string): Promise<any> {
       const client = await this.getAdminClient();
       try {
           const descriptionId = await client.query(
@@ -68,14 +68,13 @@ export class OpeningOperations {
       }
       return {"status": "Success"};
     }
-  
-    async GetOpening(position: String): Promise<any> {
+    async GetOpening(position: string): Promise<any> {
       const client = await this.getAdminClient();
       let result;
       try {
         result = await client.query(`SELECT description from OpeningDescription 
                                       INNER JOIN Opening ON Opening.opening_description_id = OpeningDescription.id
-                                      WHERE Opening.position = '${position}';`);
+                                      WHERE Opening.position = $1;`, [position]);
       
       } catch (error) {
         console.error('Failed to fetch opening:', error);
@@ -86,13 +85,13 @@ export class OpeningOperations {
       return result.rows[0]?.description || '# Unknown Opening';
     }
 
-    async ChangeOpening(position: String, description: String): Promise<any> {
-      const client = await this.getAdminClient();
-      try {
+    async ChangeOpening(position: string, description: string): Promise<any> {
+      const client = await this.getAdminClient();      try {
         const descriptionId = await client.query(
           `SELECT id FROM OpeningDescription
            INNER JOIN Opening ON Opening.opening_description_id = OpeningDescription.id
-           WHERE Opening.position = '${position}'`
+           WHERE Opening.position = $1`,
+          [position]
         );
         if (descriptionId.rowCount === 0) {
           throw new Error("Opening not found");
@@ -110,7 +109,7 @@ export class OpeningOperations {
       return {"status": "Success"};
     }
 
-    async AddOpeningConnection(new_position: String, old_position: String): Promise<any> {
+    async AddOpeningConnection(new_position: string, old_position: string): Promise<any> {
       const client = await this.getAdminClient();
       try {
         const result = await client.query(

@@ -1,9 +1,7 @@
-import { EloChange, GameMode, TimeControl } from '@shared/Models/gameInfo';
 import { dbOperations } from '@/db/operations';
-import { assignGame, createGame, safeGetElo } from './gameHelper';
-import { StandardStartingElo, StandardStartingRatingDeviation } from '@shared/constants';
-import { Glicko } from '@/types/types';
+import { GameMode, TimeControl } from '@shared/Models/gameInfo';
 import { eventEmitter } from '@shared/utils/eventEmitter';
+import { assignGame, createGame, safeGetElo } from './gameHelper';
 
 // file to control all elements of user matchmaking and game creation
 
@@ -76,7 +74,7 @@ const maxEloChange = 32;
 // These calculations were derived by Arpad Elo based on Bell curves
 
 export function calculatePredictedScore(p1Elo: number, p2Elo: number) {
-    let deltaElo = (p2Elo - p1Elo) / eloRange
+    const deltaElo = (p2Elo - p1Elo) / eloRange
     return 1/(1 + Math.pow(skillRange, deltaElo))
 }
 
