@@ -36,13 +36,13 @@ export default function GameBoard (props: GameBoardProps)  {
       setUpdateCount(prev => prev + 1);
     }
 
-    eventEmitter.on('boardUpdated', handleBoardUpdate);
-    eventEmitter.on('boardSet', handleBoardSet);
+    eventEmitter.sub('boardUpdated', handleBoardUpdate);
+    eventEmitter.sub('boardSet', handleBoardSet);
 
     // Cleanup subscriptions on component unmount
     return (() => {
-      eventEmitter.off('boardUpdated', handleBoardUpdate);
-      eventEmitter.off('boardSet', handleBoardSet);
+      eventEmitter.unsub('boardUpdated', handleBoardUpdate);
+      eventEmitter.unsub('boardSet', handleBoardSet);
     });
   });
 

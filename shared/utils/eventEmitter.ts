@@ -1,25 +1,23 @@
 // utils/eventEmitter.ts
-class EventEmitter {
-    private events: { [key: string]: Function[] } = {};
-  
-    on(event: string, listener: Function) {
-      if (!this.events[event]) {
-        this.events[event] = [];
-      }
-      this.events[event].push(listener);
+export class EventEmitter {
+  private events: { [key: string]: Function[] } = {};
+
+  sub(event: string, listener: Function) {
+    if (!this.events[event]) {
+      this.events[event] = [];
     }
-  
-    emit(event: string, data?: any) {
-      if (this.events[event]) {
-        this.events[event].forEach(listener => listener(data));
-      }
-    }
-  
-    off(event: string, listener: Function) {
-      if (this.events[event]) {
-        this.events[event] = this.events[event].filter(l => l !== listener);
-      }
+    this.events[event].push(listener);
+  }
+
+  pub(event: string, data?: any) {
+    if (this.events[event]) {
+      this.events[event].forEach(listener => listener(data));
     }
   }
-  
-  export const eventEmitter = new EventEmitter();
+
+  unsub(event: string, listener: Function) {
+    if (this.events[event]) {
+      this.events[event] = this.events[event].filter(l => l !== listener);
+    }
+  }
+}

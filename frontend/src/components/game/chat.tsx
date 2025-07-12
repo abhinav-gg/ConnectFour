@@ -46,9 +46,9 @@ export default function LiveChat({
           drawMatrix.confirmAction = (false);
         };
 
-        eventEmitter.on('drawOffered', handleDrawOffered);
+        eventEmitter.sub('drawOffered', handleDrawOffered);
         return () => {
-            eventEmitter.off('drawOffered', handleDrawOffered);
+            eventEmitter.unsub('drawOffered', handleDrawOffered);
         };
     }, []);
 
@@ -62,11 +62,11 @@ export default function LiveChat({
         return;
         // Handle accepting a draw
       } else if (drawMatrix.acceptAction) {
-          eventEmitter.emit('acceptDraw');
+          eventEmitter.pub('acceptDraw');
           drawMatrix.acceptAction = (false);
           drawMatrix.confirmAction = (false);
         } else {
-            eventEmitter.emit('tryDraw');
+            eventEmitter.pub('tryDraw');
             drawMatrix.offerAction = (true);
             drawMatrix.confirmAction = (false);
         }
@@ -88,7 +88,7 @@ export default function LiveChat({
             setTimeout(() => setConfirmResign(false), 3000);
             return;
         }
-        eventEmitter.emit('tryResign');
+        eventEmitter.pub('tryResign');
         setConfirmResign(false);
     };
 

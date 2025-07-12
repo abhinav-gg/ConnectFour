@@ -1,47 +1,14 @@
-backend/
-├── src/
-│   ├── auth/
-│   │   ├── middleware/
-│   │   │   ├── authMiddleware.ts       # JWT verification, role checks
-│   │   │   └── validateRequest.ts      # Request validation
-│   │   ├── controllers/
-│   │   │   └── authController.ts       # Login, register, password reset logic
-│   │   ├── services/
-│   │   │   ├── authService.ts          # JWT creation, password hashing
-│   │   │   └── emailService.ts         # Email verification, password reset emails
-│   │   └── routes/
-│   │       └── authRoutes.ts           # Auth-related route definitions
-│   │
-│   ├── users/
-│   │   ├── controllers/
-│   │   │   └── userController.ts       # User CRUD operations
-│   │   ├── services/
-│   │   │   └── userService.ts          # User business logic
-│   │   ├── models/
-│   │   │   └── userModel.ts            # User type definitions
-│   │   └── routes/
-│   │       └── userRoutes.ts           # User-related route definitions
-│   │
-│   ├── db/
-│   │   ├── connection.ts               # Database connection setup
-│   │   └── repositories/
-│   │       └── userRepository.ts       # Database queries for users
-│   │
-│   ├── utils/
-│   │   ├── errors/
-│   │   │   └── customErrors.ts         # Custom error classes
-│   │   ├── constants.ts                # App constants
-│   │   └── validation.ts               # Input validation helpers
-│   │
-│   ├── types/
-│   │   └── index.ts                    # Shared TypeScript types
-│   │
-│   └── app.ts                          # Express app setup
 
-
-ICH discord:
-
-- call api
-- name, hackspace, id
-
+i dont even want to know what this is a key for:
 "%I*He2I2@@4uclA6&oB5IAH@W^wl7yf9xu0I#Fzw#kW8#!5mi55GtJY^N0xcB4^S"
+
+
+tsconfig include all
+"./**/*",
+
+Dev Cmds:
+ssh -i C:\ProgramData\ssh\Con4User.pem -L 5432:con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com:5432 ec2-user@54.89.206.19
+
+psql -h con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com -U postgres -d con4db -p 5432
+
+

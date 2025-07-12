@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
-import Dashboard from '@/components/dashboard';
+import Dashboard from '@/components/sidebar';
 import { TimeControl, GameMode, GameInfo } from '@shared/Models/gameInfo';
 import { StandardTimecontrols } from '@shared/constants';
-import { ReCaptchaWrapper } from '@/components/captcha';
-import { useReCaptcha } from '@/components/usecaptcha';
-import AnonymousLogin from '@/components/MakeAnonymous';
+import { ReCaptchaWrapper } from '@/components/auth/captcha';
+import { useReCaptcha } from '@/components/auth/usecaptcha';
+import AnonymousLogin from '@/components/auth/MakeAnonymous';
 import Loading from '@/components/loading';
 
 export default function SetupPage() {

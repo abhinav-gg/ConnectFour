@@ -2,14 +2,13 @@ name: deploy website
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "staging" ] 
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+-[0-9]+-website*'
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", staging ]
 
 jobs:
-
   build-website-image:
     runs-on: ubuntu-latest
     permissions:
@@ -37,28 +36,21 @@ jobs:
             echo "TAG=latest" >> "$GITHUB_ENV"
           fi
 
-      - name: Build and push
+      # - name: Build and push
+      #   run: |
+      #     docker-compose build -t ghcr.io/abhinav-gg/connectfour -f backend.dockerfile .
+      #     docker-compose push ghcr.io/abhinav-gg/connectfour
+
+      - name: Build image locally without GHCR tag
         run: |
-          docker build -t ghcr.io/abhinav-gg/connectfour -f backend.dockerfile .
-          docker push ghcr.io/abhinav-gg/connectfour
+          docker-compose build
 
-  deploy-website:
-    needs: build-website-image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      # These are the DigitalOcean App IDs for the production and staging environments
-      - name: Set app
+      - name: Tag image for GHCR
         run: |
-          if [[ $GITHUB_REF == refs/tags/*-staging ]]; then
-            echo "DO_ID=staging??o.0" >> "$GITHUB_ENV"
-          else
-            echo "DO_ID=3b794986-648d-4155-b596-45ada62b9a4e" >> "$GITHUB_ENV"
-          fi
+          docker tag connectfour-api:latest ghcr.io/${{ github.repository_owner }}/${{ github.repository }}/connectfour-api:latest
 
-      - name: Deploy to DigitalOcean
-        run: doctl apps create-deployment ${{ env.DO_ID }}
+      - name: Push image to GHCR
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/${{ github.repository }}/connectfour-api:latest
+
+# needs testing

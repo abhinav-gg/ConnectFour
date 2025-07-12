@@ -12,11 +12,11 @@ COPY backend/tsconfig.json ./
 # Install dependencies
 RUN npm install --legacy-peer-deps
 
-# Copy the rest of the application
-COPY backend .
-
 # Copy the shared directory
 COPY shared ./shared
+
+# Copy the rest of the application
+COPY backend .
 
 # Build the application
 RUN npm run build

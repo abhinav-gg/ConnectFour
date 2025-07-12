@@ -51,13 +51,13 @@ export default function Opening({ ref }: OpeningProps) {
   };
 
   useEffect(() => {
-    eventEmitter.on('boardUpdated', handleBoardUpdate);
-    eventEmitter.on('boardSet', handleBoardUpdate);
+    eventEmitter.sub('boardUpdated', handleBoardUpdate);
+    eventEmitter.sub('boardSet', handleBoardUpdate);
 
     // Cleanup subscriptions on component unmount
     return () => {
-      eventEmitter.off('boardUpdated', handleBoardUpdate);
-      eventEmitter.off('boardSet', handleBoardUpdate);
+      eventEmitter.unsub('boardUpdated', handleBoardUpdate);
+      eventEmitter.unsub('boardSet', handleBoardUpdate);
     };
   }, []);
 

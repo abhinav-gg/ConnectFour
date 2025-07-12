@@ -3,9 +3,8 @@
 import abhinav from "@/assets/8aw2oifj8a289.jpg";
 import ivan from "@/assets/8e740a38d475.jpeg";
 import avery from "@/assets/c7764b38e10a.jpg";
-import Dashboard from '@/components/dashboard';
+import Dashboard from '@/components/sidebar';
 import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard';
-import { GameState } from '@shared/utils/game';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -51,8 +50,6 @@ export default function AboutUs() {
             <h2 className="text-3xl font-bold text-center mb-8 text-blue-600">Try it out!</h2>
             <SinglePlayerGameboard ref={new GameState()} />
           </div>
-
-          <div className="flex flex-col gap-y-8 mb-12">
             <div className="bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl p-5 mb-8 shadow-lg">
               <h2 className="text-3xl font-bold text-center">
                 About The Team
@@ -96,6 +93,5 @@ export default function AboutUs() {
         <br /><br /><br />
       </div>
     </div>
-  </div>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import { ArrowLeft } from 'lucide-react';
-import { GameState, ROWS, COLS } from '@shared/utils/game';
+import { GameState } from '@shared/utils/game';
+import { ROWS, COLS } from '@shared/constants';
 import { useEffect, useState } from 'react';
 import { eventEmitter } from '@shared/utils/eventEmitter';
 
@@ -36,7 +37,7 @@ export default function MoveHistory({
       setUpdateCount(prev => prev + 1);
     };
   
-    eventEmitter.on('boardUpdated', handleBoardUpdate);  
+    eventEmitter.sub('boardUpdated', handleBoardUpdate);  
 
     const handleKeyDown = (event: KeyboardEvent) => {
 
@@ -60,7 +61,7 @@ export default function MoveHistory({
       }
 
       return (() => {
-        eventEmitter.off('boardUpdated', handleBoardUpdate);  
+        eventEmitter.unsub('boardUpdated', handleBoardUpdate);  
       });
 
     }

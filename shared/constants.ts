@@ -29,4 +29,6 @@ export const StandardGameModes = {
         rapid: 'standard-rapid'
     },
     friendly: 'friendly'
-}
+};
+export const ROWS = 6;
+export const COLS = 7;

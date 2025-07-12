@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getConfig } from '@/config/env';
-import Dashboard from '@/components/dashboard'; // Import the Dashboard component
-import AdminPage from '../../../components/checkAuth'; // Import the CheckAdmin component
+import Dashboard from '@/components/sidebar'; // Import the Dashboard component
+import AdminPage from '../../../components/auth/checkAuth'; // Import the CheckAdmin component
 
 export default function AddOpening() {
   const router = useRouter();

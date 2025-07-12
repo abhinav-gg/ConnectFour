@@ -1,99 +1,195 @@
-import { eventEmitter } from './eventEmitter';
+import { EventEmitter } from './eventEmitter';
 import { Player, Cell, Move } from '../Types/gameData';
-export const ROWS = 6
-export const COLS = 7
+import { ROWS, COLS } from '../constants';
 
-// optimize
 
-// export for Redis
+export class StandardGame {
 
-// integrated error throughing
-
-// rename to standardGame
-
-export class GameState {
   currentPlayer: Player
   currentMoveIndex: number
   winner: Player | null
   gameOver: boolean
-  private board: Cell[][]
-  private moves: Move[]
+  eventEmitter: EventEmitter
+  protected board: Cell[][]
+  protected moves: Move[]
+  
+  constructor(movesOrString?: Move[] | string) {
 
-  constructor(moves?: Move[]) {
-    if (moves) {
-      console.log("Constructing from moves", moves)
-    }
-    this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    this.currentPlayer = moves ? (moves.length % 2) as Player : 0
-    this.currentMoveIndex = moves ? (moves.length-1) : -1
-    this.winner = null
-    this.gameOver = false
-    if (moves) {
-      this.moves = moves
-      this.constructFromMoves(true) // silent
-    }
-    else {
-      this.moves = []
-    }
-  }
+    this.eventEmitter = new EventEmitter();
+    this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+    this.gameOver = false;
+    this.winner = null;
+    this.moves = [];
+    this.currentMoveIndex = -1;
+    this.currentPlayer = 0; // Start with player 0 (Red)
 
-  evaluate(): number {
-    // Only evaluate actual wins, not threats
-    return 0
+
+    if (typeof movesOrString === "string") {
+
+      // first verify that the string contains only digits from 1 to COLS and length <= COLS * ROWS
+      if (!/^[1-COLS]+$/.test(movesOrString) || movesOrString.length > ROWS * COLS) {
+        throw new Error('Invalid move string.');
+      }
+
+
+      // Parse the string to create moves array
+      let moves = movesOrString.split('').map((col, i) => ({
+        player: i % 2 as Player,
+        col: parseInt(col, 10) - 1 // Convert to 0-based index
+      })) as Move[];
+      moves.forEach(move => {
+        let attempt = this.makeMove(move.col, true); // Silent mode to avoid event emission
+        if (!attempt.success) {
+          throw new Error(`Invalid move: Column ${move.col} is full or invalid.`);
+        }
+      });
+
+    } else if (Array.isArray(movesOrString)) {
+
+      movesOrString.forEach(move => {
+        // Check for correct player
+        if (move.player !== this.currentPlayer) { 
+          throw new Error(`Invalid move: Player ${move.player} attempted to play when it's Player ${this.currentPlayer}'s turn.`); 
+        }
+        if (!this.makeMove(move.col, true).success){ // Silent mode to avoid event emission 
+          throw new Error(`Invalid move: Column ${move.col} is full or invalid.`); 
+        } 
+      });
+    }
   }
 
   getMoves = (): Move[] => {
     return this.moves
   }
 
-  getMove = (index: number): Move | null => {
-    return this.moves[index] || null
-  }
-
   getBoard = (): Cell[][] => {
     return this.board
   }
 
-  setMoves = (moves: number[]) => {
-    if (moves) {
-      console.log("Constructing from moves", moves)
-      this.reset();
-      this.currentPlayer = ((moves.length % 2)===0) ? 1 : 0 
-      this.currentMoveIndex = (moves.length-2)
-      this.moves = moves.slice(0, moves.length-1).map(
-        (col, index) => ({ player: index % 2 as Player, col })) as Move[]
-      this.constructFromMoves(true) // silent
-      this.makeMove(moves[moves.length-1]);
+  getMove = (index: number): Move | null => {
+    return this.moves[index] || null
+  }
+
+  /**
+    * Returns the lowest available row in the specified column.
+    * If the column is full, returns -1.
+    * @param col - The column index to check (0 to COLS-1).
+    * @returns The row index (ROWS-1 to 0) where a piece can be placed (top is 0), or -1 if the column is full.
+    */
+  getAvailableRow(col: number): number {
+    
+    let targetRow = ROWS - 1
+    while (targetRow >= 0 && this.board[targetRow][col] !== null) {
+      targetRow--
     }
+    return targetRow
   }
 
-  setBoard = (board: Cell[][], silent:boolean = false) => {
-    // avoid use at all costs
-    if (!silent)
-      eventEmitter.emit('boardSet', { row: -1, col: -1, player: this.currentPlayer });
-    this.board = board
+  /**
+   * Makes a move in the specified column for the current player.
+   * @param col - The column index to place the piece (0 to COLS-1).
+   * @param silent - If true, does not emit any events.
+   * @returns An object containing the row index where the piece was placed and a success flag.
+   * @throws Error if the current move index is not the last move or if the game is already over.
+   */
+  makeMove(col: number, silent = false): { row: number; success: boolean } {
+
+    if (this.currentMoveIndex != this.moves.length - 1) {
+      // If the current move index is not the last move, reset the moves array
+      throw new Error('Cannot make a move when the current move index is not the last move.');
+    } else if (this.gameOver) {
+      // If the game is already over, do not allow further moves
+      //throw new Error('Cannot make a move when the game is already over.');
+      return { row: -1, success: false }; // Return failure silently
+    }
+    
+    const targetRow = this.getAvailableRow(col)
+    if (targetRow >= 0) {
+      this.board[targetRow][col] = this.currentPlayer
+      this.moves.push({ player: this.currentPlayer, col })
+      this.currentPlayer = this.currentPlayer === 1 ? 0 : 1
+      this.currentMoveIndex ++;
+      this.checkGameOver(targetRow, col); // Check if the move results in a win or draw
+
+      if (!silent) {
+        if (!this.gameOver) {
+          this.eventEmitter.pub('boardUpdated', { row: targetRow, col, player: this.currentPlayer });
+        } else {
+          this.eventEmitter.pub('gameEnded', this.winner);
+        }
+      }
+      
+      return { row: targetRow, success: true }
+    }
+    
+    return { row: -1, success: false }
   }
 
-  constructFromMoves(silent: boolean = false) {
+  get hashCode(): bigint {
+    
+    // for each column, get the topmost row that is not null
+    let hash = 0n;
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        let cell = this.board[row][col];
+        let intToAdd = 0n;
+        if (cell) {
+          intToAdd = BigInt(cell)
+        }
+        hash = (hash << BigInt(1)) | intToAdd; // Shift left by a bit for each cell
+      }
+    }
+
+    for (let i = 0; i < COLS; i++) {
+      hash = (hash << BigInt(3)) | BigInt(this.getAvailableRow(i) + 1); // Shift left by 3 bits for each column's available row
+    }
+    
+    return hash;
+  }
+
+  adjMoveIndex = (deltaIndex: number): boolean => {
+    let newInd = this.currentMoveIndex + deltaIndex
+    return this.setMoveIndex(newInd);
+  }
+
+  setMoveIndex = (newMoveIndex: number): boolean => {
+    /**.
+      * Sets the current move index to the new move index and updates the board
+      * @param newMoveIndex - The new move index to check.
+      * @returns {boolean} - True if successful.
+    */
+
+    if (newMoveIndex < 0 || newMoveIndex >= this.moves.length) {
+      return false;
+    }
+
+    this.currentMoveIndex = newMoveIndex
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
+    this.moves.forEach(element => {
+      
+      // moveIndex is valid so construct without any checks
+      this.board[this.getAvailableRow(element.col)][element.col] = element.player;
 
-    for (let i = 0; i < Math.min(this.moves.length, this.currentMoveIndex+1); i++) {
-      const move = this.moves[i]
-      let row = ROWS - 1
-      while (row >= 0 && this.board[row][move.col] !== null) {
-        row--
-      }
-      if (row >= 0) {
-        this.board[row][move.col] = move.player
-      }
-    }
-    if (!silent) {
-      const lastCol = this.moves.length > 0 ? this.moves[this.moves.length - 1].col : -1;
-      eventEmitter.emit('boardSet', { row: -1, col: lastCol, player: this.currentPlayer });
-    }
+    });
+    
+    return true
   }
 
-  checkWinner(row: number, col: number): boolean {
+  exportMoves(): string {
+    return this.moves.map(({ player, col }) => col).join('')
+  }
+
+  reset(): void {
+    this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
+    this.currentPlayer = 0
+    this.currentMoveIndex = -1
+    this.winner = null
+    this.gameOver = false
+    this.moves = []
+  }
+
+  checkGameOver(row: number, col: number) {
+
     const directions = [
       [0, 1],  // horizontal
       [1, 0],  // vertical
@@ -126,9 +222,9 @@ export class GameState {
         return true
       }
     }
-
-    // Check for draw
-    if (this.board.every(row => row.every(cell => cell !== null))) {
+      
+    // Check for draw (full top row)
+    if (this.board[0].every(cell => cell !== null)) {
       this.gameOver = true
       return true
     }
@@ -136,156 +232,17 @@ export class GameState {
     return false
   }
 
-  getAvailableRow(col: number): number {
-    let targetRow = ROWS - 1
-    while (targetRow >= 0 && this.board[targetRow][col] !== null) {
-      targetRow--
-    }
-    return targetRow
-  }
-
-  makeMove(col: number, silent = false): { row: number; success: boolean } {
-    const targetRow = this.getAvailableRow(col)
-    // ensure that the board reflects all the moves made i.e. not in history view
-    // count non-empty cells in board
-    let nonEmptyCells = 0;
-    for (let i = 0; i < ROWS; i++) {
-      for (let j = 0; j < COLS; j++) {
-        if (this.board[i][j] !== null) {
-          nonEmptyCells++;
-        }
-      }
-    }
-    if (nonEmptyCells < this.moves.length) {
-      return { row: -1, success: false }
-    }
-    
-    if (targetRow >= 0) {
-      this.board[targetRow][col] = this.currentPlayer
-      this.moves.push({ player: this.currentPlayer, col })
-      this.checkWinner(targetRow, col)
-      this.currentPlayer = this.currentPlayer === 1 ? 0 : 1
-
-      this.currentMoveIndex ++;
-      // Call boardUpdated event!
-      if (!silent)
-        eventEmitter.emit('boardUpdated', { row: targetRow, col, player: this.currentPlayer });
-      
-      return { row: targetRow, success: true }
-    }
-    
-    return { row: -1, success: false }
-  }
-
-  getBoardAtMove(moveIndex: number): Cell[][] {
-    const newBoard = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    for (let i = 0; i <= moveIndex; i++) {
-      const move = this.moves[i]
-      let row = ROWS - 1
-      while (row >= 0 && newBoard[row][move.col] !== null) {
-        row--
-      }
-      if (row >= 0) {
-        newBoard[row][move.col] = move.player
-      }
-    }
-    return newBoard
-  }
-
-  exportMoves(): string {
-    return this.moves.map(({ player, col }) => col).join('')
-  }
-
-  reset(): void {
-    this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    this.currentPlayer = 0
-    this.currentMoveIndex = -1
-    this.winner = null
-    this.gameOver = false
-    this.moves = []
-  }
-
-  checkGameOver(): void {
-    // Check for wins
+  prettyPrintBoard(): string { // used for debugging and testing
+    let output = ''
     for (let row = 0; row < ROWS; row++) {
       for (let col = 0; col < COLS; col++) {
         const cell = this.board[row][col]
-        if (cell !== null && checkWinner(this.board, row, col, cell)) {
-          this.winner = cell
-          this.gameOver = true
-          return
-        }
+        output += cell === null ? '.' : (cell === 0 ? 'R' : 'Y')
       }
+      output += '\n'
     }
-
-    // Check for draw (full board)
-    if (this.board.every(row => row.every(cell => cell !== null))) {
-      this.gameOver = true
-      this.winner = null
-      return
-    }
-
-    // Game is still ongoing
-    this.gameOver = false
-    this.winner = null
+    return output
   }
 
-  // Call this method when the game ends
-  endGame(winner: Player | null) {
-    this.gameOver = true;
-    this.winner = winner;
-    eventEmitter.emit('gameEnded', winner);
-  }
-}
 
-export function generateAnalysis(board: Cell[][], currentPlayer: Player) {
-  return {
-    evaluation: currentPlayer === 0 ? 0.5 : -0.5,
-    explanation: "Slight advantage based on center control",
-    alternativeMoves: [
-      { column: Math.floor(Math.random() * COLS), evaluation: 0.3 },
-      { column: Math.floor(Math.random() * COLS), evaluation: -0.2 },
-      { column: Math.floor(Math.random() * COLS), evaluation: 0.1 }
-    ]
-  }
-}
-
-export function checkWinner(board: Cell[][], row: number, col: number, player: Player): boolean {
-  const directions = [
-    [0, 1],  // horizontal
-    [1, 0],  // vertical
-    [1, 1],  // diagonal right
-    [1, -1], // diagonal left
-  ]
-
-  const currentPlayerValue = board[row][col]
-
-  for (const [dx, dy] of directions) {
-    let count = 1
-    for (const factor of [-1, 1]) {
-      let r = row + factor * dx
-      let c = col + factor * dy
-
-      while (
-        r >= 0 && r < ROWS &&
-        c >= 0 && c < COLS &&
-        board[r][c] === currentPlayerValue
-      ) {
-        count++
-        r += factor * dx
-        c += factor * dy
-      }
-    }
-
-    if (count >= 4) {
-      return true
-    }
-  }
-
-  // Check for draw
-  if (board.every(row => row.every(cell => cell !== null))) {
-    return true
-  }
-
-  return false
 }

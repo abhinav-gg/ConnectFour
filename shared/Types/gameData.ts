@@ -8,4 +8,9 @@ export type DrawMatrix = {
     offerAction: boolean
 }
 
+export interface AnalysisProps {
+    eval: number
+    nextMoveMade: { column: number; evaluation: number | null }[]
+}
+
 // share the board and functionality as well in the future

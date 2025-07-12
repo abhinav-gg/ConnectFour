@@ -1,6 +1,6 @@
 'use client'
 
-import Dashboard from '@/components/dashboard'
+import Dashboard from '@/components/sidebar'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 

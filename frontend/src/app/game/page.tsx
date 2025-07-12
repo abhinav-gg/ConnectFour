@@ -3,11 +3,11 @@
 import GameBoard from '@/components/game/game-board';
 import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
-import Dashboard from '@/components/dashboard';
+import Dashboard from '@/components/sidebar';
 import MoveHistory from '@/components/game/history';
 import { GameState } from '@shared/utils/game';
 import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut, OpponentAbandoned, Resign, OfferDraw, AcceptDraw } from '@shared/Types/websocketData';
-import AuthPage from '@/components/checkAuth';
+import AuthPage from '@/components/auth/checkAuth';
 import Timer from '@/components/game/timer';
 import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
 import LiveChat from '@/components/game/chat';
@@ -249,7 +249,7 @@ export default function GamePage() {
           break;
         case 'drawOffer':
           pushAnnouncement('Opponent offered a draw (you\'re probably winning)!');
-          eventEmitter.emit('drawOffered');
+          eventEmitter.pub('drawOffered');
           break;
         default:
           console.log('Unknown message:', data);
@@ -301,15 +301,15 @@ export default function GamePage() {
 
   useEffect(() => {
 
-    eventEmitter.on('tryResign', handleAttemptResign);
-    eventEmitter.on('tryDraw', handleDrawOffer);
-    eventEmitter.on('acceptDraw', handleDrawAccept);
+    eventEmitter.sub('tryResign', handleAttemptResign);
+    eventEmitter.sub('tryDraw', handleDrawOffer);
+    eventEmitter.sub('acceptDraw', handleDrawAccept);
 
     return () => {
 
-      eventEmitter.off('tryResign', handleAttemptResign);
-      eventEmitter.off('tryDraw', handleDrawOffer);
-      eventEmitter.off('acceptDraw', handleDrawAccept);
+      eventEmitter.unsub('tryResign', handleAttemptResign);
+      eventEmitter.unsub('tryDraw', handleDrawOffer);
+      eventEmitter.unsub('acceptDraw', handleDrawAccept);
 
       console.log('Closing WebSocket connection...');
       socket.current?.close();

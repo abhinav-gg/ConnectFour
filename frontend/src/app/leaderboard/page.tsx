@@ -7,7 +7,7 @@ import LeaderboardLayout from '@/components/leaderboard';
 import { StandardGameModes } from '@shared/constants';
 import { GameMode } from '@shared/Models/gameInfo';
 import { getConfig } from '@/config/env';
-import Dashboard from '@/components/dashboard';
+import Dashboard from '@/components/sidebar';
 
 export default function Leaderboard() {
   const stdModes = StandardGameModes.standard;

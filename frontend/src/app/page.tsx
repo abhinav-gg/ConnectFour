@@ -1,201 +1,156 @@
-'use client';
+"use client"
 
-import { useEffect, useState, useRef } from 'react';
-import MainLogoAnimated from '@/components/mainlogo_animated';
-import Dashboard from '@/components/dashboard';
+import { Button } from "@/components/ui/button"
+import { Gamepad2, Bot } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useFocusTrap } from "@/hooks/use-focus-trap"
+import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation"
+import { Layout } from "@/components/mainlayout"
+import { Board } from "@/components/boards/Board"
 
-interface DragState {
-  velocityX: number;
-  velocityY: number;
-  isAnimating: boolean;
-}
 
-export default function Home() {
-  const text = "Made by Abhinav and Friends";
-  const [showText, setShowText] = useState(false);
-  const [opacities, setOpacities] = useState<number[]>([]);
-  const dragRef1 = useRef<HTMLDivElement>(null);
-  const dragRef2 = useRef<HTMLDivElement>(null);
-  const dragRef3 = useRef<HTMLDivElement>(null);
-  const dragStates = useRef<Map<HTMLDivElement, DragState>>(new Map());
+export default function Component() {
+  // Connect 4 board component
+  // Remove the existing Connect4Board component definition and replace with:
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowText(true);
-      setOpacities(new Array(text.length).fill(0));
-    }, 3000);
+  // Then in the component, replace all Connect4Board usages:
 
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (showText) {
-      text.split('').forEach((_, index) => {
-        const duration = 2000;
-        const staggerDelay = 200;
-        const steps = 20;
-        const stepTime = duration / steps;
-
-        for (let step = 1; step <= steps; step++) {
-          setTimeout(() => {
-            setOpacities(prev => {
-              const newOpacities = [...prev];
-              newOpacities[index] = step / steps;
-              return newOpacities;
-            });
-          }, index * staggerDelay + step * stepTime);
-        }
-      });
-    }
-  }, [showText]);
-
-  const animate = (element: HTMLDivElement, dragState: DragState) => {
-    if (!dragState.isAnimating) return;
-
-    const rect = element.getBoundingClientRect();
-    const transform = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
-    let x = transform.m41;
-    let y = transform.m42;
-
-    // Apply velocity
-    x += dragState.velocityX;
-    y += dragState.velocityY;
-
-    // Check for wall collisions
-    if (rect.left + dragState.velocityX < 0 || rect.right + dragState.velocityX > window.innerWidth) {
-      dragState.velocityX *= -0.8; // Bounce with some energy loss
-    }
-    if (rect.top + dragState.velocityY < 0 || rect.bottom + dragState.velocityY > window.innerHeight) {
-      dragState.velocityY *= -0.8; // Bounce with some energy loss
-    }
-
-    // Apply friction
-    dragState.velocityX *= 0.98;
-    dragState.velocityY *= 0.98;
-
-    // Update position
-    element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-
-    // Stop animation when velocity is very low
-    if (Math.abs(dragState.velocityX) < 0.01 && Math.abs(dragState.velocityY) < 0.01) {
-      dragState.isAnimating = false;
-      return;
-    }
-
-    requestAnimationFrame(() => animate(element, dragState));
-  };
-
-  const handleDrag = (e: React.MouseEvent, ref: React.RefObject<HTMLDivElement>) => {
-    e.preventDefault();
-    const element = ref.current;
-    if (!element) return;
-
-    // Stop any ongoing animation
-    const dragState = dragStates.current.get(element) || { velocityX: 0, velocityY: 0, isAnimating: false };
-    dragState.isAnimating = false;
-    dragStates.current.set(element, dragState);
-
-    // Get the current transform values
-    const transform = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
-    const startX = e.clientX - transform.m41;
-    const startY = e.clientY - transform.m42;
-    let lastX = e.clientX;
-    let lastY = e.clientY;
-    let lastTime = Date.now();
-
-    const onMouseMove = (e: MouseEvent) => {
-      const currentTime = Date.now();
-      const timeElapsed = currentTime - lastTime;
-      
-      // Calculate new position
-      const x = e.clientX - startX;
-      const y = e.clientY - startY;
-      
-      // Update velocity
-      dragState.velocityX = (e.clientX - lastX) / timeElapsed * 16; // Scale to roughly 60fps
-      dragState.velocityY = (e.clientY - lastY) / timeElapsed * 16;
-      const MaxVelocity = 45;
-      // Using vector magnitude, limit the velocity
-      const velocity = Math.sqrt(dragState.velocityX ** 2 + dragState.velocityY ** 2);
-      if (velocity > MaxVelocity) {
-        // Normalize the velocity vector
-        dragState.velocityX = dragState.velocityX / velocity * MaxVelocity;
-        dragState.velocityY = dragState.velocityY / velocity * MaxVelocity;
-      }
-
-      // Update position
-      element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-
-      // Update last positions
-      lastX = e.clientX;
-      lastY = e.clientY;
-      lastTime = currentTime;
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-
-      // Start animation
-      dragState.isAnimating = true;
-      animate(element, dragState);
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
+  const [showSecurityModal, setShowSecurityModal] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      <Dashboard 
-        closed={true}/>
-      <div className="flex-1 relative overflow-hidden">
-        {/* Main Logo */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-1/3 h-1/3">
-            <MainLogoAnimated />
+    <Layout>
+      {/* Skip to main content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:right-4 bg-brand-accent-orange text-white px-4 py-2 rounded z-50 focus:ring-2 focus:ring-white"
+      >
+        Skip to main content
+      </a>
+
+      {/* Hero Section */}
+      <section id="main-content" className="py-8" aria-labelledby="hero-heading">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="flex justify-center lg:justify-start">
+            <Board ariaLabel="Large Connect 4 game board showing empty game grid" />
+          </div>
+
+          <div className="space-y-8">
+            <div>
+              <h1 id="hero-heading" className="text-3xl lg:text-4xl xl:text-5xl font-bold mb-6">
+                Play the game of the mind
+                <br />
+                on the best online site!
+              </h1>
+
+              <div className="flex gap-8 text-sm text-brand-text-muted mb-8" role="group" aria-label="Game statistics">
+                <div>
+                  <span className="text-white font-semibold">+100,000</span> Games Today
+                </div>
+                <div>
+                  <span className="text-white font-semibold">+100,000</span> Playing Now
+                </div>
+              </div>
+            </div>
+
+            <nav aria-label="Game mode selection">
+              <div className="space-y-4">
+                <button
+                  className="flex items-center gap-4 bg-brand-hover hover:bg-brand-primary focus:bg-brand-primary focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-primary rounded-xl p-4 w-full text-left transition-all"
+                  onClick={() => setShowSecurityModal(true)}
+                  aria-describedby="play-online-description"
+                >
+                  <Gamepad2 className="w-8 h-8" aria-hidden="true" />
+                  <div>
+                    <div className="font-semibold">Play Online</div>
+                    <div id="play-online-description" className="text-sm text-brand-text-muted">
+                      Play with anyone at your level
+                    </div>
+                  </div>
+                </button>
+
+                <button className="flex items-center gap-4 bg-brand-hover hover:bg-brand-primary focus:bg-brand-primary focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-primary rounded-xl p-4 w-full text-left transition-all">
+                  <Bot className="w-8 h-8" aria-hidden="true" />
+                  <div>
+                    <div className="font-semibold">Play Computer</div>
+                    <div className="text-sm text-brand-text-muted">Play vs customizable training bots</div>
+                  </div>
+                </button>
+              </div>
+            </nav>
           </div>
         </div>
+      </section>
 
-        {/* Animated Text */}
-        <div className="absolute inset-x-0 bottom-12 text-center font-bold text-black text-lg z-10">
-          {showText && text.split('').map((char, index) => (
-            <span key={index} className="inline-block" style={{ opacity: opacities[index] }}>
-              {char === ' ' ? '\u00A0' : char}
-            </span>
-          ))}
-        </div>
+      {/* Solve Puzzles Section */}
+      <section className="py-16" aria-labelledby="puzzles-heading">
+        <div className="bg-brand-secondary rounded-3xl p-8 lg:p-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div>
+              <h2 id="puzzles-heading" className="text-3xl lg:text-4xl font-bold mb-8">
+                Solve Puzzles
+              </h2>
+              <Button className="bg-brand-hover hover:bg-brand-primary focus:bg-brand-primary focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-secondary text-white px-8 py-3 rounded-xl mb-8 transition-all">
+                Solve Puzzles
+              </Button>
+              <p className="text-brand-text-muted text-lg leading-relaxed">
+                Solve some very cool AI
+                <br />
+                generated connect four puzzles
+                <br />
+                to increase your rating.. and ego.
+              </p>
+            </div>
 
-        {/* Draggable Elements */}
-        <div 
-          ref={dragRef1}
-          className="fixed bg-white p-4 rounded-lg shadow-lg cursor-move z-50 select-none"
-          style={{ left: '10%', top: '10%', transform: 'translate3d(0, 0, 0)' }}
-          onMouseDown={(e) => handleDrag(e, dragRef1)}
-        >
-          <h2 className="text-lg font-semibold whitespace-nowrap">Welcome to the Game!</h2>
+            <div className="flex justify-center">
+              <Board ariaLabel="Connect 4 puzzle board for solving challenges" />
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div 
-          ref={dragRef2}
-          className="fixed bg-white p-4 rounded-lg shadow-lg cursor-move z-50 select-none"
-          style={{ right: '10%', top: '10%', transform: 'translate3d(0, 0, 0)' }}
-          onMouseDown={(e) => handleDrag(e, dragRef2)}
-        >
-          <p className="text-lg whitespace-nowrap font-mono">IN DEVELOPMENT</p>
-          <p className="text-lg whitespace-nowrap">Con4 is under construction 🚧</p>
-        </div>
+      {/* Watch Live Section */}
+      <section className="py-16" aria-labelledby="watch-heading">
+        <div className="bg-brand-secondary rounded-3xl p-8 lg:p-12">
+          <h2 id="watch-heading" className="text-3xl lg:text-4xl font-bold text-center mb-12">
+            Watch Live
+          </h2>
 
-        <div 
-          ref={dragRef3}
-          className="fixed bg-white p-4 rounded-lg shadow-lg cursor-move z-50 select-none"
-          style={{ left: '10%', bottom: '10%', transform: 'translate3d(0, 0, 0)' }}
-          onMouseDown={(e) => handleDrag(e, dragRef3)}
-        >
-          <p className="text-lg whitespace-nowrap">Contact Us: support@con4.uk</p>
-          <p className="text-lg whitespace-nowrap">Our Discord: @con4.uk</p>
+          <div
+            className="flex flex-col md:flex-row items-center justify-center gap-8 mb-12"
+            role="group"
+            aria-label="Live game boards"
+          >
+            <Board ariaLabel="Live game board 1 - ongoing match" />
+            <Board ariaLabel="Live game board 2 - ongoing match" />
+          </div>
+
+          <div className="text-center">
+            <Button className="bg-brand-hover hover:bg-brand-primary focus:bg-brand-primary focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-secondary text-white px-8 py-3 rounded-xl transition-all">
+              See Current games
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
-  );
+      </section>
+
+      {/* Learn Connect 4 Section */}
+      <section className="py-16" aria-labelledby="learn-heading">
+        <div className="bg-brand-secondary rounded-3xl p-8 lg:p-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div className="flex justify-center order-2 lg:order-1">
+              <Board ariaLabel="Connect 4 tutorial board for learning the game" />
+            </div>
+
+            <div className="order-1 lg:order-2">
+              <h2 id="learn-heading" className="text-3xl lg:text-4xl font-bold mb-8">
+                Learn Connect 4
+              </h2>
+              <Button className="bg-brand-hover hover:bg-brand-primary focus:bg-brand-primary focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-secondary text-white px-8 py-3 rounded-xl transition-all">
+                Learn Connect 4
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </Layout>
+  )
 }

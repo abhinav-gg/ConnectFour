@@ -11,12 +11,6 @@
   all: revert;
 }
 
-/* @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-} */
 
 body {
   color: var(--foreground);
@@ -41,24 +35,15 @@ body {
   left: 0;
 }
 
+/* Prevent drag for all board cells */
+.no-drag {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 @font-face {
   font-family: 'ICHack';
   src: URL('../assets/ic-hack.ttf') format('truetype');
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
 }
 
 .font-ichack {

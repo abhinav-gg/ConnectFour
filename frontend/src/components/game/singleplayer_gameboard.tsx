@@ -39,16 +39,16 @@ export default function SinglePlayerGameboard(props: SinglePlayerGameboardProps)
       setUpdateCount(prev => prev + 1);
     };
 
-    eventEmitter.on('boardUpdated', handleBoardUpdate);
-    eventEmitter.on('gameEnded', handleGameEnd);
-    eventEmitter.on('boardSet', handleBoardSet);
+    eventEmitter.sub('boardUpdated', handleBoardUpdate);
+    eventEmitter.sub('gameEnded', handleGameEnd);
+    eventEmitter.sub('boardSet', handleBoardSet);
 
     // Cleanup subscriptions on component unmount
     return () => {
       console.log("UNMOUNTING");
-      eventEmitter.off('boardUpdated', handleBoardUpdate);
-      eventEmitter.off('gameEnded', handleGameEnd);
-      eventEmitter.off('boardSet', handleBoardSet);
+      eventEmitter.unsub('boardUpdated', handleBoardUpdate);
+      eventEmitter.unsub('gameEnded', handleGameEnd);
+      eventEmitter.unsub('boardSet', handleBoardSet);
     };
   }, []);
 

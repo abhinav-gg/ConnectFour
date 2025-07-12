@@ -19,14 +19,14 @@ async function generateSessionToken(): Promise<string> {
 
 export async function createSession(userId: string): Promise<string> {
   const token = await generateSessionToken();
-  await dbOperations.createUserSession(userId, token);
+  // await dbOperations.createUserSession(userId, token);
   return token;
 }
 
 export async function revokeSession(token: string): Promise<void> {
-  await dbOperations.revokeSessionByToken(token);
+  // await dbOperations.revokeSessionByToken(token);
 }
 
-export async function getUserFromSession(token: string): Promise<{ userId: string | null; }> {
-  return { userId: await dbOperations.getUserFromSession(token) };
-}
+// export async function getUserFromSession(token: string): Promise<{ userId: string | null; }> {
+//   // return { userId: await dbOperations.getUserFromSession(token) };
+// }

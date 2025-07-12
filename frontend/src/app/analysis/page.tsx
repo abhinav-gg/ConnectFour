@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import MoveHistory from '@/components/game/history'
 import SinglePlayerGameboard from '@/components/game/singleplayer_gameboard'
-import Dashboard from '@/components/dashboard'
+import Dashboard from '@/components/sidebar'
 import GameAnalysis from '@/components/game/analysis'
 import { Analysis } from '@shared/utils/analysis'
 import { GameState } from '@shared/utils/game'

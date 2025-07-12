@@ -1,14 +1,12 @@
 'use client';
 // TODO: update the dashboard to be the new one when on this page and add the ichack 2025 logo
-import Dashboard from '@/components/dashboard';
-import IchackLogo from '@/components/ichacklogo';
-import { animated, config, useSpring } from '@react-spring/web';
+import Dashboard from '@/components/sidebar';
+import IchackLogo from '@/components/events/ichacklogo';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
 import { getConfig } from '@/config/env';
-import Confetti from 'react-confetti';
-import IchackBanner from '@/components/ichackbanner';
+import IchackBanner from '@/components/events/ichackbanner';
 import duck from "@/assets/duck.svg";
 import { useCallback } from 'react';
 import Loading from '@/components/loading';

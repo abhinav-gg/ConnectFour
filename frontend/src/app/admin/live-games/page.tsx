@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import CheckAdmin from '@/components/checkAdmin';
-import Dashboard from '@/components/dashboard';
+import CheckAdmin from '@/components/auth/checkAdmin';
+import Dashboard from '@/components/sidebar';
 import Loading from '@/components/loading';
 
 interface LiveGame {
