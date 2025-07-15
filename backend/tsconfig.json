@@ -4,23 +4,31 @@
     "module": "commonjs",
     "outDir": "./dist",
     "strict": true,
+    "types": ["node"],
+    "lib": ["es2020"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@/*": ["./src/*", "./*"],
       "@config/*": ["./config/*"],
-      "@tests/*": ["./tests/*", "./*"],
+      "@tests/*": ["./tests/*"],
       "@data/*": ["./data/*"],
       "@shared/*": ["../shared/*", "./shared/*"],
     }
   },
   "include": [
+    "../shared/**/*", 
     "./tests/*",
     "./config/*",
-    "src/controllers/api/**/*",
+    "./src/api-server.ts", 
+    "./src/controllers/api/**/*",
     "./src/lib/**/*",
-    "../shared/**/*"
-, "src/api-server.ts", "src/controllers/socket/events", "src/redis/redis.ts"  ],
+    "./src/utils/**/*",
+    "./src/types/**/*",
+    "./src/redis/**/*",
+    "./src/db/**/*",
+    "./src/services/**/*"
+  ],
   "exclude": ["node_modules"]
 } 

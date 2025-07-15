@@ -6,7 +6,7 @@ import { GameState } from '@shared/utils/game';
 import { eventEmitter } from '@shared/utils/eventEmitter';
 import { getConfig } from '@/config/env';
 import remarkHtml from 'remark-html';
-import { Player } from '@shared/Types/gameData';
+import { Player } from '@shared/types/game';
 
 // Define a type for the response
 interface FetchResponse {

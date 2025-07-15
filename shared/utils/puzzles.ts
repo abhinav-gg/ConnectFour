@@ -1,11 +1,10 @@
 import { StandardGame } from "./game";
-import { COLS, ROWS } from "@shared/constants";
+import { COLS, ROWS } from "@shared/constants/game";
 
 export const examplePuzzles = [
     "45342133|4243543",
     "4435213533|246",
 ] 
-
 
 export class Puzzle {
     

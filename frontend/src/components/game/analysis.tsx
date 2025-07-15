@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { Analysis, AnalysisProps } from '@shared/utils/analysis'
 import { eventEmitter } from '@shared/utils/eventEmitter'
-import { Player } from '@shared/Types/gameData'
+import { Player } from '@shared/types/game'
 
 interface AnalysisHistoryProps {
   analysis: Analysis

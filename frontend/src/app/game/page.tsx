@@ -9,10 +9,10 @@ import { GameState } from '@shared/utils/game';
 import { JoinGame, MakeMove, ClientMessage, StartTimer, ServerMessage, SendMessage, MoveMade, ReceiveMessage, PlayerTimeOut, OpponentAbandoned, Resign, OfferDraw, AcceptDraw } from '@shared/Types/websocketData';
 import AuthPage from '@/components/auth/checkAuth';
 import Timer from '@/components/game/timer';
-import { ChatMessage, EloChange, GamePlayer } from '@shared/Models/gameInfo';
+import { ChatMessage, EloChange, GamePlayer } from '@shared/Types/gameInfo';
 import LiveChat from '@/components/game/chat';
 import EndPopup from '@/components/game/endPopup';
-import { DrawMatrix, Player } from '@shared/Types/gameData';
+import { DrawMatrix, Player } from '@shared/types/game';
 import { StandardReconnectionTime } from '@shared/constants';
 import { eventEmitter } from '@shared/utils/eventEmitter'
 

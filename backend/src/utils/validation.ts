@@ -1,4 +1,4 @@
-import { TimeControl } from "@shared/Models/gameInfo";
+import { TimeControl } from '@shared/types/game';
 
 /**
  * Validates username format
@@ -44,14 +44,9 @@ export const validateEmail = (email: string): boolean => {
 export const validatePassword = (password: string): boolean => {
   if (!password || password.length < 12) return false;
   
-  const passwordRules = {
-    hasUpperCase: /[A-Z]/,
-    hasLowerCase: /[a-z]/,
-    hasNumber: /[0-9]/,
-    hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/
-  };
-
-  return Object.values(passwordRules).every(rule => rule.test(password));
+  // Ensure only valid ASCII characters are used
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/;
+  return passwordRegex.test(password);
 };
 
 /**

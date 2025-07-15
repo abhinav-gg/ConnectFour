@@ -9,6 +9,8 @@
         "start": "node -r tsconfig-paths/register -r ts-node/register/transpile-only --require tsconfig-paths/register dist/backend/src/api-server.js --baseUrl ./dist"
     },
     "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.844.0",
+        "@aws-sdk/lib-dynamodb": "^3.844.0",
         "@types/nodemailer": "^6.4.17",
         "argon2": "^0.41.1",
         "bullmq": "^5.56.4",

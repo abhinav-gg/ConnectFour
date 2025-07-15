@@ -1,0 +1,42 @@
+// Add prefixes
+
+GAME:
+{
+  "i": "123e4567-e89b-12d3-a456-426614174000",      // Game UUID as PK
+  "s": "ABC123",                                    // Shortcode (nullable)
+  "p": ["user1", "user2"],                          // Ordered list of player IDs
+  "t": 1699852800,                                  // Timestamp (unix time)
+  "m": Buffer,                                      // GameInfo 4 bytes
+  "d": Buffer,                                      // Game data (binary/base64)
+  "r": 3                                            // Result (4-bit number)
+  // event optional?
+}
+
+
+PLAYERDATA
+{
+  "p": "user1",                   // Player ID as PK with prefix 'p#'
+  "s": "g#uuid",                  // Sort key with prefix 'g#' + Game UUID
+  "d": 5                          // Delta elo (optional)
+}
+
+{
+  "p": "user1",                     // Player ID as PK with prefix 'p#'
+  "s": "m#binary",                  // Sort key with prefix 'm#' + Event/GameMode in binary
+  "d" : 1040                        // Current Elo
+}
+
+{
+  "p": "user1",                     // Player ID as PK
+  "s": "t#20250714",                // Aggregation prefix 't#' + date in YYYYMMDD
+  "m": {                            // Map of gameinfoId to ELO
+    Buffer: 1400,
+    Buffer: 1420
+  }
+}
+
+SHORTCODEMAP
+{
+  "k": "ABC123",              // Shortcode as PK with prefix 's#'
+  "v": "123e4567-e89b-12d3-a456-426614174000"  // Game ID this shortcode maps to
+}

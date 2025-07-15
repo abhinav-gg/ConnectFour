@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { FaSun, FaMoon } from 'react-icons/fa';
-import type { ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
+import type { ICHackLeaderboardPlayer } from "@shared/Types/eventInfo";
 import LeaderboardLayout from '@/components/events/ichleaderboard';
 import { StandardGameModes } from '@shared/constants';
-import { GameMode } from '@shared/Models/gameInfo';
+import { GameMode } from '@shared/Types/gameInfo';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/sidebar';
 import IchackBanner from '@/components/events/ichackbanner';

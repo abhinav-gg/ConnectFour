@@ -1,120 +1,175 @@
-// import type { DiscordUserRequest, RecaptchaResponse, RequestWithRecaptcha } from '@/types/types';
-// import express, { NextFunction, Request, Response } from 'express';
-// import { getUserFromSession } from './index';
+import { RecaptchaResponse, RequestWithRecaptcha } from '@/types/custom';
+import { NextFunction, Request, Response } from 'express';
+import { myConfig } from '@/config/env';
+import { redisOps } from '@/redis/ops';
 
-// const MODE = process.env.NODE_ENV || 'development'; // Default to development mode, ensure this is set to 'production' in prod
+interface AuthenticatedRequest extends Request {
+  user?: { userId: string | null; };
+}
 
+export const authenticateSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
-// interface AuthenticatedRequest extends Request {
-//   user?: { userId: string | null; };
-// }
+  const token = req.cookies.sessionToken; // Get the session token from the request cookies
+  if (!token) {
+    res.status(401).json({ error: 'Session token required' });
+    return; // Ensure we return here to avoid further execution
+  }
 
-// export const authenticateSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const redisOp = await redisOps(); // Get the Redis connection
+
+    const sessionUserID = await redisOp.user.getSession(token); // Decode the session token
+    // check if decoded is promise null and raise error
+    if (sessionUserID === null) {
+      throw new Error('Invalid or expired token');
+    }
+    else {
+      req.user = { userId: sessionUserID }; // Attach user info to the request
+      next(); // Call next to pass control to the next middleware
+    }
+  } catch (err) {
+    res.status(403).json({ error: 'Invalid or expired token' });
+    return; // Ensure we return here to avoid further execution
+  }
+};
+
+/**
+ * Middleware to ensure user is NOT logged in
+ * Use this for endpoints like login, register, etc.
+ */
+export const requireUnauthenticated = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const token = req.cookies.sessionToken;
   
+  if (!token) {
+    // No token, user is not logged in - allow access
+    next();
+    return;
+  }
 
-//     // v this all sucks and is broken
+  try {
+    const redisOp = await redisOps();
+    const sessionUserID = await redisOp.user.getSession(token);
+    
+    if (sessionUserID === null) {
+      // Invalid/expired token, user is not logged in - allow access
+      next();
+      return;
+    }
+    
+    // User is logged in - deny access
+    res.status(403).json({ 
+      error: 'Already authenticated',
+      message: 'You are already logged in. Please logout first to access this endpoint.'
+    });
+    return;
+  } catch (err) {
+    // Error occurred, assume user is not logged in - allow access
+    next();
+    return;
+  }
+};
+
+/**
+ * Optional authentication middleware
+ * Attaches user info if logged in, but doesn't require authentication
+ */
+// export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+//   const token = req.cookies.sessionToken;
   
-//   const token = req.cookies.sessionToken; // Get the session token from the request cookies
 //   if (!token) {
-//     res.status(401).json({ error: 'Session token required' });
-//     return; // Ensure we return here to avoid further execution
+//     // No token, continue without user info
+//     next();
+//     return;
 //   }
 
 //   try {
-//     const decoded = await getUserFromSession(token); // Decode the token
-//     // check if decoded is promise null and raise error
-//     if (!decoded.userId) {
-//       throw new Error('Invalid or expired token');
+//     const redisOp = await redisOps();
+//     const sessionUserID = await redisOp.user.getSession(token);
+    
+//     if (sessionUserID !== null) {
+//       req.user = { userId: sessionUserID };
 //     }
-//     else {
-//       req.user = decoded; // Attach user info to the request
-//       next(); // Call next to pass control to the next middleware
-//     }
+    
+//     next();
 //   } catch (err) {
-//     res.status(403).json({ error: 'Invalid or expired token' });
-//     return; // Ensure we return here to avoid further execution
-//   }
-// };
-
-// export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-//   const userId = req.user?.userId;
-//   console.log('User ID:', userId, req);
-//   if (!userId) {
-//     res.status(401).json({ error: 'Unauthorized' });
-//     return;
-//   }
-
-//   try {
-//     const tags = await dbOperations.getAllUserTagNames(userId);
-//     if (!tags) {
-//       res.status(404).json({ error: 'Page Not Found' });
-//       return;
-//     }
-
-//     if (!tags.includes('Admin')) {
-//       res.status(403).json({ error: 'Forbidden' });
-//       return;
-//     }
+//     // Error occurred, continue without user info
 //     next();
-//   } catch (error) {
-//     console.error('Failed to fetch user profile:', error);
-//     next(error);
 //   }
 // };
 
-// export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, next: NextFunction): Promise<void> => {
-//   try {
-//     const secret = process.env.RECAPTCHA_SECRET_KEY;
-//     const token = req.query.token || req.body.token;
+export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const userId = req.user?.userId;
+  console.log('User ID:', userId, req);
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
 
-//     // /!\ ----------------------
-//     if (MODE === 'development') {
-//       console.log('Skipping reCAPTCHA verification in development mode');
-//       next();
-//       return;
-//     }
-//     // --------------------------
+  try {
+    // Check the user with tag "Admin"
 
-//     if (!secret || !token) {
-//       console.log("missing secret or token");
-//       res.status(403).json({
-//         success: false,
-//         message: 'reCAPTCHA verification failed'
-//       });
-//       return;
-//     }
+    
 
-//     const query = await fetch(
-//       `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,
-//       {
-//         method: 'POST',
-//         headers: {
-//           'Accept': 'application/json',
-//           'Content-Type': 'application/json'
-//         },
-//       }
-//     );
+    next();
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+    next(error);
+  }
+};
 
-//     const apiResponse: RecaptchaResponse = await query.json();
+export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const secret = myConfig.RECAPTCHA_SECRET_KEY;
+    const token = req.query.token || req.body.token;
 
-//     if (!apiResponse.success || apiResponse.score < 0.5) {
-//       console.log('reCAPTCHA verification failed:', apiResponse);
-//       res.status(403).json({
-//         success: false,
-//         message: 'reCAPTCHA verification failed',
-//       });
-//       return;
-//     }
+    // /!\ ----------------------
+    if (myConfig.NODE_ENV === 'development') {
+      console.log('Skipping reCAPTCHA verification in development mode');
+      next();
+      return;
+    }
+    // --------------------------
 
-//     // Add verification result to request object
-//     req.recaptchaResult = apiResponse;
-//     next();
-//   } catch (error) {
-//     console.error('reCAPTCHA verification error:', error);
-//     res.status(500).json({
-//       success: false,
-//       message: 'Internal server error during verification'
-//     });
-//     return;
-//   }
-// };
+    if (!secret || !token) {
+      console.log("missing secret or token");
+      res.status(403).json({
+        success: false,
+        message: 'reCAPTCHA verification failed'
+      });
+      return;
+    }
+
+    const query = await fetch(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,
+      {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+
+    const apiResponse = await query.json() as RecaptchaResponse;
+
+    if (!apiResponse.success || apiResponse.score < 0.5) {
+      console.log('reCAPTCHA verification failed:', apiResponse);
+      res.status(403).json({
+        success: false,
+        message: 'reCAPTCHA verification failed',
+      });
+      return;
+    }
+
+    // Add verification result to request object
+    req.recaptchaResult = apiResponse;
+    next();
+  } catch (error) {
+    console.error('reCAPTCHA verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during verification'
+    });
+    return;
+  }
+};

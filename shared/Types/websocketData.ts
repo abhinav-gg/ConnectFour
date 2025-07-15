@@ -1,6 +1,5 @@
-import { EloChange, GameInfo, GamePlayer, PlayerData } from "@shared/Models/gameInfo";
-
-type UUID = `${string}-${string}-${string}-${string}-${string}`;
+import { EloChange, PlayerData } from "./game";
+import { UUID } from "crypto";
 
 export type RoomID = string;
 
@@ -62,7 +61,7 @@ export type StartTimer = {
 
 export type PlayerJoined = {
   event: 'playerJoined';
-  data: {  gameInfo: GameInfo; };
+  data: {   };
 }
 
 export type EndGame = {
@@ -140,4 +139,12 @@ export type SendMessage = {
 
 export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | Resign
                           | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage
-                          | OpponentAbandoned
+                          | OpponentAbandoned;
+
+export interface ChatMessage {
+    playerNumber: number;
+    username: string;
+    message: string;
+    isAnnouncement: boolean;
+}
+

@@ -1,7 +1,7 @@
 import { StandardGame } from "@shared/utils/game";
 import { Puzzle, examplePuzzles } from "@shared/utils/puzzles";
 import { myConfig } from "../config/env";
-import { getRedisClient } from "../src/redis/redis";
+import { getRedisClient } from "../src/redis/redisClient";
 
 console.log("This is an adhoc test file for backend tests.");
 

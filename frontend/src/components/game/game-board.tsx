@@ -4,7 +4,7 @@ import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, Home, LogIn, RotateCcw } from 'lucide-react';
 import { GameState } from '@shared/utils/game';
 import { eventEmitter } from '@shared/utils/eventEmitter'
-import { Player } from '@shared/Types/gameData';
+import { Player } from '@shared/types/game';
 
 interface GameBoardProps {
   playerNumber: number | null;

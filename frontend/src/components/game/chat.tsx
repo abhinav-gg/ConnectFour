@@ -1,9 +1,9 @@
 'use client';
 
-import { ChatMessage } from '@shared/Models/gameInfo';
+import { ChatMessage } from '@shared/Types/gameInfo';
 import { useEffect, useState } from 'react';
 import { eventEmitter } from '@shared/utils/eventEmitter';
-import { DrawMatrix } from '@shared/Types/gameData';
+import { DrawMatrix } from '@shared/types/game';
 
 export default function LiveChat({ 
     pNum,

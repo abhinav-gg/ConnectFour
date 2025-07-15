@@ -1,23 +1,16 @@
+// Load all environment variables from .env file
 import dotenv from 'dotenv';
-
-// Load environment variables from .env file
 dotenv.config();
 
-export const getConfig = () => {
-  const config = {
-    recaptchaSiteKey: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '', // Read from .env or keep empty
-    backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL || '', // Read from .env or keep empty
-    websocketUrl: process.env.NEXT_PUBLIC_WEBSOCKET_URL || '', // Read from .env or keep empty
-    mode: process.env.NEXT_PUBLIC_NODE_ENV || 'development', // !! Ensure this is set to 'production' in production environment
-    discordRedirectUri: process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI || '', // Read from .env or keep empty
-  };
+// Define the environment variables and their types
+export const myConfig = {
+    
+    NODE_ENV: process.env.NODE_ENV || 'development',
 
-  return config;
+    BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || "https://localhost:3001",
+    WEBSOCKET_URL: process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:3001/",
+  
+    DISCORD_REDIRECT_URI: process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI,
+    RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
+    
 };
-
-// Debug only during development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  if (!getConfig().backendUrl) {
-    console.warn('Backend URL is not set in runtime environment');
-  }
-} 

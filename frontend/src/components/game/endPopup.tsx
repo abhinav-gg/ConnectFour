@@ -1,6 +1,6 @@
 'use client';
 
-import { GamePlayer } from '@shared/Models/gameInfo';
+import { GamePlayer } from '@shared/Types/gameInfo';
 import React from 'react';
 
 interface EndPopupProps {

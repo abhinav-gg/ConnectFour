@@ -1,4 +1,4 @@
-import { hackspace, ICHackLeaderboardPlayer } from "@shared/Models/eventInfo";
+import { hackspace, ICHackLeaderboardPlayer } from "@shared/Types/eventInfo";
 import QTRIcon from "@/assets/ICH25_QTR.svg";
 import SCRIcon from "@/assets/ICH25_SCR.svg";
 import JCRIcon from "@/assets/ICH25_JCR.svg";

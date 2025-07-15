@@ -4,8 +4,12 @@ import dotenv from 'dotenv';
 import express from 'express';
 import { Request, Response } from 'express';
 import { createServer } from 'http';
-import { getRedisClient } from '@/redis/redis';
-import pool from '@/db/pool'; // Adjust the import based on your database setup
+import { getRedisClient, closeRedisClient } from '@/redis/redisClient';
+import pool from '@/db/rds/rdsClient'; // Adjust the import based on your database setup
+import { loadTemplate, sendEmail } from '@/lib/email/emails'; // Adjust the import based on your email template loading logic
+import { dynamoDBOps } from './db/dynamodb/ops';
+import authRouter from './controllers/api/routes/authRoutes';
+
 
 dotenv.config();
 
@@ -19,6 +23,17 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+
+// Set up sub routes
+app.use('/auth', authRouter);
+
+
+
+
+
+
+
+/////////////////////// MAIN ///////////////////////
 
 app.get('/', (req, res) => {
   res.send(`Backend is certainly running on port ${port}!`);
@@ -76,6 +91,36 @@ app.get('/get/:key', async (req: Request, res: Response): Promise<void> => {
 }
 );
 
+app.get('/dynamo-test', async (req: Request, res: Response) => {
+  try {
+    const gameData = await dynamoDBOps.game.readAllGames();
+    console.log(gameData);
+    res.json({ message: 'Dynamo Connected successfully' });
+  }
+  catch (error) {
+    console.error('DynamoDB connection error:', error);
+    res.status(500).json({ error: 'DynamoDB connection failed' });
+  }
+});
+
+// app.get('/ping-astrochamp', async (req: Request, res: Response) => {
+//   try {
+//     console.log("attempt to send")
+//     let emailtmplt = loadTemplate('verify-email.html');
+//     if (!emailtmplt) {
+//       res.status(500).json({ error: 'Email template not found' });
+//       return;
+//     }
+//     await sendEmail("ivanoconnor@hotmail.co.uk", "Hello There", emailtmplt!);
+//     res.json({ message: 'Email sent successfully' });
+//   }
+//   catch (error) {
+//     console.error('Error sending email:', error);
+//     res.status(500).json({ error: 'Failed to send email' });
+//   }
+// }
+// );
+
 app.get('/database-test', async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT NOW()');
@@ -98,6 +143,22 @@ app.get('/health', (req, res) => {
   );
 });
 
+// (async () => {
+//   try {
+//     const res = await pool.query(`
+//       SELECT schema_name 
+//       FROM information_schema.schemata 
+//       WHERE schema_name = 'con4_schema'
+//     `);
+//     if (res.rowCount === 0) {
+//       throw new Error("Required schema 'con4_schema' does not exist in the database.");
+//     }
+//     console.log("Schema 'con4_schema' verified successfully.");
+//   } catch (error) {
+//     console.error('Database schema verification failed:', error);
+//     process.exit(1); // Exit process if schema doesn't exist
+//   }
+// })();
 
 server.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
@@ -105,6 +166,17 @@ server.listen(Number(port), '0.0.0.0', () => {
 
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received: closing DB pool...');
-  await pool.end();
+  try {
+    await pool.end();
+    console.log('Database pool closed.');
+  } catch (err) {
+    console.error('Error closing DB pool:', err);
+  }
+
+  try {
+    await closeRedisClient();
+  } catch (err) {
+    console.error('Error disconnecting Redis client:', err);
+  }
   process.exit(0);
 });

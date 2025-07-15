@@ -1,6 +1,6 @@
 import { EventEmitter } from './eventEmitter';
-import { Player, Cell, Move } from '../Types/gameData';
-import { ROWS, COLS } from '../constants';
+import { Player, Cell, Move } from '../types/game';
+import { ROWS, COLS } from '../constants/game';
 
 
 export class StandardGame {

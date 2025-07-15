@@ -5,7 +5,8 @@ dotenv.config();
 
 // Define the environment variables and their types
 export const myConfig = {
-
+    
+    NODE_ENV: process.env.NODE_ENV || 'development',
     
     PORT: process.env.PORT || '3001',
     CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -15,8 +16,9 @@ export const myConfig = {
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID || '',
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET || '',
     DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN || '',
+    RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY || '',
+    RECAPTCHA_SITE_KEY: process.env.RECAPTCHA_SITE_KEY || '',
     ADMIN_USER_ID: process.env.ADMIN_USER_ID || '',
-    NODE_ENV: process.env.NODE_ENV || 'development',
 
     DB_HOST: process.env.DB_HOST || 'localhost',
     DB_PORT: process.env.DB_PORT || '5432',
@@ -25,7 +27,12 @@ export const myConfig = {
     DB_NAME: process.env.DB_NAME || '',
     RDS_CA_CERT: fs.readFileSync('./config/global-bundle.pem').toString(), // Path to the Amazon RDS root certificate
 
-    REDIS_HOST: process.env.REDIS_HOST || 'localhost',
+    REDIS_HOST: process.env.REDIS_HOST || 'localhost', // hosted by docker-compose
     REDIS_PORT: process.env.REDIS_PORT || '6379',
 
+    ZOHO_USER: process.env.ZOHO_USER || '',
+    ZOHO_PWD: process.env.ZOHO_PWD || '',
+
+    DYNAMODB_ACCESS: process.env.DYNAMODB_ACCESS || 'local',
+    DYNAMODB_PWD: process.env.DYNAMODB_PWD || '',
 };

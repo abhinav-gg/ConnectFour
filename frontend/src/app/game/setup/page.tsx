@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/sidebar';
-import { TimeControl, GameMode, GameInfo } from '@shared/Models/gameInfo';
+import { TimeControl, GameMode, GameInfo } from '@shared/Types/gameInfo';
 import { StandardTimecontrols } from '@shared/constants';
 import { ReCaptchaWrapper } from '@/components/auth/captcha';
 import { useReCaptcha } from '@/components/auth/usecaptcha';

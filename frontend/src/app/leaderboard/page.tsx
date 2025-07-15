@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { FaSun, FaMoon } from 'react-icons/fa';
-import type { leaderboardPlayer } from "@shared/Models/eventInfo";
+import type { leaderboardPlayer } from "@shared/Types/eventInfo";
 import LeaderboardLayout from '@/components/leaderboard';
 import { StandardGameModes } from '@shared/constants';
-import { GameMode } from '@shared/Models/gameInfo';
+import { GameMode } from '@shared/Types/gameInfo';
 import { getConfig } from '@/config/env';
 import Dashboard from '@/components/sidebar';
 

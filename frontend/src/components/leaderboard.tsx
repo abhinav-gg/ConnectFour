@@ -1,4 +1,4 @@
-import { leaderboardPlayer } from "@shared/Models/eventInfo";
+import { leaderboardPlayer } from "@shared/Types/eventInfo";
 
 interface LeaderboardTableProps {
   players: leaderboardPlayer[];

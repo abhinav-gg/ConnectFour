@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GamePlayer } from '@shared/Models/gameInfo';
+import { GamePlayer } from '@shared/Types/gameInfo';
 
 
 export default function Timer({ timerActive, playerNumber, getPlayers, onTimeout }: { timerActive: boolean; playerNumber: number, getPlayers: GamePlayer[], onTimeout: () => void }) {
