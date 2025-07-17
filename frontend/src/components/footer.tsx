@@ -45,7 +45,7 @@ export function Footer() {
             </div>
 
             <div className="flex items-center gap-6">
-              <span className="text-white font-bold text-lg">Con4.UK</span>
+              <span className="text-white font-bold text-lg">© Con4.UK</span>
 
               <div className="flex gap-4" role="group" aria-label="Social media links">
                 <a

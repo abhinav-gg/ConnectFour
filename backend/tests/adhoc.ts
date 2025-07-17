@@ -1,7 +1,6 @@
 import { StandardGame } from "@shared/utils/game";
-import { Puzzle, examplePuzzles } from "@shared/utils/puzzles";
 import { myConfig } from "../config/env";
-import { getRedisClient } from "../src/redis/redisClient";
+import { calculateEloChanges, calculatePredictedScore, calculateUpdatedElo } from "@/utils/game";
 
 console.log("This is an adhoc test file for backend tests.");
 
@@ -14,8 +13,9 @@ console.log(boardTest.prettyPrintBoard(), boardTest.hashCode);
 
 // let testPuzzle = new Puzzle(examplePuzzles[0]);
 
-console.log(myConfig.CLIENT_URL, myConfig.DB_PASSWORD, myConfig.CLIENT_URL.length);
+console.log(myConfig.CLIENT_URL, myConfig.RDS_PASSWORD, myConfig.CLIENT_URL.length);
 
 
+console.log(calculateEloChanges(1650, 1600, true));
 
-
+console.log(calculateEloChanges(1600, 1650, false));

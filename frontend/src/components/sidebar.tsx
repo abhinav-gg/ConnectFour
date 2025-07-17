@@ -3,7 +3,6 @@
 import type React from "react"
 import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { Play, Puzzle, GraduationCap, Wrench, Calendar, Users, Bell, Settings } from "lucide-react"
 
 // Tooltip Portal Component
@@ -108,22 +107,22 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
   return (
     <aside
       className={`
-        ${
-          isMobile
-            ? `fixed left-0 top-0 h-full w-64 z-50 transform transition-transform duration-300 ${
-                isOpen ? "translate-x-0" : "-translate-x-full"
-              }`
-            : `${collapsed ? "w-12" : "w-40"} transition-all duration-300 ease-in-out h-screen sticky top-0`
-        }
-        bg-gradient-to-b from-brand-primary to-brand-secondary
-        ${!isMobile ? "border-r border-brand-border" : ""}
-        flex flex-col
-      `}
+  ${
+    isMobile
+      ? `fixed left-0 top-0 h-screen w-0 z-50 transform transition-transform duration-300 ${
+          isOpen ? "translate-x-0 !w-64" : "-translate-x-full"
+        } overflow-hidden`
+      : `${collapsed ? "w-12" : "w-40"} transition-all duration-300 ease-in-out h-screen sticky top-0`
+  }
+  bg-gradient-to-b from-brand-primary to-brand-secondary
+  ${!isMobile ? "border-r border-brand-border" : "shadow-2xl"}
+  flex flex-col
+`}
       aria-label="Main navigation"
     >
       {/* Header - Fixed */}
       <div className={`${collapsed && !isMobile ? "p-2" : "p-3"} border-b border-brand-border flex-shrink-0`}>
-        <Link
+        <a
           href="/home"
           className={`flex items-center ${collapsed && !isMobile ? "justify-center" : "gap-2"} group relative`}
           onClick={handleLinkClick}
@@ -148,14 +147,14 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
           {(!collapsed || isMobile) && (
             <span className="text-lg font-bold text-white transition-opacity duration-300">Con4</span>
           )}
-        </Link>
+        </a>
       </div>
 
-      {/* Navigation Content - Fixed height, no scroll */}
-      <div className="flex-1 px-1 py-2 flex flex-col justify-start min-h-0">
+      {/* Navigation Content - Scrollable on mobile if needed */}
+      <div className={`flex-1 px-1 py-2 flex flex-col justify-start min-h-0 ${isMobile ? "overflow-y-auto" : ""}`}>
         <nav className="space-y-1">
           {navigationItems.map((item) => (
-            <Link
+            <a
               key={item.title}
               href={item.url}
               onClick={handleLinkClick}
@@ -183,15 +182,14 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
                   `}
                 />
               )}
-            </Link>
+            </a>
           ))}
         </nav>
       </div>
 
       {/* Profile Section - Fixed at bottom */}
       <div className={`${collapsed && !isMobile ? "p-2" : "p-3"} border-t border-brand-border flex-shrink-0`}>
-        <Link
-          href="#profile"
+        <button
           className={`
             flex items-center w-full relative
             ${collapsed && !isMobile ? "justify-center p-1.5" : "gap-2 p-2"}
@@ -212,15 +210,17 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
           {(!collapsed || isMobile) && (
             <span className="text-sm font-medium transition-opacity duration-300">Profile</span>
           )}
-        </Link>
+        </button>
       </div>
 
-      {/* Tooltip Portal */}
-      <TooltipPortal show={hoveredItem !== null} position={tooltipPosition}>
-        <div className="px-3 py-2 bg-gray-900 text-white text-sm rounded-md shadow-lg border border-gray-700 whitespace-nowrap">
-          {hoveredItem}
-        </div>
-      </TooltipPortal>
+      {/* Tooltip Portal - Only show on desktop when collapsed */}
+      {!isMobile && (
+        <TooltipPortal show={hoveredItem !== null} position={tooltipPosition}>
+          <div className="px-3 py-2 bg-gray-900 text-white text-sm rounded-md shadow-lg border border-gray-700 whitespace-nowrap">
+            {hoveredItem}
+          </div>
+        </TooltipPortal>
+      )}
     </aside>
   )
 }

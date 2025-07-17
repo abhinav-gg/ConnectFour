@@ -119,7 +119,7 @@ export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response
 
 export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const secret = myConfig.RECAPTCHA_SECRET_KEY;
+    const secret = myConfig.GOOGLE_RECAPTCHA_SECRET_KEY;
     const token = req.query.token || req.body.token;
 
     // /!\ ----------------------

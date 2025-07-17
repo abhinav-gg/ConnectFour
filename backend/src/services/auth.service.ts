@@ -3,8 +3,8 @@ import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 import { RESERVED_USERNAMES } from '@shared/reserved_usernames';
 import { ServiceResponse, UserSessionTTL } from '@/types/custom';
-import { verifyPassword } from '@/utils/auth';
-import { generateSessionToken } from '@/utils/auth';
+import { verifyPassword } from '@/lib/auth/auth';
+import { generateSessionToken } from '@/lib/auth/auth';
 import { UserProfile } from '@shared/types/users';
 import { UserTags } from '@shared/constants/usertags';
 

@@ -2,7 +2,8 @@
 import { NextFunction, Router, Request, Response } from 'express';
 import { authenticateAdmin, authenticateSession, verifyRecaptcha, requireUnauthenticated } from '@/lib/auth/middleware';
 import { authService } from '@/services/auth.service';
-import { ServiceResponse, UserSessionTTL } from '@/types/custom';
+import { ServiceResponse, UserSessionTTL, GoogleTokenResponse } from '@/types/custom';
+import { myConfig } from '@/config/env';
 
 const authRouter = Router();
 
@@ -205,6 +206,70 @@ authRouter.get('/test', (req: Request, res: Response) => {
 //     res.status(500).json({ error: 'Failed to authenticate with Google' });
 //   }
 // });
+
+authRouter.get("/google/callback", async (req: Request, res: Response): Promise<void> => {
+  const code = req.query.code as string;
+
+  if (!code) {
+    res.status(400).send("Missing code");
+    return;
+  }
+
+  try {
+    // 1. Exchange code for tokens
+    // Use fetch with method 'POST' to exchange code for tokens
+    const params = new URLSearchParams({
+      client_id: myConfig.GOOGLE_CLIENT_ID!,
+      client_secret: myConfig.GOOGLE_CLIENT_SECRET!,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: myConfig.GOOGLE_CLIENT_REDIRECT_URI!, 
+    });
+    console.log(1)
+    const tokenResRaw = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    if (!tokenResRaw.ok) {
+      throw new Error(`Failed to fetch token: ${tokenResRaw.statusText}`);
+    }
+    console.log(2)
+    const tokenResData = (await tokenResRaw.json()) as GoogleTokenResponse;
+
+    const { access_token, id_token } = tokenResData;
+
+    // 2. Get user info
+    const userInfoRaw = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    const userInfo = await userInfoRaw.json();
+    console.log("User Info:", userInfo);
+    
+    // const { email, verified_email, name, id: googleId } = userInfo.data;
+    
+    // if (!verified_email) {
+    //   res.status(400).send("Email not verified");
+    //   return;
+    // }
+    
+    // 3. Check if user exists
+
+    // 4. If user exists, create session (east peasy authService)
+    
+    // 5. If user does not exist, create a new user with google provider
+    
+    res.redirect('/dashboard'); 
+
+
+  } catch (error) {
+    console.error("Error during Google OAuth callback:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
 
 export default authRouter;
 

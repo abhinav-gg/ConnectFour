@@ -18,17 +18,17 @@ export type DrawMatrix = {
     offerAction: boolean
 }
 
-export interface AnalysisProps {
-    eval: number
-    nextMoveMade: { column: number; evaluation: number | null }[]
-}
+// export interface AnalysisProps {
+//     eval: number
+//     nextMoveMade: { column: number; evaluation: number | null }[]
+// }
 
-export type GamePlayer = {
-    username: string;
-    elo: number;
-    time: number;
-    timerActive?: boolean;
-}
+// export type GamePlayer = {
+//     username: string;
+//     elo: number;
+//     time: number;
+//     timerActive?: boolean;
+// }
 
 export type PlayerData = {
     username: string;
@@ -53,11 +53,11 @@ export type TimeControl = {
 }
 
 
-export interface GameInfo {
-    id: number; // your new 4-byte ID
-    gamemode: string;
-    base_time: number;
-    increment: number;
-    disadvantage: number;
-}
+export type TimeCategory = "hyper-bullet" | "bullet" | "blitz" | "rapid";
+
+
+
+
+
+
 

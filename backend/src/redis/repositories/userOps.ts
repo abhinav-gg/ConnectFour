@@ -1,6 +1,6 @@
 // src/repositories/userOps.ts
 import { RedisClientType } from 'redis';
-import { RedisKeys, RedisPrefixes } from '../redisSchema'; // Adjust the import path as necessary
+import { RedisKeys, RedisTTLs } from '../redisSchema'; // Adjust the import path as necessary
 
 
 export function UserOperations(redis: RedisClientType) {
@@ -9,16 +9,16 @@ export function UserOperations(redis: RedisClientType) {
   const genRedisEmailKey = RedisKeys.emailVerification; // Adjust the key generation function as necessary
 
   return {
-    async setSession(sessionId: string, userId: string, ttl: number): Promise<void> {
+    async setSession(sessionId: string, userId: string, ttl?: number): Promise<void> {
       const key = genRedisSessionKey(sessionId);
       await redis.set(key, `user:${userId}`, 
-      { EX: ttl });
+      { EX: ttl || RedisTTLs.userSession }); // Default to 7 days if no ttl provided
 
       //await redis.expire(key, ttl); -- If we want to set expiration freshly
-    },
+    },  
 
-    async setAnonymousSession(sessionId: string, ttl: number): Promise<void> {
-      await this.setSession(sessionId, "anon:", ttl);
+    async setAnonymousSession(sessionId: string, ttl?: number): Promise<void> {
+      await this.setSession(sessionId, "anon:", ttl || RedisTTLs.userSession);
     },
 
     async getSession(sessionId: string): Promise<string | null> {
@@ -31,9 +31,9 @@ export function UserOperations(redis: RedisClientType) {
       return await redis.get(key);
     },
 
-    async setEmailVerificationCode(userId: string, code: number, ttl: number): Promise<void> {
+    async setEmailVerificationCode(userId: string, code: number, ttl?: number): Promise<void> {
       const key = genRedisEmailKey(code.toString());
-      await redis.set(key, userId, { EX: ttl });
+      await redis.set(key, userId, { EX: ttl || RedisTTLs.emailVerification }); // Default to 24 hours if no ttl provided
     },
 
     async getEmailVerificationCode(userId: string): Promise<string | null> {

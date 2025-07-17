@@ -6,29 +6,32 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff } from "lucide-react"
-import { Layout } from "@/components/layout"
+import { Layout } from "../mainlayout"
+import { Board } from "../boards/Board"
 
-export function LoginPage() {
+export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("hello@example.co")
   const [password, setPassword] = useState("••••••••••••••")
   const [keepSignedIn, setKeepSignedIn] = useState(true)
   const [showError, setShowError] = useState(true)
 
-  // Connect 4 board component for the left side
-  const Connect4Board = () => {
-    return (
-      <div className="w-full max-w-md aspect-square bg-brand-accent-blue rounded-[3rem] p-6 flex flex-col justify-between">
-        {Array.from({ length: 6 }).map((_, row) => (
-          <div key={row} className="flex justify-between">
-            {Array.from({ length: 7 }).map((_, col) => (
-              <div key={col} className="w-8 h-8 bg-brand-accent-blue-dark rounded-full opacity-60" />
-            ))}
-          </div>
-        ))}
-      </div>
-    )
-  }
+
+  const handleGoogleLogin = () => {
+    const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!;
+    const redirectUri = "http://localhost:3001/auth/google/callback"; // Update to your backend OAuth2 callback URL
+    const scope = "openid email profile";
+    const responseType = "code";
+    const state = encodeURIComponent("some-random-string-or-csrf");
+    // Optional but strongly recommended.
+    // Used to pass a value (like CSRF token or tracking info) that will be returned to you, unchanged, by Google.
+    // Helps you verify the response is legit.
+    // We just use a static value here for demo.
+
+    const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
+
+    window.location.href = oauthUrl;
+  };
 
   return (
     <Layout showHeader={true}>
@@ -37,7 +40,7 @@ export function LoginPage() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 xl:gap-16 items-center">
             {/* Left side - Connect 4 Board - Only show on XL screens and up */}
             <div className="hidden xl:flex justify-center">
-              <Connect4Board />
+              <Board interactive={false} animate_init={false} />
             </div>
 
             {/* Right side - Login Form - Full width on smaller screens, half width on XL+ */}
@@ -125,7 +128,7 @@ export function LoginPage() {
                       <div className="w-full border-t border-brand-text-border"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                      <span className="bg-gradient-to-b from-brand-primary to-brand-secondary px-4 text-brand-text-light">
+                      <span className="bg-brand-primary px-4 text-brand-text-light">
                         or sign up with
                       </span>
                     </div>
@@ -134,8 +137,9 @@ export function LoginPage() {
                   {/* Google Sign In */}
                   <Button
                     type="button"
-                    variant="outline"
+                    // variant="outline"
                     className="w-full bg-transparent border border-brand-text-border text-white hover:bg-[#595974] py-3 rounded-lg h-12 text-base transition-colors"
+                    onClick={handleGoogleLogin}
                   >
                     <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                       <path

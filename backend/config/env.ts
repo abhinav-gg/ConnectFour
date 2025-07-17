@@ -10,21 +10,23 @@ export const myConfig = {
     
     PORT: process.env.PORT || '3001',
     CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
-    JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key',
+    
+
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+    GOOGLE_RECAPTCHA_SECRET_KEY: process.env.GOOGLE_RECAPTCHA_SECRET_KEY || '',
+    GOOGLE_CLIENT_REDIRECT_URI: process.env.GOOGLE_CLIENT_REDIRECT_URI || 'http://localhost:3001/auth/google/callback', // Update to your backend OAuth2 callback URL
+
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID || '',
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET || '',
     DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN || '',
-    RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY || '',
-    RECAPTCHA_SITE_KEY: process.env.RECAPTCHA_SITE_KEY || '',
-    ADMIN_USER_ID: process.env.ADMIN_USER_ID || '',
 
-    DB_HOST: process.env.DB_HOST || 'localhost',
-    DB_PORT: process.env.DB_PORT || '5432',
-    DB_USER: process.env.DB_USER || 'postgres',
-    DB_PASSWORD: process.env.DB_PASSWORD || '',
-    DB_NAME: process.env.DB_NAME || '',
+
+    RDS_HOST: process.env.RDS_HOST || 'localhost',
+    RDS_PORT: process.env.RDS_PORT || '5432',
+    RDS_USER: process.env.RDS_USER || 'postgres',
+    RDS_PASSWORD: process.env.RDS_PASSWORD || '',
+    RDS_NAME: process.env.RDS_NAME || '',
     RDS_CA_CERT: fs.readFileSync('./config/global-bundle.pem').toString(), // Path to the Amazon RDS root certificate
 
     REDIS_HOST: process.env.REDIS_HOST || 'localhost', // hosted by docker-compose

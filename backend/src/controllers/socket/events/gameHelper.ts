@@ -123,50 +123,8 @@
 //     }
 // }
 
-// // CategoriseTime takes a time control object and returns the game category
-// // (TODO: define time control object, then function is done)
-// export function CategoriseTime(timeControl: TimeControl): string { 
-//     // Calculate total game time in seconds:
-//     // 2 * base time (both players) + disadvantage + increment * total moves
 
-//     const totalTime = (2 * 60 * timeControl.base_time) + timeControl.disadvantage + (timeControl.increment * AvgGameLength);
-    
-//     // Categorize based on total game time:
-//     // Hyper Bullet: ≤ 70 seconds (1.16 minutes)
-//     // Bullet: ≤ 255 seconds (4.25 minutes)
-//     // Blitz: 256-650 seconds (4.25-8.3 minutes)
-//     // Rapid: ≥ 650 seconds (8.3+ minutes)
-//     if (totalTime <= 70) {
-//         return 'hyper-bullet';
-//     } else if (totalTime <= 255) {
-//         return 'bullet';
-//     } else if (totalTime <= 650) {
-//         return 'blitz';
-//     } else {
-//         return 'rapid';
-//     }
-// }
 
-// export async function safeGetElo(userId: string, gamemodeId: string): Promise<Glicko> {
-//     let playerElo: Glicko;
-
-//     // use elo and redis
-
-//     try {
-//         playerElo = await dbOperations.GetPlayerStats(userId, gamemodeId)
-//     } catch (error) {
-//         if (error instanceof PlayerEloNotFound) {
-//             await dbOperations.SafeCreateElo(userId, gamemodeId, StandardStartingElo, StandardStartingRatingDeviation);
-//             playerElo = { 
-//                 elo: StandardStartingElo, 
-//                 rating_deviation: StandardStartingRatingDeviation , 
-//                 updated_at: Date.now() } as Glicko;
-//         } else {
-//             throw error;
-//         }
-//     }
-//     return playerElo;
-// }
 
 // export function calculateTimesByMoves(moves: Move[], userId: string, timecontrol: TimeControl, hasDisadvantage: boolean) {
     
@@ -254,13 +212,5 @@
 //         throw error;
 //     }
 // }
-// export function genRandomGameKey(): string {
-//   // return a random 8 character string with numbers and letters (case sensitive)
-//   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789";
-//   let key = "";
-//   for (let i = 0; i < 8; i++) {
-//     key += chars.charAt(Math.floor(Math.random() * chars.length));
-//   }
-//   return key;
-// }
+
 

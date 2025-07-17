@@ -4,15 +4,24 @@ CREATE SCHEMA IF NOT EXISTS con4_schema;
 
 CREATE TABLE IF NOT EXISTS con4_schema.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(128) UNIQUE,
-  email_verified BOOLEAN DEFAULT FALSE,
   username VARCHAR(32) UNIQUE,
+  email VARCHAR(128) UNIQUE,
+  email_verified BOOLEAN NOT NULL DEFAULT FALSE,
   password_hash VARCHAR(128),
+  mail_provider CHAR(1) NOT NULL DEFAULT 'L',
   created_at TIMESTAMP DEFAULT now(),
   updated_at TIMESTAMP DEFAULT now(),
   deleted_at TIMESTAMP NULL, -- used for soft deletes
   last_login TIMESTAMP 
 );
+
+-- 1. Drop the existing CHECK constraint
+ALTER TABLE con4_schema.users 
+DROP CONSTRAINT IF EXISTS users_mail_provider_check;
+
+-- 2. Add the updated CHECK constraint with new options
+ALTER TABLE con4_schema.users ADD CONSTRAINT users_mail_provider_check 
+  CHECK (mail_provider IN ('L', 'G', 'H', 'A'));
 
 ---------- User Tags ----------
 
@@ -34,39 +43,15 @@ CHECK (
   tag_name IN ('GM', 'IM', 'Admin', 'Premium', 'Streamer', 'Tester')
 );
 
----------- Game Modes ----------
 
--- CREATE TABLE IF NOT EXISTS con4_schema.game_info ( -- Things we want leaderboards for
---   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
---   gamemode VARCHAR(64) NOT NULL, -- see below
---   base_time INT NOT NULL,
---   increment INT NOT NULL DEFAULT 0,
---   disadvantage INT NOT NULL DEFAULT 0
--- ); -- > less than 16 bytes is better than a UUID
+---------- USER ELOS ----------
 
--- -- 1. Drop the existing CHECK constraint if it exists
--- ALTER TABLE con4_schema.game_info
--- DROP CONSTRAINT IF EXISTS gameinfo_gamemode_check;
-
--- -- 2. Add the updated CHECK constraint with allowed gamemode values
--- ALTER TABLE con4_schema.game_info
--- ADD CONSTRAINT gameinfo_gamemode_check
--- CHECK (
---  gamemode IN ('ranked-standard-bullet', 
---               'ranked-standard-blitz',
---               'ranked-standard-rapid',
---               'casual-standard')
--- );
-
----------- Game Players AND Elo ----------
-
--- CREATE TABLE IF NOT EXISTS con4_schema.player_elo (
---   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
---   player UUID NOT NULL REFERENCES con4_schema.users(id) ON DELETE CASCADE, -- if user is deleted, their elo is gone
---   mode UUID NOT NULL REFERENCES con4_schema.game_info(id) ON DELETE CASCADE, -- if mode is deleted, elo is gone
---   elo FLOAT NOT NULL CHECK (elo > 0), -- no default as it varies
---   UNIQUE (player, mode)
--- );
+CREATE TABLE IF NOT EXISTS con4_schema.player_elo (
+  player UUID NOT NULL REFERENCES con4_schema.users(id) ON DELETE CASCADE,
+  mode INT NOT NULL CHECK (mode >= 0),
+  elo NUMERIC(6,2) NOT NULL CHECK (elo > 0),
+  PRIMARY KEY (player, mode)
+);
 
 ---------- Events ----------
 

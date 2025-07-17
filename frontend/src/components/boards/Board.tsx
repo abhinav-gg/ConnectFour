@@ -80,7 +80,7 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
   // Debug: Log boardState every 3 seconds (React-safe)
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log(internalBoard);
+      // console.log(internalBoard);
     }, 3000);
     return () => clearInterval(interval);
   }, [boardState]);
@@ -163,7 +163,7 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
   const handleColumnClick = (col: number) => {
     if (!interactive || col === -1 || moveBufferActive) return
-    console.log("Game Over:", gameOver)
+
     if (onColumnAttempt) onColumnAttempt(col);
   }
 

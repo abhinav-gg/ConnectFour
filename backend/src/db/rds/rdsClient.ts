@@ -19,11 +19,11 @@ if (myConfig.NODE_ENV === 'production') {
 }
 
 const pool = new Pool({
-  host: myConfig.DB_HOST,
-  port: parseInt(myConfig.DB_PORT || '5432', 10),
-  user: myConfig.DB_USER,
-  password: myConfig.DB_PASSWORD,
-  database: myConfig.DB_NAME,
+  host: myConfig.RDS_HOST,
+  port: parseInt(myConfig.RDS_PORT || '5432', 10),
+  user: myConfig.RDS_USER,
+  password: myConfig.RDS_PASSWORD,
+  database: myConfig.RDS_NAME,
   max: 20, // Set max pool size
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established

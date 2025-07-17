@@ -2,8 +2,6 @@ import nodemailer from 'nodemailer';
 import { myConfig } from '@/config/env';
 import fs from 'fs';
 
-
-
 export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
     console.log(myConfig.ZOHO_PWD, myConfig.ZOHO_USER);
