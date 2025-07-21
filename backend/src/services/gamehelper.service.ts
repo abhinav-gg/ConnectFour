@@ -21,6 +21,13 @@ export const gameService = {
 
         // if there is no match, add user to redis queue for this gamemode and time control
         // return null if no match is found so the user is shown a "Searching for match" message
+
+        // IF
+        // REDIS
+        // IS
+        // Less
+        // THAN 50
+        // PAIR WITH BOT
         
         return null; // Placeholder for actual matchmaking logic
     },

@@ -1,6 +1,8 @@
 import pool from '../rdsClient';
-import * as DBError from '@/db/dbErrors';
 import { User, UserSchema, UserWithPassword, UserWithPasswordSchema } from '@/db/models/User';
+import { withTransaction } from '../utils/withTransaction';
+import * as DBError from '@/types/dbErrors';
+import { UserAccountProvider } from '@/types/custom';
 
 export const UserOperations = {
   
@@ -12,59 +14,51 @@ export const UserOperations = {
     return result.rows as User[];
   },
 
-  // async createUser(
-  //   username: string,
-  //   email: string,
-  //   passwordHash: string,
-  //   isAnonymous: boolean = false
-  // ): Promise<User> {
-  //   const client = await this.getClient();
-  //   const normUser = username.toLowerCase();
-  //   const normEmail = email.toLowerCase();
+  async createUser(
+    normUser: string,
+    normEmail: string,
+    mailProvider: UserAccountProvider,
+    emailVerified?: boolean,
+    profilePic?: string,
+    pwdHash?: string
+  ): Promise<void> {
 
-  //   try {
-  //     await client.query('BEGIN');
+    return withTransaction(async (client) => {
 
-  //     // Check if username already exists
-  //     const userCheckResult = await client.query(
-  //       `SELECT id FROM Users WHERE username = $1`,
-  //       [normUser]
-  //     );
+      try {
 
-  //     if (userCheckResult.rows.length > 0) {
-  //       throw new DBError.UsernameExists();
-  //     }
+        await client.query(
+          `INSERT INTO users (username, email, email_verified, profile_pic, password_hash, mail_provider)
+          VALUES ($1, $2, $3, $4, $5, $6)`,
+          [normUser, normEmail, emailVerified, profilePic, pwdHash, mailProvider]
+        );
+      }
+      catch (error: any) {
+        // detect error type here
+        // this will be a psql insert error
+        console.error('Error creating user:', error);
+        if (error.code === '23505') {
+          // duplicate key error
+          
+          const usernameExists = await client.query(
+            `SELECT 1 FROM users WHERE username = $1`,
+            [normUser]
+          );
 
-  //     // Check if email already exists
-  //     const emailCheckResult = await client.query(
-  //       `SELECT id FROM Users WHERE email = $1`,
-  //       [normEmail]
-  //     );
+          if (usernameExists.rowCount && usernameExists.rowCount > 0) {
+            throw new DBError.UsernameExists();
+          }
 
-  //     if (emailCheckResult.rows.length > 0) {
-  //       throw new DBError.EmailExists();
-  //     }
-  //     // -------------------------------------------
+          throw new DBError.EmailExists();
+          
+        }
+        throw error;
+      }
 
-  //     // Insert new user
-  //     const result = await client.query(
-  //       `INSERT INTO Users (username, email, password_hash, is_anonymous, created_at, updated_at)
-  //        VALUES ($1, $2, $3, $4, NOW(), NOW())
-  //        RETURNING id, username, email, email_verified, created_at, updated_at, last_login`,
-  //       [normUser, normEmail, passwordHash, isAnonymous]
-  //     );
+      return
 
-  //     await client.query('COMMIT');
-
-  //     return result.rows[0];
-  //   } catch (error) {
-  //     await client.query('ROLLBACK');
-  //     //console.error('Failed to create user:', error);
-  //     throw error;
-  //   } finally {
-  //     this.safeRelease();
-  //   }
-  // }
+    });
+  },
 
   async recordUserLogin(userId: string): Promise<void> {
     await pool.query(
@@ -75,7 +69,7 @@ export const UserOperations = {
     );
   },
 
-  async getUserDataByUsername(username: string): Promise<User> {
+  async getUserByUsername(username: string): Promise<User> {
     const result = await pool.query(
         `SELECT id, username, email, email_verified, created_at, updated_at, last_login
           FROM users
@@ -102,8 +96,10 @@ export const UserOperations = {
                WHERE email = $1`,
       [email.toLowerCase()]
     );
-
-    return result.rows[0];
+    if (result.rowCount !== 1) {
+      throw new DBError.EmailDoesNotExist()
+    }
+    return UserSchema.parse(result.rows[0]);
   },
 
   async updateEmailByID(id: string, newEmail: string): Promise<void> {
@@ -121,7 +117,13 @@ export const UserOperations = {
           WHERE id = $1`,
       [id]
     );
-    return result.rows[0] as User;
+
+    if (result.rowCount !== 1) {
+      throw new Error()
+    }
+
+    const user = UserSchema.parse(result.rows[0]);
+    return user;
   },
 
   // allow login by username or email

@@ -4,9 +4,10 @@ CREATE SCHEMA IF NOT EXISTS con4_schema;
 
 CREATE TABLE IF NOT EXISTS con4_schema.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username VARCHAR(32) UNIQUE,
+  username VARCHAR(20) UNIQUE,
   email VARCHAR(128) UNIQUE,
   email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  profile_pic VARCHAR(512),
   password_hash VARCHAR(128),
   mail_provider CHAR(1) NOT NULL DEFAULT 'L',
   created_at TIMESTAMP DEFAULT now(),
@@ -21,7 +22,7 @@ DROP CONSTRAINT IF EXISTS users_mail_provider_check;
 
 -- 2. Add the updated CHECK constraint with new options
 ALTER TABLE con4_schema.users ADD CONSTRAINT users_mail_provider_check 
-  CHECK (mail_provider IN ('L', 'G', 'H', 'A'));
+  CHECK (mail_provider IN ('L', 'G', 'H', 'D', 'A'));
 
 ---------- User Tags ----------
 

@@ -2,6 +2,8 @@ import { RecaptchaResponse, RequestWithRecaptcha } from '@/types/custom';
 import { NextFunction, Request, Response } from 'express';
 import { myConfig } from '@/config/env';
 import { redisOps } from '@/redis/ops';
+import { Socket } from 'socket.io';
+
 
 interface AuthenticatedRequest extends Request {
   user?: { userId: string | null; };
@@ -173,3 +175,33 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
     return;
   }
 };
+
+
+
+
+
+export async function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void) {
+  const sessionId = socket.handshake.auth?.sessionId;
+
+  if (!sessionId) {
+    return next(new Error('Missing sessionId'));
+  }
+
+  try {
+    const redis = await redisOps();
+    const userId = await redis.user.getSession(sessionId);
+
+    if (!userId) {
+      return next(new Error('Invalid or expired session'));
+    }
+
+    socket.data.userId = userId;
+    next();
+  } catch (err) {
+    console.error('Session validation error:', err);
+    next(new Error('Session validation failed'));
+  }
+}
+
+
+

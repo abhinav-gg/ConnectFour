@@ -2,20 +2,22 @@
 
 import React, { useState, useEffect } from 'react'
 
-type CellColor = 'red' | 'yellow' | 'dark-blue' | 'black' | 'empty'
+type CellColor = number | null
 
-const colorClasses: Record<CellColor, string> = {
-  'red': 'bg-red-500',
-  'yellow': 'bg-yellow-400',
-  'dark-blue': 'bg-blue-800',
-  'black': 'bg-black',
-  'empty': 'bg-white'
+
+
+const colorClasses: Record<number | -1, string> = {
+  0: 'bg-red-500',
+  1: 'bg-yellow-400',
+  2: 'bg-blue-800',
+  3: 'bg-black',
+  [-1]: 'bg-white',
 }
 
 export default function LogoTemplate() {
   const rows = 6;
   const cols = 7;
-  const initialColor: CellColor = 'empty';
+  const initialColor: CellColor = null;
   const isStatic = false;
   const colorList: CellColor[] = [];
 
@@ -35,7 +37,7 @@ export default function LogoTemplate() {
     }
     return Array(rows).fill(null).map(() => Array(cols).fill(initialColor))
   })
-  const [currentColor, setCurrentColor] = useState<CellColor>('red')
+  const [currentColor, setCurrentColor] = useState<CellColor>(0)
   const [exportedColors, setExportedColors] = useState<string>('')
 
   useEffect(() => {
@@ -77,10 +79,10 @@ export default function LogoTemplate() {
     <div className="flex flex-col items-center">
       <div className={`grid grid-cols-${cols} gap-1 bg-blue-700 p-2 rounded-lg mb-4`}>
         {grid.map((row, i) => (
-          row.map((cell, j) => (
+          row.map((cell: CellColor, j) => (
             <button
               key={`${i}-${j}`}
-              className={`w-8 h-8 rounded-full ${colorClasses[cell]} ${isStatic ? '' : 'cursor-pointer'}`}
+              className={`w-8 h-8 rounded-full ${cell === null ? 'bg-white' : colorClasses[cell]} ${isStatic ? '' : 'cursor-pointer'}`}
               onClick={() => handleCellClick(i, j)}
               disabled={isStatic}
               aria-label={`Cell ${i+1}-${j+1}, Color: ${cell}`}
@@ -94,8 +96,8 @@ export default function LogoTemplate() {
             {Object.entries(colorClasses).map(([color, className]) => (
               <button
                 key={color}
-                className={`w-8 h-8 rounded-full ${className} ${color === currentColor ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
-                onClick={() => handleColorChange(color as CellColor)}
+                className={`w-8 h-8 rounded-full ${className} ${color === String(currentColor) ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
+                onClick={() => handleColorChange(color as unknown as CellColor)}
                 aria-label={`Select ${color} color`}
               />
             ))}

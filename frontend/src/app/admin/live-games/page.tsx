@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import CheckAdmin from '@/components/auth/checkAdmin';
+import CheckAdmin from '@/components/auth/adminOnly';
 import Dashboard from '@/components/sidebar';
 import Loading from '@/components/loading';
 

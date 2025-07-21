@@ -1,1 +1,0 @@
-//SELECT * FROM con4_schema.gameplayers WHERE game_id IN (SELECT id FROM con4_schema.games WHERE short_id='j7TlUql1');

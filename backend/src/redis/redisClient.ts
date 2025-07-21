@@ -1,53 +1,83 @@
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 import { myConfig } from '@config/env';
 
-let client: RedisClientType | null = null;
-let connectingPromise: Promise<RedisClientType> | null = null;
+// Use Maps to store clients and their connecting promises
+const clients = new Map<string, any>();
+const connectingPromises = new Map<string, Promise<any>>();
 
-export async function getRedisClient(): Promise<RedisClientType> {
-  if (client && client.isOpen) return client;
+async function createRedisClient() {
+  let retryCount = 0;
+  const maxRetries = 10;
 
-  // If a connection attempt is already ongoing, wait for it
-  if (connectingPromise) return await connectingPromise;
-
-  connectingPromise = (async () => {
-    let retryCount = 0;
-    const maxRetries = 10;
-
-    console.log('🔌 Connecting to Redis...', myConfig.REDIS_HOST, myConfig.REDIS_PORT);
-
-    client = createClient({
-      socket: {
-        host: myConfig.REDIS_HOST,
-        port: Number(myConfig.REDIS_PORT),
-        reconnectStrategy: (retries: number) => {
-          retryCount = retries;
-
-          if (retries >= maxRetries) {
-            console.error(`❌ Redis reconnect failed after ${retries} attempts`);
-            return new Error('Max reconnect attempts reached');
-          }
-
-          return 1000; // retry after 1s
+  const client = createClient({
+    socket: {
+      host: myConfig.REDIS_HOST,
+      port: Number(myConfig.REDIS_PORT),
+      reconnectStrategy: (retries: number) => {
+        retryCount = retries;
+        if (retries >= maxRetries) {
+          console.error(`❌ Redis reconnect failed after ${retries} attempts`);
+          return new Error('Max reconnect attempts reached');
         }
-      }
-    });
+        return 1000; // retry after 1 second
+      },
+    },
+  });
 
-    client.on('error', (err) => {
-      console.error('Redis Client Error:', err.message);
-    });
+  client.on('error', (err: Error) => {
+    console.error('Redis Client Error:', err.message);
+  });
 
-    await client.connect();
-    console.log('✅ Redis connected');
-    return client;
-  })();
-
-  return await connectingPromise;
+  await client.connect();
+  console.log('✅ Redis connected');
+  return client;
 }
 
-export async function closeRedisClient() {
-  if (client && client.isOpen) {
-    await client.disconnect();
-    console.log('Redis client disconnected');
+async function getClient(clientName: string) {
+  if (clients.has(clientName)) {
+    const client = clients.get(clientName);
+    if (client.isOpen) {
+      return client;
+    }
+  }
+
+  if (connectingPromises.has(clientName)) {
+    return connectingPromises.get(clientName)!;
+  }
+
+  const promise = createRedisClient()
+    .then((client) => {
+      clients.set(clientName, client);
+      connectingPromises.delete(clientName);
+      return client;
+    })
+    .catch((err) => {
+      connectingPromises.delete(clientName);
+      throw err;
+    });
+
+  connectingPromises.set(clientName, promise);
+
+  return promise;
+}
+
+export async function getBullMqClient() {
+  return getClient('bullmq');
+}
+
+export async function getRedisClient() {
+  return getClient('business');
+}
+
+export async function getPubSubRedisClient() {
+  return getClient('pubsub');
+}
+
+export async function closeAllClients() {
+  for (const [key, client] of clients.entries()) {
+    if (client && client.isOpen) {
+      await client.disconnect();
+      console.log(`Redis client (${key}) disconnected`);
+    }
   }
 }

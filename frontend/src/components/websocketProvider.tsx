@@ -1,18 +1,16 @@
-'use client'
+'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import useWebSocket from "@/utils/useWebsocket";
+import React, { createContext, useContext, ReactNode } from 'react';
+import useWebSocket from '@/utils/useWebsocket';
 
 interface WebSocketContextType {
-  sendMessage: (msg: string) => void;
+  sendJson: (data: object) => void;
   readyState: number;
-  lastMessage: string | null;
   close: () => void;
+  getLastJson: () => any | null;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(
-  undefined
-);
+const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 interface WebSocketProviderProps {
   url: string;
@@ -20,16 +18,11 @@ interface WebSocketProviderProps {
 }
 
 export function WebSocketProvider({ url, children }: WebSocketProviderProps) {
-  const [lastMessage, setLastMessage] = useState<string | null>(null);
-
-  const { sendMessage, readyState, close } = useWebSocket(url, {
-    onMessage: (msg) => setLastMessage(msg),
-    heartbeatInterval: 20000,
-  });
+  const { sendJson, readyState, close, getLastJson } = useWebSocket(url);
 
   return (
     <WebSocketContext.Provider
-      value={{ sendMessage, readyState, lastMessage, close }}
+      value={{ sendJson, readyState, close, getLastJson }}
     >
       {children}
     </WebSocketContext.Provider>
@@ -39,9 +32,7 @@ export function WebSocketProvider({ url, children }: WebSocketProviderProps) {
 export function useWebSocketContext(): WebSocketContextType {
   const context = useContext(WebSocketContext);
   if (!context) {
-    throw new Error(
-      "useWebSocketContext must be used within a WebSocketProvider"
-    );
+    throw new Error("useWebSocketContext must be used within a WebSocketProvider");
   }
   return context;
 }

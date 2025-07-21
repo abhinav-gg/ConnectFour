@@ -7,15 +7,16 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
     console.log(myConfig.ZOHO_PWD, myConfig.ZOHO_USER);
     const transporter = nodemailer.createTransport({
       host:'smtp.zoho.eu',
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      port: 465,
+      secure: true,
       auth: {
         user: myConfig.ZOHO_USER,
         pass: myConfig.ZOHO_PWD,
       },
     });
+
     const info = await transporter.sendMail({
-      from: '"Con4" <administrator@con4.uk>',
+      from: '"Con4" <no.reply@con4.uk>',
       to,
       subject,
       html,

@@ -13,10 +13,6 @@ export default function Component() {
   // Connect 4 board component
   // Remove the existing Connect4Board component definition and replace with:
 
-  // Then in the component, replace all Connect4Board usages:
-
-  const [showSecurityModal, setShowSecurityModal] = useState(false)
-
   return (
     <Layout>
       {/* Skip to main content link */}
@@ -31,7 +27,18 @@ export default function Component() {
       <section id="main-content" className="py-8" aria-labelledby="hero-heading">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           <div className="flex justify-center lg:justify-start">
-            <Board ariaLabel="Large Connect 4 game board showing empty game grid" />
+            <Board
+            boardState={
+              [
+                [-1, 0, -1, -1, -1,  1, -1],
+                [-1, 0, -1, -1, -1, -1, -1],
+                [-1, 0, -1, -1, -1,  1, -1],
+                [-1, 0,  0,  0, -1,  1, -1],
+                [-1, 0, -1,  0, -1,  1, -1],
+                [-1, 0, -1,  0, -1,  1, -1],
+              ].map(row => row.map(cell => cell === -1 ? null : cell))
+            }
+            interactive={false} animate_init={true} ariaLabel="Large Connect 4 game board showing empty game grid" />
           </div>
 
           <div className="space-y-8">
@@ -56,7 +63,6 @@ export default function Component() {
               <div className="space-y-4">
                 <button
                   className="flex items-center gap-4 bg-brand-hover hover:bg-brand-primary focus:bg-brand-primary focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-brand-primary rounded-xl p-4 w-full text-left transition-all"
-                  onClick={() => setShowSecurityModal(true)}
                   aria-describedby="play-online-description"
                 >
                   <Gamepad2 className="w-8 h-8" aria-hidden="true" />
@@ -102,7 +108,9 @@ export default function Component() {
             </div>
 
             <div className="flex justify-center">
-              <Board ariaLabel="Connect 4 puzzle board for solving challenges" />
+              <Board 
+              animate_init={false}
+              ariaLabel="Connect 4 puzzle board for solving challenges" />
             </div>
           </div>
         </div>
@@ -120,8 +128,8 @@ export default function Component() {
             role="group"
             aria-label="Live game boards"
           >
-            <Board ariaLabel="Live game board 1 - ongoing match" />
-            <Board ariaLabel="Live game board 2 - ongoing match" />
+            <Board animate_init={false} ariaLabel="Live game board 1 - ongoing match" />
+            <Board animate_init={false} ariaLabel="Live game board 2 - ongoing match" />
           </div>
 
           <div className="text-center">
@@ -137,7 +145,7 @@ export default function Component() {
         <div className="bg-brand-secondary rounded-3xl p-8 lg:p-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div className="flex justify-center order-2 lg:order-1">
-              <Board ariaLabel="Connect 4 tutorial board for learning the game" />
+              <Board animate_init={false} ariaLabel="Connect 4 tutorial board for learning the game" />
             </div>
 
             <div className="order-1 lg:order-2">

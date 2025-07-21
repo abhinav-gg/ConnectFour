@@ -6,10 +6,9 @@ import { Request, Response } from 'express';
 import { createServer } from 'http';
 import { getRedisClient, closeRedisClient } from '@/redis/redisClient';
 import pool from '@/db/rds/rdsClient'; // Adjust the import based on your database setup
-import { loadTemplate, sendEmail } from '@/lib/email/emails'; // Adjust the import based on your email template loading logic
 import { dynamoDBOps } from './db/dynamodb/ops';
-import authRouter from './controllers/api/routes/authRoutes';
-
+import authRouter from './controllers/api/authRoutes';
+import { sendEmailVerifyCode } from './lib/email/verifyCodes';
 
 dotenv.config();
 
@@ -103,23 +102,19 @@ app.get('/dynamo-test', async (req: Request, res: Response) => {
   }
 });
 
-// app.get('/ping-astrochamp', async (req: Request, res: Response) => {
-//   try {
-//     console.log("attempt to send")
-//     let emailtmplt = loadTemplate('verify-email.html');
-//     if (!emailtmplt) {
-//       res.status(500).json({ error: 'Email template not found' });
-//       return;
-//     }
-//     await sendEmail("ivanoconnor@hotmail.co.uk", "Hello There", emailtmplt!);
-//     res.json({ message: 'Email sent successfully' });
-//   }
-//   catch (error) {
-//     console.error('Error sending email:', error);
-//     res.status(500).json({ error: 'Failed to send email' });
-//   }
-// }
-// );
+app.get('/test/email', async (req: Request, res: Response) => {
+  try {
+    console.log("attempt to send")
+    await sendEmailVerifyCode("123543", "Chipinje", "agupta.cam7@gmail.com")
+    // await sendEmailVerifyCode("123543", "Chipinje", "connect-four@outlook.com")
+    res.json({ message: 'Email sent successfully' });
+  }
+  catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+}
+);
 
 app.get('/database-test', async (req: Request, res: Response) => {
   try {

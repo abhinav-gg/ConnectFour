@@ -1,10 +1,19 @@
+import { Cell, Player } from "@shared/types/game";
 import { StandardGame } from "./game";
 import { COLS, ROWS } from "@shared/constants/game";
 
 export const examplePuzzles = [
     "45342133|4243543",
     "4435213533|246",
-] 
+]
+
+export type PuzzleSuccess = {
+    succ: boolean,
+    row1?: number,
+    row2?: number,
+    col1?: number,
+    col2?: number,
+}
 
 export class Puzzle {
     
@@ -47,8 +56,15 @@ export class Puzzle {
         return this.gameState.prettyPrintBoard();
     }
 
+    getBoard(): Cell[][] {
+        return this.gameState.getBoard()
+    }
 
-    attemptMove(col: number): boolean { // change return to string and bool pair later and use for calculation of score.
+    get getMyCol(): Player {
+        return this.puzStr.length % 2 as Player;
+    }
+
+    attemptMove(col: number): PuzzleSuccess { // change return to string and bool pair later and use for calculation of score.
         if (col < 0 || col >= COLS) {
             throw new Error(`Invalid column number: ${col}`);
         }
@@ -58,19 +74,19 @@ export class Puzzle {
 
         if (expected !== (col + 1).toString()) {
             // wrong move
-            return false;
+            return { succ: false };
         }
 
         const result = this.gameState.makeMove(col, false);
         if (ci === this.puzStr.length - 1) {
             //console.log("Puzzle completed successfully!");
             // terminate the puzzle here
-            return true
+            return { succ: true, row1: result.row, col1: col }
         } else {
             let nextMove = parseInt(this.puzStr[ci + 1], 10) - 1;
-            this.gameState.makeMove(nextMove, false); // Silent mode to avoid event emission
+            const result2 = this.gameState.makeMove(nextMove, false); 
+            return { succ: true, row1: result.row, col1: col, row2: result2.row, col2: nextMove }
         }
-        return result.success;
     }
 
 }

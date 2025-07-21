@@ -3,13 +3,15 @@ import { z } from 'zod';
 // Zod schema for User
 export const UserSchema = z.object({
   id: z.string().uuid(),
-  username: z.string().nullable(),
-  email: z.string().email().nullable(),
-  email_verified: z.boolean(),
+  username: z.string(),
+  email: z.string().email(),
+  email_verified: z.boolean().nullable(),
+  profile_pic: z.string().nullable(),
+  password_hash: z.string().nullable(),
+  mail_provider: z.string().length(1),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
-  last_login: z.string().datetime().nullable(),
-  is_anonymous: z.boolean(),
+  last_login: z.string().datetime(),
 });
 
 export const RegistrationUserSchema = z.object({
@@ -27,5 +29,3 @@ export const UserWithPasswordSchema = UserSchema.extend({
 export type User = z.infer<typeof UserSchema>;
 export type UserWithPassword = z.infer<typeof UserWithPasswordSchema>;
 
-
-// UserSchema.parse(data) how to use

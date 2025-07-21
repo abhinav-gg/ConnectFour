@@ -15,6 +15,8 @@ export function genRandomGameKey(): string {
   return key;
 }
 
+
+
 // CategoriseTime takes a time control object and returns the game category
 // (TODO: define time control object, then function is done)
 export function CategoriseTime(timeControl: TimeControl): TimeCategory { 

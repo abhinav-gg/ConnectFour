@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { AppSidebar } from "./sidebar"
 import { Footer } from "./footer"
 import { Menu } from "lucide-react"
+import { motion } from "framer-motion"
 
 interface LayoutProps {
   children: React.ReactNode
@@ -20,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
   // Check if mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
-      
+
       const mobile = window.innerWidth < 768 // md breakpoint
       setIsMobile(mobile)
       if (mobile) {
@@ -29,7 +30,8 @@ export function Layout({ children }: LayoutProps) {
         setSidebarLeftPadding(20) // No padding on mobile
       }
       else {
-        setSidebarLeftPadding(!sidebarCollapsed ? 168 : 68) // Set padding based on collapsed state
+        setSidebarCollapsed(true) // just convenient default
+        setSidebarLeftPadding(68)
       }
 
     }
@@ -62,14 +64,25 @@ export function Layout({ children }: LayoutProps) {
     <div className="flex min-h-screen w-full bg-gradient-to-b from-brand-primary to-brand-secondary">
       
       {/* Sidebar Toggle Button */}
-      <button
-            onClick={toggleSidebar}
-            className="fixed top-4 z-[60] bg-brand-hover hover:bg-brand-primary text-white border-0 shadow-md rounded-lg p-2 transition-all duration-200 hover:shadow-lg focus:ring-2 focus:ring-white/50 focus:ring-offset-brand-primary"
-            style={{ left: sidebarLeftPadding }}
-            aria-label="Toggle sidebar"
+      {/* Fixed Hamburger Menu - Always at top */}
+        <motion.button
+          onClick={toggleSidebar}
+          className="fixed top-4 z-[60] bg-brand-secondary/90 backdrop-blur-sm hover:bg-brand-hover text-white border border-brand-border/30 shadow-lg rounded-xl p-3 transition-all duration-200 hover:shadow-xl focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-transparent"
+          style={{ left: sidebarLeftPadding }}
+          aria-label="Toggle sidebar"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <motion.div
+            animate={sidebarOpen || !sidebarCollapsed ? { rotate: 90 } : { rotate: 0 }}
+            transition={{ duration: 0.2 }}
           >
-        <Menu className="h-5 w-5" />
-      </button>
+            <Menu className="h-5 w-5" />
+          </motion.div>
+        </motion.button>
 
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (

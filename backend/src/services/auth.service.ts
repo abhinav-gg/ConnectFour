@@ -2,11 +2,16 @@
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 import { RESERVED_USERNAMES } from '@shared/reserved_usernames';
-import { ServiceResponse, UserSessionTTL } from '@/types/custom';
-import { verifyPassword } from '@/lib/auth/auth';
+import { ServiceResponse, UserAccountProvider, UserSessionTTL } from '@/types/custom';
+import { hashPassword, verifyPassword } from '@/lib/auth/auth';
 import { generateSessionToken } from '@/lib/auth/auth';
 import { UserProfile } from '@shared/types/users';
 import { UserTags } from '@shared/constants/usertags';
+import { generateVerificationCode } from '@/utils/validation';
+import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
+import { EmailSendError } from '@/types/miscErrors';
+import { User, UserSchema } from '@/db/models/User';
+import { UsernameExists } from '@/types/dbErrors';
 
 const disallowedUsernames = new Set(RESERVED_USERNAMES);
 const userDbOps = rdsDBOps.user;
@@ -55,36 +60,72 @@ export const authService = {
     } as UserProfile;
   },
 
-  async registerUser(username: string, password: string, email: string) {
+  parseUser(username: string, email: string, provider: UserAccountProvider, pwd?: string, pfp?: string): User {
+    const user = UserSchema.parse({
+      username,
+      email,
+      password: pwd,
+      profile_pic: pfp,
+      mail_provider: provider
+    });
+    return user;
+  },
 
+  /**
+   * Function to register a user and throw error if it fails from rds
+   * @param provider 
+   * @param username 
+   * @param email 
+   * @param pwdHash 
+   * @param profilePic 
+   * @returns 
+   */
+  async registerUser(user: User): Promise<ServiceResponse> {
 
-    // const usernameNormalised = username.trim().toLowerCase();
-    // const emailNormalised = email.trim().toLowerCase();
-    // const passwordNormalised = password.trim();
+    if (disallowedUsernames.has(user.username)) {
+      throw new UsernameExists()
+    }
+    
+    switch (user.mail_provider) {
+      case UserAccountProvider.Local: {
+        if (!user.password_hash) {
+          // no pwd in local mode is a failure
+          return { status: 400, message: 'No PWD provided' };
+        }
+        
+        await userDbOps.createUser(user.username, user.email, UserAccountProvider.Local, false, undefined, user.password_hash);
 
-    // if (disallowedUsernames.has(usernameNormalised)) {
-    //   return { status: 400, message: 'Username is already taken' };
-    // }
-
-    // try {
-    //   // Validate data with Zod schema
-    //   const passwordHash = await hashPassword(passwordNormalised);
-    //   // const result = await userDbOps.createUser(usernameNormalised, emailNormalised, passwordHash);
-    //   const sessionToken = await createSession(result.id);
+      } 
+      case UserAccountProvider.Google: {
       
-      
+        await userDbOps.createUser(user.username, user.email, UserAccountProvider.Google, true, user.profile_pic!);
 
+      }
 
+    }
 
-    // } catch (error: Error) {
-    //   return { status: 400, message: error.message || 'Invalid input' };
-    // }
-
+    return { status: 200, message: "account added" }
 
   },
 
+  async loginGoogleUser(email: string): Promise<ServiceResponse> {
 
-  async loginUser(usernamEmail: string, password: string): Promise<ServiceResponse> {
+    try {
+      const user = await userDbOps.getUserByEmail(email);
+
+      const sessionToken = await authService.createSession(user.id);
+  
+      return { status: 200, message: sessionToken };
+  
+      
+    } catch (error) {
+      console.error('Failed to login:', error);
+      return { status: 500, message: 'Failed to login' };
+    }
+  },
+
+
+  async loginLocalUser(usernamEmail: string, password: string): Promise<ServiceResponse> {
 
     if (!usernamEmail) {
       return { status: 400, message: 'No Username Or Email (honestly Impressive)' };
@@ -97,28 +138,24 @@ export const authService = {
     const isEmail = usernamEmail.includes('@');
 
     try {
-      let fetchedHash: string | null = null;
+      let user: User;
       if (isEmail) {
-        fetchedHash = await userDbOps.getPasswordHashByEmail(usernamEmail);
+        user = await userDbOps.getUserByEmail(usernamEmail);
       } else {
-        fetchedHash = await userDbOps.getPasswordHashByUsername(usernamEmail);
+        user = await userDbOps.getUserByUsername(usernamEmail);
       }
   
-      if (!fetchedHash) {
-        return { status: 400, message: 'User Not Found' };
+      const passwordMatch = await verifyPassword(user.password_hash!, password);
+      if (!passwordMatch) {
+        return { status: 400, message: 'Invalid password' };
       }
-      else {
-        const passwordMatch = await verifyPassword(fetchedHash, password);
-        if (!passwordMatch) {
-          return { status: 400, message: 'Invalid password' };
-        }
+
+      else if (!user.email_verified) {
+        // the user needs to enter a verification code
+        return { status: 400, message: 'Email Has Not Been Verified' }
       }
-  
-      const user = await userDbOps.getUserDataByUsername(usernamEmail);
-      if (!user) {
-        return { status: 404, message: 'User not found' };
-      }
-  
+
+
       const sessionToken = await authService.createSession(user.id);
   
       return { status: 200, message: sessionToken };
@@ -146,15 +183,36 @@ export const authService = {
   },
 
 
-
-  async verifyEmail(vCode: number) {
-    
-  },
-
   async checkAdministrator(userId: string): Promise<boolean> {
     return await userDbOps.checkForTag(userId, UserTags.ADMIN);
-  }
+  },
 
 
+  async sendEmailVerification(email: string, username: string): Promise<ServiceResponse> {
+    const redisOp = await redisOps();
+    const vCode = generateVerificationCode();
+    
+    // send email with vCode
+    try {
+
+      sendEmailVerifyCode(vCode, username, email)
+      
+      await redisOp.user.setEmailVerificationCode(email, vCode);
+    }
+    catch (error: any) {
+
+      if (error instanceof EmailSendError) {
+        return { status: 500, message: 'Failed to send email' };
+      }
+    }
+
+    return { status: 200, message: 'Email sent and code set' };;
+
+  },
+
+  async attemptEmailVerification(email: string, vCode: number): Promise<void> {
+
+
+  },
 
 };
