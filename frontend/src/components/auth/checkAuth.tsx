@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect, useState } from 'react';
-import { getConfig } from '@/config/env';
+import { myConfig } from '@/config/env';
 import Loading from '../loading';
 
 interface CheckAuthProps {
@@ -19,7 +19,7 @@ export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckA
 
     setLoading(true);
 
-    const response = await fetch(`${await getConfig().backendUrl}/api/auth/protected-route`, {
+    const response = await fetch(`${myConfig.BACKEND_URL}/api/auth/protected-route`, {
       method: 'GET',
       credentials: 'include',
     });

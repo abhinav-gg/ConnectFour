@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getConfig } from '@/config/env';
+import { myConfig } from '@/config/env';
 import Loading from '@/components/loading';
 
 export default function DiscordCallback() {
@@ -16,7 +16,7 @@ export default function DiscordCallback() {
       return;
     }
 
-    fetch(`${getConfig().backendUrl}/api/events/ichack25/discord`, {
+    fetch(`${myConfig.BACKEND_URL}/api/events/ichack25/discord`, {
       method: 'POST',
       credentials: 'include',
       headers: {

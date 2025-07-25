@@ -25,12 +25,16 @@ export class PlayerNotLookingForGame extends Error {
 export class EmailExists extends Error {
   constructor() {
     super('An account with this email already exists');
+    this.name = "EmailExists";
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
 export class EmailDoesNotExist extends Error {
   constructor() {
     super('An account with this email doesn\'t exist');
+    this.name = "EmailDoesNotExist";
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 

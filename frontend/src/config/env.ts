@@ -7,8 +7,8 @@ export const myConfig = {
     
     NODE_ENV: process.env.NODE_ENV || 'development',
 
-    BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || "https://localhost:3001",
-    WEBSOCKET_URL: process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:3001/",
+    BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001",
+    WEBSOCKET_URL: process.env.NEXT_PUBLIC_WEBSOCKET_URL || "ws://localhost:3002/",
   
     DISCORD_REDIRECT_URI: process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI,
     RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,

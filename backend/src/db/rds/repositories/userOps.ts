@@ -1,15 +1,16 @@
 import pool from '../rdsClient';
-import { User, UserSchema, UserWithPassword, UserWithPasswordSchema } from '@/db/models/User';
+import { User, UserSchema, RegUser, UserRegistration } from '@/db/models/User';
 import { withTransaction } from '../utils/withTransaction';
 import * as DBError from '@/types/dbErrors';
-import { UserAccountProvider } from '@/types/custom';
+import { UserAccountProvider } from "@shared/types/users";
+import { UUID } from 'crypto';
 
 export const UserOperations = {
   
   async __getAllUsers(): Promise<User[]> {
     const result = await pool.query(
-      `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-                FROM users`
+      `SELECT *
+        FROM users`
     );
     return result.rows as User[];
   },
@@ -91,14 +92,15 @@ export const UserOperations = {
 
   async getUserByEmail(email: string): Promise<User> {
     const result = await pool.query(
-      `SELECT id, username, email, email_verified, created_at, updated_at, last_login
-               FROM users
-               WHERE email = $1`,
+      `SELECT * 
+        FROM users
+        WHERE email = $1`,
       [email.toLowerCase()]
     );
     if (result.rowCount !== 1) {
       throw new DBError.EmailDoesNotExist()
     }
+    console.log(result.rows[0])
     return UserSchema.parse(result.rows[0]);
   },
 
@@ -142,12 +144,21 @@ export const UserOperations = {
   async getPasswordHashByEmail(email: string): Promise<string> {
     const result = await pool.query(
       `SELECT password_hash
-               FROM users
-               WHERE email = $1`,
+        FROM users
+        WHERE email = $1`,
       [email.toLowerCase()]
     );
 
     return result.rows[0]?.password_hash ?? "";
+  },
+
+  async setEmailVerifiedById(id: string): Promise<void> {
+    await pool.query(
+      `UPDATE users
+        SET email_verified = TRUE
+        WHERE id = $1`,
+      [id]
+    );
   },
 
   async getIDByUsername(username: string): Promise<string> {
@@ -162,25 +173,22 @@ export const UserOperations = {
   },
 
   async dropUserByID(id: string): Promise<void> {
-    // await this.revokeSessionByUID(id);
-    // await pool.query(
-    //   `UPDATE FROM users
-    //     SET username = NULL, email = NULL, password_hash = NULL, email_verified = FALSE, updated_at = NOW()
-    //     WHERE id = $1`,
-    //   [id]
-    // );
+    await pool.query(
+      `DELETE FROM users
+        WHERE id = $1`,
+      [id]
+    );
     // There is no delete query
   },
 
-  async getIDByEmail(email: string): Promise<string> {
+  async getIDByEmail(email: string): Promise<UUID | null> {
     const result = await pool.query(
       `SELECT id
         FROM users
         WHERE email = $1`,
       [email.toLowerCase()]
     );
-
-    return result.rows[0]?.id ?? "";
+    return (result.rows[0]?.id as UUID) ?? null;
   },
 
   async getAllUserTagNames(id: string): Promise<[string]> {

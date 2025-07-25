@@ -34,4 +34,11 @@ pool.on('error', (err) => {
     console.error('Unexpected PostgreSQL error', err);
 });
 
+pool.on('connect', (client) => {
+  console.log("[RDS] Connected Successfully!")
+  client.query('SET search_path TO con4_schema').catch(err => {
+    console.error('Failed to set search_path:', err);
+  });
+});
+
 export default pool;

@@ -33,26 +33,21 @@ export class StandardGame {
 
 
       // Parse the string to create moves array
-      let moves = movesOrString.split('').map((col, i) => ({
-        player: i % 2 as Player,
-        col: parseInt(col, 10) - 1 // Convert to 0-based index
-      })) as Move[];
+      let moves = movesOrString.split('').map((col, i) => {
+        return parseInt(col, 10) - 1; // Convert to 0-based index
+      });
       moves.forEach(move => {
-        let attempt = this.makeMove(move.col, true); // Silent mode to avoid event emission
+        let attempt = this.makeMove(move, true); // Silent mode to avoid event emission
         if (!attempt.success) {
-          throw new Error(`Invalid move: Column ${move.col} is full or invalid.`);
+          throw new Error(`Invalid move: Column ${move} is full or invalid.`);
         }
       });
 
     } else if (Array.isArray(movesOrString)) {
 
       movesOrString.forEach(move => {
-        // Check for correct player
-        if (move.player !== this.currentPlayer) { 
-          throw new Error(`Invalid move: Player ${move.player} attempted to play when it's Player ${this.currentPlayer}'s turn.`); 
-        }
-        if (!this.makeMove(move.col, true).success){ // Silent mode to avoid event emission 
-          throw new Error(`Invalid move: Column ${move.col} is full or invalid.`); 
+        if (!this.makeMove(move, true).success){ // Silent mode to avoid event emission 
+          throw new Error(`Invalid move: Column ${move} is full or invalid.`); 
         } 
       });
     }
@@ -66,8 +61,8 @@ export class StandardGame {
     return this.board
   }
 
-  getMove = (index: number): Move | null => {
-    return this.moves[index] || null
+  getLegalMoves = (): Move[] => {
+    return [...Array(COLS).keys()].filter(i => this.getAvailableRow(i) !== -1);
   }
 
   /**
@@ -106,7 +101,7 @@ export class StandardGame {
     const targetRow = this.getAvailableRow(col)
     if (targetRow >= 0) {
       this.board[targetRow][col] = this.currentPlayer
-      this.moves.push({ player: this.currentPlayer, col })
+      this.moves.push(col)
       this.currentPlayer = this.currentPlayer === 1 ? 0 : 1
       this.currentMoveIndex ++;
       this.checkGameOver(targetRow, col); // Check if the move results in a win or draw
@@ -165,18 +160,17 @@ export class StandardGame {
 
     this.currentMoveIndex = newMoveIndex
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    this.moves.forEach(element => {
-      
-      // moveIndex is valid so construct without any checks
-      this.board[this.getAvailableRow(element.col)][element.col] = element.player;
-
+    this.moves.forEach((col, idx) => {
+      // Use index parity to determine player: 0 for even, 1 for odd
+      const player = idx % 2 as 0 | 1;
+      this.board[this.getAvailableRow(col)][col] = player;
     });
     
     return true
   }
 
   exportMoves(): string {
-    return this.moves.map(({ player, col }) => col).join('')
+    return this.moves.map((col) => col+1).join('')
   }
 
   reset(): void {

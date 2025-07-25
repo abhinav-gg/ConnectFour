@@ -2,11 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { Gamepad2, Bot } from "lucide-react"
-import { useState, useEffect } from "react"
-import { useFocusTrap } from "@/hooks/use-focus-trap"
-import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation"
 import { Layout } from "@/components/mainlayout"
-import { Board } from "@/components/boards/Board"
+import Board from "@/components/boards/Board"
 
 
 export default function Component() {
@@ -26,7 +23,7 @@ export default function Component() {
       {/* Hero Section */}
       <section id="main-content" className="py-8" aria-labelledby="hero-heading">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          <div className="flex justify-center lg:justify-start">
+          <div className="flex justify-center lg:justify-start w-full max-w-2xl mx-auto">
             <Board
             boardState={
               [
@@ -107,7 +104,7 @@ export default function Component() {
               </p>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex justify-center w-full max-w-2xl mx-auto">
               <Board 
               animate_init={false}
               ariaLabel="Connect 4 puzzle board for solving challenges" />
@@ -124,7 +121,7 @@ export default function Component() {
           </h2>
 
           <div
-            className="flex flex-col md:flex-row items-center justify-center gap-8 mb-12"
+            className="flex flex-col md:flex-row items-center justify-center gap-8 mb-12 w-full max-w-5xl mx-auto"
             role="group"
             aria-label="Live game boards"
           >
@@ -144,7 +141,7 @@ export default function Component() {
       <section className="py-16" aria-labelledby="learn-heading">
         <div className="bg-brand-secondary rounded-3xl p-8 lg:p-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div className="flex justify-center order-2 lg:order-1">
+            <div className="flex justify-center order-2 lg:order-1 w-full max-w-2xl mx-auto">
               <Board animate_init={false} ariaLabel="Connect 4 tutorial board for learning the game" />
             </div>
 

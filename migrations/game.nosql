@@ -1,21 +1,20 @@
-// Add prefixes
 
 GAME:
 {
   "p": "<gameUUID>",                                // Game UUID as PK
-  "s": "ABC123",                                    // Shortcode (nullable)
+  "c": "ABC123",                                    // Sort Key: Shortcode (nullable)
   "u": ["user1", "user2"],                          // Ordered list of player IDs
   "d": Buffer,                                      // Game data (binary/base64)
-  "i": number,                                      // GameInfo 8 bytes NOT GAMEMODE
+  "i": number,                                      // GameInfo 8 bytes INCLUDES THE TIME CONTROL AS WELL
   "r": 3                                            // Result (4-bit number)
 }
 
 GAMEPLAYERS
 {
-  "p": "<userUUID>",            // Partition Key: player ID
-  "s": "<gameUUID>",     // Sort Key: game ID
-  "t": 1699852800,         // Timestamp (unix time)
-  "m": 3,                  // Gamemode ID (integer)
+  "p": "<userUUID>",       // Partition Key: player ID
+  "s": "<gameUUID>",       // Sort Key: game ID
+  "t": 1699852800,         // Local Sort Key: Timestamp (unix time)
+  "m": 3,                  // Local Sort Key: Gamemode ID (integer)
   "e": 1090,               // Starting ELO
   "d": 5                   // Delta ELO (optional)
 }
@@ -24,5 +23,5 @@ GAMEPLAYERS
 SHORTCODEMAP
 {
   "p": "ABC123",              // Shortcode as PK with prefix 's#'
-  "g": "123e4567-e89b-12d3-a456-426614174000"  // Game ID this shortcode maps to
+  "g": "<gameUUID>"           // Game ID this shortcode maps to
 }

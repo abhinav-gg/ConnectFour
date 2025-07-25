@@ -9,7 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff } from "lucide-react"
-import { validateEmail, validateUsername } from "@/../../shared/utils/validation"
+import { validateEmail, validateUsername } from "@shared/utils/validation"
+import { myConfig } from "@/config/env"
+import { APIResponse } from "@shared/types/Responses"
+import { handleGoogleLogin } from "@/utils/googleSignin"
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -79,14 +82,21 @@ export function LoginForm() {
 
     setIsLoading(true)
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    const response = await fetch(`${myConfig.BACKEND_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usernameEmail: email, password }),
+    });
+    const resp = (await response.json())as APIResponse
+    console.log(resp)
     setIsLoading(false)
     // Mock login success/failure
-    if (email === "test@example.com" && password === "password123") {
+    if (resp.success) {
       console.log("Login successful!")
-      // Redirect or show success message
+      // redirect to /profile
+      window.location.href = "/profile"
     } else {
-      setLoginError("Invalid email or password.")
+      setLoginError(resp.message)
     }
   }
 
@@ -189,7 +199,8 @@ export function LoginForm() {
               value={password}
               onChange={(e) => handlePasswordChange(e.target.value)}
               className={`h-12 pr-12 rounded-md transition-all duration-200 hover:border-brand-accent-blue/50 focus:scale-[1.02] ${
-                passwordError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                passwordError ? "border-red-500 focus:border-red-500 focus:ring-red-500" :
+                password ? "border-green-500 focus:border-green-500 focus:ring-green-500" : ""
               }`}
               disabled={isLoading}
               placeholder="Enter your password"
@@ -235,6 +246,17 @@ export function LoginForm() {
                 transition={{ duration: 0.3 }}
               >
                 {passwordError}
+              </motion.p>
+            )}
+            {!passwordError && password && (
+              <motion.p
+                className="text-green-500 text-sm select-none"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                ✓ Password provided
               </motion.p>
             )}
           </AnimatePresence>
@@ -312,6 +334,7 @@ export function LoginForm() {
             variant="outline"
             className="w-full h-12 text-base bg-transparent hover:bg-brand-hover/20 transition-all duration-200 rounded-md"
             disabled={isLoading}
+            onClick={handleGoogleLogin}
           >
             <motion.div className="flex items-center" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">

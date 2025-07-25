@@ -1,31 +1,33 @@
-# Use a Node.js image
 FROM node:20-alpine
 
-# Set the working directory
-WORKDIR /backend
+WORKDIR /app
 
-# Copy package files
-COPY backend/package*.json ./ 
-COPY backend/tsconfig.json ./
+# Copy only package files first for npm install cache layer
+COPY backend/package*.json ./backend/
+COPY backend/tsconfig.json ./backend/
 
+WORKDIR /app/backend
 
-# Install dependencies
+# Install dependencies before copying source to utilize layer cache
 RUN npm install --legacy-peer-deps
 
-# Copy the shared directory
+# Now copy shared last (changes often)
+WORKDIR /app
 COPY shared ./shared
 
-# Copy the rest of the application
-COPY backend .
+WORKDIR /app/backend
 
-# Build the application
-RUN npm run build
+# Now copy only required backend subdirectories
+COPY backend/config ./config
+COPY backend/data ./data
+COPY backend/src ./src
 
-# list /dist recursively
-RUN ls -R -la /backend/dist
+# Clean and build
+RUN rm -rf dist && npm run build
 
-# Expose the default production port
+# Debug build output
+RUN ls -R -la /app/backend/dist
+
 EXPOSE 3001
 
-# Start the application in production mode
 CMD ["npm", "run", "start"]

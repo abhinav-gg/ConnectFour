@@ -2,7 +2,8 @@
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 import { RESERVED_USERNAMES } from '@shared/reserved_usernames';
-import { ServiceResponse, UserAccountProvider, UserSessionTTL } from '@/types/custom';
+import { ServiceResponse } from '@/types/custom';
+import { UserAccountProvider } from "@shared/types/users";
 import { hashPassword, verifyPassword } from '@/lib/auth/auth';
 import { generateSessionToken } from '@/lib/auth/auth';
 import { UserProfile } from '@shared/types/users';
@@ -10,8 +11,10 @@ import { UserTags } from '@shared/constants/usertags';
 import { generateVerificationCode } from '@/utils/validation';
 import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { EmailSendError } from '@/types/miscErrors';
-import { User, UserSchema } from '@/db/models/User';
+import { RegUser, User, UserSchema } from '@/db/models/User';
 import { UsernameExists } from '@/types/dbErrors';
+import { UUID } from 'crypto';
+import { RedisSchema } from '@/redis/redisSchema';
 
 const disallowedUsernames = new Set(RESERVED_USERNAMES);
 const userDbOps = rdsDBOps.user;
@@ -24,7 +27,8 @@ export const authService = {
     const redisOp = await redisOps();
     const sessionToken = generateSessionToken();
     try {
-      const tok = await redisOp.user.setSession(sessionToken, userId, UserSessionTTL);
+      await redisOp.user.setSession(sessionToken, userId);
+
     } catch (error) {
       console.error('Failed to create session:', error);
       // interesting for debugging/
@@ -37,7 +41,7 @@ export const authService = {
     const redisOp = await redisOps();
     const sessionToken = generateSessionToken();
     try {
-      await redisOp.user.setAnonymousSession(sessionToken, UserSessionTTL);
+      await redisOp.user.setAnonymousSession(sessionToken);
       return sessionToken;
     } catch (error) {
       console.error('Failed to create anonymous session:', error);
@@ -45,31 +49,6 @@ export const authService = {
     }
   },
 
-  async getUserProfile(userId: string): Promise<UserProfile> { 
-    const redisOp = await redisOps();
-    const sessionUserID = await redisOp.user.getSession(userId);
-    if (!sessionUserID) {
-      throw new Error('Invalid or expired session token');
-    }
-    const user = await userDbOps.getUserByID(userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-    return {
-      username: user.username,
-    } as UserProfile;
-  },
-
-  parseUser(username: string, email: string, provider: UserAccountProvider, pwd?: string, pfp?: string): User {
-    const user = UserSchema.parse({
-      username,
-      email,
-      password: pwd,
-      profile_pic: pfp,
-      mail_provider: provider
-    });
-    return user;
-  },
 
   /**
    * Function to register a user and throw error if it fails from rds
@@ -80,7 +59,7 @@ export const authService = {
    * @param profilePic 
    * @returns 
    */
-  async registerUser(user: User): Promise<ServiceResponse> {
+  async registerUser(user: RegUser): Promise<ServiceResponse> {
 
     if (disallowedUsernames.has(user.username)) {
       throw new UsernameExists()
@@ -94,6 +73,8 @@ export const authService = {
         }
         
         await userDbOps.createUser(user.username, user.email, UserAccountProvider.Local, false, undefined, user.password_hash);
+
+        return (await this.sendEmailVerification(user.email, user.username))
 
       } 
       case UserAccountProvider.Google: {
@@ -110,18 +91,16 @@ export const authService = {
 
   async loginGoogleUser(email: string): Promise<ServiceResponse> {
 
-    try {
-      const user = await userDbOps.getUserByEmail(email);
+    const user = await userDbOps.getUserByEmail(email);
+    if (user.mail_provider !== UserAccountProvider.Google)
+      return { status: 400, message: "Email is not with google" };
 
-      const sessionToken = await authService.createSession(user.id);
+    rdsDBOps.user.recordUserLogin(user.id) // Update Last Login
+
+    const sessionToken = await authService.createSession(user.id);
+
+    return { status: 200, message: sessionToken };
   
-      return { status: 200, message: sessionToken };
-  
-      
-    } catch (error) {
-      console.error('Failed to login:', error);
-      return { status: 500, message: 'Failed to login' };
-    }
   },
 
 
@@ -144,26 +123,37 @@ export const authService = {
       } else {
         user = await userDbOps.getUserByUsername(usernamEmail);
       }
+
+      if (user.mail_provider !== UserAccountProvider.Local)
+        return { status: 500, message: 'User signed up with a different provider' };
   
       const passwordMatch = await verifyPassword(user.password_hash!, password);
       if (!passwordMatch) {
-        return { status: 400, message: 'Invalid password' };
+        return { status: 400, message: 'Invalid user or password' };
       }
 
       else if (!user.email_verified) {
         // the user needs to enter a verification code
-        return { status: 400, message: 'Email Has Not Been Verified' }
+        
+        if (await this.checkEmailVerificationStatus(user.email)) {
+
+          // redirect to verify email?
+
+        } else {
+          // send email again??
+        }
+
       }
 
+      rdsDBOps.user.recordUserLogin(user.id) // Update Last Login
 
-      const sessionToken = await authService.createSession(user.id);
+      const sessionToken = await this.createSession(user.id);
   
       return { status: 200, message: sessionToken };
   
       
-    } catch (error) {
-      console.error('Failed to login:', error);
-      return { status: 500, message: 'Failed to login' };
+    } catch (error: any) {
+      return { status: 500, message: error.message };
     }
   },
 
@@ -190,6 +180,12 @@ export const authService = {
 
   async sendEmailVerification(email: string, username: string): Promise<ServiceResponse> {
     const redisOp = await redisOps();
+
+    const canSend = await this.checkEmailVerificationStatus(email)
+
+    if (!canSend)
+      return { status: 400, message: 'Code was sent recently' };
+
     const vCode = generateVerificationCode();
     
     // send email with vCode
@@ -197,7 +193,7 @@ export const authService = {
 
       sendEmailVerifyCode(vCode, username, email)
       
-      await redisOp.user.setEmailVerificationCode(email, vCode);
+      await redisOp.user.setEmailCode(email, vCode);
     }
     catch (error: any) {
 
@@ -206,13 +202,88 @@ export const authService = {
       }
     }
 
-    return { status: 200, message: 'Email sent and code set' };;
+    return { status: 200, message: 'Email sent and code set' };
 
   },
 
-  async attemptEmailVerification(email: string, vCode: number): Promise<void> {
+  async attemptEmailVerification(email: string, vCode: string): Promise<ServiceResponse> {
 
+    const redis = await redisOps();
 
+    const u = await rdsDBOps.user.getUserByEmail(email)
+
+    if (u.email_verified || u.mail_provider !== UserAccountProvider.Local)
+      return { status: 400, message: 'Invalid Action' };
+
+    const valid = await redis.user.validateEmailCode(email, vCode);
+
+    if (valid) {
+
+      await rdsDBOps.user.setEmailVerifiedById(u.id);
+
+      rdsDBOps.user.recordUserLogin(u.id) // Update Last Login
+
+      const sessionToken = await this.createSession(u.id);
+  
+      return { status: 200, message: sessionToken };
+    }
+
+    else
+      return { status: 400, message: 'Email code doesn\'t match' };
   },
+
+
+
+  async checkEmailVerificationStatus(email: string): Promise<ServiceResponse> {
+
+    // scan for all of their email verify keys
+    const redis = await redisOps();
+
+    const keysWithTTL = await redis.user.getEmailCodeTTLs(email)
+
+    if (keysWithTTL.length === 0)
+      return {
+        status: 404,
+        message: "No valid codes"
+      }
+
+    // Get TTLs of all keys
+    const ttls = keysWithTTL.map(k => k.ttl);
+
+    const fullTTL = RedisSchema.auth.emailVerification.ttl; // e.g. 86400 seconds (24h)
+    const oneMinTTL = fullTTL - 60;       // TTL threshold for keys older than 1 min
+    const fiveMinTTL = fullTTL - 300;     // TTL threshold for keys older than 5 min
+
+    const count = ttls.length;
+
+    const success = {
+      status: 200,
+      message: "New code sent"
+    }
+
+    if (count < 5) {
+      // Allow if last key TTL is less or equal to oneMinTTL (older than 1 min)
+      const maxTTL = Math.max(...ttls);
+      if (maxTTL <= oneMinTTL) return success;
+    } else {
+      // For 5 or more keys: allow if oldest key TTL <= fiveMinTTL (older than 5 min)
+      const minTTL = Math.min(...ttls);
+      if (minTTL <= fiveMinTTL) return success;
+    }
+
+    return {
+      status: 400,
+      message: "Must wait to request new code"
+    }; // otherwise, disallow
+  },
+
+
+  async deleteUserAccount(uuid: UUID): Promise<ServiceResponse> {
+
+    // TODO change to set is_deleted to true
+
+    return { status: 200, message: 'Deleted' };
+  },
+
 
 };

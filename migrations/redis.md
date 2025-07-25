@@ -6,13 +6,13 @@
 ---
 
 # Auth
-email:verify:{token}         | String | 24 hr     | Email verification token
-email:reset:{token}          | String | 30 min    | Password reset token
+email:verify:{email}         | String | 24 hr     | Email verification token
+email:reset:{email}          | String | 30 min    | Password reset token
 
 ---
 
 # Session
-session:user:{userId}        | JSON   | 7 days    | User session object
+session:user:{userId}        | String   | 7 days    | User session object
 
 ---
 
@@ -22,26 +22,33 @@ cache:user:{userId}          | JSON   | 1 hr      | Cached user profile
 ---
 
 # 🎮 Live Game (transient game state)
-game:live:{gameId}           | JSON   | 24 hours | Full live game state
+game:live:{gameId}           | String | 24 hours | Full live game state
 game:live:{gameId}:meta      | JSON   | 24 hours | Turn, timer, status metadata
-game:live:{gameId}:moves     | List   | 24 hours | List of all moves (JSON strings)
-game:player:{userId}         | String | 24 hours | User's current active game ID
+game:live:{gameId}:moves     | JSON   | 24 hours | easy to dump and reload for backend
+
+game:player:{userId}         | JSON | 24 hours | User's current active game ID
+game:queue:{userId}          | JSON | 24 hours | User's current active game ID
 
 ---
 
 # 🧾 Example Structures
 
-game:live:{gameId} JSON:
+game:live:{gameId}:meta JSON:
 {
-  players: ["user1", "user2"],
-  gameData: "<base64-encoded-binary>",
-  gameInfo: 34,
-  startTimestamp: 1724127387
+  players: ["user1", "user2"],        // array of player IDs, order matters
+  startTimestamp: 1724127387,         // Unix timestamp (ms) when game started
+  gamemode: 241273872,                // game mode identifier (numeric)
+  baseTime: 300000,                   // initial time per player in seconds (e.g., 5 minutes)
+  increment: 100,                     // time increment per move in seconds
+  disadvantage: 60,                   // time disadvantage in seconds for a player (if any)
+  state: 2                            // current game state
 }
 
-game:live:meta:{gameId} JSON:
+game:live:{gameId}:time JSON:
 {
-  currentTurn: "user1",
-  timeoutAt: 1724127400,
-  status: "active" // or "ended", "abandoned"
+  cTurn: 0,                           // current turn for this game
+  mTimes: [150, 320, 100, ...],       // times per move in centiseconds
+  rTimes: [45632, 37912]              // remaining time for each player in centiseconds
+  lMove: 1724127387                   // Unix timestamp in ms
 }
+

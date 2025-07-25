@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis/redis-stack:latest
+    image: redis/redis-stack-server:latest
     container_name: redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -14,8 +14,8 @@ services:
     ports:
       - "6379:6379"
       - "8001:8001"
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-
+    command: ["redis-server",  "/usr/local/etc/redis/redis.conf"]
+  
   api:
     build: 
       dockerfile: backend.Dockerfile
@@ -23,10 +23,13 @@ services:
     restart: always
     ports:
       - "3001:3001"
+      - "3002:3002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - redis
     env_file:
-      - /backend/.env
+      - ./backend/.env
 
 volumes:
   redis-data:

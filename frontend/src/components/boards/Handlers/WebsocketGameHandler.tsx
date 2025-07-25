@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Board, BoardHandle } from "../Board";
 import { StandardGame } from "@shared/utils/game";
-import { useWebSocketContext } from "../../websocketProvider";
+import { useSocketContext } from "../../SocketProvider";
 
 export default function SingleplayerBoardHandler() {
   const boardRef = useRef<BoardHandle>(null);
@@ -11,7 +11,7 @@ export default function SingleplayerBoardHandler() {
   const [gameOver, setGameOver] = useState(game.current.gameOver);
   
   // Use the WebSocket context
-  const { sendJson, readyState, close, getLastJson } = useWebSocketContext();
+  const { sendJson, close, getLastJson } = useSocketContext();
   const [lastMessage, setLastMessage] = useState<any | null>(null);
 
   // Handle incoming WebSocket messages using the polling pattern

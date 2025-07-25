@@ -1,82 +1,60 @@
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 import { myConfig } from '@config/env';
 
-// Use Maps to store clients and their connecting promises
-const clients = new Map<string, any>();
-const connectingPromises = new Map<string, Promise<any>>();
+// Store clients by name
+const clients = new Map<string, Redis>();
 
-async function createRedisClient() {
-  let retryCount = 0;
-  const maxRetries = 10;
-
-  const client = createClient({
-    socket: {
-      host: myConfig.REDIS_HOST,
-      port: Number(myConfig.REDIS_PORT),
-      reconnectStrategy: (retries: number) => {
-        retryCount = retries;
-        if (retries >= maxRetries) {
-          console.error(`❌ Redis reconnect failed after ${retries} attempts`);
-          return new Error('Max reconnect attempts reached');
-        }
-        return 1000; // retry after 1 second
-      },
+function createRedisClient(): Redis {
+  const client = new Redis({
+    host: myConfig.REDIS_HOST || 'redis',
+    port: Number(myConfig.REDIS_PORT) || 6379,
+    password: myConfig.REDIS_PASSWORD, // Optional: set in your env
+    retryStrategy(times) {
+      const delay = Math.min(times * 50, 2000);
+      console.log(`[ioredis] reconnect attempt #${times}, delay ${delay}ms`);
+      return delay;
     },
+    maxRetriesPerRequest: 3,
   });
 
-  client.on('error', (err: Error) => {
-    console.error('Redis Client Error:', err.message);
-  });
+  client.on('connect', () => console.log('[ioredis] Connected Successfully!'));
+  client.on('ready', () => console.log('✅ ioredis ready'));
+  client.on('error', err => console.error('❌ ioredis error', err));
+  client.on('close', () => console.log('🛑 ioredis connection closed'));
+  client.on('reconnecting', (time: any) => console.log(`🔄 ioredis reconnecting in ${time}ms`));
 
-  await client.connect();
-  console.log('✅ Redis connected');
   return client;
 }
 
-async function getClient(clientName: string) {
+async function getClient(clientName: string): Promise<Redis> {
   if (clients.has(clientName)) {
-    const client = clients.get(clientName);
-    if (client.isOpen) {
+    const client = clients.get(clientName)!;
+    // ioredis does not have isOpen, but we can check status
+    if (client.status === 'ready' || client.status === 'connecting') {
       return client;
     }
   }
-
-  if (connectingPromises.has(clientName)) {
-    return connectingPromises.get(clientName)!;
-  }
-
-  const promise = createRedisClient()
-    .then((client) => {
-      clients.set(clientName, client);
-      connectingPromises.delete(clientName);
-      return client;
-    })
-    .catch((err) => {
-      connectingPromises.delete(clientName);
-      throw err;
-    });
-
-  connectingPromises.set(clientName, promise);
-
-  return promise;
+  const client = createRedisClient();
+  clients.set(clientName, client);
+  return client;
 }
 
-export async function getBullMqClient() {
-  return getClient('bullmq');
+export async function getBullMqRedisClient(): Promise<Redis> {
+  return await getClient('bullmq');
 }
 
-export async function getRedisClient() {
-  return getClient('business');
+export async function getRedisClient(): Promise<Redis> {
+  return await getClient('business');
 }
 
-export async function getPubSubRedisClient() {
-  return getClient('pubsub');
+export async function getPubSubRedisClient(): Promise<Redis> {
+  return await getClient('pubsub');
 }
 
 export async function closeAllClients() {
   for (const [key, client] of clients.entries()) {
-    if (client && client.isOpen) {
-      await client.disconnect();
+    if (client && (client.status === 'ready' || client.status === 'connecting')) {
+      await client.quit();
       console.log(`Redis client (${key}) disconnected`);
     }
   }

@@ -1,6 +1,6 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { myConfig } from "@/config/env";
+import { myConfig } from "@config/env";
 
 // Create low-level DynamoDB client
 const client = new DynamoDBClient({
@@ -19,4 +19,25 @@ export const ddb = DynamoDBDocumentClient.from(client, {
     convertEmptyValues: true,
   }
 });
+
+
+export async function checkDynamoHealth(timeoutMs = 2000): Promise<boolean> {
+  try {
+    // Create a promise that rejects after timeoutMs to avoid hanging
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("DynamoDB health check timed out")), timeoutMs)
+    );
+    
+    // List tables as a lightweight health check
+    const listTablesPromise = client.send(new ListTablesCommand({ Limit: 1 }));
+    
+    await Promise.race([listTablesPromise, timeoutPromise]);
+    console.log("[DynamoDB] Connected Successfully!")
+  
+    return true; // success
+  } catch (err) {
+    console.error("DynamoDB health check failed:", err);
+    return false; // failure
+  }
+}
 

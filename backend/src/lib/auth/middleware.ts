@@ -1,8 +1,9 @@
 import { RecaptchaResponse, RequestWithRecaptcha } from '@/types/custom';
 import { NextFunction, Request, Response } from 'express';
-import { myConfig } from '@/config/env';
+import { myConfig } from '@config/env';
 import { redisOps } from '@/redis/ops';
 import { Socket } from 'socket.io';
+import * as cookie from 'cookie';
 
 
 interface AuthenticatedRequest extends Request {
@@ -21,6 +22,9 @@ export const authenticateSession = async (req: AuthenticatedRequest, res: Respon
     const redisOp = await redisOps(); // Get the Redis connection
 
     const sessionUserID = await redisOp.user.getSession(token); // Decode the session token
+
+    console.log(sessionUserID, token)
+
     // check if decoded is promise null and raise error
     if (sessionUserID === null) {
       throw new Error('Invalid or expired token');
@@ -75,29 +79,29 @@ export const requireUnauthenticated = async (req: AuthenticatedRequest, res: Res
  * Optional authentication middleware
  * Attaches user info if logged in, but doesn't require authentication
  */
-// export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-//   const token = req.cookies.sessionToken;
+export const optionalAuth = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const token = req.cookies.sessionToken;
   
-//   if (!token) {
-//     // No token, continue without user info
-//     next();
-//     return;
-//   }
+  if (!token) {
+    // No token, continue without user info
+    next();
+    return;
+  }
 
-//   try {
-//     const redisOp = await redisOps();
-//     const sessionUserID = await redisOp.user.getSession(token);
+  try {
+    const redisOp = await redisOps();
+    const sessionUserID = await redisOp.user.getSession(token);
     
-//     if (sessionUserID !== null) {
-//       req.user = { userId: sessionUserID };
-//     }
+    if (sessionUserID !== null) {
+      req.user = { userId: sessionUserID };
+    }
     
-//     next();
-//   } catch (err) {
-//     // Error occurred, continue without user info
-//     next();
-//   }
-// };
+    next();
+  } catch (err) {
+    // Error occurred, continue without user info
+    next();
+  }
+};
 
 export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
@@ -177,31 +181,45 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
 };
 
 
+/**
+ * Websocket Session Middleware
+ * @param socket 
+ * @param next 
+ * @returns 
+ */
+export const verifySocket = async (socket: Socket, next: (err?: any) => void): Promise<void> => {
 
-
-
-export async function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void) {
-  const sessionId = socket.handshake.auth?.sessionId;
-
-  if (!sessionId) {
-    return next(new Error('Missing sessionId'));
+  const fail = () => {
+    (socket as any).sessionId = null;
+    (socket as any).userId = null;
+    return next();
   }
 
   try {
-    const redis = await redisOps();
-    const userId = await redis.user.getSession(sessionId);
-
-    if (!userId) {
-      return next(new Error('Invalid or expired session'));
+    const cookies = cookie.parse(socket.handshake.headers.cookie || '');
+    const sessionId = cookies['sessionToken'];
+    if (!sessionId) {
+      return fail()
     }
 
-    socket.data.userId = userId;
-    next();
-  } catch (err) {
-    console.error('Session validation error:', err);
-    next(new Error('Session validation failed'));
+    if ((socket as any).sessionId === sessionId)
+      return next();
+
+    const redis = await redisOps();
+
+    const userId = await redis.user.getSession(sessionId);
+    if (!userId) {
+      return fail()
+    }
+
+    (socket as any).sessionId = sessionId;
+    (socket as any).userId = userId;
+    return next();
+
+  } catch (err: any) {
+    console.error('Socket auth error:', err.name);
+    return next(err)
   }
 }
-
 
 

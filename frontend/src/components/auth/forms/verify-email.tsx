@@ -1,20 +1,24 @@
 "use client"
 
 import type React from "react"
-
 import type { ReactElement } from "react"
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useRouter } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
+import { maskEmail } from '@/utils/masks'
+import { myConfig } from "@/config/env"
 
 export function VerifyEmailForm(): ReactElement {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""))
   const [otpError, setOtpError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
-  // Remove focusedIndex state
-  const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [jwt, setJwt] = useState<string | null>(null);
+  const [jwtEmail, setJwtEmail] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const { value } = e.target
@@ -84,16 +88,29 @@ export function VerifyEmailForm(): ReactElement {
     }
 
     setIsLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    // TODO: ADD RECAPTCHA)
+    const resp = await fetch(`${myConfig.BACKEND_URL}/auth/verify-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: fullOtp, token: jwt }),
+      credentials: 'include', // allow cookies to be set
+    });
+
     setIsLoading(false)
 
-    // Mock validation: assume '123456' is correct
-    if (fullOtp === "123456") {
-      console.log("Email verified!")
-      // Redirect or show success
+    if (resp.ok) {
+      // Success: backend sets sessionToken cookie, redirect to profile or home
+      router.replace("/profile");
+      return;
     } else {
-      setOtpError("Invalid verification code. Please try again.")
+      // Error: show backend error message if available
+      let msg = "Invalid verification code. Please try again.";
+      try {
+        const data = await resp.json();
+        msg = data.message || data.error || msg;
+      } catch {}
+      setOtpError(msg);
     }
   }
 
@@ -109,6 +126,28 @@ export function VerifyEmailForm(): ReactElement {
       inputRefs.current[0]?.focus();
     }
     // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On mount, check for jwt param and decode email
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const jwt = params.get("jwt");
+      if (!jwt) {
+        router.replace("/auth/login");
+        return;
+      }
+      try {
+        const decoded: any = jwtDecode(jwt);
+        if (decoded && decoded.email) {
+          setJwtEmail(decoded.email);
+          setJwt(jwt)
+        }
+      } catch (e) {
+        router.replace("/auth/login");
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -152,7 +191,7 @@ export function VerifyEmailForm(): ReactElement {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <p className="text-white text-center font-medium">Email sent to a***7@gmail.com</p>
+          <p className="text-white text-center font-medium">Email sent to {jwtEmail ? maskEmail(jwtEmail) : "your email"}</p>
           <div className="flex justify-center items-center gap-2">
             {otp.map((digit, index) => (
               <Input

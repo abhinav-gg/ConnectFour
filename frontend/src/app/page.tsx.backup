@@ -1,6 +1,6 @@
 // just display the Board object for testing
 
-import { Board } from "@/components/game/Board";
+import Board from "@/components/game/Board";
 
 
 export default function Home() {

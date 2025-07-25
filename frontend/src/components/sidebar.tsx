@@ -42,7 +42,7 @@ const navigationItems = [
   {
     title: "Learn",
     icon: GraduationCap,
-    url: "#learn",
+    url: "#coming-soon",
   },
   {
     title: "Tools",
@@ -57,7 +57,7 @@ const navigationItems = [
   {
     title: "Community",
     icon: Users,
-    url: "#community",
+    url: "community",
   },
   {
     title: "Notifications",
@@ -205,7 +205,7 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
           <div
             className={`${collapsed && !isMobile ? "w-6 h-6" : "w-7 h-7"} rounded-full overflow-hidden bg-brand-accent-yellow flex-shrink-0`}
           >
-            <img src="/placeholder.svg?height=28&width=28" alt="Profile" className="w-full h-full object-cover" />
+            <img src="/user.svg?height=28&width=28" alt="Profile" className="w-full h-full object-cover" />
           </div>
           {(!collapsed || isMobile) && (
             <span className="text-sm font-medium transition-opacity duration-300">Profile</span>

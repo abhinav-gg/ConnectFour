@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@/*": ["./src/*", "./*"],
+      "@/*": ["./src/*", "./backend/src/*"],
       "@config/*": ["./config/*"],
       "@tests/*": ["./tests/*"],
       "@data/*": ["./data/*"],
@@ -22,13 +22,14 @@
     "./tests/*",
     "./config/*",
     "./src/api-server.ts", 
+    "./src/socket-server.ts", 
     "./src/controllers/api/**/*",
     "./src/lib/**/*",
     "./src/utils/**/*",
     "./src/types/**/*",
     "./src/redis/**/*",
     "./src/db/**/*",
-    "./src/services/**/*"
+    "src/controllers/socket/services/**/*"
   ],
   "exclude": ["node_modules"]
 } 

@@ -3,14 +3,12 @@
 import React, { useRef, useState } from "react";
 import { Board, BoardHandle } from "../Board";
 import { StandardGame } from "@shared/utils/game";
-import { useWebSocketContext } from "../../websocketProvider";
 
 export default function SingleplayerBoardHandler() {
   const boardRef = useRef<BoardHandle>(null);
   const game = useRef(new StandardGame());
   const [gameOver, setGameOver] = useState(game.current.gameOver);
   console.log("REFRESH", game.current)
-  const socket = useWebSocketContext();
 
   const handleAttemptMove = (col: number) => {
     const result = game.current.makeMove(col);

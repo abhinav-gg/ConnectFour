@@ -45,7 +45,7 @@ export interface BoardHandle {
   setPremoveCell: (row: number, col: number, plauer: number) => void;
 }
 
-export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
+const Board = forwardRef<BoardHandle, Connect4BoardProps>(
   ({
     interactive = false,
     onColumnAttempt,
@@ -99,13 +99,10 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     return -1 // Column is full
   }
 
-  // Debug: Log boardState every 3 seconds (React-safe)
+  // 
   useEffect(() => {
-    const interval = setInterval(() => {
-      // console.log(internalBoard);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [boardState]);
+    setInteractive(interactive);
+  }, [interactive]);
 
   // Animate initial board state if animate_init is true
   useEffect(() => {
@@ -167,6 +164,7 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
             setInteractive(interactive);
           }
         }, 0.15 * (row + 1) * 1000);
+
         // Wait a bit before next piece
         // eslint-disable-next-line no-await-in-loop
         await new Promise(res => setTimeout(res, 120));
@@ -176,7 +174,7 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [animate_init]);
 
   // Calculate column from mouse position
@@ -210,12 +208,6 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
   useImperativeHandle(ref, () => ({
     triggerMoveAnimation(row, col, player) {
-      // Animate the piece falling, update board state, etc.
-      console.log('triggerMoveAnimation called:', { row, col, player });
-      console.log('internalBoard at trigger:', JSON.parse(JSON.stringify(internalBoard)));
-      setMoveBufferActive(true)
-      setTimeout(() => setMoveBufferActive(false), 50)
-      // Use the current board state to find the target row for the animation
       
       if (row === -1) return; // Column is full
 
@@ -259,11 +251,12 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
               return cell
             }),
           )
-          console.log("BOARD UPDATE")
+          // console.log("BOARD UPDATE", row, col, player)
           return newBoard
         })
       }, duration * 1000)
       setCurrentPlayer(player === 0 ? 1 : 0)
+
     },
 
     setPremoveCell(row, col, player) {
@@ -273,6 +266,9 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
   const handleColumnClick = (col: number) => {
     if (!isInteractive || col === -1 || moveBufferActive) return
+
+    setMoveBufferActive(true)
+    setTimeout(() => setMoveBufferActive(false), 50)
 
     if (onColumnAttempt) onColumnAttempt(col);
   }
@@ -453,7 +449,7 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     >
       {/* Falling Piece Animation - DOM-based Positioning */}
       <AnimatePresence>
-        {interactive && fallingPieces.map(piece => {
+        {fallingPieces.map(piece => {
           const maskId = `falling-piece-mask-${piece.id}`;
           // Get all cell centers in the column
           const holes = [];
@@ -575,3 +571,5 @@ export const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     </div>
   )
 })
+
+export default Board

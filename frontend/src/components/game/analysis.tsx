@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Analysis, AnalysisProps } from '@shared/utils/analysis'
+import { Analysis, AnalysisProps } from '@shared/utils/old_analysis'
 import { eventEmitter } from '@shared/utils/eventEmitter'
 import { Player } from '@shared/types/game'
 

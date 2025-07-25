@@ -1,7 +1,5 @@
 import type express from "express";
 
-export const UserSessionTTL = 60 * 60 * 24 * 7; // 7 days in seconds
-
 export interface ServiceResponse {
   status: number;
   message: string;
@@ -36,10 +34,4 @@ export type GoogleTokenResponse = {
   token_type: string;
   id_token: string;
 };
-
-export enum UserAccountProvider {
-  Local   = "l",
-  Google  = "g",
-  Discord = "d",
-}
 

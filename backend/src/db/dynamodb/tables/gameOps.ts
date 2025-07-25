@@ -1,12 +1,13 @@
 import { ddb } from "../dynamoClient";
 import { PutCommand, ScanCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { GameTable, PlayerDataTable, ModeEloPrefix } from "../dynamoTables";
-import { Game } from "@/db/models/Game";
+import { GameTable, PlayerDataTable, ShortcodeGameTable } from "../dynamoTables";
+import { GAME } from "@/db/models/Game";
 import { uuidToBuffer } from "@/utils/binary";
+import { DeleteItemCommand, GetItemCommand } from "@aws-sdk/client-dynamodb";
 
 export const GameOperations = {
 
-  async addGame(newGameItem: Game)  {
+  async addGame(newGameItem: GAME)  {
     const params = {
       TableName: GameTable,
       Item: newGameItem
@@ -49,10 +50,38 @@ export const GameOperations = {
     }
   },
 
-  async GetGameByShortCode (shortCode: string) {
-    
+  async GetGameByShortCode (shortcode: string) {
+    const resp = await ddb.send(new GetItemCommand({
+      TableName: ShortcodeGameTable,
+      Key: { p: { S: shortcode } },
+      ProjectionExpression: "g"
+    }));
+    return resp.Item?.g?.S || null;
   },
 
+  async assignShortcode(shortcode: string, gameId: string) {
+    try {
+      await ddb.send(new PutCommand({
+        TableName: ShortcodeGameTable,
+        Item: { p: {S: shortcode}, g: {S: gameId} },
+        ConditionExpression: 'attribute_not_exists(p)'
+      }));
+      return true; // unique assignment succeeded
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'ConditionalCheckFailedException') {
+        return false; // collision -- generate again
+      }
+      throw err;
+    }
+  },
+  
+  // On abort/backout
+  async deleteShortcode(shortcode: string) {
+    await ddb.send(new DeleteItemCommand({
+      TableName: ShortcodeGameTable,
+      Key: { p: {S: shortcode} }
+    }));
+  },
 
 
 

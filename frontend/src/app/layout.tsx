@@ -1,7 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { WebSocketProvider } from '@/components/websocketProvider';
 import { myConfig } from '@/config/env';
+import { SocketProvider } from '@/components/SocketProvider';
+import { UserProvider } from '@/components/userProvider';
 
 export const metadata: Metadata = {
   title: 'Con4 - Play Four In A Row Online',
@@ -25,9 +26,11 @@ export default function RootLayout({
       <meta property="og:title" content="Con4 - Play Four In A Row Online" />
       <meta property="og:description" content="A competitive and fun online Four-In-A-Row game built with analysis, opening books and so much more! Play Four In a Row today!" />
       <body>
-        <WebSocketProvider url={myConfig.WEBSOCKET_URL}>
-          {children}
-        </WebSocketProvider>
+        <SocketProvider url={myConfig.WEBSOCKET_URL}>
+          <UserProvider>
+            {children}
+          </UserProvider>
+        </SocketProvider>
       </body>
     </html>
   );

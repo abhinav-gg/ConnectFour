@@ -7,16 +7,23 @@ tsconfig include all
 "./**/*",
 
 Dev Cmds:
-ssh -i C:\ProgramData\ssh\Con4User.pem -L 5432:con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com:5432 ec2-user@54.166.12.176
+ssh -i C:\ProgramData\ssh\Con4User.pem -N -L 5432:con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com:5432 ec2-user@54.166.12.176
 
 psql -h con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com -U postgres -d con4db -p 5432
 
+v DELETES REDIS AS WELL
+docker-compose down --volumes --remove-orphans
 
-remove - from OTP
-fix UI checkbox
-password check - confirm password
-email regex check
-reset password - email id not found
-remove profile creation. add username to registration page
-remove google sign in and sign up link from the verify email page
-accept TOS and priv policy with links
+docker-compose down
+docker-compose up --build
+
+v Re-Run without overhead
+docker-compose start
+
+v don't be an idiot and LOSE the docker stuff
+docker cp express-api:/app/data/opening-book.json ./saved-openings.json
+
+
+
+docker login ghcr.io -u con4-app --password-stdin < token.txt
+docker pull ghcr.io/abhinav-gg/connectfour:latest

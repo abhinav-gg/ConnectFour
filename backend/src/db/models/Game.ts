@@ -1,44 +1,27 @@
-import { TimeControl } from "@shared/types/game";
-import { UUID } from "crypto"
 
-export type GameInfo = {
-    id: UUID;
-    gamemode: string;
-    base_time: number; // in seconds
-    increment: number; // in seconds
-    disadvantage: number; // in seconds
-};
-
-export interface Game{
-  i: UUID,  // Game UUID as PK with prefix 'g#'
-  s: string | null,                                   // Shortcode (nullable)
-  p: string[],                // Ordered list of player IDs
-  t: number,                                 // Timestamp (unix time)
-  g: UUID, // GameInfo UUID ref
-  d: string,                  // Game data (binary/base64)
-  r: number                                           // Result (4-bit number)
-}
-
-export interface GamePlayer
+export interface GAME
 {
-  p: string,              // Player ID as PK with prefix 'p#'
-  s: string,  // Sort key with prefix 'g#' + Game UUID
-  d: number | null                    // Delta elo (optional)
+  p: Buffer,                                      // Game UUID as PK
+  c: string,                                      // Shortcode (nullable)
+  u: string[],                                    // Ordered list of player IDs
+  d: Buffer,                                      // Game data (binary/base64)
+  i: number,                                      // GameInfo 8 bytes INCLUDES THE TIME CONTROL AS WELL
+  r: number                                       // Result (4-bit number)
 }
 
-export interface PlayerProgression
+export interface GAMEPLAYERS
 {
-  p: string,              // Player ID as PK
-  s: string,           // Aggregation prefix 'a#' + date in YYYYMMDD
-  m: Record<any, number>; // Map of gameinfoId to ELO
+  p: Buffer,                                      // Partition Key: player ID
+  s: Buffer,                                      // Sort Key: game ID
+  t: number,                                      // Local Sort Key: Timestamp (unix time)
+  m: number,                                      // Local Sort Key: Gamemode ID (integer)
+  e: number,                                      // Starting ELO
+  d: number                                       // Delta ELO (optional)
 }
 
-export interface GameShortcode
+
+export interface SHORTCODEMAP
 {
-  p: string,              // Shortcode as PK with prefix 's#'
-  g: UUID  // Game ID this shortcode maps to
+  p: string,                                      // Shortcode as PK with prefix 's#'
+  g: Buffer                                       // Game ID this shortcode maps to
 }
-
-
-
-

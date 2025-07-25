@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Board, BoardHandle } from "../Board";
+import Board, { BoardHandle } from "../Board";
 import { Puzzle } from "@shared/utils/puzzles";
 import { Cell } from "@shared/types/game";
 
