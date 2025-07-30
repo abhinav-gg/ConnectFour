@@ -1,18 +1,20 @@
 // src/routes/authRoutes.ts
 import { NextFunction, Router, Request, Response } from 'express';
-import { authenticateAdmin, authenticateSession, verifyRecaptcha, requireUnauthenticated } from '@/lib/auth/middleware';
-import { authService } from '@/controllers/api/services/auth.service';
+import { authenticateAdmin, authenticateSession, verifyRecaptcha, requireUnauthenticated, optionalAuth } from '@/lib/auth/middleware';
+import { authService } from '@/services/auth.service';
 import { ServiceResponse, GoogleTokenResponse } from '@/types/custom';
 import { UserAccountProvider } from "@shared/types/users";
 import { myConfig } from '@config/env';
 import { RegUser, User, UserRegistration, UserSchema } from '@/db/models/User';
 import { hashPassword } from '@/lib/auth/auth';
-import { validatePassword, validateUsername } from '@shared/utils/validation';
+import { validateEmail, validatePassword, validateUsername } from '@shared/utils/validation';
 import { EmailDoesNotExist } from '@/types/dbErrors';
 import { APIResponse } from '@shared/types/Responses';
 import jwt from 'jsonwebtoken';
 import { RedisSchema } from '@/redis/redisSchema';
-import { userService } from '../services/user.service';
+import { userService } from '../../../services/user.service';
+import { sendUserToGame } from '@/lib/game.middleware';
+import { rdsDBOps } from '@/db/rds/ops';
 
 
 const authRouter = Router();
@@ -20,29 +22,65 @@ const authRouter = Router();
 const UserSessionTTL = RedisSchema.session.ttl;
 
 // Registration Route
-authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => {
+authRouter.post('/register/start', requireUnauthenticated, verifyRecaptcha, async (req: Request, res: any) => {
 
-  const { username, email, password } = req.body as { username: string, email: string, password: string, mail_provider: UserAccountProvider, picture: string };
+  const { email, mail_provider } = req.body as { email: string, mail_provider: UserAccountProvider };
+  const emailNormalised = email.trim().toLowerCase();
+  if (mail_provider !== UserAccountProvider.Local) {
+    return res.status(400).json({ error: 'Invalid Mail Provider' });
+  }
+
+  if (!validateEmail(emailNormalised)) {
+    return res.status(400).json({ error: 'Invalid Username' });
+  }
+
+  try {
+    const user = await rdsDBOps.user.getUserByEmail(emailNormalised);
+    // User exists, check verification status
+    if (user && user.email_verified) {
+      return res.status(400).json({ error: 'Email already registered and verified' });
+    }
+    // User exists but not verified, send verification code
+    await authService.handleEmailVerificationCheck(user);
+
+  } catch {
+    // User does not exist, continue
+    res.status(200).json({ message: 'User does not exist, proceed' });
+  }
+});
+
+
+
+authRouter.post('/register', requireUnauthenticated, verifyRecaptcha, async (req: Request, res: any) => {
+
+  const { username, email, password, mail_provider } = req.body as { username: string, email: string, password: string, mail_provider: UserAccountProvider };
   const usernameNormalised = username.trim().toLowerCase();
   const emailNormalised = email.trim().toLowerCase();
   const passwordNormalised = password.trim();
 
+  if (mail_provider !== UserAccountProvider.Local) {
+    return res.status(400).json({ error: 'Invalid Mail Provider' });
+  }
+  
   if (!validateUsername(usernameNormalised)) {
     return res.status(400).json({ error: 'Invalid Username' });
+  }
+  if (!validateEmail(emailNormalised)) {
+    return res.status(400).json({ error: 'Invalid Username' });
+  }
+  if (!validatePassword(passwordNormalised)) {
+    return res.status(400).json({ error: 'Invalid Password' });
   }
 
   try {
     let resp: ServiceResponse = { status: 500, message: "" }
 
-    if (!validatePassword(passwordNormalised)) {
-      return res.status(400).json({ error: 'Invalid Username' });
-    }
     const pwdHash =  await hashPassword(passwordNormalised);
     const u = UserRegistration.parse({
       username: usernameNormalised, 
       email: emailNormalised, 
-      mail_provider: UserAccountProvider.Local, 
-      password: pwdHash
+      mail_provider: mail_provider, 
+      password_hash: pwdHash
     })
     resp = await authService.registerUser(u)
 
@@ -50,16 +88,22 @@ authRouter.post('/register', verifyRecaptcha, async (req: Request, res: any) => 
       return res.status(resp.status).json({ error: resp.message });
     }
 
-    return res.status(200) // over to the frontend to ask for the verification code
+    const  presignupJWT = jwt.sign(
+      { email: emailNormalised, provider: UserAccountProvider.Local },
+      myConfig.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    // 
+    return res.status(200).json({ jwt: presignupJWT }) // over to the frontend to ask for the verification code
     
-  } catch (error) {
-    return res.status(400).json({ error: 'Invalid input' });
+  } catch (error: any) {
+    return res.status(400).json({ error: error.message });
   }
 
 });
 
 // Login Route
-authRouter.post('/login', verifyRecaptcha, async (req: Request, res: any) => {
+authRouter.post('/login', requireUnauthenticated, verifyRecaptcha, async (req: Request, res: any) => {
   const { usernameEmail, password } = req.body;
   
   try {
@@ -99,7 +143,7 @@ authRouter.post('/login', verifyRecaptcha, async (req: Request, res: any) => {
 });
 
 // Verify Email
-authRouter.post('/verify-email', verifyRecaptcha, async (req: Request, res: any) => {
+authRouter.post('/verify-email', requireUnauthenticated, verifyRecaptcha, async (req: Request, res: any) => {
   const { code, token } = req.body;
   
   let payload: any;
@@ -133,41 +177,31 @@ authRouter.post('/verify-email', verifyRecaptcha, async (req: Request, res: any)
   }
 });
 
-// TODO: stop bots from creating multiple anonymous users
-authRouter.get('/anonymous', verifyRecaptcha, requireUnauthenticated, async (req: Request, res: Response) => {
-  // Create a new user called Anonymous
-  // Add security to prevent multiple anonymous users by bots
-  console.log("Creating anonymous user");
-  try {
-    const sessionToken = await authService.makeAnonymousSession();
-
-    res.cookie('sessionToken', sessionToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      maxAge: 1000 * UserSessionTTL, // in milliseconds
-    });
-
-    res.json({ status: 'Success' });
-  } catch (error) {
-    console.error('Failed to login:', error);
-    res.status(500).json({ error: 'Failed' });
-  }
-});
-
 // Profile Route
-authRouter.get('/me', authenticateSession, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.get('/me', optionalAuth, sendUserToGame, async (req: Request, res: Response, next: NextFunction) => {
   const userId = (req as any).user?.userId;
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-  try {
-    const user = await userService.getUserProfile(userId);
 
-    if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
+  try {
+    
+    let user;
+    let invalid: boolean = (!userId)
+    
+    if (!invalid) {
+      user = await userService.getUserProfile(userId);
+      invalid = (!user)
+    }
+
+    if (invalid) {
+      // Important: CREATE ANONYMOUS USER ALWAYS
+
+      const sessionToken = await authService.makeAnonymousSession();
+      res.cookie('sessionToken', sessionToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        maxAge: 1000 * UserSessionTTL, // in milliseconds
+      });
+      user = {username: "Anonymous"}
     }
 
     res.json(user);
@@ -178,7 +212,7 @@ authRouter.get('/me', authenticateSession, async (req: Request, res: Response, n
   }
 });
 
-authRouter.get('/has-session', authenticateSession, (req: any, res: Response) => {
+authRouter.get('/valid', authenticateSession, (req: any, res: Response) => {
   res.json({ message: 'You are authenticated!', user: req.user });
 });
 

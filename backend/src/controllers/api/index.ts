@@ -128,19 +128,19 @@ app.get('/database-test', async (req: Request, res: Response) => {
 });
 
 app.get('/suicide', async (req: Request, res: Response) => {
-try {
+  try {
     const uuid = await rdsDBOps.user.getIDByEmail("agupta.cam7@gmail.com");
     if (uuid) {
-    await rdsDBOps.user.dropUserByID(uuid);
-    res.status(200).json({ error: 'Dropped user' });
-
+      await rdsDBOps.user.dropUserByID(uuid);
+      res.status(200).json({ error: 'Dropped user' });
+      return;
     }
     res.status(200).json({ error: 'User doesn\'t exist' });
-}
-catch (error) {
+  }
+  catch (error) {
     console.error('Database connection error:', error);
     res.status(500).json({ error: 'Database connection failed' });
-}
+  }
 }
 );
   

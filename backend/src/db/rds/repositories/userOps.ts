@@ -173,6 +173,7 @@ export const UserOperations = {
   },
 
   async dropUserByID(id: string): Promise<void> {
+    // TODO block access (move to admin ops)
     await pool.query(
       `DELETE FROM users
         WHERE id = $1`,
@@ -258,4 +259,38 @@ export const UserOperations = {
     // );
     // await pool.query('COMMIT');
   },
+
+
+  async getUserEloByID(userId: string, mode: number): Promise<number> {
+    const result = await pool.query(
+      `SELECT elo
+        FROM elo
+        WHERE player = $1 AND mode = $2`,
+      [userId, mode]
+    );
+
+    if (result.rowCount !== 1) {
+      throw new DBError.EloNotFound();
+    }
+
+    return result.rows[0].elo;
+  },
+
+
+  async initEloForUser(userId: string, mode: number, elo: number): Promise<void> {
+    await pool.query(
+      `INSERT INTO elo (player, mode, elo)
+        VALUES ($1, $2, $3)`,
+      [userId, mode, elo]
+    );
+  },
+
+
+
+
+
+
+
+
+
 }

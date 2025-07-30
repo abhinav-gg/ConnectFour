@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS con4_schema.event_participants (
 ---------- INDEXES ----------
 
 CREATE INDEX IF NOT EXISTS idx_usertags_tag_name ON con4_schema.user_tags(tag_name);
-CREATE INDEX IF NOT EXISTS idx_player_elo_mode_id ON con4_schema.player_elo(mode);
+CREATE INDEX IF NOT EXISTS idx_player_elo_mode_id ON con4_schema.player_elo(mode); -- aka the leaderboard index
 CREATE INDEX IF NOT EXISTS idx_eventparticipants_userid ON con4_schema.event_participants(user_id);
 CREATE INDEX IF NOT EXISTS idx_events_start_end ON con4_schema.events (start_time, end_time);
 

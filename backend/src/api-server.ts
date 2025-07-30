@@ -8,6 +8,7 @@ import { devTestRoutes } from './controllers/api/index';
 import { myConfig } from '@config/env';
 import { checkRedisHealth } from './redis/redisHelper';
 import { checkDynamoHealth } from './db/dynamodb/dynamoClient';
+import { bootstrap } from './bootstrap';
 
 const VERSION = "0.0.1"
 
@@ -51,16 +52,11 @@ app.get('/health', (req, res) => {
 
 async function startAPI() {
 
-  if (!await checkRedisHealth())
-    console.error("No Redis :(")
-
-  if (!await checkDynamoHealth())
-    console.error("No Dynamo :(")
+  await bootstrap();
 
   server.listen(Number(port), '0.0.0.0', () => {
-    console.log(`(${VERSION}) Server running on port ${port}`);
+    console.log(`(${VERSION}) API Server running on port ${port}`);
   });
-
 }
 
 startAPI().catch(console.error);

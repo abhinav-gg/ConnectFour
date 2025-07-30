@@ -1,5 +1,5 @@
-import { BotBase } from '../Bot';
-import { StandardGame } from '../game';
+import { BotBase } from './Bot';
+import { StandardGame } from '../Games/game';
 
 export class RandomBot extends BotBase<StandardGame, number> {
 

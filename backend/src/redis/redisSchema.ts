@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 export const GameMetadataSchema = z.object({
+  shortcode: z.string().length(8).nullable().optional(),
   players: z.array(z.string()),
   startTimestamp: z.number(),
   gamemode: z.number(),
@@ -23,6 +24,15 @@ export const GameTimedataSchema = z.object({
 export type GameTimedata = z.infer<typeof GameTimedataSchema>;
 
 
+export const UserQueueSchema = z.object({
+  gameId: z.string(),
+  mode: z.number(),
+  timeAdded: z.number(),
+});
+
+export type UserQueue = z.infer<typeof UserQueueSchema>;
+
+
 
 export const RedisSchema = {
     cache: {
@@ -36,7 +46,7 @@ export const RedisSchema = {
         key: (userId: string) => `session:user:${userId}`,
         ttl: 60 * 60 * 24 * 7, // 7 days
     },
-  
+    
     auth: {
       emailVerification: {
         key: (email: string, code: string) => `email:verify:${email}:${code}`,
@@ -48,27 +58,33 @@ export const RedisSchema = {
         ttl: 60 * 30, // 30 minutes
       },
     },
+    
 
-
-
+    user: {
+      queue: {
+        key: (gameId: string) => `user:queue:${gameId}`,
+        pattern: (gameId: string) => `user:queue:${gameId}`,
+        schema: GameMetadataSchema
+      },
+    },
+    
     game: {
       metadata: {
         key: (gameId: string) => `game:live:${gameId}:meta`,
         pattern: (gameId: string) => `game:live:${gameId}:meta`,
-        ttl: 60 * 60 * 24, // 24 hours
         schema: GameMetadataSchema
       },
-      data: {
+      moves: {
         key: (gameId: string) => `game:live:${gameId}`,
         pattern: (gameId: string) => `game:live:${gameId}`,
-        ttl: 60 * 60 * 24, // 24 hours
       },
       times: {
         key: (gameId: string) => `game:live:${gameId}:time`,
         pattern: (gameId: string) => `game:live:${gameId}:time`,
-        ttl: 60 * 60 * 24, // 24 hours
         schema: GameTimedataSchema
       },
+      ttl: 60 * 60 * 24, // 24 hours
+
 
 
 

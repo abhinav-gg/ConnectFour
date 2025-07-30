@@ -15,6 +15,7 @@ import { jwtDecode } from "jwt-decode";
 import { UserAccountProvider } from "@shared/types/users"
 import { maskEmail } from "@/utils/masks"
 import { handleGoogleLogin } from "@/utils/googleSignin"
+import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 
 
 export function RegisterForm() {
@@ -40,8 +41,12 @@ export function RegisterForm() {
   const [jwtToken, setJwtToken] = useState<string | null>(null);
   const [jwtEmail, setJwtEmail] = useState<string | null>(null);
   const [jwtProvider, setJwtProvider] = useState<UserAccountProvider | null>(null);
+  const { getRecaptchaToken, activateRecaptcha, isRecaptchaActive  } = useRecaptcha()
 
   useEffect(() => {
+    // Initialize reCAPTCHA
+    activateRecaptcha();
+    // Check for JWT in URL params
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const jwt = params.get("jwt");
@@ -80,11 +85,12 @@ export function RegisterForm() {
   }
 
   const handleUsernameChange = (value: string) => {
-    setUsername(value)
-    if (value.trim() === "") {
+    const lowerValue = value.toLowerCase();
+    setUsername(lowerValue)
+    if (lowerValue.trim() === "") {
       setUsernameError(null)
       setUsernameValid(false)
-    } else if (validateUsername(value)) {
+    } else if (validateUsername(lowerValue)) {
       setUsernameError(null)
       setUsernameValid(true)
     } else {
@@ -119,22 +125,34 @@ export function RegisterForm() {
       setPasswordError("Password must be at least 12 characters with uppercase, lowercase, number, and special character.")
       hasError = true
     }
+    if (!isRecaptchaActive) {
+      console.error("Recaptcha is not active. Please activate it in the RecaptchaProvider.");
+      setEmailError("Recaptcha is not active. Please try again later.");
+      hasError = true;
+    }
     if (hasError) {
       return
     }
+    
     setIsLoading(true)
 
 
-    // TODO: ADD RECAPTCHA)
-    await fetch(`${myConfig.BACKEND_URL}/auth/register`, {
+    const response = await fetch(`${myConfig.BACKEND_URL}/auth/register/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ email, recaptchaToken: await getRecaptchaToken(), mail_provider: UserAccountProvider.Local }),
     });
-    
-    setIsLoading(false)
-    setTransitionDirection(1)
-    setStage(2)
+    setIsLoading(false);
+    if (!response.ok) {
+      const data = await response.json();
+      setEmailError(data.error || "Registration failed");
+      
+      return;
+    }
+    else {
+      setTransitionDirection(1)
+      setStage(2)
+    }
   }
 
   // Stage 2 submit handler (final registration)
@@ -150,11 +168,17 @@ export function RegisterForm() {
       setTermsError("You must accept the Terms of Service and Privacy Policy.");
       hasError = true;
     }
+    if (!isRecaptchaActive) {
+      console.error("Recaptcha is not active. Please activate it in the RecaptchaProvider.");
+      setTermsError("Recaptcha is not active. Please try again later.");
+      hasError = true;
+    }
     if (hasError) {
       return;
     }
     setIsLoading(true);
     if (jwtToken && jwtEmail && jwtProvider === UserAccountProvider.Google) {
+      console.log("GOOGLE REGISTRATION")
       // Google registration
       const response = await fetch(`${myConfig.BACKEND_URL}/auth/google/register`, {
         method: "POST",
@@ -170,10 +194,23 @@ export function RegisterForm() {
         setUsernameError(data.error || "Registration failed");
       }
     } else {
-      // Local registration fallback (should not happen with jwt)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const response = await fetch(`${myConfig.BACKEND_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password, recaptchaToken: await getRecaptchaToken(), mail_provider: UserAccountProvider.Local  }),
+      });
+
       setIsLoading(false);
-      console.log("Registration successful:", { username, email, password });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setUsernameError(data.error || "Registration failed");
+      } else {
+        console.log("Local registration successful", await response.json());
+        //... do more here TODO
+      }
+      
     }
   };
 

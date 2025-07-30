@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useRef, useState } from "react";
-import { Board, BoardHandle } from "../Board";
-import { StandardGame } from "@shared/utils/game";
+import Board, { BoardHandle } from "../Board";
+import { StandardGame } from "@shared/utils/Games/game";
 
 export default function SingleplayerBoardHandler() {
   const boardRef = useRef<BoardHandle>(null);

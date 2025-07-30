@@ -1,5 +1,5 @@
 import { Cell, Player } from "@shared/types/game";
-import { StandardGame } from "./game";
+import { StandardGame } from "./Games/game";
 import { COLS, ROWS } from "@shared/constants/game";
 
 export const examplePuzzles = [

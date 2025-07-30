@@ -383,42 +383,41 @@
 //   ref={gameBoardRef.current!}
 // />;
 //   const HISTORY = <MoveHistory ref={gameBoardRef.current!} />;
-//   const BOARD_WITH_TIMERS = (
-//     <div className="flex flex-col items-center w-full max-w-[600px]">
-//       <div className="flex justify-between items-center w-full mb-1 px-2">
-//         <div className={`text-lg sm:text-2xl font-mono ${(topPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
-//           {gamePlayers[topPlayer]?.username}
-//         </div>
-//         <div className={`font-mono ${(topPlayer === 0) ? 'text-red-600' : 'text-gray-600'}`}>
-//           <Timer 
-//             key={playerNumber.current}
-//             timerActive={timeStarted && currentPlayer===topPlayer} 
-//             playerNumber={topPlayer} 
-//             getPlayers={gamePlayers} 
-//             onTimeout={handlePossibleTimeOut}
-//           />
-//         </div>
-//       </div>
-//       <br/>
-//       <div className="flex items-center justify-center w-[90%] h-[90%]">
-//           {BOARD}
-//         </div>
-//       <div className="flex justify-between items-center w-full mt-1 px-2">
-//         <div className={`text-lg sm:text-2xl font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
-//           {gamePlayers[bottomPlayer]?.username}
-//         </div>
-//         <div className={`font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
-//           <Timer 
-//             key={playerNumber.current}
-//             timerActive={timeStarted && currentPlayer===bottomPlayer} 
-//             playerNumber={bottomPlayer}
-//             getPlayers={gamePlayers} 
-//             onTimeout={handlePossibleTimeOut}
-//           />
-//         </div>
-//       </div>
-//     </div>
-//   );
+  const BOARD_WITH_TIMERS = (
+    <div className="flex flex-col items-center w-full max-w-[600px] space-y-4">
+      <div className="flex justify-between items-center w-full px-2">
+        <div className={`text-lg sm:text-2xl font-mono ${(topPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+          {gamePlayers[topPlayer]?.username}
+        </div>
+        <div className={`font-mono ${(topPlayer === 0) ? 'text-red-600' : 'text-gray-600'}`}>
+          <Timer 
+            key={playerNumber.current}
+            timerActive={timeStarted && currentPlayer===topPlayer} 
+            playerNumber={topPlayer} 
+            getPlayers={gamePlayers} 
+            onTimeout={handlePossibleTimeOut}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-center w-[90%] h-[90%]">
+        {BOARD}
+      </div>
+      <div className="flex justify-between items-center w-full px-2">
+        <div className={`text-lg sm:text-2xl font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}> 
+          {gamePlayers[bottomPlayer]?.username}
+        </div>
+        <div className={`font-mono ${!(bottomPlayer===0) ? 'text-red-600' : 'text-gray-600'}`}>
+          <Timer 
+            key={playerNumber.current}
+            timerActive={timeStarted && currentPlayer===bottomPlayer} 
+            playerNumber={bottomPlayer}
+            getPlayers={gamePlayers} 
+            onTimeout={handlePossibleTimeOut}
+          />
+        </div>
+      </div>
+    </div>
+  );
 
 //   return (
 //   <AuthPage

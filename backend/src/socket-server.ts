@@ -4,9 +4,8 @@ import { createServer } from 'http';
 import { myConfig } from '@config/env';
 import { verifySocket } from '@/lib/auth/middleware'
 import { initSocketIO } from '@/controllers/socket/index'
-import pool from './db/rds/rdsClient';
-import { checkDynamoHealth } from './db/dynamodb/dynamoClient';
-import { checkRedisHealth } from './redis/redisHelper';
+import { bootstrap } from './bootstrap';
+
 
 const VERSION = "0.0.1"
 
@@ -39,11 +38,7 @@ io.on('connection', (socket) => {
 
 async function startSocketio() {
 
-  if (!await checkRedisHealth())
-    console.error("No Redis :(")
-
-  if (!await checkDynamoHealth())
-    console.error("No Dynamo :(")
+  await bootstrap()
 
   server.listen(Number(port), '0.0.0.0', () => {
     console.log(`(${VERSION}) Socket server running on port ${port}`);

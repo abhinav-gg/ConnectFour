@@ -1,4 +1,4 @@
-import { leaderboardPlayer } from "@shared/Types/eventInfo";
+import { leaderboardPlayer } from "@shared/types/ich-remnants";
 
 interface LeaderboardTableProps {
   players: leaderboardPlayer[];

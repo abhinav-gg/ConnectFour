@@ -1,8 +1,28 @@
-import { GameMode } from "@shared/constants/gamedata";
+import { GameMode } from "@shared/constants/allgamemodes";
 import { TimeControl } from "@shared/types/game";
 
 export const gameService = {
   
+
+    getPlayerElo: async (userId: string, gamemode: GameMode): Promise<number> => {
+        // This function should retrieve the player's Elo rating for the specified game mode.
+        // check redis cache first
+
+        // if not found, check the database
+        // if not found, set to the default (1000 for all gamemodes)
+        // add to cache for 1 day
+
+        return 0;
+    },
+
+
+
+
+
+
+
+
+
     /**
      * Function called to being matchmaking for a user. If a match is found, it will return the game ID. If not, user will be added to redis queue.
      * @param userId 
@@ -28,6 +48,43 @@ export const gameService = {
         // Less
         // THAN 50
         // PAIR WITH BOT
+
+        // Check if the user is already in the game lookup
+    
+    let priority = 0;
+    // get the time since the user was added to the game lookup maybe??
+
+    // if (priority > 0) {
+    //     const gameId = await dbOperations.GetGameByPlayerLookup(userId);
+    //     if (!gameId) {
+    //         await dbOperations.FinishedGameLookup(userId); // remove from game lookup if they are not in a game
+    //     } else {
+
+    //         try {
+    //             const game = await dbOperations.GetGameByID(gameId!);
+    
+    //             if (game.state === globals.StandardGameStates.ongoing) {
+    //                 res.status(200).json({ event: 'sendToRoom', 
+    //                     data: { roomId: game.short_id }
+    //             } as SendToRoom);
+    //                 return;
+    //             }
+    //             else if (game.state === globals.StandardGameStates.scheduled) {
+    //                 //Update the game lookup here
+    //                 await dbOperations.FinishedGameLookup(userId);
+    //                 //Delete the game player entry here
+    //                 await dbOperations.UnassignGame(game.id, userId);
+    //             }
+    //             else {
+    //                 await dbOperations.FinishedGameLookup(userId);
+    //             }
+    //         }
+    //         catch (error) {
+    //             console.log('Failed to remove user from game search:', error);
+    //             return;
+    //         }
+    //     }
+    // }
         
         return null; // Placeholder for actual matchmaking logic
     },
@@ -85,7 +142,7 @@ export const gameService = {
 
     },
 
-    UpdatePlayerElo: async (userId: string, gameId: string): Promise<void> => {
+    UpdatePlayerElo: async (userId: string, mode: number, deltaElo: number): Promise<void> => {
     
         // unsure how to implement for now
         
@@ -96,6 +153,37 @@ export const gameService = {
         // return the game ID if it exists, otherwise return null
 
         return null; // Placeholder for actual logic to get game ID by short code
-    }
+    },
+
+
+    ValidGameModeByTimeControl: (gamemode: GameMode, time_control: TimeControl): boolean => {
+        
+        // Detect friendly game mode
+
+        // Detect custom time control and verify with the gamemode provided.
+
+        // const timeMode = CategoriseTime(time_control);
+        // check against gamemodes....
+        // TODO
+        return true; // Placeholder for actual validation logic
+    },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }

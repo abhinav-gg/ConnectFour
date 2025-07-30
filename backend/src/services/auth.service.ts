@@ -4,17 +4,18 @@ import { redisOps } from '@/redis/ops';
 import { RESERVED_USERNAMES } from '@shared/reserved_usernames';
 import { ServiceResponse } from '@/types/custom';
 import { UserAccountProvider } from "@shared/types/users";
-import { hashPassword, verifyPassword } from '@/lib/auth/auth';
+import { generateUUID, verifyPassword } from '@/lib/auth/auth';
 import { generateSessionToken } from '@/lib/auth/auth';
-import { UserProfile } from '@shared/types/users';
 import { UserTags } from '@shared/constants/usertags';
-import { generateVerificationCode } from '@/utils/validation';
+import { generateVerificationCode } from '@/lib/auth/auth';
 import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { EmailSendError } from '@/types/miscErrors';
 import { RegUser, User, UserSchema } from '@/db/models/User';
 import { UsernameExists } from '@/types/dbErrors';
 import { UUID } from 'crypto';
 import { RedisSchema } from '@/redis/redisSchema';
+import { PlayerIdentity, getIdentity } from '@/utils/validation';
+
 
 const disallowedUsernames = new Set(RESERVED_USERNAMES);
 const userDbOps = rdsDBOps.user;
@@ -23,11 +24,11 @@ export const authService = {
   
   // for complex services that use multiple dbs and logic like registration
 
-  async createSession(userId: string): Promise<string> {
+  async makeUserSession(userId: string): Promise<string> {
     const redisOp = await redisOps();
     const sessionToken = generateSessionToken();
     try {
-      await redisOp.user.setSession(sessionToken, userId);
+      await redisOp.user.setSession(sessionToken, `user:${userId}`);
 
     } catch (error) {
       console.error('Failed to create session:', error);
@@ -40,8 +41,9 @@ export const authService = {
   async makeAnonymousSession(): Promise<string> {
     const redisOp = await redisOps();
     const sessionToken = generateSessionToken();
+    const userId = generateUUID();
     try {
-      await redisOp.user.setAnonymousSession(sessionToken);
+      await redisOp.user.setSession(sessionToken, `anon:${userId}`);
       return sessionToken;
     } catch (error) {
       console.error('Failed to create anonymous session:', error);
@@ -68,13 +70,12 @@ export const authService = {
     switch (user.mail_provider) {
       case UserAccountProvider.Local: {
         if (!user.password_hash) {
-          // no pwd in local mode is a failure
           return { status: 400, message: 'No PWD provided' };
         }
         
         await userDbOps.createUser(user.username, user.email, UserAccountProvider.Local, false, undefined, user.password_hash);
-
-        return (await this.sendEmailVerification(user.email, user.username))
+        const resp = await this.sendEmailVerification(user.email, user.username)
+        return resp;
 
       } 
       case UserAccountProvider.Google: {
@@ -82,7 +83,6 @@ export const authService = {
         await userDbOps.createUser(user.username, user.email, UserAccountProvider.Google, true, user.profile_pic!);
 
       }
-
     }
 
     return { status: 200, message: "account added" }
@@ -97,7 +97,7 @@ export const authService = {
 
     rdsDBOps.user.recordUserLogin(user.id) // Update Last Login
 
-    const sessionToken = await authService.createSession(user.id);
+    const sessionToken = await authService.makeUserSession(user.id);
 
     return { status: 200, message: sessionToken };
   
@@ -132,22 +132,14 @@ export const authService = {
         return { status: 400, message: 'Invalid user or password' };
       }
 
-      else if (!user.email_verified) {
-        // the user needs to enter a verification code
-        
-        if (await this.checkEmailVerificationStatus(user.email)) {
-
-          // redirect to verify email?
-
-        } else {
-          // send email again??
-        }
-
+      const handleEmailCheck = await this.handleEmailVerificationCheck(user)
+      if (handleEmailCheck.status !== 200) {
+        return handleEmailCheck; // Return the email verification status if not verified
       }
 
       rdsDBOps.user.recordUserLogin(user.id) // Update Last Login
 
-      const sessionToken = await this.createSession(user.id);
+      const sessionToken = await this.makeUserSession(user.id);
   
       return { status: 200, message: sessionToken };
   
@@ -156,6 +148,7 @@ export const authService = {
       return { status: 500, message: error.message };
     }
   },
+  
 
   async logoutUser(token: string): Promise<void> {
     const redisOp = await redisOps();
@@ -196,7 +189,7 @@ export const authService = {
       await redisOp.user.setEmailCode(email, vCode);
     }
     catch (error: any) {
-
+      console.error('Failed to send email:', error);
       if (error instanceof EmailSendError) {
         return { status: 500, message: 'Failed to send email' };
       }
@@ -221,9 +214,11 @@ export const authService = {
 
       await rdsDBOps.user.setEmailVerifiedById(u.id);
 
+      await redis.user.deleteAllEmailVerifyCodes(email); // Delete all active codes for this email
+
       rdsDBOps.user.recordUserLogin(u.id) // Update Last Login
 
-      const sessionToken = await this.createSession(u.id);
+      const sessionToken = await this.makeUserSession(u.id);
   
       return { status: 200, message: sessionToken };
     }
@@ -243,7 +238,7 @@ export const authService = {
 
     if (keysWithTTL.length === 0)
       return {
-        status: 404,
+        status: 200,
         message: "No valid codes"
       }
 
@@ -258,7 +253,7 @@ export const authService = {
 
     const success = {
       status: 200,
-      message: "New code sent"
+      message: "New code ready"
     }
 
     if (count < 5) {
@@ -277,12 +272,54 @@ export const authService = {
     }; // otherwise, disallow
   },
 
+  /**
+   * Function to handle email verification check for a user
+   * This checks if the user's email is verified, and if not, sends a verification email if allowed.
+   * @param user User object to check email verification status
+   * @returns 
+   */
+  async handleEmailVerificationCheck(user: User): Promise<ServiceResponse> {
+    if (!user.email_verified) {
+      const canSendEmail = await this.checkEmailVerificationStatus(user.email)
+      if (canSendEmail.status === 200) {
+
+        this.sendEmailVerification(user.email, user.username)
+        return { status: 401, message: 'Email not verified, check your email for a verification code' };
+        
+      } else {
+        return { status: 401, message: canSendEmail.message };
+      }
+
+    } else {
+      return { status: 200, message: 'Email verified' };
+    }
+  },
 
   async deleteUserAccount(uuid: UUID): Promise<ServiceResponse> {
 
-    // TODO change to set is_deleted to true
+    // TODO change to set is_deleted to true through a db operation
 
     return { status: 200, message: 'Deleted' };
+  },
+
+
+  /**
+   * Function to validate a session token and return the PlayerIdentity
+   * @param token session token to be decoded
+   * @returns PlayerIdentity decoded from the stored prefix template (user or anon)
+   */
+  async validateToken(token: string): Promise<PlayerIdentity> {
+
+    const redisOp = await redisOps(); // Get the Redis connection
+
+    const sessionUserID = await redisOp.user.getSession(token); // Decode the session token
+
+    // check if decoded is promise null and raise error
+    if (sessionUserID === null) {
+      throw new Error('Invalid or expired token');
+    }
+    return getIdentity(sessionUserID);
+
   },
 
 

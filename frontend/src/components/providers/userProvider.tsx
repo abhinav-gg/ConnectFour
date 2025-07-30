@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { myConfig } from '@/config/env';
 import { UserProfile } from '@shared/types/users';
@@ -11,12 +11,13 @@ import React, {
   useCallback,
 } from 'react';
 
-interface LocalUser  extends UserProfile {
+interface LocalUser extends UserProfile {
   cachedAt: number;
 }
 
 interface UserContextValue {
   user: LocalUser | null;
+  isAnonymous: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -38,7 +39,7 @@ interface UserProviderProps {
 const CACHE_KEY = 'userInfo';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// This will hold the current refreshUser function instance
+// Holds current refreshUser function instance for external calls
 let externalRefreshUser: (() => Promise<void>) | null = null;
 
 export const refreshUserExternally = async () => {
@@ -54,7 +55,9 @@ export const UserProvider = ({ children }: UserProviderProps) => {
 
   const fetchAndSetUser = useCallback(async () => {
     try {
-      const res = await fetch(`${myConfig.BACKEND_URL}/auth/me`, { credentials: 'include' });
+      const res = await fetch(`${myConfig.BACKEND_URL}/auth/me`, {
+        credentials: 'include',
+      });
       if (!res.ok) throw new Error('User not authenticated');
 
       const data = await res.json();
@@ -62,7 +65,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       if (data?.username) {
         const userData: LocalUser = {
           username: data.username,
-          pfp: data.pfp || "/user.svg",
+          pfp: data.pfp || '/icons/user.svg',
           cachedAt: Date.now(),
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(userData));
@@ -77,7 +80,6 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     }
   }, []);
 
-  // Expose this function externally for calls outside React
   useEffect(() => {
     externalRefreshUser = fetchAndSetUser;
     return () => {
@@ -86,7 +88,6 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   }, [fetchAndSetUser]);
 
   useEffect(() => {
-    // Try localStorage cache first
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
       const parsed: LocalUser = JSON.parse(cached);
@@ -105,9 +106,11 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     localStorage.removeItem(CACHE_KEY);
   };
 
+  const isAnonymous = user?.username === 'Anonymous';
+
   return (
     <UserContext.Provider
-      value={{ user, logout, refreshUser: fetchAndSetUser }}
+      value={{ user, isAnonymous, logout, refreshUser: fetchAndSetUser }}
     >
       {children}
     </UserContext.Provider>

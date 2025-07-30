@@ -8,5 +8,3 @@ export const StandardStartingElo = 1000;
 
 export const StandardReconnectionTime = 15 * 1000; // 15 seconds
 
-export type StandardTimeCategories = "hyper-bullet" | "bullet" | "blitz" | "rapid";
-

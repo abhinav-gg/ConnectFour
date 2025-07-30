@@ -26,7 +26,7 @@ export function bufferToUuid(buf: Buffer): UUID {
 export function timeControlToBuffer (timeControl: TimeControl): Buffer {
     // push the time control values into a buffer: 2 bytes for base_time, 1 byte for increment, 1 byte for disadvantage
     const buffer = Buffer.alloc(4);
-    buffer.writeUInt16BE(timeControl.base_time, 0);      // 2 bytes for base_time
+    buffer.writeUInt16BE(timeControl.base_time, 0);      // 2 bytes for base_time 
     buffer.writeUInt8(timeControl.increment, 2);         // 1 byte for increment
     buffer.writeUInt8(timeControl.disadvantage, 3);      // 1 byte for disadvantage
     return buffer;
@@ -42,3 +42,35 @@ export function bufferToTimeControl(buffer: Buffer): TimeControl {
         disadvantage: buffer.readUInt8(3)       // 1 byte for disadvantage
     };
 }
+
+
+  
+export function packGameInfo(
+        modeId: number,
+        t: TimeControl
+    ): Buffer {
+    if (modeId < 0 || modeId > 0xFFFFFFFF) throw new Error("Invalid modeId");
+  
+    const timeControlBuf = timeControlToBuffer(t);
+    const buf = Buffer.alloc(8); // 5 bytes time control + 4 bytes modeId
+  
+    timeControlBuf.copy(buf, 0);
+  
+    buf.writeUInt32BE(modeId, 4); // append modeId at end
+    return buf;
+}
+  
+export function unpackGameInfo(buf: Buffer): {
+    base_time: number;
+    increment: number;
+    disadvantage: number;
+    modeId: number;
+} {
+    if (buf.length !== 8) throw new Error("Invalid buffer length");
+
+    const timeControl = bufferToTimeControl(buf.subarray(0, 4));
+    const modeId = buf.readUInt32BE(4);
+
+    return { ...timeControl, modeId };
+}
+

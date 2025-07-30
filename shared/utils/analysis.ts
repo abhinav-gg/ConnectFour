@@ -1,5 +1,5 @@
 import { Cell, Player } from "@shared/types/game";
-import { StandardGame } from "./game";
+import { StandardGame } from "./Games/game";
 import { COLS, ROWS } from "@shared/constants/game";
 import { IConnect4Solver, getConnect4Solver } from "@shared/WASM/con4Solver.type";
 
@@ -74,6 +74,11 @@ export class SelfAnalysis {
             emptyPos += pos[i]
             i++
         }
+    }
+
+
+    getAverageAccuracy() {
+        
     }
 
 }

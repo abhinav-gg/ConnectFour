@@ -4,6 +4,7 @@ import { RegisterForm } from '@/components/auth/forms/register';
 import { ResetPasswordForm } from '@/components/auth/forms/pwd-reset';
 import { VerifyEmailForm } from '@/components/auth/forms/verify-email';
 import { LogoutUser } from '@/components/auth/forms/logout';
+import { BoardSpaceLayout } from '@/components/board-space-layout';
 
 const forms: Record<string, JSX.Element> = {
   "login": <LoginForm />,
@@ -22,7 +23,12 @@ const AuthSlugPage = async({ params }: PageProps) => {
 
   if (!form) notFound();
 
-  return form;
+  return (
+    <BoardSpaceLayout
+      boardColumnRatio="50%">
+      {form}
+    </BoardSpaceLayout>
+  )
 }
 
 export default AuthSlugPage

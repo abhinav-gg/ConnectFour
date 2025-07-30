@@ -20,6 +20,8 @@ export function Layout({ children }: LayoutProps) {
 
   // Check if mobile on mount and resize
   useEffect(() => {
+    console.log(isMobile, sidebarOpen, sidebarCollapsed, sidebarLeftPadding)
+
     const checkMobile = () => {
 
       const mobile = window.innerWidth < 768 // md breakpoint
@@ -61,7 +63,7 @@ export function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-gradient-to-b from-brand-primary to-brand-secondary">
+    <div className="flex min-h-screen bg-gradient-to-b from-brand-primary to-brand-secondary">
       
       {/* Sidebar Toggle Button */}
       {/* Fixed Hamburger Menu - Always at top */}
@@ -98,10 +100,10 @@ export function Layout({ children }: LayoutProps) {
       {isMobile && <AppSidebar collapsed={false} isMobile={true} isOpen={sidebarOpen} onClose={closeMobileSidebar} />}
 
       {/* Main Content Area - Full width on mobile, adjusted width on desktop */}
-      <div className="flex-1 flex flex-col text-white relative min-w-0">
+      <div className="flex-1 flex flex-col text-white relative">
         
         <main className="flex-1 overflow-auto">
-          <div className="container mx-auto px-4 py-6 max-w-7xl">{children}</div>
+          <div className="container">{children}</div>
         </main>
 
         <Footer />

@@ -2,8 +2,8 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { Board, BoardHandle } from "../Board";
-import { StandardGame } from "@shared/utils/game";
-import { useSocketContext } from "../../SocketProvider";
+import { StandardGame } from "@shared/utils/Games/game";
+import { useSocketContext } from "../../providers/SocketProvider";
 
 export default function SingleplayerBoardHandler() {
   const boardRef = useRef<BoardHandle>(null);

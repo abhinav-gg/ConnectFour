@@ -1,7 +1,7 @@
 import { Move } from '../../types/game';
 import { SelfAnalysis } from '../analysis';
-import { BotBase } from '../Bot';
-import { StandardGame } from '../game';
+import { BotBase } from './Bot';
+import { StandardGame } from '../Games/game';
 
 export class PerfectBot extends BotBase<StandardGame, Move> {
   private solver: SelfAnalysis | null = null;

@@ -49,3 +49,12 @@ export class MultipleGamesFoundError extends Error {
     super('Critical failure: Multiple games found for this query');
   }
 }
+
+
+export class EloNotFound extends Error {
+  constructor() {
+    super('Critical failure: Multiple games found for this query');
+    this.name = "EloNotFound";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}

@@ -1,6 +1,5 @@
-import { EventEmitter } from './eventEmitter';
-import { Player, Cell, Move } from '../types/game';
-import { ROWS, COLS } from '../constants/game';
+import { Player, Cell, Move } from '../../types/game';
+import { ROWS, COLS } from '../../constants/game';
 
 
 export class StandardGame {
@@ -9,13 +8,11 @@ export class StandardGame {
   currentMoveIndex: number
   winner: Player | null
   gameOver: boolean
-  eventEmitter: EventEmitter
   protected board: Cell[][]
   protected moves: Move[]
   
   constructor(movesOrString?: Move[] | string) {
 
-    this.eventEmitter = new EventEmitter();
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
     this.gameOver = false;
     this.winner = null;
@@ -37,7 +34,7 @@ export class StandardGame {
         return parseInt(col, 10) - 1; // Convert to 0-based index
       });
       moves.forEach(move => {
-        let attempt = this.makeMove(move, true); // Silent mode to avoid event emission
+        let attempt = this.makeMove(move);
         if (!attempt.success) {
           throw new Error(`Invalid move: Column ${move} is full or invalid.`);
         }
@@ -46,9 +43,9 @@ export class StandardGame {
     } else if (Array.isArray(movesOrString)) {
 
       movesOrString.forEach(move => {
-        if (!this.makeMove(move, true).success){ // Silent mode to avoid event emission 
-          throw new Error(`Invalid move: Column ${move} is full or invalid.`); 
-        } 
+        if (!this.makeMove(move).success){ // Silent mode to avoid event emission
+          throw new Error(`Invalid move: Column ${move} is full or invalid.`);
+        }
       });
     }
   }
@@ -87,7 +84,7 @@ export class StandardGame {
    * @returns An object containing the row index where the piece was placed and a success flag.
    * @throws Error if the current move index is not the last move or if the game is already over.
    */
-  makeMove(col: number, silent = false): { row: number; success: boolean } {
+  makeMove(col: number): { row: number; success: boolean } {
 
     if (this.currentMoveIndex != this.moves.length - 1) {
       // If the current move index is not the last move, reset the moves array
@@ -105,15 +102,7 @@ export class StandardGame {
       this.currentPlayer = this.currentPlayer === 1 ? 0 : 1
       this.currentMoveIndex ++;
       this.checkGameOver(targetRow, col); // Check if the move results in a win or draw
-
-      if (!silent) {
-        if (!this.gameOver) {
-          this.eventEmitter.pub('boardUpdated', { row: targetRow, col, player: this.currentPlayer });
-        } else {
-          this.eventEmitter.pub('gameEnded', this.winner);
-        }
-      }
-      
+     
       return { row: targetRow, success: true }
     }
     

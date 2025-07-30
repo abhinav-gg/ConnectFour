@@ -6,8 +6,8 @@ export const UserRegistration = z.object({
   username: z.string(),
   email: z.string().email(),
   mail_provider: z.string().length(1),
-  profile_pic: z.string().nullable(),
-  password_hash: z.string().nullable(),
+  profile_pic: z.string().nullable().optional(),
+  password_hash: z.string().nullable().optional(),
 });
 
 

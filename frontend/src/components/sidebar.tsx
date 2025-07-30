@@ -4,6 +4,7 @@ import type React from "react"
 import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
 import { Play, Puzzle, GraduationCap, Wrench, Calendar, Users, Bell, Settings } from "lucide-react"
+import { useUser } from "@/components/providers/userProvider";
 
 // Tooltip Portal Component
 function TooltipPortal({
@@ -32,7 +33,7 @@ const navigationItems = [
   {
     title: "Play",
     icon: Play,
-    url: "#play",
+    url: "/game/setup",
   },
   {
     title: "Puzzle",
@@ -42,7 +43,7 @@ const navigationItems = [
   {
     title: "Learn",
     icon: GraduationCap,
-    url: "#coming-soon",
+    url: "#learn",
   },
   {
     title: "Tools",
@@ -57,7 +58,7 @@ const navigationItems = [
   {
     title: "Community",
     icon: Users,
-    url: "community",
+    url: "#community",
   },
   {
     title: "Notifications",
@@ -82,6 +83,7 @@ interface AppSidebarProps {
 export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false, onClose }: AppSidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
+  const { user } = useUser();
 
   const handleLinkClick = () => {
     if (isMobile && onClose) {
@@ -130,22 +132,17 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
           onMouseLeave={handleMouseLeave}
         >
           {/* Con4 Logo */}
-          <div className={`relative ${collapsed && !isMobile ? "w-6 h-6" : "w-7 h-7"} flex-shrink-0`}>
-            <div
-              className={`absolute top-0 left-0 ${collapsed && !isMobile ? "w-3 h-3" : "w-3.5 h-3.5"} bg-brand-accent-red rounded-full`}
-            ></div>
-            <div
-              className={`absolute top-0 right-0 ${collapsed && !isMobile ? "w-3 h-3" : "w-3.5 h-3.5"} bg-brand-accent-yellow rounded-full`}
-            ></div>
-            <div
-              className={`absolute bottom-0 left-0 ${collapsed && !isMobile ? "w-3 h-3" : "w-3.5 h-3.5"} bg-brand-accent-yellow rounded-full`}
-            ></div>
-            <div
-              className={`absolute bottom-0 right-0 ${collapsed && !isMobile ? "w-3 h-3" : "w-3.5 h-3.5"} bg-brand-accent-red rounded-full`}
-            ></div>
+          <div
+            className={`relative flex-shrink-0 ${collapsed && !isMobile ? "w-6 h-6" : "w-auto h-7"} ${!collapsed || isMobile ? "" : "group-hover:opacity-0 transition-opacity duration-300"}`}
+          >
+            {!collapsed || isMobile ? (
+              <img src="/logo-with-text.svg" alt="Con4 Logo" className="h-7 w-auto" />
+            ) : (
+              <img src="/logo.svg" alt="Con4 Logo Icon" className="h-6 w-6" />
+            )}
           </div>
           {(!collapsed || isMobile) && (
-            <span className="text-lg font-bold text-white transition-opacity duration-300">Con4</span>
+            <span className="text-lg font-bold text-white transition-opacity duration-300"></span>
           )}
         </a>
       </div>
@@ -205,7 +202,7 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
           <div
             className={`${collapsed && !isMobile ? "w-6 h-6" : "w-7 h-7"} rounded-full overflow-hidden bg-brand-accent-yellow flex-shrink-0`}
           >
-            <img src="/user.svg?height=28&width=28" alt="Profile" className="w-full h-full object-cover" />
+            <img src={user?.pfp || "/icons/user.svg?height=28&width=28"} alt="Profile" className="w-full h-full object-cover" />
           </div>
           {(!collapsed || isMobile) && (
             <span className="text-sm font-medium transition-opacity duration-300">Profile</span>

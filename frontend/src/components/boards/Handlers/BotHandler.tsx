@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import Board, { BoardHandle } from "../Board";
-import { StandardGame } from "@shared/utils/game";
+import { StandardGame } from "@shared/utils/Games/game";
 import { PUBLIC_BOTS } from "@shared/utils/botHandler";
 import { Cell } from "@shared/types/game";
 import { SelfAnalysis } from "@shared/utils/analysis";
@@ -22,7 +22,7 @@ export default function BotChallengeBoardHandler() {
   useEffect(() => {
     // This runs only on client after hydration
     console.log("Loading the WASM");
-    bot.current = new PUBLIC_BOTS.random(game.current);
+    bot.current = new PUBLIC_BOTS.perfect(game.current);
     const loadBotAndAnalysis = async () => {
       anal.current = await SelfAnalysis.load(game.current);
     };

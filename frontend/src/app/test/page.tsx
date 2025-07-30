@@ -6,7 +6,7 @@ import BotChallengeBoardHandler from "@/components/boards/Handlers/BotHandler";
 
 
 export default function Page() {
-  return <BotChallengeBoardHandler />
+  return <SingleplayerBoardHandler />
 
   // return (
   //   <div className="flex flex-col items-center justify-center min-h-screen">

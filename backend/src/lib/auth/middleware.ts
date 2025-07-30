@@ -4,12 +4,49 @@ import { myConfig } from '@config/env';
 import { redisOps } from '@/redis/ops';
 import { Socket } from 'socket.io';
 import * as cookie from 'cookie';
+import { PlayerIdentity } from '@/utils/validation';
+import { authService } from '@/services/auth.service';
 
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   user?: { userId: string | null; };
 }
 
+/** ANONYMOUS OR NONE
+ * Middleware to ensure user is NOT logged in
+ * Use this for endpoints like login, register, etc.
+ * Allow access if the user is not authenticated (null or invalid session token) or anonymous.
+ */
+export const requireUnauthenticated = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const token = req.cookies.sessionToken;
+  
+  if (!token) {
+    // No token, user is not logged in - allow access
+    return next();
+  }
+
+  let id: PlayerIdentity = {}
+  try {
+    id = await authService.validateToken(token)
+  } catch {
+    return next() // the code was invalid which is also fine...;
+  }
+
+  if (id.anon) {
+    return next()
+  } else if (id.user) {
+    return res.redirect('/profile')
+  }
+  else {
+    next()
+  }
+};
+
+/** ANONYMOUS OR SIGNED IN
+ * Middleware to authenticate a session
+ * This middleware checks for a session token in the request cookies,
+ * If present, set the `req.user` object with the user ID (or anonymous ID).
+ */
 export const authenticateSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
   const token = req.cookies.sessionToken; // Get the session token from the request cookies
@@ -18,64 +55,57 @@ export const authenticateSession = async (req: AuthenticatedRequest, res: Respon
     return; // Ensure we return here to avoid further execution
   }
 
+  let id: PlayerIdentity = {}
   try {
-    const redisOp = await redisOps(); // Get the Redis connection
-
-    const sessionUserID = await redisOp.user.getSession(token); // Decode the session token
-
-    console.log(sessionUserID, token)
-
-    // check if decoded is promise null and raise error
-    if (sessionUserID === null) {
-      throw new Error('Invalid or expired token');
-    }
-    else {
-      req.user = { userId: sessionUserID }; // Attach user info to the request
-      next(); // Call next to pass control to the next middleware
-    }
-  } catch (err) {
+    id = await authService.validateToken(token)
+  } catch {
+    res.status(403).json({ error: 'Error evaluating token' });
+    return
+  }
+  
+  if (id.anon) {
+    req.user = {userId: id.anon}
+    return next();
+  } else if (id.user) {
+    req.user = {userId: id.user}
+    return next();
+  } // bots can't login
+  else {
     res.status(403).json({ error: 'Invalid or expired token' });
-    return; // Ensure we return here to avoid further execution
   }
 };
 
-/**
- * Middleware to ensure user is NOT logged in
- * Use this for endpoints like login, register, etc.
+/** SIGNED IN
+ * Requires the user to be signed in (not anonymous or bot)
+ * If the user is not signed in, send a 401 Unauthorized response.
  */
-export const requireUnauthenticated = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+export const requireSignedIn = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const token = req.cookies.sessionToken;
   
   if (!token) {
-    // No token, user is not logged in - allow access
-    next();
+    res.status(401).json({ error: 'Session token required' });
     return;
   }
 
+  let id: PlayerIdentity = {}
   try {
-    const redisOp = await redisOps();
-    const sessionUserID = await redisOp.user.getSession(token);
-    
-    if (sessionUserID === null) {
-      // Invalid/expired token, user is not logged in - allow access
-      next();
-      return;
-    }
-    
-    // User is logged in - deny access
-    res.status(403).json({ 
-      error: 'Already authenticated',
-      message: 'You are already logged in. Please logout first to access this endpoint.'
-    });
+    id = await authService.validateToken(token)
+  } catch {
+    res.status(403).json({ error: 'Error evaluating token' });
+  }
+  
+  if (id.anon) {
+    res.status(401).json({ error: 'User is anonymous still' });
     return;
-  } catch (err) {
-    // Error occurred, assume user is not logged in - allow access
-    next();
-    return;
+  } else if (id.user) {
+    next()
+  }
+  else {
+    res.status(403).json({ error: 'Invalid or expired token' });
   }
 };
 
-/**
+/** OPTIONAL AUTHENTICATION
  * Optional authentication middleware
  * Attaches user info if logged in, but doesn't require authentication
  */
@@ -88,20 +118,27 @@ export const optionalAuth = async (req: AuthenticatedRequest, res: Response, nex
     return;
   }
 
+  let id: PlayerIdentity = {}
   try {
-    const redisOp = await redisOps();
-    const sessionUserID = await redisOp.user.getSession(token);
-    
-    if (sessionUserID !== null) {
-      req.user = { userId: sessionUserID };
-    }
-    
-    next();
-  } catch (err) {
-    // Error occurred, continue without user info
-    next();
+    id = await authService.validateToken(token)
+  } catch {
+    // the code was invalid which is also fine...
+    return next()
+  }
+  
+  if (id.anon) {
+    req.user = {userId: id.anon}
+    return next()
+  } else if (id.user) {
+    req.user = {userId: id.user}
+    return next()
+  }
+  else {
+    res.status(403).json({ error: 'Invalid or expired token' });
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
   const userId = req.user?.userId;
@@ -126,15 +163,7 @@ export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response
 export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, next: NextFunction): Promise<void> => {
   try {
     const secret = myConfig.GOOGLE_RECAPTCHA_SECRET_KEY;
-    const token = req.query.token || req.body.token;
-
-    // /!\ ----------------------
-    if (myConfig.NODE_ENV === 'development') {
-      console.log('Skipping reCAPTCHA verification in development mode');
-      next();
-      return;
-    }
-    // --------------------------
+    const token = req.query.recaptchaToken || req.body.recaptchaToken;
 
     if (!secret || !token) {
       console.log("missing secret or token");
@@ -144,7 +173,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
       });
       return;
     }
-
+    
     const query = await fetch(
       `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,
       {
@@ -166,7 +195,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
       });
       return;
     }
-
+    console.log(apiResponse)
     // Add verification result to request object
     req.recaptchaResult = apiResponse;
     next();

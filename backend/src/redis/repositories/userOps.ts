@@ -2,6 +2,7 @@
 import Redis from 'ioredis';
 import { RedisSchema } from '../redisSchema'; // Adjust the import path as necessary
 import { scanKeys, scanKeysWithTTL } from '../redisHelper';
+import { generateUUID } from '@/lib/auth/auth';
 
 export function UserOperations(redis: Redis) {
   const genRedisSessionKey = RedisSchema.session.key; // Adjust the key generation function as necessary
@@ -13,12 +14,9 @@ export function UserOperations(redis: Redis) {
     async setSession(sessionId: string, userId: string, ttl?: number): Promise<void> {
       const key = genRedisSessionKey(sessionId);
       // Use EX for seconds TTL (ioredis supports this natively)
-      await redis.set(key, `user:${userId}`, 'EX', ttl || RedisSchema.session.ttl);
+      await redis.set(key, userId, 'EX', ttl || RedisSchema.session.ttl);
     },  
 
-    async setAnonymousSession(sessionId: string, ttl?: number): Promise<void> {
-      await this.setSession(sessionId, "anon:", ttl || RedisSchema.session.ttl);
-    },
 
     async getSession(sessionId: string): Promise<string | null> {
       const key = genRedisSessionKey(sessionId);
@@ -55,7 +53,7 @@ export function UserOperations(redis: Redis) {
     },
 
     // Delete all active codes for an email
-    async deleteAllCodes(email: string): Promise<void> {
+    async deleteAllEmailVerifyCodes(email: string): Promise<void> {
       const pattern = getRedisEmailBase(email);
       const keys = await scanKeys(redis, pattern);
       if (keys.length > 0) {

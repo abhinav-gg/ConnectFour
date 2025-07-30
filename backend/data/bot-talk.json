@@ -1,0 +1,65 @@
+{
+  "loss": [
+    "Well that just happened!",
+    "I want a rematch!",
+    "You got lucky... this time.",
+    "That escalated quickly.",
+    "Defeated, but not broken.",
+    "I'll be back stronger.",
+    "GG! Now do it again."
+  ],
+  "losing": [
+    "Well that's going to happen!",
+    "That's not my problem.",
+    "That's unfortunate!",
+    "Uh oh...",
+    "It's not over yet!",
+    "You think you're winning?",
+    "I may be losing, but I'm learning."
+  ],
+  "won": [
+    "Haha I win!",
+    "That was crazy!",
+    "Victory is sweet.",
+    "Flawless execution!",
+    "You fought well. I fought better.",
+    "Checkmate!",
+    "Another one for the record books."
+  ],
+  "winning": [
+    "Well that's not going to happen!",
+    "I can already smell the win.",
+    "This is going smoothly.",
+    "I'm in control now.",
+    "You're running out of options.",
+    "Victory is in sight.",
+    "This might be over soon..."
+  ],
+  "move": [
+    "Something just happened.",
+    "That was a solid move.",
+    "Nice move.",
+    "I see what you did there.",
+    "Interesting strategy...",
+    "You're not bad at this.",
+    "Okay, your turn!"
+  ],
+  "greetings": [
+    "Hello {{username}}!",
+    "Prepare to lose.",
+    "Ready when you are, {{username}}.",
+    "I've been waiting for you.",
+    "Welcome back, {{username}}.",
+    "Let's play a game.",
+    "You're not scared... are you?"
+  ],
+  "opening": [
+    "This is my favourite line.",
+    "Prepare for that to happen.",
+    "Something malicious is brewing.",
+    "Let's make this interesting.",
+    "Opening moves matter most.",
+    "You won't see this coming.",
+    "The game begins now!"
+  ]
+}

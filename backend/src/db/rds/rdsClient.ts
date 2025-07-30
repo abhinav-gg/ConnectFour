@@ -1,44 +1,60 @@
-import { myConfig } from '@config/env'; // Adjust the import based on your configuration setup
-import { Pool } from 'pg';
+import { myConfig } from '@config/env';
+import { Pool, PoolClient } from 'pg';
 
 // SSL config based on environment
 let ssl: boolean | object = false;
 
 if (myConfig.NODE_ENV === 'production') {
-  // Use full certificate verification in production
   ssl = {
     ca: myConfig.RDS_CA_CERT,
-    rejectUnauthorized: true
+    rejectUnauthorized: true,
   };
 } else {
-  // In development, use SSH tunnel + disable hostname check
   ssl = {
     rejectUnauthorized: false,
-    checkServerIdentity: () => undefined
+    checkServerIdentity: () => undefined,
   };
 }
 
+// Create the pool with connection setup
 const pool = new Pool({
   host: myConfig.RDS_HOST,
-  port: parseInt(myConfig.RDS_PORT || '5432', 10),
+  port: Number(myConfig.RDS_PORT) || 5432,
   user: myConfig.RDS_USER,
   password: myConfig.RDS_PASSWORD,
   database: myConfig.RDS_NAME,
-  max: 20, // Set max pool size
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
-  ssl
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  ssl,
 });
 
 pool.on('error', (err) => {
-    console.error('Unexpected PostgreSQL error', err);
+  console.error('[RDS] Unexpected error on idle client:', err);
 });
 
-pool.on('connect', (client) => {
-  console.log("[RDS] Connected Successfully!")
-  client.query('SET search_path TO con4_schema').catch(err => {
-    console.error('Failed to set search_path:', err);
-  });
+pool.on('connect', async (client) => {
+  try {
+    await client.query('SET search_path TO con4_schema');
+    console.log('[RDS] Connected, search_path set to con4_schema');
+  } catch (err) {
+    console.error('[RDS] Failed to set search_path:', err);
+  }
 });
+
+/**
+ * Checks RDS health by attempting a simple query.
+ * @returns Promise<boolean> true if connection is healthy, false otherwise
+ */
+export async function checkRDSHealth(): Promise<boolean> {
+  try {
+    // Use a simple lightweight query
+    await pool.query('SELECT 1');
+    return true;
+  } catch (error) {
+    console.error('[RDS] Health check failed:', error);
+    return false;
+  }
+}
 
 export default pool;

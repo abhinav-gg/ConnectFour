@@ -1,10 +1,6 @@
 import { UUID } from 'crypto'
 
 
-export const generateVerificationCode = (): string => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 export const parseUser = (u: string): UUID | null => {
   // user is of the form user:UUID OR anon:
   // if anonymous, return null
@@ -16,5 +12,29 @@ export const parseUser = (u: string): UUID | null => {
     return match[1] as UUID;
   }
   return null;
+}
+
+
+export interface PlayerIdentity {
+  user?: UUID;
+  anon?: UUID;
+  bot?: string;
+}
+
+export const isAnonIdentity = (id: string): boolean => id.startsWith("anon:")
+export const isUserIdentity = (id: string): boolean => id.startsWith("user:")
+export const isBotIdentity = (id: string): boolean => id.startsWith("bot:")
+
+export const getIdentity = (id: string): PlayerIdentity => {
+  if (isAnonIdentity(id)) {
+    return { anon: id.slice(5) as UUID }
+  }
+  else if (isUserIdentity(id)) {
+    return { user: id.slice(5) as UUID }
+  }
+  else if (isBotIdentity(id)) {
+    return { bot: id.slice(4) }
+  }
+  return {}
 }
 

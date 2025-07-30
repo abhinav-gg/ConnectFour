@@ -1,44 +1,39 @@
 import { EloChange, PlayerData } from "./game";
 import { UUID } from "crypto";
 
-export type RoomID = string;
 
-/////////// SENT TO FRONTEND BY SERVER ///////////
-
-export type GameStart = {
-  event: 'gameStart';
-  data: { 
-    eloChanges: EloChange;
-    playerNumber: number;
-    players: PlayerData[] 
-  }; // return the ordered list of players
+// Generic EventMessage utility
+export type EventMessage<T extends string, D> = {
+  event: T;
+  data: D;
 };
 
-export type PlayerDisconnected = {
-  event: 'playerDisconnected';
-  data: { playersCount: number; };
-};
+// Game message types
 
-export type PlayerReconnected = {
-  event: 'reconnection';
-  data: { 
-    eloChanges: EloChange;
-    playerNumber: number;
-    currentTurn: number;
-    players: PlayerData[] 
-    moves: number[]
-  }
-};
+export type GameStart = EventMessage<'gameStart', {
+  eloChanges: EloChange;
+  playerNumber: number;
+  players: PlayerData[];
+}>;
 
-export type OpponentReconnect = {
-  event: 'opponentReconnect';
-  data: { playerNumber: number; };
-};
+export type PlayerDisconnected = EventMessage<'playerDisconnected', {
+  playersCount: number;
+}>;
 
-export type PlayerTimeout = {
-  event: 'playerTimeout';
-  data: { };
-};
+export type PlayerReconnected = EventMessage<'reconnection', {
+  eloChanges: EloChange;
+  playerNumber: number;
+  currentTurn: number;
+  players: PlayerData[];
+  moves: number[];
+}>;
+
+export type OpponentReconnect = EventMessage<'opponentReconnect', {
+  playerNumber: number;
+}>;
+
+// void used for empty payloads
+export type PlayerTimeout = EventMessage<'playerTimeout', void>;
 
 export type MoveMade = {
   event: 'moveMade';
@@ -74,16 +69,8 @@ export type Error = {
   data: { redirect: string | null; message: string; };
 };
 
-export type ReceiveMessage = {
-  event: 'receiveMessage';
-  data: { playerNumber: number; message: string; };
-};
 
-
-export type ClientMessage = GameStart | PlayerJoined | MoveMade | EndGame 
-                          | GameStart | ReceiveMessage | Error | PlayerDisconnected 
-                          | StartTimer | Draw | DrawOffer| PlayerTimeout | PlayerReconnected
-                          | OpponentReconnect
+export type ClientGameMessage = GameStart | PlayerDisconnected | PlayerReconnected
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
 
@@ -92,54 +79,54 @@ export type ResponseError = {
   data: { message: string; };
 };
 
-export type OfferDraw = {
-  event: 'offerDraw';
-  data: { roomId: RoomID; };
-};
+// export type OfferDraw = {
+//   event: 'offerDraw';
+//   data: { roomId: RoomID; };
+// };
 
-export type AcceptDraw = {
-  event: 'acceptDraw';
-  data: { roomId: RoomID; };
-};
+// export type AcceptDraw = {
+//   event: 'acceptDraw';
+//   data: { roomId: RoomID; };
+// };
 
-export type Resign = {
-  event: 'resign';
-  data: { roomId: RoomID; };
-};
+// export type Resign = {
+//   event: 'resign';
+//   data: { roomId: RoomID; };
+// };
 
-export type OfferRematch = {
-  event: 'offerRematch';
-  data: { roomId: RoomID; };
-};
+// export type OfferRematch = {
+//   event: 'offerRematch';
+//   data: { roomId: RoomID; };
+// };
 
-export type JoinGame = {
-  event: 'joinGame';
-  data: { roomId: RoomID; };
-};
+// export type JoinGame = {
+//   event: 'joinGame';
+//   data: { roomId: RoomID; };
+// };
 
-export type MakeMove = {
-  event: 'makeMove';
-  data: { roomId: RoomID; col: number; };
-};
+// export type MakeMove = {
+//   event: 'makeMove';
+//   data: { roomId: RoomID; col: number; };
+// };
 
-export type PlayerTimeOut = {
-  event: 'playerTimeOut';
-  data: { roomId: RoomID; };
-}
+// export type PlayerTimeOut = {
+//   event: 'playerTimeOut';
+//   data: { roomId: RoomID; };
+// }
 
-export type OpponentAbandoned = {
-  event: 'opponentAbandoned';
-  data: { roomId: RoomID; };
-}
+// export type OpponentAbandoned = {
+//   event: 'opponentAbandoned';
+//   data: { roomId: RoomID; };
+// }
 
-export type SendMessage = {
-  event: 'sendMessage';
-  data: { roomId: RoomID; message: string; };
-};
+// export type SendMessage = {
+//   event: 'sendMessage';
+//   data: { roomId: RoomID; message: string; };
+// };
 
-export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | Resign
-                          | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage
-                          | OpponentAbandoned;
+// export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | Resign
+//                           | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage
+//                           | OpponentAbandoned;
 
 export interface ChatMessage {
     playerNumber: number;

@@ -19,6 +19,15 @@ session:user:{userId}        | String   | 7 days    | User session object
 # Cache
 cache:user:{userId}          | JSON   | 1 hr      | Cached user profile
 
+# 🧾 Example Structures
+
+cache:user:{userId}:  JSON:
+{
+  username: string,                           // current turn for this game
+  pfp: number,       // times per move in centiseconds
+  elos: Map<number, number>
+}
+
 ---
 
 # 🎮 Live Game (transient game state)
@@ -26,7 +35,7 @@ game:live:{gameId}           | String | 24 hours | Full live game state
 game:live:{gameId}:meta      | JSON   | 24 hours | Turn, timer, status metadata
 game:live:{gameId}:moves     | JSON   | 24 hours | easy to dump and reload for backend
 
-game:player:{userId}         | JSON | 24 hours | User's current active game ID
+
 game:queue:{userId}          | JSON | 24 hours | User's current active game ID
 
 ---
@@ -35,6 +44,7 @@ game:queue:{userId}          | JSON | 24 hours | User's current active game ID
 
 game:live:{gameId}:meta JSON:
 {
+  shortcode: "AWUIas7",               // shortcode
   players: ["user1", "user2"],        // array of player IDs, order matters
   startTimestamp: 1724127387,         // Unix timestamp (ms) when game started
   gamemode: 241273872,                // game mode identifier (numeric)
@@ -52,3 +62,11 @@ game:live:{gameId}:time JSON:
   lMove: 1724127387                   // Unix timestamp in ms
 }
 
+
+
+game:queue:{userId}: JSON:
+{
+  gameId: string,                     // current turn for this game
+  gameinfo: number,                   // times per move in centiseconds
+  createdAt: number,                  // remaining time for each player in centiseconds
+}

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import { validateEmail, validateUsername } from "@shared/utils/validation"
 import { myConfig } from "@/config/env"
 import { APIResponse } from "@shared/types/Responses"
 import { handleGoogleLogin } from "@/utils/googleSignin"
+import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -23,9 +24,14 @@ export function LoginForm() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [loginError, setLoginError] = useState<string | null>(null)
-  
+  const { getRecaptchaToken, activateRecaptcha, isRecaptchaActive } = useRecaptcha();
+
   // Validation states
   const [emailValid, setEmailValid] = useState(false)
+
+  useEffect(() => {
+    activateRecaptcha();
+  }, [activateRecaptcha]);
 
   // Real-time validation handlers
   const handleEmailChange = (value: string) => {
@@ -76,6 +82,12 @@ export function LoginForm() {
       hasError = true
     }
 
+    const recaptchaToken = await getRecaptchaToken('contact_form');
+    if (!recaptchaToken || !isRecaptchaActive) {
+      alert('Recaptcha failed. Try again.');
+      hasError = true
+    }
+
     if (hasError) {
       return
     }
@@ -85,7 +97,7 @@ export function LoginForm() {
     const response = await fetch(`${myConfig.BACKEND_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usernameEmail: email, password }),
+      body: JSON.stringify({ usernameEmail: email, password, recaptchaToken }),
     });
     const resp = (await response.json())as APIResponse
     console.log(resp)

@@ -56,8 +56,9 @@ export type TimeControl = {
 export type TimeCategory = "hyper-bullet" | "bullet" | "blitz" | "rapid";
 
 
-
-
-
+export type GameInfo = {
+    gamemode: number; // GameMode
+    time_control: TimeControl;
+}
 
 

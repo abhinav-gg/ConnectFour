@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowLeft } from 'lucide-react';
-import { GameState } from '@shared/utils/game';
+import { GameState } from '@shared/utils/Games/game';
 import { ROWS, COLS } from '@shared/constants';
 import { useEffect, useState } from 'react';
 import { eventEmitter } from '@shared/utils/eventEmitter';
