@@ -4,13 +4,13 @@
 export type Player = 0 | 1;
 export type Cell = Player | null
 export type Move = number
+export type Seconds = number
 
-export type TimeInfo = {
-    timeTaken: number, 
-    allowedTime: number, 
-    timeLeft: number,
-    delta: number;
-};
+export type TimedMoveResult = { 
+    row: number; 
+    success: boolean, 
+    deltaTime: number,
+ }
 
 export type DrawMatrix = {
     confirmAction: boolean,
@@ -47,9 +47,9 @@ export type GMStats = {
 }
 
 export type TimeControl = {
-    base_time: number;
-    increment: number;
-    disadvantage: number;
+    base_time: Seconds;
+    increment: Seconds;
+    disadvantage: Seconds;
 }
 
 

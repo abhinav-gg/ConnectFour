@@ -33,17 +33,17 @@ const navigationItems = [
   {
     title: "Play",
     icon: Play,
-    url: "/game/setup",
+    url: "/play",
   },
   {
     title: "Puzzle",
     icon: Puzzle,
-    url: "#puzzle",
+    url: "/puzzle",
   },
   {
     title: "Learn",
     icon: GraduationCap,
-    url: "#learn",
+    url: "/coming-soon",
   },
   {
     title: "Tools",
@@ -53,12 +53,12 @@ const navigationItems = [
   {
     title: "Events",
     icon: Calendar,
-    url: "#events",
+    url: "/coming-soon",
   },
   {
     title: "Community",
     icon: Users,
-    url: "#community",
+    url: "/community",
   },
   {
     title: "Notifications",

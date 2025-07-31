@@ -6,5 +6,9 @@ export const AvgGameLength = 30; // idk what this is for
 
 export const StandardStartingElo = 1000;
 
-export const StandardReconnectionTime = 15 * 1000; // 15 seconds
+export const StandardReconnectionTime = 20 * 1000; // 15 seconds
+
+export const MaxBaseTime = 3 * 60 * 60; // 3 hours in seconds
+export const MaxIncrement = 3 * 60; // 3 minutes in seconds
+export const MaxDisadvantage = 3 * 60; // 3 minutes in seconds
 

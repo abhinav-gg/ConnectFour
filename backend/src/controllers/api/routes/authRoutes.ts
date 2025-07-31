@@ -5,12 +5,11 @@ import { authService } from '@/services/auth.service';
 import { ServiceResponse, GoogleTokenResponse } from '@/types/custom';
 import { UserAccountProvider } from "@shared/types/users";
 import { myConfig } from '@config/env';
-import { RegUser, User, UserRegistration, UserSchema } from '@/db/models/User';
+import { RegUser, UserRegistration } from '@/db/models/User';
 import { hashPassword } from '@/lib/auth/auth';
 import { validateEmail, validatePassword, validateUsername } from '@shared/utils/validation';
 import { EmailDoesNotExist } from '@/types/dbErrors';
 import { APIResponse } from '@shared/types/Responses';
-import jwt from 'jsonwebtoken';
 import { RedisSchema } from '@/redis/redisSchema';
 import { userService } from '../../../services/user.service';
 import { sendUserToGame } from '@/lib/game.middleware';
@@ -31,7 +30,7 @@ authRouter.post('/register/start', requireUnauthenticated, verifyRecaptcha, asyn
   }
 
   if (!validateEmail(emailNormalised)) {
-    return res.status(400).json({ error: 'Invalid Username' });
+    return res.status(400).json({ error: 'Invalid Email' });
   }
 
   try {
@@ -41,7 +40,17 @@ authRouter.post('/register/start', requireUnauthenticated, verifyRecaptcha, asyn
       return res.status(400).json({ error: 'Email already registered and verified' });
     }
     // User exists but not verified, send verification code
-    await authService.handleEmailVerificationCheck(user);
+    const response = await authService.handleEmailVerificationCheck(user);
+    console.error(response.message);
+    // verify the email and redirect with the code.
+    const preVerifyJwt = authService.signJWT(
+      { email: user.email, provider: user.mail_provider },
+      '1h'
+    );
+
+    const params = new URLSearchParams({ jwt: preVerifyJwt });
+
+    res.redirect(`/auth/verify-email?${params.toString()}`);
 
   } catch {
     // User does not exist, continue
@@ -88,10 +97,9 @@ authRouter.post('/register', requireUnauthenticated, verifyRecaptcha, async (req
       return res.status(resp.status).json({ error: resp.message });
     }
 
-    const  presignupJWT = jwt.sign(
+    const  presignupJWT = authService.signJWT(
       { email: emailNormalised, provider: UserAccountProvider.Local },
-      myConfig.JWT_SECRET,
-      { expiresIn: '1h' }
+      '1h'
     );
     // 
     return res.status(200).json({ jwt: presignupJWT }) // over to the frontend to ask for the verification code
@@ -112,10 +120,9 @@ authRouter.post('/login', requireUnauthenticated, verifyRecaptcha, async (req: R
     if (result.status === 401){
 
       // verify the email and redirect with the code.
-      const preVerifyJwt = jwt.sign(
+      const preVerifyJwt = authService.signJWT(
         { email: result.message, provider: UserAccountProvider.Google },
-        myConfig.JWT_SECRET,
-        { expiresIn: '24h' }
+        '24h'
       );
 
       const params = new URLSearchParams({ jwt: preVerifyJwt });
@@ -138,7 +145,7 @@ authRouter.post('/login', requireUnauthenticated, verifyRecaptcha, async (req: R
     }
   }
   catch (error: any) {
-
+    console.error(error)
   }
 });
 
@@ -148,7 +155,7 @@ authRouter.post('/verify-email', requireUnauthenticated, verifyRecaptcha, async 
   
   let payload: any;
   try {
-    payload = jwt.verify(token, myConfig.JWT_SECRET) as 
+    payload = authService.verifyJWT(token) as 
       { email: string; provider: UserAccountProvider };
   
     if (payload.provider !== UserAccountProvider.Local)
@@ -368,10 +375,9 @@ authRouter.get("/google/callback", async (req: Request, res: Response): Promise<
 
     if (error instanceof EmailDoesNotExist) {
       console.log("Error Received")
-      const preSignupToken = jwt.sign(
+      const preSignupToken = authService.signJWT(
         { email, picture, provider: UserAccountProvider.Google },
-        myConfig.JWT_SECRET,
-        { expiresIn: '1h' }
+        '1h'
       );
 
         res.setHeader('Content-Type', 'text/html');
@@ -390,7 +396,7 @@ authRouter.post('/google/register', verifyRecaptcha, async (req: Request, res: a
   const { username, token } = req.body as { username: string, token: string };
   let payload: any;
   try {
-    payload = jwt.verify(token, myConfig.JWT_SECRET) as 
+    payload = authService.verifyJWT(token) as
       { email: string; picture: string; provider: UserAccountProvider };
   
     if (payload.provider !== UserAccountProvider.Google)

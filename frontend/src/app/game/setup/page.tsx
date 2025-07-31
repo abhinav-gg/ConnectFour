@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { GameBoardLayout } from "@/components/game-board-layout"
-import { LiveGameSelection } from "@/components/game/live-game-selection"
+import { GameBoardLayout } from "@/components/layouts/game-board-layout"
+import { LiveGameSelection } from "@/components/game/LiveGameSelector"
 
 export default function LiveGamePage() {
   // State for game board layout, managed here

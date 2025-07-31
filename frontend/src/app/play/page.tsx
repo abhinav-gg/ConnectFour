@@ -1,6 +1,6 @@
 "use client"
 
-import { BoardSpaceLayout } from "../../../components/board-space-layout"
+import { BoardSpaceLayout } from "../../components/layouts/board-space-layout"
 import { GameSelect } from "@/components/game/pick-game"
 
 export default function GameSetupPage() {

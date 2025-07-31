@@ -132,8 +132,7 @@ export class StandardGame {
   }
 
   adjMoveIndex = (deltaIndex: number): boolean => {
-    let newInd = this.currentMoveIndex + deltaIndex
-    return this.setMoveIndex(newInd);
+    return this.setMoveIndex(this.currentMoveIndex + deltaIndex);
   }
 
   setMoveIndex = (newMoveIndex: number): boolean => {

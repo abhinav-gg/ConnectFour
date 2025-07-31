@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { Layout } from "@/components/mainlayout"
+import { Layout } from "@/components/layouts/mainlayout"
 import Board from "@/components/boards/Board"
 import { motion } from "framer-motion"
 

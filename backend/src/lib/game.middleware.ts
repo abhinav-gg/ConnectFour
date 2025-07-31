@@ -4,7 +4,7 @@ import { myConfig } from '@config/env';
 import { redisOps } from '@/redis/ops';
 import { Socket } from 'socket.io';
 import * as cookie from 'cookie';
-import { PlayerIdentity } from '@/utils/validation';
+import { PlayerIdentity } from '@/types/custom';
 import { authService } from '@/services/auth.service';
 import { AuthenticatedRequest } from './auth/middleware';
 

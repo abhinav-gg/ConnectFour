@@ -3,7 +3,7 @@
 import type React from "react"
 import { motion } from "framer-motion"
 import { Layout } from "./mainlayout"
-import Board, { BoardHandle } from "./boards/Board"
+import Board, { BoardHandle } from "../boards/Board"
 
 interface BoardSpaceLayoutProps {
   children: React.ReactNode,

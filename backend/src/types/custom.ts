@@ -1,3 +1,4 @@
+import { UUID } from "crypto";
 import type express from "express";
 
 export interface ServiceResponse {
@@ -34,4 +35,10 @@ export type GoogleTokenResponse = {
   token_type: string;
   id_token: string;
 };
+
+export interface PlayerIdentity {
+  user?: UUID;
+  anon?: UUID;
+  bot?: string;
+}
 

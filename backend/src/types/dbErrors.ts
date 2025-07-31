@@ -1,24 +1,24 @@
 export class UsernameExists extends Error {
   constructor() {
     super('An account with this username already exists');
+    this.name = "UsernameExists";
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
 export class UsernameDoesntExist extends Error {
   constructor() {
     super('You must provide a valid username');
+    this.name = "UsernameDoesntExist";
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 
 export class PlayerEloNotFound extends Error {
   constructor() {
     super('Player elo not found');
-  }
-}
-
-export class PlayerNotLookingForGame extends Error {
-  constructor() {
-    super('Player not looking for game');
+    this.name = "PlayerEloNotFound";
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 

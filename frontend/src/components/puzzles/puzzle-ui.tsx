@@ -172,36 +172,38 @@ export function PuzzleUI({
       </motion.div>
 
       {/* Message Card */}
-      {showVoting && (
-        <motion.div
-          className="bg-brand-primary/50 rounded-2xl p-4 lg:p-4 text-center space-y-4 lg:space-y-3"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h2 className="text-xl lg:text-2xl font-bold">MESSAGE!</h2>
-          <p className="text-brand-text-light text-base lg:text-lg">Did you like this puzzle? Vote to load the next.</p>
+      <motion.div
+        className={`rounded-2xl p-4 lg:p-4 text-center space-y-4 lg:space-y-3 min-h-[200px] ${showVoting ? "bg-brand-primary/50" : ""}`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        {showVoting && (
+          <>
+            <h2 className="text-xl lg:text-2xl font-bold">MESSAGE!</h2>
+            <p className="text-brand-text-light text-base lg:text-lg">Did you like this puzzle? Vote to load the next.</p>
 
-          <div className="flex justify-center gap-6 lg:gap-8">
-            <Button
-              onClick={() => handleVote("up")}
-              variant="ghost"
-              size="lg"
-              className="text-brand-accent-green hover:bg-brand-accent-green/20 p-3 lg:p-4"
-            >
-              <ThumbsUp className="h-8 w-8 lg:h-12 lg:w-12 stroke-[3]" />
-            </Button>
-            <Button
-              onClick={() => handleVote("down")}
-              variant="ghost"
-              size="lg"
-              className="text-brand-accent-red hover:bg-brand-accent-red/20 p-3 lg:p-4"
-            >
-              <ThumbsDown className="h-8 w-8 lg:h-12 lg:w-12 stroke-[3]" />
-            </Button>
-          </div>
-        </motion.div>
-      )}
+            <div className="flex justify-center gap-6 lg:gap-8">
+              <Button
+                onClick={() => handleVote("up")}
+                variant="ghost"
+                size="lg"
+                className="text-brand-accent-green hover:bg-brand-accent-green/20 p-3 lg:p-4"
+              >
+                <ThumbsUp className="h-8 w-8 lg:h-12 lg:w-12 stroke-[3]" />
+              </Button>
+              <Button
+                onClick={() => handleVote("down")}
+                variant="ghost"
+                size="lg"
+                className="text-brand-accent-red hover:bg-brand-accent-red/20 p-3 lg:p-4"
+              >
+                <ThumbsDown className="h-8 w-8 lg:h-12 lg:w-12 stroke-[3]" />
+              </Button>
+            </div>
+          </>
+        )}
+      </motion.div>
 
       {/* Your Turn Section */}
       <div className="space-y-4 lg:space-y-3">

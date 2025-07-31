@@ -1,3 +1,4 @@
+import { PlayerIdentity } from '@/types/custom';
 import { UUID } from 'crypto'
 
 
@@ -14,12 +15,6 @@ export const parseUser = (u: string): UUID | null => {
   return null;
 }
 
-
-export interface PlayerIdentity {
-  user?: UUID;
-  anon?: UUID;
-  bot?: string;
-}
 
 export const isAnonIdentity = (id: string): boolean => id.startsWith("anon:")
 export const isUserIdentity = (id: string): boolean => id.startsWith("user:")

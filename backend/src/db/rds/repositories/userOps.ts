@@ -227,37 +227,13 @@ export const UserOperations = {
     return;
   },
 
-  async getAnonymousUser(): Promise<void> {
-    // const client = await this.getClient();
-    // try {
-    //   await client.query('BEGIN');
-    //   // Insert new user
-    //   const result = await client.query(
-    //     `INSERT INTO users (is_anonymous) VALUES (TRUE) RETURNING id`);
-    //   await client.query('COMMIT');
-
-    //   return result.rows[0];
-    // } catch (error) {
-    //   await client.query('ROLLBACK');
-    //   //console.error('Failed to create anonymous user:', error);
-    //   throw error;
-    // } finally {
-    //   this.safeRelease();
-    // }
-
-  },
-
-  // Call this function to delete anonymous users that are older than 24 hours every day
-  async CronDeleteAnonymousUsers(): Promise<void> {
-    // await pool.query('BEGIN');
-    // // Delete anonymous users
-    // await pool.query(
-    //   `DELETE FROM users
-    //     WHERE is_anonymous = true
-    //     AND NOT EXISTS ( SELECT id FROM GamePlayers WHERE player = users.id )
-    //     AND NOT EXISTS ( SELECT id FROM GameLookup WHERE player = users.id );`
-    // );
-    // await pool.query('COMMIT');
+  async alterElo(userId: string, mode: number, delta: number): Promise<void> {
+    await pool.query(
+      `UPDATE elo
+        SET elo = elo + $1
+        WHERE player = $2 AND mode = $3`,
+      [delta, userId, mode]
+    );
   },
 
 

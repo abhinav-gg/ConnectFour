@@ -2,8 +2,8 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { AppSidebar } from "./sidebar"
-import { Footer } from "./footer"
+import { AppSidebar } from "../sidebar"
+import { Footer } from "../footer"
 import { Menu } from "lucide-react"
 import { motion } from "framer-motion"
 

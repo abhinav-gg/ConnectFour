@@ -4,7 +4,7 @@ import { myConfig } from '@config/env';
 import { redisOps } from '@/redis/ops';
 import { Socket } from 'socket.io';
 import * as cookie from 'cookie';
-import { PlayerIdentity } from '@/utils/validation';
+import { PlayerIdentity } from '@/types/custom';
 import { authService } from '@/services/auth.service';
 
 
@@ -150,8 +150,10 @@ export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response
 
   try {
     // Check the user with tag "Admin"
-
-    
+    if (!(await authService.checkAdministrator(userId))) {
+      res.status(404); // just pretend the page doesn't exist
+      return;
+    }
 
     next();
   } catch (error) {

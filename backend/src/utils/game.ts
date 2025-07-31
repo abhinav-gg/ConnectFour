@@ -16,49 +16,6 @@ export function genRandomGameKey(): string {
 }
 
 
-
-// CategoriseTime takes a time control object and returns the game category
-// (TODO: define time control object, then function is done)
-export function CategoriseTime(timeControl: TimeControl): TimeCategory { 
-    // Calculate total game time in seconds:
-    // 2 * base time (both players) + disadvantage + increment * total moves
-
-    const totalTime = (2 * 60 * timeControl.base_time) + 
-                        timeControl.disadvantage + (timeControl.increment * 30);
-    
-    // Categorize based on total game time:
-    // Hyper Bullet: ≤ 70 seconds (1.16 minutes)
-    // Bullet: ≤ 255 seconds (4.25 minutes)
-    // Blitz: 256-650 seconds (4.25-8.3 minutes)
-    // Rapid: ≥ 650 seconds (8.3+ minutes)
-    if (totalTime <= 70) {
-        return 'hyper-bullet';
-    } else if (totalTime <= 255) {
-        return 'bullet';
-    } else if (totalTime <= 650) {
-        return 'blitz';
-    } else {
-        return 'rapid';
-    }
-}
-
-// import { randomUUID } from 'crypto';
-
-// // 1. Generate UUID string
-// const uuidStr = randomUUID();
-// console.log('UUID String:', uuidStr);
-
-// // 2. Convert to Buffer (16 bytes)
-// const uuidBuf = uuidToBuffer(uuidStr);
-// console.log('UUID Buffer:', uuidBuf);
-
-// // 3. Store uuidBuf in DynamoDB as binary attribute
-
-// // 4. Convert back to string when reading
-// const uuidStrBack = bufferToUuid(uuidBuf);
-// console.log('Recovered UUID String:', uuidStrBack);
-
-
 // Values used in calculation
 const skillRange = 10;
 const eloRange = 400;
@@ -97,10 +54,26 @@ export function calculateEloChanges(pElo: number, opponentElo: number, pIsRed: b
     };
 }
 
+const preferredDeltaElo = 20;
 
-export function calculateTimesByMoves(moves: any[], userId: string, timecontrol: TimeControl, hasDisadvantage: boolean) {
-    
+export function getQueuePriority(timeSinceQueued: number, deltaElo: number): number {
+    let timePriority = 0;
+    // scale by time difference squared
+    if (timeSinceQueued > 10000) {
+        timePriority = Math.pow((timeSinceQueued + 100) * 0.001, 1.7);
+    } else {
+        timePriority = Math.pow((timeSinceQueued + 100) * 0.001, 1.5);
+    }
+
+    // scale strongly by inverse of the elo difference (aim for the preferred delta)
+    let dE = deltaElo - preferredDeltaElo
+    if (dE < 0) {
+        // this should be weighted stronger than positive differences
+        dE = Math.abs(dE) / 4;
+    }
+    const eloPriority = 1 / (dE + 1);
+
+    return timePriority * eloPriority;
 }
-
 
 

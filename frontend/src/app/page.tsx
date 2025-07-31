@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Gamepad2, Bot } from "lucide-react"
-import { Layout } from "@/components/mainlayout"
+import { Layout } from "@/components/layouts/mainlayout"
 import Board from "@/components/boards/Board"
 
 

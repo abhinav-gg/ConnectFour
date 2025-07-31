@@ -146,7 +146,6 @@ export function RegisterForm() {
     if (!response.ok) {
       const data = await response.json();
       setEmailError(data.error || "Registration failed");
-      
       return;
     }
     else {

@@ -4,7 +4,7 @@ import { RegisterForm } from '@/components/auth/forms/register';
 import { ResetPasswordForm } from '@/components/auth/forms/pwd-reset';
 import { VerifyEmailForm } from '@/components/auth/forms/verify-email';
 import { LogoutUser } from '@/components/auth/forms/logout';
-import { BoardSpaceLayout } from '@/components/board-space-layout';
+import { BoardSpaceLayout } from '@/components/layouts/board-space-layout';
 
 const forms: Record<string, JSX.Element> = {
   "login": <LoginForm />,

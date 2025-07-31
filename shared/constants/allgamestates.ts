@@ -1,5 +1,4 @@
 
-// const name = GameMode[id]; // "CLASSIC"
 export enum GameState {
     ERRORED             = 0,
     SCHEDULED           = 1,

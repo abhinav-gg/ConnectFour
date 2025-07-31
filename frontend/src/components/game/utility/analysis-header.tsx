@@ -9,6 +9,7 @@ interface AnalysisHeaderProps {
   isAnalysisEnabled: boolean // Changed from isAnalysisComplete
   onToggleAnalysis: (enabled: boolean) => void // New prop for toggle change
   onSettingsClick?: () => void
+  showAnalysisToggle?: boolean // New prop to control visibility of analysis features
 }
 
 export function AnalysisHeader({
@@ -16,6 +17,7 @@ export function AnalysisHeader({
   isAnalysisEnabled,
   onToggleAnalysis,
   onSettingsClick,
+  showAnalysisToggle = true, // Default to true for backward compatibility
 }: AnalysisHeaderProps) {
   return (
     <motion.div
@@ -25,23 +27,29 @@ export function AnalysisHeader({
       transition={{ duration: 0.3 }}
     >
       <div className="flex items-center gap-3">
-        {/* Analysis Toggle */}
-        <Toggle checked={isAnalysisEnabled} onCheckedChange={onToggleAnalysis} />
+        {/* Analysis Toggle - Only show if showAnalysisToggle is true */}
+        {showAnalysisToggle && (
+          <>
+            <Toggle checked={isAnalysisEnabled} onCheckedChange={onToggleAnalysis} />
 
-        {/* Analysis Type Badge - Conditionally rendered */}
-        {isAnalysisEnabled && (
-          <motion.div
-            className="bg-red-600 text-white px-3 py-1 rounded-md font-bold text-sm"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {analysisType}
-          </motion.div>
+            {/* Analysis Type Badge - Conditionally rendered */}
+            {isAnalysisEnabled && (
+              <motion.div
+                className="bg-red-600 text-white px-3 py-1 rounded-md font-bold text-sm"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {analysisType}
+              </motion.div>
+            )}
+          </>
         )}
 
-        <span className="text-white font-semibold text-lg">Analysis</span>
+        <span className="text-white font-semibold text-lg">
+          {showAnalysisToggle ? "Analysis" : "Game Controls"}
+        </span>
       </div>
 
       {/* Settings Button */}

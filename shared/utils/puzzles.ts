@@ -48,7 +48,7 @@ export class Puzzle {
             if (col < 0 || col >= COLS) {
                 throw new Error(`Invalid column number: ${movesPart[i]}`);
             }
-            this.gameState.makeMove(col, true); // Silent mode to avoid event emission
+            this.gameState.makeMove(col); // Silent mode to avoid event emission
         }
     }
 
@@ -77,14 +77,14 @@ export class Puzzle {
             return { succ: false };
         }
 
-        const result = this.gameState.makeMove(col, false);
+        const result = this.gameState.makeMove(col);
         if (ci === this.puzStr.length - 1) {
             //console.log("Puzzle completed successfully!");
             // terminate the puzzle here
             return { succ: true, row1: result.row, col1: col }
         } else {
             let nextMove = parseInt(this.puzStr[ci + 1], 10) - 1;
-            const result2 = this.gameState.makeMove(nextMove, false); 
+            const result2 = this.gameState.makeMove(nextMove); 
             return { succ: true, row1: result.row, col1: col, row2: result2.row, col2: nextMove }
         }
     }

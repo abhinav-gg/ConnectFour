@@ -1,4 +1,3 @@
-
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 import { RESERVED_USERNAMES } from '@shared/reserved_usernames';
@@ -12,9 +11,11 @@ import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { EmailSendError } from '@/types/miscErrors';
 import { RegUser, User, UserSchema } from '@/db/models/User';
 import { UsernameExists } from '@/types/dbErrors';
-import { UUID } from 'crypto';
 import { RedisSchema } from '@/redis/redisSchema';
-import { PlayerIdentity, getIdentity } from '@/utils/validation';
+import { getIdentity } from '@/utils/validation';
+import { PlayerIdentity } from '@/types/custom';
+import jwt from 'jsonwebtoken';
+import { myConfig } from '@config/env';
 
 
 const disallowedUsernames = new Set(RESERVED_USERNAMES);
@@ -166,15 +167,13 @@ export const authService = {
   },
 
 
-  async checkAdministrator(userId: string): Promise<boolean> {
-    return await userDbOps.checkForTag(userId, UserTags.ADMIN);
-  },
+  checkAdministrator: (userId: string) => userDbOps.checkForTag(userId, UserTags.ADMIN),
 
 
   async sendEmailVerification(email: string, username: string): Promise<ServiceResponse> {
     const redisOp = await redisOps();
 
-    const canSend = await this.checkEmailVerificationStatus(email)
+    const canSend = await this.checkEmailVerifyCodes(email)
 
     if (!canSend)
       return { status: 400, message: 'Code was sent recently' };
@@ -229,7 +228,7 @@ export const authService = {
 
 
 
-  async checkEmailVerificationStatus(email: string): Promise<ServiceResponse> {
+  async checkEmailVerifyCodes(email: string): Promise<ServiceResponse> {
 
     // scan for all of their email verify keys
     const redis = await redisOps();
@@ -280,7 +279,7 @@ export const authService = {
    */
   async handleEmailVerificationCheck(user: User): Promise<ServiceResponse> {
     if (!user.email_verified) {
-      const canSendEmail = await this.checkEmailVerificationStatus(user.email)
+      const canSendEmail = await this.checkEmailVerifyCodes(user.email)
       if (canSendEmail.status === 200) {
 
         this.sendEmailVerification(user.email, user.username)
@@ -293,13 +292,6 @@ export const authService = {
     } else {
       return { status: 200, message: 'Email verified' };
     }
-  },
-
-  async deleteUserAccount(uuid: UUID): Promise<ServiceResponse> {
-
-    // TODO change to set is_deleted to true through a db operation
-
-    return { status: 200, message: 'Deleted' };
   },
 
 
@@ -322,5 +314,19 @@ export const authService = {
 
   },
 
+  signJWT: (data: any, expiresIn: string): string => {
+    return jwt.sign(
+      data, 
+      myConfig.JWT_SECRET, 
+      { expiresIn, algorithm: 'HS256' } as jwt.SignOptions).toString();
+  },
+
+  verifyJWT: (token: string): any => {
+    try {
+      return jwt.verify(token, myConfig.JWT_SECRET, { algorithms: ['HS256'] });
+    } catch (error) {
+      throw new Error('Invalid JWT');
+    }
+  },
 
 };

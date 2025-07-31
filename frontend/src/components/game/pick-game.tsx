@@ -13,7 +13,6 @@ export function GameSelect({}: GameSelectProps) {
       title: "Play Online",
       description: "Play a ranked game with someone at your level",
       icon: Zap,
-      iconColor: "text-brand-accent-yellow",
       href: "/game/online",
       soon: false,
     },
@@ -21,7 +20,6 @@ export function GameSelect({}: GameSelectProps) {
       title: "Play A Friend",
       description: "Play a casual game against someone you know",
       icon: User,
-      iconColor: "text-brand-accent-green",
       href: "/game/friend",
       soon: false,
     },
@@ -29,25 +27,31 @@ export function GameSelect({}: GameSelectProps) {
       title: "Play A Bot",
       description: "Play a game with custom training bots",
       icon: Bot,
-      iconColor: "text-brand-accent-purple", // Use the new purple accent
       extraIcon: Sparkles, // For the stars next to the bot
       extraIconColor: "text-brand-accent-orange",
       href: "/game/bot",
       soon: false,
     },
     {
+      title: "Play Locally",
+      description: "Play a game on the same device",
+      icon: Bot,
+      extraIcon: Sparkles, // For the stars next to the bot
+      extraIconColor: "text-brand-accent-orange",
+      href: "/test",
+      soon: false,
+    },
+    {
       title: "View Tournaments",
       description: "Play in a live event!",
       icon: LayoutGrid, // Matching the visual style of the bracket
-      iconColor: "text-brand-accent-green",
       href: "/tournaments",
-      soon: false,
+      soon: true,
     },
     {
       title: "More Coming Soon",
       description: "Coming Soon...",
       icon: ArrowRight,
-      iconColor: "text-brand-accent-green",
       href: "#",
       soon: true,
     },
@@ -87,7 +91,7 @@ export function GameSelect({}: GameSelectProps) {
             aria-label={`${mode.title}: ${mode.description}`}
           >
             <div className="relative flex-shrink-0">
-              <mode.icon className={`w-8 h-8 lg:w-10 lg:h-10 ${mode.iconColor}`} aria-hidden="true" />
+              <mode.icon className={`w-8 h-8 lg:w-10 lg:h-10 text-brand-accent-green`} aria-hidden="true" />
               {mode.extraIcon && mode.icon === Bot && (
                 <mode.extraIcon
                   className={`absolute -bottom-1 -right-1 w-4 h-4 lg:w-5 lg:h-5 ${mode.extraIconColor}`}

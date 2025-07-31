@@ -1,12 +1,12 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { motion } from "framer-motion"
 import { Layout } from "./mainlayout"
-import Board from "./boards/Board"
-import { ScoreBar } from "./game/score-bar"
-import { PlayerInfo } from "./game/player-info"
-import { Timer } from "./game/timer"
+import Board from "../boards/Board"
+import { ScoreBar } from "../game/score-bar"
+import { PlayerInfo } from "../game/player-info"
+import { Timer } from "../game/timer"
 import { User2 } from "lucide-react"
 
 interface GameBoardLayoutProps {
@@ -47,9 +47,6 @@ export function GameBoardLayout({
   player2Time,
   scoreRatio,
   isGameRunning,
-  onPlayer1TimeChange,
-  onPlayer2TimeChange,
-  onScoreRatioChange,
   onStartGame,
   onPauseGame,
   onResetGame,
@@ -67,12 +64,64 @@ export function GameBoardLayout({
     ...boardProps,
   }
 
+  // State to track current viewport for lazy loading
+  const [isDesktop, setIsDesktop] = useState(false)
+  
+  // Stable key for component identity across layouts
+  const componentKey = "game-ui-singleton"
+  
+  // Use proper useMemo with all dependencies to recreate only when necessary
+  const renderedChildren = React.useMemo(() => {
+    return React.Children.map(children, (child) => {
+      if (React.isValidElement(child) && typeof child.type !== "string") {
+        return React.cloneElement(child as React.ReactElement<any>, {
+          key: componentKey, // Stable key to maintain identity
+          onStartGame: onStartGame,
+          onPauseGame: onPauseGame,
+          onResetGame: onResetGame,
+          player1Time: player1Time,
+          player2Time: player2Time,
+          scoreRatio: scoreRatio,
+          isGameRunning: isGameRunning,
+        })
+      }
+      return child
+    })
+  }, [children, onStartGame, onPauseGame, onResetGame, player1Time, player2Time, scoreRatio, isGameRunning])
+
+  // Refs for the containers
+  const desktopContainerRef = React.useRef<HTMLDivElement>(null)
+  const mobileContainerRef = React.useRef<HTMLDivElement>(null)
+  const childrenContainerRef = React.useRef<HTMLDivElement>(null)
+
+  // Check viewport size and update state
+  React.useEffect(() => {
+    const checkViewport = () => {
+      setIsDesktop(window.innerWidth >= 1280) // xl breakpoint is 1280px
+    }
+    
+    checkViewport()
+    window.addEventListener('resize', checkViewport)
+    
+    return () => window.removeEventListener('resize', checkViewport)
+  }, [])
+
+  // Move the children container to the appropriate parent
+  React.useEffect(() => {
+    const childrenContainer = childrenContainerRef.current
+    const targetContainer = isDesktop ? desktopContainerRef.current : mobileContainerRef.current
+    
+    if (childrenContainer && targetContainer) {
+      targetContainer.appendChild(childrenContainer)
+    }
+  }, [isDesktop])
+
   return (
     <Layout>
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-screen-2xl mx-auto">
-          {/* Desktop Layout (lg breakpoint and above) */}
-          <div className="hidden lg:flex lg:items-start lg:gap-8 min-h-[90vh]">
+          {/* Desktop Layout (xl breakpoint and above) */}
+          <div className="hidden xl:flex xl:items-start xl:gap-8 min-h-[90vh]">
             {/* Left Section: Score Bar + Board Area - Fixed width based on viewport */}
             <div className="flex items-start">
               {/* Score Bar */}
@@ -89,7 +138,6 @@ export function GameBoardLayout({
                     secondsLeft={player1Time}
                     isRunning={isGameRunning}
                     color={player1Color}
-                    onTimeChange={onPlayer1TimeChange}
                   />
                 </div>
 
@@ -107,7 +155,6 @@ export function GameBoardLayout({
                     secondsLeft={player2Time}
                     isRunning={isGameRunning}
                     color={player2Color}
-                    onTimeChange={onPlayer2TimeChange}
                   />
                 </div>
               </div>
@@ -116,35 +163,20 @@ export function GameBoardLayout({
             {/* Right Section: Side Component - Takes remaining space */}
             <div className="flex-1 min-w-0">
               <motion.div
-                className="bg-brand-primary/40 rounded-2xl p-4 w-full flex flex-col"
+                className="bg-brand-secondary rounded-3xl p-8 xl:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
+                ref={desktopContainerRef}
               >
-                <div className="flex flex-col">
-                  {React.Children.map(children, (child) => {
-                    if (React.isValidElement(child) && typeof child.type !== "string") {
-                      return React.cloneElement(child as React.ReactElement<any>, {
-                        onStartGame: onStartGame,
-                        onPauseGame: onPauseGame,
-                        onResetGame: onResetGame,
-                        player1Time: player1Time,
-                        player2Time: player2Time,
-                        scoreRatio: scoreRatio,
-                        isGameRunning: isGameRunning,
-                      })
-                    }
-                    return child
-                  })}
-                </div>
               </motion.div>
             </div>
           </div>
 
-          {/* Mobile/Tablet Layout (lg:hidden) */}
-          <div className="lg:hidden w-full flex flex-col">
+          {/* Mobile/Tablet Layout (xl:hidden) */}
+          <div className="xl:hidden w-full flex flex-col items-center">
             {/* Game Area */}
-            <div className="flex-[3] flex min-h-0">
+            <div className="flex-[3] flex min-h-0 w-full max-w-4xl">
               {/* Score Bar */}
               <div className="flex flex-col items-center justify-center px-2">
                 <ScoreBar scoreRatio={scoreRatio} className="w-4 h-[calc(75vh-8rem)]" />
@@ -158,7 +190,6 @@ export function GameBoardLayout({
                     secondsLeft={player1Time}
                     isRunning={isGameRunning}
                     color={player1Color}
-                    onTimeChange={onPlayer1TimeChange}
                   />
                 </div>
 
@@ -174,38 +205,27 @@ export function GameBoardLayout({
                     secondsLeft={player2Time}
                     isRunning={isGameRunning}
                     color={player2Color}
-                    onTimeChange={onPlayer2TimeChange}
                   />
                 </div>
               </div>
             </div>
 
             {/* Side Component - Mobile */}
-            <div className="flex-shrink-0 px-4 pb-4">
+            <div className="flex-shrink-0 px-4 pb-4 w-full max-w-4xl">
               <motion.div
-                className="bg-brand-primary/40 rounded-2xl p-4 w-full flex flex-col"
+                className="bg-brand-secondary rounded-3xl p-6 xl:p-8 shadow-2xl border border-brand-border/40 select-none flex flex-col mx-auto"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+                ref={mobileContainerRef}
               >
-                <div className="flex flex-col">
-                  {React.Children.map(children, (child) => {
-                    if (React.isValidElement(child) && typeof child.type !== "string") {
-                      return React.cloneElement(child as React.ReactElement<any>, {
-                        onStartGame: onStartGame,
-                        onPauseGame: onPauseGame,
-                        onResetGame: onResetGame,
-                        player1Time: player1Time,
-                        player2Time: player2Time,
-                        scoreRatio: scoreRatio,
-                        isGameRunning: isGameRunning,
-                      })
-                    }
-                    return child
-                  })}
-                </div>
               </motion.div>
             </div>
+          </div>
+
+          {/* Single children container that gets moved between layouts */}
+          <div className="flex flex-col" key={componentKey} ref={childrenContainerRef}>
+            {renderedChildren}
           </div>
         </div>
       </div>

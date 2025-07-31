@@ -1,12 +1,24 @@
 
-export enum GameMode {
-    
-    EMPTY = 0, // 0
-    STANDARD_CASUAL = 1, // aka friendly
-    STANDARD_BULLET_RANKED,
-    STANDARD_BLITZ_RANKED,
-    STANDARD_RAPID_RANKED,
+export const StandardGameMode = {
+  ERROR: 0,
+  STANDARD_PUBLIC_CASUAL: 1,
+  STANDARD_ARMAGEDDON_PUBLIC_CASUAL: 2,
+  STANDARD_FRIENDLY: 3,
+  STANDARD_ARMAGEDDON_FRIENDLY: 4,
+  STANDARD_BULLET_RANKED: 5,
+  STANDARD_ARMAGEDDON_BULLET_RANKED: 6,
+  STANDARD_BLITZ_RANKED: 7,
+  STANDARD_ARMAGEDDON_BLITZ_RANKED: 8,
+  STANDARD_RAPID_RANKED: 9,
+  STANDARD_ARMAGEDDON_RAPID_RANKED: 10,
+  STANDARD_PUZZLE: 11,
 
-    EVENT_GAMEMODES_ERROR = 0xFFFF, // 65535
-    // events go in here, e.g. ICH.
-}
+  EVENT_GAMEMODES_ERROR: 0xFFFF,
+} satisfies Record<string, number>;
+
+
+export const GameMode = {
+  ...StandardGameMode,
+} satisfies Record<string, number>;
+
+export type GameMode = number;

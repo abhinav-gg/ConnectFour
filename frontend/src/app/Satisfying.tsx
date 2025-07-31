@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import MainLogoAnimated from '@/components/boards/mainlogo_animated';
-import Dashboard from '@/components/sidebar';
 
 interface DragState {
   velocityX: number;

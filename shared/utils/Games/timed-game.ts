@@ -1,38 +1,64 @@
 import { StandardGame } from './game';
-import { GameInfo, Move } from '../../types/game';
+import { GameInfo, Move, TimedMoveResult } from '../../types/game';
 
 export class TimedStandardGame {
   private game: StandardGame;
 
   private moveTimes: number[] = [];
-  private lastMoveTimestamp: number;
+  private lastMoveTimestamp: number | null = null; // Track last move timestamp for timing
   private timeLeft: [number, number];
   private gameInfo: GameInfo;
 
   constructor(
     gameInfo:GameInfo, // 5 min in ms
-    movesOrString?: Move[] | string,
   ) {
-    this.game = new StandardGame(movesOrString);
+    this.game = new StandardGame();
     this.gameInfo = gameInfo;
-    this.timeLeft = [gameInfo.time_control.base_time, gameInfo.time_control.base_time];
-    this.lastMoveTimestamp = Date.now(); // Start clock immediately
+    // consider verifying the gamemode is standard here in the future
+    this.timeLeft = [1000 * (gameInfo.time_control.base_time),
+                     1000 * (gameInfo.time_control.base_time + gameInfo.time_control.disadvantage)];
   }
 
-  makeMove(col: number): { row: number; success: boolean } {
+  loadStandard(pTimes: number[], lMove: number, cTurn: number, GameString: string): void {
+    // assert pTimes is an array of numbers with length 2
+    if (!Array.isArray(pTimes) || pTimes.length !== 2 || !pTimes.every(Number.isFinite)) {
+      throw new Error("Invalid move times array");
+    }
+    this.moveTimes = pTimes;
+    this.lastMoveTimestamp = lMove;
+    this.game = new StandardGame(GameString);
+
+    // once this is done, assert the current player provided is the game current player
+    if (cTurn !== this.game.currentPlayer) {
+      throw new Error("Current turn does not match game state");
+    }
+  }
+
+  makeMove(col: number): TimedMoveResult {
+
     const now = Date.now();
     const currentPlayer = this.getCurrentPlayer();
-    const moveDuration = now - this.lastMoveTimestamp;
+    const moveDuration = now - (this.lastMoveTimestamp ?? now); // the first move will have a duration of 0
+
+    if (moveDuration > this.timeLeft[currentPlayer]) {
+      // If the move duration exceeds the time left, the player has timed out
+      throw new Error("Time's up!");
+    }
 
     const result = this.game.makeMove(col);
-
+    
     if (result.success) {
       this.moveTimes.push(moveDuration);
+      this.timeLeft[currentPlayer] += this.gameInfo.time_control.increment * 1000; // Add increment time
       this.timeLeft[currentPlayer] -= moveDuration;
       this.lastMoveTimestamp = now;
     }
 
-    return result;
+    // return a new object with the required TimedMoveResult properties
+    return {
+      ...result,
+      deltaTime: moveDuration,
+    };
   }
 
   reset(): void {
@@ -84,7 +110,7 @@ export class TimedStandardGame {
   }
 
   getLastMoveTimestamp(): number {
-    return this.lastMoveTimestamp;
+    return this.lastMoveTimestamp ?? -1;
   }
 
   getTimeLeft(): [number, number] {

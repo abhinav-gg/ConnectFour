@@ -1,12 +1,14 @@
 import { StandardGame } from "@shared/utils/Games/game";
 import { myConfig } from "../config/env";
-import { calculateEloChanges, calculatePredictedScore, calculateUpdatedElo } from "@/utils/game";
+import { calculateEloChanges, calculatePredictedScore, calculateUpdatedElo, getQueuePriority } from "@/utils/game";
 import { SelfAnalysis } from "@shared/utils/analysis";
 import { PUBLIC_BOTS } from "@shared/utils/botHandler";
 import { Move } from "@shared/types/game";
 import { OpeningManager } from "@/utils/opening-book";
 import { getIdentity } from "@/utils/validation";
 import { packGameInfo, unpackGameInfo } from "@/utils/binary";
+import { TimedStandardGame } from "@shared/utils/Games/timed-game";
+import { CategoriseTime } from "@shared/utils/gamemodes";
 
 console.log("This is an adhoc test file for backend tests.");
 
@@ -41,24 +43,69 @@ console.log(unpackGameInfo(packed));
 (async () => {
 
 console.log("starting")
-// let selfAnal = await SelfAnalysis.load(boardTest);
 
-// console.log(selfAnal.finalAnalysis())
+// for (let dElo = 0; dElo <= 100; dElo++) {
+//     for (let dTime = 0; dTime < 1000000; dTime += 300) {
+//         const priority = getQueuePriority(dTime, dElo);
+//         if (priority >= 1) {
+//             console.log(`Elo: ${dElo}, Time Difference: ${dTime / 1000}`);
+//             break;
+//         }
+//     }
+// }
+let prev = "nothing";
+for (let bT = 0; bT <= 30; bT++) {
+    for (let bInc = 0; bInc < 128; bInc += 1) {
+        for (let bDis = 0; bDis < 128; bDis += 1) {
+            const tc = {
+                base_time: bT,
+                increment: bInc,
+                disadvantage: bDis
+            };
+            try {
+                const TimeCategory = CategoriseTime(tc);
+                if (prev === TimeCategory) continue; // Skip duplicates
+                console.log(`Base Time: ${bT}, Increment: ${bInc}, Disadvantage: ${bDis}, Category: ${TimeCategory}`);
+                prev = TimeCategory; // Update previous category
+            } catch (error) {
+                continue; // Skip invalid time controls
+            }
+        }
+    }
+}
 
+})();
 
-// selfAnal.printAllEval()
-// const bot = new PUBLIC_BOTS.perfect(boardTest)
+// Test for Timed Game Logic
+(async () => {
+  console.log("Timed Game Tests Starting...");
 
-// await OpeningManager.initStore()
+  // Initialize a timed game with base time and increment
+//   const timedGame = new TimedStandardGame({
+//     gamemode: 10,
+//     time_control: {
+//         base_time: 6,
+//         increment: 2,   // 5 seconds per move
+//         disadvantage: 3 // 3 seconds disadvantage for player 2
+//     }
+//   });
 
-// console.log(OpeningManager.getOpening(BigInt(2)), OpeningManager.getOpening(BigInt(1)));
+//   console.log("Initial Time:", timedGame.getTimeLeft());
 
-// await OpeningManager.setOpening(BigInt(2), "#Hello Eartg");
+//   // Simulate moves and check time decrement
+//   timedGame.makeMove(3);
+//   console.log("After Red's Move:", timedGame.getTimeLeft());
 
-// await OpeningManager.setOpening(BigInt(1), "#Hello Earth");
+//   timedGame.makeMove(4);
+//   console.log("After Yellow's Move:", timedGame.getTimeLeft());
 
-// console.log(OpeningManager.getOpening(BigInt(2)), OpeningManager.getOpening(BigInt(1)));
+//   // Simulate a timeout scenario of 5 seconds with a timeout
+//   await new Promise(resolve => setTimeout(resolve, 5000));
+//   // Verify increment behavior
+//   timedGame.makeMove(5);
+//   console.log("After Red's Move with Increment:", timedGame.getTimeLeft());
 
+//   timedGame.prettyPrintBoard();
 })();
 
 

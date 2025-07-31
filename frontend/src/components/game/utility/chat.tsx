@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AnimatePresence, motion } from "framer-motion"
@@ -12,91 +12,175 @@ export interface ChatMessage {
   username: string
   message: string
   type: "user" | "system" | "game"
-  color: "red" | "green" | "white"
+  color: "red" | "yellow" | "white"
   timestamp: Date
+  uid?: string // Added UID property for unique identification
 }
 
+export interface ChatRef {
+  sendMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
+  addSystemMessage: (message: string, username?: string) => void
+  clearMessages: () => void
+  addReceivedMessage: (message: string, username: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
+}
 
-const GameChat: React.FC<{
-  messages?: ChatMessage[]
+interface GameChatProps {
+  initialMessages?: ChatMessage[]
   currentUser: string
-  onSendMessage?: (message: string) => void
-}> = ({ messages, currentUser, onSendMessage }) => {
+  onMessageSent?: (message: ChatMessage) => void
+  maxMessages?: number // Limit for performance with hundreds of messages
+}
+
+const GameChat = forwardRef<ChatRef, GameChatProps>(({
+  initialMessages = [],
+  currentUser,
+  onMessageSent,
+  maxMessages = 500, // Keep last 500 messages for performance
+}, ref) => {
   const [inputMessage, setInputMessage] = useState("")
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialMessages)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const messageIdCounter = useRef(0)
 
-  // Default messages for demonstration
-  const defaultMessages: ChatMessage[] = [
-    {
-      id: "1",
-      username: "anonymous",
-      message: "You Suck",
-      type: "user",
-      color: "red",
-      timestamp: new Date(Date.now() - 300000),
-    },
-    {
-      id: "2",
-      username: "Anonymous",
-      message: "Disconnected",
-      type: "system",
-      color: "white",
-      timestamp: new Date(Date.now() - 240000),
-    },
-    {
-      id: "3",
-      username: "astrochamp",
-      message: "You Suck Twat",
-      type: "user",
-      color: "green",
-      timestamp: new Date(Date.now() - 180000),
-    },
-    {
-      id: "4",
-      username: "GAME",
-      message: "OVER",
-      type: "game",
-      color: "white",
-      timestamp: new Date(Date.now() - 120000),
-    },
-    {
-      id: "5",
-      username: "System",
-      message: "Astrochamp won by abandonment.",
-      type: "system",
-      color: "white",
-      timestamp: new Date(Date.now() - 90000),
-    },
-    {
-      id: "6",
-      username: "System",
-      message: "Your new rating is 120 (+19)",
-      type: "system",
-      color: "white",
-      timestamp: new Date(Date.now() - 60000),
-    },
-    {
-      id: "7",
-      username: "astrochamp",
-      message: "Lmfao that was the easier Game that I have ever played LOOOOOL",
-      type: "user",
-      color: "green",
-      timestamp: new Date(Date.now() - 30000),
-    },
-  ]
+  // Generate unique message ID
+  const generateMessageId = useCallback(() => {
+    messageIdCounter.current += 1
+    return `msg_${Date.now()}_${messageIdCounter.current}`
+  }, [])
 
-  useEffect(() => {
-    setChatMessages(messages || defaultMessages)
-  }, [messages])
+  // Memoized message list to optimize rendering with hundreds of messages
+  const visibleMessages = useMemo(() => {
+    return chatMessages.slice(-maxMessages)
+  }, [chatMessages, maxMessages])
+
+  // Send message function exposed via ref
+  const sendMessage = useCallback((
+    message: string, 
+    username: string = currentUser,
+    type: ChatMessage["type"] = "user",
+    color: ChatMessage["color"] = "yellow"
+  ) => {
+    const newMessage: ChatMessage = {
+      id: generateMessageId(),
+      username,
+      message,
+      type,
+      color,
+      timestamp: new Date(),
+    }
+
+    // Add message to chat state
+    setChatMessages(prev => {
+      const newMessages = [...prev, newMessage]
+      return newMessages.length > maxMessages ? newMessages.slice(-maxMessages) : newMessages
+    })
+
+    return newMessage
+  }, [currentUser, generateMessageId, maxMessages])
+
+  // Add system message function
+  const addSystemMessage = useCallback((message: string, username?: string) => {
+    return sendMessage(message, username || "System", "system", "white")
+  }, [sendMessage])
+
+  // Add received message function (for external messages like WebSocket)
+  const addReceivedMessage = useCallback((
+    message: string, 
+    username: string,
+    type: ChatMessage["type"] = "user",
+    color: ChatMessage["color"] = "white"
+  ) => {
+    const uid = `chat-uid-${Date.now()}-${messageIdCounter.current}`;
+    const newMessage: ChatMessage = {
+      id: generateMessageId(),
+      username,
+      message,
+      type,
+      color,
+      timestamp: new Date(),
+      uid,
+    };
+
+    console.log("📨 WEBSOCKET: Received message with UID ----------------------->:", uid, newMessage);
+
+    setChatMessages(prev => {
+      const newMessages = [...prev, newMessage];
+      return newMessages.length > maxMessages ? newMessages.slice(-maxMessages) : newMessages;
+    });
+
+    return newMessage;
+  }, [generateMessageId, maxMessages])
+
+  // Clear all messages
+  const clearMessages = useCallback(() => {
+    setChatMessages([])
+  }, [])
+
+  // Expose functions via ref - NO DEPENDENCIES like Board.tsx for stability
+  useImperativeHandle(ref, () => ({
+    sendMessage: (message: string, username: string = currentUser, type: ChatMessage["type"] = "user", color: ChatMessage["color"] = "yellow") => {
+      const newMessage: ChatMessage = {
+        id: `msg_${Date.now()}_${++messageIdCounter.current}`,
+        username,
+        message,
+        type,
+        color,
+        timestamp: new Date(),
+      }
+
+      setChatMessages(prev => {
+        const newMessages = [...prev, newMessage]
+        return newMessages.length > maxMessages ? newMessages.slice(-maxMessages) : newMessages
+      })
+
+      return newMessage
+    },
+    addSystemMessage: (message: string, username?: string) => {
+      const systemMessage: ChatMessage = {
+        id: `msg_${Date.now()}_${++messageIdCounter.current}`,
+        username: username || "System",
+        message,
+        type: "system",
+        color: "white",
+        timestamp: new Date(),
+      }
+
+      setChatMessages(prev => {
+        const newMessages = [...prev, systemMessage]
+        return newMessages.length > maxMessages ? newMessages.slice(-maxMessages) : newMessages
+      })
+
+      return systemMessage
+    },
+    clearMessages: () => {
+      setChatMessages([])
+    },
+    addReceivedMessage: (message: string, username: string, type: ChatMessage["type"] = "user", color: ChatMessage["color"] = "white") => {
+      const newMessage: ChatMessage = {
+        id: `msg_${Date.now()}_${++messageIdCounter.current}`,
+        username,
+        message,
+        type,
+        color,
+        timestamp: new Date(),
+      }
+      console.log("📨 WEBSOCKET: Received message via ref ----------------------->:", newMessage)
+      setChatMessages(prev => {
+        const newMessages = [...prev, newMessage]
+        return newMessages.length > maxMessages ? newMessages.slice(-maxMessages) : newMessages
+      })
+
+      return newMessage
+    },
+  })) // NO dependency array - keeps ref stable across renders
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [chatMessages])
+  }, [visibleMessages])
 
   // Handle scroll event to show/hide "Jump to Bottom" button
   useEffect(() => {
@@ -132,16 +216,17 @@ const GameChat: React.FC<{
   const handleSendMessage = () => {
     if (inputMessage.trim()) {
       const newMessage: ChatMessage = {
-        id: Date.now().toString(),
+        id: generateMessageId(),
         username: currentUser,
         message: inputMessage.trim(),
         type: "user",
-        color: "white",
+        color: "yellow",
         timestamp: new Date(),
       }
 
-      setChatMessages((prev) => [...prev, newMessage])
-      onSendMessage?.(inputMessage.trim())
+      // ONLY notify parent for validation/server sending - DON'T add to state here
+      onMessageSent?.(newMessage)
+      
       setInputMessage("")
     }
   }
@@ -156,8 +241,8 @@ const GameChat: React.FC<{
     switch (message.color) {
       case "red":
         return "text-red-400"
-      case "green":
-        return "text-brand-accent-green"
+      case "yellow":
+        return "text-brand-accent-yellow"
       default:
         return "text-white"
     }
@@ -170,26 +255,36 @@ const GameChat: React.FC<{
       <h3 className="text-white text-lg font-bold text-center mb-2 flex-shrink-0">Chat</h3>
 
       {/* Chat Messages - Fixed height with scroll */}
-      <div className="relative">
+      <div className="relative flex-1 min-h-0">
         <div
           ref={scrollRef}
-          className="bg-brand-primary/40 rounded-lg p-3 overflow-y-auto scrollbar-custom max-h-[330px]"
+          className="bg-brand-primary/40 rounded-lg p-3 overflow-y-auto scrollbar-custom h-full"
+          style={{ minHeight: '330px', maxHeight: '330px' }}
         >
-          <AnimatePresence>
-            {chatMessages.map((message) => (
-              <motion.div
-                key={message.id}
-                className="mb-2 text-sm"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <span className={`font-semibold ${getMessageColor(message)}`}>{message.username}:</span>
-                <span className="text-white ml-2">{message.message}</span>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          {visibleMessages.length === 0 ? (
+            <div className="text-brand-text-muted text-sm text-center py-8">
+              No messages yet. Start the conversation!
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visibleMessages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  className="text-sm"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <span className={`font-semibold ${getMessageColor(message)}`}>
+                    {message.username}:
+                  </span>
+                  <span className="text-white ml-2">{message.message}</span>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
+        
         {/* Jump to Bottom Button */}
         <AnimatePresence>
           {showScrollToBottom && (
@@ -232,8 +327,17 @@ const GameChat: React.FC<{
           <Button
             key={msg}
             onClick={() => {
-              setInputMessage(msg)
-              setTimeout(handleSendMessage, 100)
+              const newMessage: ChatMessage = {
+                id: generateMessageId(),
+                username: currentUser,
+                message: msg,
+                type: "user",
+                color: "yellow",
+                timestamp: new Date(),
+              }
+
+              // ONLY notify parent for validation/server sending - DON'T add to state here
+              onMessageSent?.(newMessage)
             }}
             variant="secondary"
             size="sm"
@@ -245,6 +349,8 @@ const GameChat: React.FC<{
       </div>
     </div>
   )
-}
+})
+
+GameChat.displayName = "GameChat"
 
 export default GameChat

@@ -20,17 +20,23 @@ import {
   Pencil,
 } from "lucide-react"
 import { cn } from "@/utils/cn"
+import { GameMode } from "@shared/constants/allgamemodes"
+import { validateTimeControl } from "@shared/utils/validation"
+import { getRankedGameModeByTimeControl } from "@shared/utils/gamemodes"
+import { myConfig } from "@/config/env"
+
 
 type TabType = "new-game" | "live-games" | "live-players"
 
 interface TimeControl {
   id: string
-  label: string // Full label with min/sec
-  displayLabel: string // Simplified label for buttons
+  base: number // Base time in minutes
+  bonus: number // Bonus time in seconds
+  initial: number // Initial time in seconds
   selected?: boolean
 }
 
-interface GameMode {
+interface myGameMode {
   id: string
   name: string
   icon: React.ElementType
@@ -56,9 +62,8 @@ interface LivePlayer {
 export function LiveGameSelection() {
   const [activeTab, setActiveTab] = useState<TabType>("new-game")
   const [showCustomTimings, setShowCustomTimings] = useState(false)
-  const [selectedTimeControl, setSelectedTimeControl] = useState("1min-0-0")
   const [casualDropdownOpen, setCasualDropdownOpen] = useState(false)
-  const [selectedCasualOption, setSelectedCasualOption] = useState("casual")
+  const [selectedGameMode, setSelectedGameMode] = useState<number | string>(-1)
   const [showInfoTooltip, setShowInfoTooltip] = useState(false) // State for the info tooltip
 
   // Pagination states for Live Games and Live Players
@@ -67,8 +72,8 @@ export function LiveGameSelection() {
   const itemsPerPage = 5 // Assuming 5 items per page for simplicity
 
   // Custom timing states
-  const [baseTime, setBaseTime] = useState(15) // minutes
-  const [bonusTime, setBonusTime] = useState(5) // seconds
+  const [baseTime, setBaseTime] = useState(3) // minutes
+  const [bonusTime, setBonusTime] = useState(2) // seconds
   const [initialBonus, setInitialBonus] = useState(5) // seconds
 
   const tabs = [
@@ -77,16 +82,16 @@ export function LiveGameSelection() {
     { id: "live-players" as TabType, label: "Live Players", icon: User, iconColor: "text-brand-accent-green" },
   ]
 
-  const gameModes: GameMode[] = [
+  const gameModes: myGameMode[] = [
     {
       id: "bullet",
       name: "Bullet",
       icon: Rocket,
       iconColor: "text-brand-accent-green",
       timeControls: [
-        { id: "1min-0-0", label: "1 min | 0 sec | 0 sec", displayLabel: "1 | 0 | 0", selected: true },
-        { id: "1min-1sec-5sec", label: "1 min | 1 sec | 5 sec", displayLabel: "1 | 1 | 5" },
-        { id: "2min-0-0", label: "2 min | 0 sec | 0 sec", displayLabel: "2 | 0 | 0" },
+        { id: "1 | 0 | 0", base: 1, bonus: 0, initial: 0, selected : true },
+        { id: "1 | 1 | 5", base: 1, bonus: 1, initial: 5 },
+        { id: "2 | 0 | 0", base: 2, bonus: 0, initial: 0 },
       ],
     },
     {
@@ -95,9 +100,9 @@ export function LiveGameSelection() {
       icon: Zap,
       iconColor: "text-brand-accent-yellow",
       timeControls: [
-        { id: "3min-0-0", label: "3 min | 0 sec | 0 sec", displayLabel: "3 | 0 | 0" },
-        { id: "3min-2sec-10sec", label: "3 min | 2 sec | 10 sec", displayLabel: "3 | 2 | 10" },
-        { id: "5min-0-30sec", label: "5 min | 0 sec | 30 sec", displayLabel: "5 | 0 | 30" },
+        { id: "3 | 0 | 0", base: 3, bonus: 0, initial: 0 },
+        { id: "3 | 2 | 10", base: 3, bonus: 2, initial: 10 },
+        { id: "4 | 0 | 20", base: 4, bonus: 0, initial: 20 },
       ],
     },
     {
@@ -106,26 +111,28 @@ export function LiveGameSelection() {
       icon: TreePine,
       iconColor: "text-white",
       timeControls: [
-        { id: "10min-0-30sec", label: "10 min | 0 sec | 30 sec", displayLabel: "10 | 0 | 30" },
-        { id: "15min-0-0", label: "15 min | 0 sec | 0 sec", displayLabel: "15 | 0 | 0" },
-        { id: "10min-30sec-1min", label: "10 min | 30 sec | 1 min", displayLabel: "10 | 30 | 1" },
+        { id: "10 | 0 | 30", base: 10, bonus: 0, initial: 30 },
+        { id: "15 | 0 | 0", base: 15, bonus: 0, initial: 0 },
+        { id: "10 | 30 | 60", base: 10, bonus: 30, initial: 60 },
       ],
     },
   ]
 
   const casualOptions = [
-    { id: "casual", label: "Casual", icon: TreePine },
-    { id: "ranked", label: "Ranked", icon: Pencil }, // Changed label to "Ranked"
+    { id: "standard", label: "Ranked", icon: Rocket }, // Rocket for competitive/ranked
+    { id: "armageddon", label: "Ranked (Armageddon)", icon: Zap }, // Zap for special/fast mode
+    { id: GameMode.STANDARD_FRIENDLY, label: "Friendly", icon: User }, // User for friendly
+    { id: GameMode.STANDARD_PUBLIC_CASUAL, label: "Casual", icon: TreePine }, // TreePine for casual
   ]
 
   const mockLiveGames: LiveGame[] = [
-    { id: "1", playerName: "Player", rating: 1809, timeControl: "30+7-1", mode: "Ranked Blitz" },
-    { id: "2", playerName: "Player", rating: 1650, timeControl: "5+3", mode: "Blitz" },
-    { id: "3", playerName: "Player", rating: 1420, timeControl: "10+0", mode: "Rapid" },
-    { id: "4", playerName: "Player", rating: 1890, timeControl: "3+2", mode: "Blitz" },
-    { id: "5", playerName: "Player", rating: 1234, timeControl: "15+10", mode: "Rapid" },
-    { id: "6", playerName: "Player6", rating: 1700, timeControl: "3+0", mode: "Blitz" },
-    { id: "7", playerName: "Player7", rating: 1900, timeControl: "10+0", mode: "Rapid" },
+    { id: "1", playerName: "Player", rating: 1809, timeControl: "30+7-1", mode: "Ranked" },
+    { id: "2", playerName: "Player", rating: 1650, timeControl: "5+3", mode: "Armageddon" },
+    { id: "3", playerName: "Player", rating: 1420, timeControl: "10+0", mode: "Casual" },
+    { id: "4", playerName: "Player", rating: 1890, timeControl: "3+2", mode: "Armageddon" },
+    { id: "5", playerName: "Player", rating: 1234, timeControl: "15+10", mode: "Ranked" },
+    { id: "6", playerName: "Player6", rating: 1700, timeControl: "3+0", mode: "Casual" },
+    { id: "7", playerName: "Player7", rating: 1900, timeControl: "10+0", mode: "Casual" },
   ]
 
   const mockLivePlayers: LivePlayer[] = [
@@ -138,33 +145,59 @@ export function LiveGameSelection() {
     { id: "7", playerName: "Player7", rating: "Rating", game: "SHORTCODE" },
   ]
 
-  // Helper to get the full label for display
-  const getFullTimeControlLabel = (id: string) => {
-    for (const mode of gameModes) {
-      const control = mode.timeControls.find((tc) => tc.id === id)
-      if (control) return control.label
-    }
-    // For custom timings, construct the label
-    if (id.startsWith("custom-")) {
-      const parts = id.split("-")
-      return `${parts[1]} min | ${parts[2]} sec | ${parts[3]} sec`
-    }
-    return "Custom" // Fallback for custom timings
-  }
+  const handleTimeControlSelect = (base: number, bonus: number, initial: number) => {
+    setBaseTime(base);
+    setBonusTime(bonus);
+    setInitialBonus(initial);
+  };
 
-  const handleTimeControlSelect = (controlId: string) => {
-    setSelectedTimeControl(controlId)
-  }
+  const getTimeControlLabel = () => {
+    return `${baseTime} min | ${bonusTime} sec | ${initialBonus} sec`;
+  };
 
-  const handleStartGame = () => {
-    console.log("Starting game with:", selectedTimeControl)
+  const handleStartGame = async () => {
+    const tc = {
+        base_time: baseTime * 60,
+        increment: bonusTime,
+        disadvantage: initialBonus
+      }
+    let gamemode = selectedGameMode;
+    if (typeof selectedGameMode === "string") {
+      gamemode = getRankedGameModeByTimeControl(tc, selectedGameMode as "standard" | "armageddon");
+    }
+
+    const response = await fetch(`${myConfig.BACKEND_URL}/game/request`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        gamemode,
+        time_control: tc,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to start game:", await response.json());
+      return;
+    }
+
+    // Handle successful game start (possibly redirect)
+
   }
 
   const handleCustomTimingsSave = () => {
     // Construct a label for custom timings
     // You might want to generate a unique ID for custom timings if they can be saved/reused
-    setSelectedTimeControl(`custom-${baseTime}-${bonusTime}-${initialBonus}`)
-    setShowCustomTimings(false)
+    if (validateTimeControl({ base_time: baseTime * 60, increment: bonusTime, disadvantage: initialBonus })) {
+      setShowCustomTimings(false)
+    }
+  }
+
+  const handleDropdownClose = (event: React.MouseEvent) => {
+    if (!(event.target instanceof Element) || !event.target.closest(".dropdown-container")) {
+      setCasualDropdownOpen(false)
+    }
   }
 
   const renderNewGameTab = () => (
@@ -173,10 +206,11 @@ export function LiveGameSelection() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      onClick={handleDropdownClose} // Close dropdown when clicking outside
     >
       {/* Current Time Control Display and Info Icon */}
       <div className="flex items-center justify-between mb-4">
-        <div className="text-white font-bold text-base">Current: {getFullTimeControlLabel(selectedTimeControl)}</div>
+        <div className="text-white font-bold text-base">Current: {getTimeControlLabel()}</div>
         <div
           className="relative"
           onMouseEnter={() => setShowInfoTooltip(true)}
@@ -192,7 +226,10 @@ export function LiveGameSelection() {
                 transition={{ duration: 0.2 }}
                 className="absolute right-full top-1/2 -translate-y-1/2 mr-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg whitespace-nowrap z-20"
               >
-                Base time | Bonus per move | Initial bonus
+                1 | 2 | 3 :                                                        <br/>
+                1: Base time (starting time for both players)                      <br/>
+                2: Bonus per move (time added after making each move)              <br/>
+                3: Disadvantage for red (for more explanation visit /info)
               </motion.div>
             )}
           </AnimatePresence>
@@ -201,7 +238,7 @@ export function LiveGameSelection() {
 
       {/* Casual Section */}
       <div className="space-y-2 mb-4">
-        <div className="relative">
+        <div className="relative dropdown-container">
           <button
             onClick={() => setCasualDropdownOpen(!casualDropdownOpen)}
             className="w-full flex items-center justify-between bg-brand-primary/60 hover:bg-brand-primary/80 rounded-lg p-3 transition-all duration-200"
@@ -209,7 +246,7 @@ export function LiveGameSelection() {
             <div className="flex items-center gap-2">
               <TreePine className="w-5 h-5 text-brand-accent-green" />
               <span className="text-white font-semibold text-base">
-                {casualOptions.find((opt) => opt.id === selectedCasualOption)?.label || "Casual"}
+                {casualOptions.find((opt) => opt.id === selectedGameMode)?.label || "Casual"}
               </span>
             </div>
             <motion.div animate={{ rotate: casualDropdownOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
@@ -220,7 +257,7 @@ export function LiveGameSelection() {
           <AnimatePresence>
             {casualDropdownOpen && (
               <motion.div
-                className="absolute top-full left-0 right-0 mt-1 bg-brand-primary rounded-lg overflow-hidden z-10" // Changed to bg-brand-primary
+                className="absolute top-full left-0 right-0 mt-1 bg-brand-primary rounded-lg overflow-hidden z-10"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -230,7 +267,7 @@ export function LiveGameSelection() {
                   <button
                     key={option.id}
                     onClick={() => {
-                      setSelectedCasualOption(option.id)
+                      setSelectedGameMode(option.id)
                       setCasualDropdownOpen(false)
                     }}
                     className="w-full flex items-center gap-2 p-3 hover:bg-brand-hover transition-colors duration-200"
@@ -259,17 +296,17 @@ export function LiveGameSelection() {
               {mode.timeControls.map((control) => (
                 <motion.button
                   key={control.id}
-                  onClick={() => handleTimeControlSelect(control.id)}
+                  onClick={() => handleTimeControlSelect(control.base, control.bonus, control.initial)}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 flex-grow" /* Adjusted padding and font size */,
-                    selectedTimeControl === control.id
+                    "px-4 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 flex-grow",
+                    baseTime === control.base && bonusTime === control.bonus && initialBonus === control.initial
                       ? "bg-brand-primary/80 ring-1 ring-brand-accent-green"
                       : "bg-brand-primary/60 hover:bg-brand-primary/80",
                   )}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {control.displayLabel}
+                  {control.id}
                 </motion.button>
               ))}
             </div>
@@ -280,11 +317,11 @@ export function LiveGameSelection() {
       {/* Custom Timings button - pushed to bottom */}
       <motion.button
         onClick={() => setShowCustomTimings(!showCustomTimings)}
-        className="w-full p-3 bg-brand-primary/60 hover:bg-brand-primary/80 rounded-lg text-white font-semibold text-base transition-all duration-200 flex items-center justify-between mt-auto" // mt-auto to push to bottom
+        className="w-full p-3 bg-brand-primary/60 hover:bg-brand-primary/80 rounded-lg text-white font-semibold text-base transition-all duration-200 flex justify-between items-center mt-auto" // Adjusted to keep arrow aligned right and text centered
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
       >
-        Custom Timings
+        <span className="flex-1 text-center">Custom Timings</span>
         {showCustomTimings ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
       </motion.button>
 
@@ -422,13 +459,26 @@ export function LiveGameSelection() {
     </motion.div>
   )
 
+  const baseTimeValues = [
+    0, 0.25, 0.5, 1, 2, 3,
+    ...Array.from({ length: 28 }, (_, i) => 3 + i), // Linear extrapolation between 3 and 30
+    ...Array.from({ length: 6 }, (_, i) => 35 + i * 5), // Linear extrapolation between 35 and 60 with delta 5
+    ...Array.from({ length: 11 }, (_, i) => 80 + i * 10), // Linear extrapolation between 80 and 180 with delta 10
+  ];
+
+  const customSetBaseTime = (sliderValue: number) => {
+    const newBaseTime = baseTimeValues[sliderValue];
+    setBaseTime(newBaseTime);
+  };
+
   return (
     <motion.div
           className="space-y-6 p-4 text-white"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-        >
+          onClick={handleDropdownClose} // Close dropdown when clicking outside
+    >
       {/* Tab Navigation */}
       <div className="flex gap-1 mb-4">
         {tabs.map((tab) => (
@@ -481,7 +531,13 @@ export function LiveGameSelection() {
               {/* Base Time Slider */}
               <div className="space-y-3">
                 <label className="text-white text-lg font-medium">Base time per side: {baseTime}m</label>
-                <Slider value={baseTime} onChange={setBaseTime} min={1} max={60} step={1} />
+                <Slider
+                  value={baseTimeValues.indexOf(baseTime)}
+                  onChange={customSetBaseTime}
+                  min={0}
+                  max={baseTimeValues.length - 1}
+                  step={1}
+                />
               </div>
 
               {/* Bonus Time Slider */}

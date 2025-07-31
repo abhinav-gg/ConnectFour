@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { GameBoardLayout } from "../../../components/game-board-layout"
+import { GameBoardLayout } from "../../../components/layouts/game-board-layout"
 import { TestControls } from "./test-sidecomponent"
 
 export default function GameTestPage() {

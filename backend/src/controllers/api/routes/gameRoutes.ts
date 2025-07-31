@@ -3,7 +3,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha } from '@/lib/auth/middleware';
 import { GameInfo, TimeControl } from '@shared/types/game';
 import { GameMode } from '@shared/constants/allgamemodes';
-import { getGameModeCategory } from '@/utils/gamemodes';
+import { getRankedGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes } from '@shared/utils/gamemodes';
+import { validateTimeControl } from '@shared/utils/validation';
 
 
 const gameRouter = Router();
@@ -23,41 +24,56 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, async (req: Re
             throw new Error('Invalid Data');
         }
 
-        // GAME SERVICE TO CHECK GAMEMODE AND TIME
+        if (!validateTimeControl(time_control)) {
+            throw new Error('Invalid time control settings');
+        }
 
+        let modeFromTC: GameMode | undefined;
+        if (gamemode in sRankedArmageddonModes) {
+            modeFromTC = getRankedGameModeByTimeControl(time_control, 'armageddon');
+        } else if (gamemode in sRankedModes) {
+            modeFromTC = getRankedGameModeByTimeControl(time_control, 'standard');
+        }
+
+        if (modeFromTC) {
+            if (modeFromTC !== gamemode) {
+                throw new Error('Game mode does not match time control');
+            }
+        }
 
     }
     catch (error) {
-        console.log('Failed to extract data:', error);
+        console.log('Failed to extract or validate data:', error);
         res.status(500).json({ error: 'Invalid Data' });
         return;
     }
 
-    switch (getGameModeCategory(gamemode)) {
-        case 'competitive': {
-            //////////////////////////////////////////////////////////////////
-            // Call Matchmaking if they are looking for a competitive game
-            //////////////////////////////////////////////////////////////////
-            
-            // README: Make the game after the matchmaking is done incase of a failure 
-            //                          / two people in different games are matched
-            // call game services
-            break;
-        }
-        case 'casual': {
+    if (gamemode in CompetitiveModes) {
+        // Call matchmaking service
 
-            // go straight to the game creation game service
 
-            // give the user the shortcode for them to use
-            break;
-        }
-        default: {
-            
-            // raise an error for now... figure out later how to handle events
-            
-            break;
-        }
+
+
+
+
+
+    } else if (gamemode in CasualModes) {
+
+        // create game here
+
+
+
+
+
+
+
+
+
+    } else {
+        res.status(400).json({ error: 'Invalid Game Mode' });
+        return;
     }
+
     console.log("Game Requested");
 });
 

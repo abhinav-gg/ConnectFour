@@ -63,7 +63,12 @@ export const userService = {
       }
     }
     return elo!;
-  }
+  },
 
+
+
+  
+
+  incrUserELO: userDbOps.alterElo.bind(userDbOps),
 
 };
