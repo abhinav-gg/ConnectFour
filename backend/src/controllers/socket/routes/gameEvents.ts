@@ -1,4 +1,93 @@
-// import { Server, Socket } from "socket.io";
+import { Socket } from "socket.io";
+import { withNamespace } from "../handlers";
+
+
+// Register game-related handlers
+export function registerGameHandlers(sock: Socket) {
+
+    const socket = withNamespace(sock, 'game');
+
+
+    // Game move handling
+    socket.on('game_move', async (data) => {
+        try {
+        console.log('Game move received:', data);
+        // Broadcast the move to other players in the same room
+        socket.broadcast.emit('game_move', data);
+        } catch (error) {
+        console.error('Error handling game move:', error);
+        socket.emit('error', { message: 'Failed to process game move' });
+        }
+    });
+
+    // Join game room
+    socket.on('join_game', async (gameId) => {
+        try {
+        socket.join(gameId);
+        console.log(`User ${socket.id} joined game ${gameId}`);
+        socket.emit('joined_game', { gameId });
+        } catch (error) {
+        console.error('Error joining game:', error);
+        socket.emit('error', { message: 'Failed to join game' });
+        }
+    });
+
+    // Leave game room
+    socket.on('leave_game', async (gameId) => {
+        try {
+        socket.leave(gameId);
+        console.log(`User ${socket.id} left game ${gameId}`);
+        socket.emit('left_game', { gameId });
+        } catch (error) {
+        console.error('Error leaving game:', error);
+        socket.emit('error', { message: 'Failed to leave game' });
+        }
+    });
+
+    // Get game state
+    socket.on('get_game_state', async (gameId) => {
+        try {
+        // TODO: Implement game state retrieval
+        socket.emit('game_state', { gameId, state: 'placeholder' });
+        } catch (error) {
+        console.error('Error getting game state:', error);
+        socket.emit('error', { message: 'Failed to get game state' });
+        }
+    });
+
+
+
+
+    socket.on('chat', async (data) => {
+        
+        try {
+
+            console.log('Chat message received:', data);
+            
+            
+            
+            socket.broadcast.to(data.gameId).emit('chat', data);
+
+
+
+        } catch (error) {
+            console.error('Error handling chat message:', error);
+            socket.emit('error', { message: 'Failed to process chat message' });
+        }
+        
+    }); 
+
+
+
+
+
+
+
+
+
+
+
+}
 
 
 

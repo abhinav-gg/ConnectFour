@@ -2,15 +2,16 @@ name: deploy website
 
 on:
   push:
-    branches: [ "main", "staging" ] 
+    branches: [ "main", "staging", "backend" ] 
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+-[0-9]+-website*'
   pull_request:
-    branches: [ "main", staging ]
+    branches: [ "main", "staging" ]
 
 jobs:
   build-website-image:
     runs-on: ubuntu-latest
+    secrets: inherit
     permissions:
       contents: read
       packages: write

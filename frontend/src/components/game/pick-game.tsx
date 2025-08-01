@@ -13,14 +13,14 @@ export function GameSelect({}: GameSelectProps) {
       title: "Play Online",
       description: "Play a ranked game with someone at your level",
       icon: Zap,
-      href: "/game/online",
+      href: "/play/setup?mode=standard",
       soon: false,
     },
     {
       title: "Play A Friend",
       description: "Play a casual game against someone you know",
       icon: User,
-      href: "/game/friend",
+      href: "/play/setup?mode=friendly",
       soon: false,
     },
     {

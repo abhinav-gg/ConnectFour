@@ -33,3 +33,18 @@ export const GameStateLabels: Record<GameState, string> = {
     [GameState.RED_TIMEOUT]        : "Red Timeout",
     [GameState.YELLOW_TIMEOUT]     : "Yellow Timeout",
 };
+
+
+export const FinishedGameStates = new Set<GameState>([
+    GameState.DRAW_FULL,
+    GameState.RED_WIN,
+    GameState.YELLOW_WIN,
+    GameState.AGREED_DRAW,
+    GameState.RED_DISCONNECTED,
+    GameState.YELLOW_DISCONNECTED,
+    GameState.RED_RESIGNED,
+    GameState.YELLOW_RESIGNED,
+    GameState.RED_TIMEOUT,
+    GameState.YELLOW_TIMEOUT,
+]);
+

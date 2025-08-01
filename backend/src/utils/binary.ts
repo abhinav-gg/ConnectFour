@@ -1,4 +1,4 @@
-import { TimeControl } from "@shared/types/game";
+import { GameInfo, TimeControl } from "@shared/types/game";
 import { UUID } from "crypto";
 
 // Helper to create binary keys
@@ -44,33 +44,36 @@ export function bufferToTimeControl(buffer: Buffer): TimeControl {
 }
 
 
-  
 export function packGameInfo(
-        modeId: number,
-        t: TimeControl
+        gameinfo: GameInfo
     ): Buffer {
-    if (modeId < 0 || modeId > 0xFFFFFFFF) throw new Error("Invalid modeId");
-  
-    const timeControlBuf = timeControlToBuffer(t);
+
+    const { time_control, gamemode } = gameinfo;
+
+    if (gamemode < 0 || gamemode > 0xFFFFFFFF) throw new Error("Invalid gamemode");
+
+    const timeControlBuf = timeControlToBuffer(time_control);
     const buf = Buffer.alloc(8); // 5 bytes time control + 4 bytes modeId
   
     timeControlBuf.copy(buf, 0);
-  
-    buf.writeUInt32BE(modeId, 4); // append modeId at end
+
+    buf.writeUInt32BE(gamemode, 4); // append gamemode at end
     return buf;
 }
+
+export function packGameInfoToString(
+    gameinfo: GameInfo
+): string {
+    const buf = packGameInfo(gameinfo);
+    return buf.toString('base64'); // Convert to base64 for easier storage/transmission
+}
   
-export function unpackGameInfo(buf: Buffer): {
-    base_time: number;
-    increment: number;
-    disadvantage: number;
-    modeId: number;
-} {
+export function unpackGameInfo(buf: Buffer): GameInfo {
     if (buf.length !== 8) throw new Error("Invalid buffer length");
 
-    const timeControl = bufferToTimeControl(buf.subarray(0, 4));
-    const modeId = buf.readUInt32BE(4);
+    const time_control = bufferToTimeControl(buf.subarray(0, 4));
+    const gamemode = buf.readUInt32BE(4);
 
-    return { ...timeControl, modeId };
+    return { time_control, gamemode } as GameInfo;
 }
 

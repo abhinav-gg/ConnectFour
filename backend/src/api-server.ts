@@ -4,10 +4,9 @@ import express from 'express';
 import { createServer } from 'http';
 import pool from '@/db/rds/rdsClient'; // Adjust the import based on your database setup
 import authRouter from './controllers/api/routes/authRoutes';
+import gameRouter from './controllers/api/routes/gameRoutes';
 import { devTestRoutes } from './controllers/api/index';
 import { myConfig } from '@config/env';
-import { checkRedisHealth } from './redis/redisHelper';
-import { checkDynamoHealth } from './db/dynamodb/dynamoClient';
 import { bootstrap } from './bootstrap';
 
 const VERSION = "0.0.1"
@@ -25,6 +24,7 @@ app.use(express.json());
 
 // Set up sub routes
 app.use('/auth', authRouter);
+app.use('/game', gameRouter);
 
 if (myConfig.NODE_ENV !== 'production') {
   app.use('/', devTestRoutes)

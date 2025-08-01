@@ -33,7 +33,7 @@ cache:user:{userId}:  JSON:
 # 🎮 Live Game (transient game state)
 game:live:{gameId}           | String | 24 hours | Full live game state
 game:live:{gameId}:meta      | JSON   | 24 hours | Turn, timer, status metadata
-game:live:{gameId}:moves     | JSON   | 24 hours | easy to dump and reload for backend
+game:live:{gameId}:live      | JSON   | 24 hours | easy to dump and reload for backend
 
 
 game:queue:{userId}          | JSON | 24 hours | User's current active game ID
@@ -54,19 +54,19 @@ game:live:{gameId}:meta JSON:
   state: 2                            // current game state
 }
 
-game:live:{gameId}:time JSON:
+game:live:{gameId}:live JSON:
 {
   cTurn: 0,                           // current turn for this game
   mTimes: [150, 320, 100, ...],       // times per move in centiseconds
   rTimes: [45632, 37912]              // remaining time for each player in centiseconds
   lMove: 1724127387                   // Unix timestamp in ms
+  draws: [false, true]                // p2 is extending a draw waiting for response.
 }
-
-
 
 game:queue:{userId}: JSON:
 {
-  gameId: string,                     // current turn for this game
-  gameinfo: number,                   // times per move in centiseconds
-  createdAt: number,                  // remaining time for each player in centiseconds
+  gameinfo: number,                   // number for the gameinfo (4bytes)
+  createdAt: number,                  // time player was added to the queue used for matchmaking
+  elo?: number                         // the player's elo in that mode
+  gameId?: string,                    // gameId IF THE GAME STARTED
 }

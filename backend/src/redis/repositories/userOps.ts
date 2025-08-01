@@ -1,7 +1,7 @@
 // src/repositories/userOps.ts
 import Redis from 'ioredis';
 import { RedisSchema } from '../redisSchema'; // Adjust the import path as necessary
-import { scanKeys, scanKeysWithTTL } from '../redisHelper';
+import { scanKeysPaginated, scanKeysWithTTL } from '../redisHelper';
 import { generateUUID } from '@/lib/auth/auth';
 
 export function UserOperations(redis: Redis) {
@@ -55,7 +55,7 @@ export function UserOperations(redis: Redis) {
     // Delete all active codes for an email
     async deleteAllEmailVerifyCodes(email: string): Promise<void> {
       const pattern = getRedisEmailBase(email);
-      const keys = await scanKeys(redis, pattern);
+      const { keys } = await scanKeysPaginated(redis, pattern);
       if (keys.length > 0) {
         await redis.del(keys);
       }

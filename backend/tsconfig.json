@@ -21,17 +21,18 @@
     "../shared/**/*", 
     "./tests/*",
     "./config/*",
-    "./src/bootstrap.ts", 
-    "./src/api-server.ts", 
-    "./src/socket-server.ts", 
     "./src/controllers/api/**/*",
+    "./src/controllers/socket/**/*",
     "./src/lib/**/*",
+    "./src/jobs/**/*",
     "./src/utils/**/*",
     "./src/services/**/*",
     "./src/types/**/*",
     "./src/redis/**/*",
     "./src/db/**/*",
-    "src/controllers/socket/services/**/*"
+    "./src/bootstrap.ts", 
+    "./src/api-server.ts", 
+    "./src/socket-server.ts", 
   ],
   "exclude": ["node_modules"]
 } 

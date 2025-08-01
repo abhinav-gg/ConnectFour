@@ -2,7 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -24,7 +25,9 @@ import { GameMode } from "@shared/constants/allgamemodes"
 import { validateTimeControl } from "@shared/utils/validation"
 import { getRankedGameModeByTimeControl } from "@shared/utils/gamemodes"
 import { myConfig } from "@/config/env"
+import { useRecaptcha } from "../providers/RecaptchaProvider"
 
+type CommonModes = "standard" | "armageddon" | "friendly" | "casual"
 
 type TabType = "new-game" | "live-games" | "live-players"
 
@@ -60,10 +63,11 @@ interface LivePlayer {
 }
 
 export function LiveGameSelection() {
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>("new-game")
   const [showCustomTimings, setShowCustomTimings] = useState(false)
   const [casualDropdownOpen, setCasualDropdownOpen] = useState(false)
-  const [selectedGameMode, setSelectedGameMode] = useState<number | string>(-1)
+  const [selectedGameMode, setSelectedGameMode] = useState<CommonModes>("standard")
   const [showInfoTooltip, setShowInfoTooltip] = useState(false) // State for the info tooltip
 
   // Pagination states for Live Games and Live Players
@@ -75,6 +79,12 @@ export function LiveGameSelection() {
   const [baseTime, setBaseTime] = useState(3) // minutes
   const [bonusTime, setBonusTime] = useState(2) // seconds
   const [initialBonus, setInitialBonus] = useState(5) // seconds
+  const { getRecaptchaToken, isRecaptchaActive, activateRecaptcha } = useRecaptcha()
+
+  useEffect(() => {
+    // Activate reCAPTCHA when the component mounts
+    activateRecaptcha()
+  }, []);
 
   const tabs = [
     { id: "new-game" as TabType, label: "New Game", icon: Zap, iconColor: "text-brand-accent-yellow" },
@@ -121,8 +131,8 @@ export function LiveGameSelection() {
   const casualOptions = [
     { id: "standard", label: "Ranked", icon: Rocket }, // Rocket for competitive/ranked
     { id: "armageddon", label: "Ranked (Armageddon)", icon: Zap }, // Zap for special/fast mode
-    { id: GameMode.STANDARD_FRIENDLY, label: "Friendly", icon: User }, // User for friendly
-    { id: GameMode.STANDARD_PUBLIC_CASUAL, label: "Casual", icon: TreePine }, // TreePine for casual
+    { id: "friendly", label: "Friendly", icon: User }, // User for friendly
+    { id: "casual", label: "Casual", icon: TreePine }, // TreePine for casual
   ]
 
   const mockLiveGames: LiveGame[] = [
@@ -157,13 +167,26 @@ export function LiveGameSelection() {
 
   const handleStartGame = async () => {
     const tc = {
-        base_time: baseTime * 60,
-        increment: bonusTime,
-        disadvantage: initialBonus
-      }
-    let gamemode = selectedGameMode;
-    if (typeof selectedGameMode === "string") {
-      gamemode = getRankedGameModeByTimeControl(tc, selectedGameMode as "standard" | "armageddon");
+      base_time: baseTime * 60,
+      increment: bonusTime,
+      disadvantage: initialBonus
+    };
+
+    let gamemode;
+    if (selectedGameMode === "standard" || selectedGameMode === "armageddon") {
+      gamemode = getRankedGameModeByTimeControl(tc, selectedGameMode as CommonModes);
+    } else if (selectedGameMode === "friendly") {
+      gamemode = GameMode.STANDARD_FRIENDLY;
+    } else if (selectedGameMode === "casual") {
+      gamemode = GameMode.STANDARD_PUBLIC_CASUAL;
+    } else {
+      console.error("Invalid game mode selected");
+      return;
+    }
+
+    if (!isRecaptchaActive) { 
+      console.error("reCAPTCHA is not active. Cannot start game.");
+      return;
     }
 
     const response = await fetch(`${myConfig.BACKEND_URL}/game/request`, {
@@ -174,7 +197,9 @@ export function LiveGameSelection() {
       body: JSON.stringify({
         gamemode,
         time_control: tc,
+        recaptchaToken: await getRecaptchaToken(),
       }),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -182,7 +207,7 @@ export function LiveGameSelection() {
       return;
     }
 
-    // Handle successful game start (possibly redirect)
+    console.log(await response.json());
 
   }
 
@@ -267,7 +292,7 @@ export function LiveGameSelection() {
                   <button
                     key={option.id}
                     onClick={() => {
-                      setSelectedGameMode(option.id)
+                      setSelectedGameMode(option.id as CommonModes)
                       setCasualDropdownOpen(false)
                     }}
                     className="w-full flex items-center gap-2 p-3 hover:bg-brand-hover transition-colors duration-200"
@@ -470,6 +495,17 @@ export function LiveGameSelection() {
     const newBaseTime = baseTimeValues[sliderValue];
     setBaseTime(newBaseTime);
   };
+
+  // Initialize game mode from URL parameter
+  useEffect(() => {
+    const modeParam = searchParams.get('mode')
+    if (modeParam) {
+      const validModes: CommonModes[] = ["standard", "armageddon", "friendly", "casual"]
+      if (validModes.includes(modeParam as CommonModes)) {
+        setSelectedGameMode(modeParam as CommonModes)
+      }
+    }
+  }, [searchParams])
 
   return (
     <motion.div

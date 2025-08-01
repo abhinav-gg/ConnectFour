@@ -17,22 +17,21 @@ export type GameMetadata = z.infer<typeof GameMetadataSchema>;
 export const GameTimedataSchema = z.object({
   cTurn: z.number(),
   mTimes: z.array(z.number()),
-  rTime: z.array(z.number()),
-  lMost: z.number(),
+  rTime: z.array(z.number()).nullable().optional(),
+  lMost: z.number().nullable().optional(),
 });
 
 export type GameTimedata = z.infer<typeof GameTimedataSchema>;
 
 
 export const UserQueueSchema = z.object({
-  gameId: z.string(),
-  mode: z.number(),
+  gameinfo: z.string(),
   timeAdded: z.number(),
+  elo: z.number().nullable().optional(),
+  gameId: z.string().nullable().optional(),
 });
 
 export type UserQueue = z.infer<typeof UserQueueSchema>;
-
-
 
 export const RedisSchema = {
     cache: {
@@ -44,7 +43,7 @@ export const RedisSchema = {
   
     session: {
         key: (userId: string) => `session:user:${userId}`,
-        ttl: 60 * 60 * 24 * 7, // 7 days
+        ttl: 60 * 60 * 24, // 24 hours
     },
     
     auth: {
@@ -62,9 +61,10 @@ export const RedisSchema = {
 
     user: {
       queue: {
-        key: (gameId: string) => `user:queue:${gameId}`,
-        pattern: (gameId: string) => `user:queue:${gameId}`,
-        schema: GameMetadataSchema
+        key: (userId: string) => `user:queue:${userId}`,
+        pattern: 'user:queue:',
+        schema: GameMetadataSchema,
+        ttl: 10 * 60, // 10 minutes
       },
     },
     
@@ -78,9 +78,9 @@ export const RedisSchema = {
         key: (gameId: string) => `game:live:${gameId}`,
         pattern: (gameId: string) => `game:live:${gameId}`,
       },
-      times: {
-        key: (gameId: string) => `game:live:${gameId}:time`,
-        pattern: (gameId: string) => `game:live:${gameId}:time`,
+      live: {
+        key: (gameId: string) => `game:live:${gameId}:live`,
+        pattern: (gameId: string) => `game:live:${gameId}:live`,
         schema: GameTimedataSchema
       },
       ttl: 60 * 60 * 24, // 24 hours

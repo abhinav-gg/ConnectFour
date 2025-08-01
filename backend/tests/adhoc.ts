@@ -9,6 +9,7 @@ import { getIdentity } from "@/utils/validation";
 import { packGameInfo, unpackGameInfo } from "@/utils/binary";
 import { TimedStandardGame } from "@shared/utils/Games/timed-game";
 import { CategoriseTime } from "@shared/utils/gamemodes";
+import { redisOps } from "@/redis/ops";
 
 console.log("This is an adhoc test file for backend tests.");
 
@@ -30,15 +31,6 @@ console.log(boardTest.prettyPrintBoard(), boardTest.hashCode);
 
 // console.log(getIdentity("user:yesnt-noyes"));
 
-const packed = packGameInfo(1012847, {
-    base_time: 120,
-    increment: 5,
-    disadvantage: 3
-});
-
-console.log(packed, packed.length);
-
-console.log(unpackGameInfo(packed));
 
 (async () => {
 
@@ -53,32 +45,37 @@ console.log("starting")
 //         }
 //     }
 // }
-let prev = "nothing";
-for (let bT = 0; bT <= 30; bT++) {
-    for (let bInc = 0; bInc < 128; bInc += 1) {
-        for (let bDis = 0; bDis < 128; bDis += 1) {
-            const tc = {
-                base_time: bT,
-                increment: bInc,
-                disadvantage: bDis
-            };
-            try {
-                const TimeCategory = CategoriseTime(tc);
-                if (prev === TimeCategory) continue; // Skip duplicates
-                console.log(`Base Time: ${bT}, Increment: ${bInc}, Disadvantage: ${bDis}, Category: ${TimeCategory}`);
-                prev = TimeCategory; // Update previous category
-            } catch (error) {
-                continue; // Skip invalid time controls
-            }
-        }
-    }
-}
+// let prev = "nothing";
+// for (let bT = 0; bT <= 30; bT++) {
+//     for (let bInc = 0; bInc < 128; bInc += 1) {
+//         for (let bDis = 0; bDis < 128; bDis += 1) {
+//             const tc = {
+//                 base_time: bT,
+//                 increment: bInc,
+//                 disadvantage: bDis
+//             };
+//             try {
+//                 const TimeCategory = CategoriseTime(tc);
+//                 if (prev === TimeCategory) continue; // Skip duplicates
+//                 console.log(`Base Time: ${bT}, Increment: ${bInc}, Disadvantage: ${bDis}, Category: ${TimeCategory}`);
+//                 prev = TimeCategory; // Update previous category
+//             } catch (error) {
+//                 continue; // Skip invalid time controls
+//             }
+//         }
+//     }
+// }
 
 })();
 
 // Test for Timed Game Logic
 (async () => {
   console.log("Timed Game Tests Starting...");
+
+
+    
+
+
 
   // Initialize a timed game with base time and increment
 //   const timedGame = new TimedStandardGame({

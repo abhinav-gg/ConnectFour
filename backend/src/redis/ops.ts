@@ -1,4 +1,5 @@
 import { getRedisClient } from './redisClient'; // Adjust the import path as necessary
+import { GameOperations } from './repositories/gameOps';
 import { UserOperations } from './repositories/userOps';
 
 export async function redisOps() {
@@ -6,9 +7,6 @@ export async function redisOps() {
   
     return {
       user: UserOperations(redis),
-      
-      // You can add more modular ops below
-      // session: createSessionOps(redis),
-      // token: createTokenOps(redis),
+      game: GameOperations(redis),
     };
 }

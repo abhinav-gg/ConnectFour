@@ -1,6 +1,3 @@
-
-import cookieParser from 'cookie-parser';
-import cors from 'cors';
 import express, { Router } from 'express';
 import { Request, Response } from 'express';
 import { createServer } from 'http';
@@ -9,52 +6,28 @@ import pool from '@/db/rds/rdsClient'; // Adjust the import based on your databa
 import { dynamoDBOps } from '@/db/dynamodb/ops';
 import authRouter from '@/controllers/api/routes/authRoutes';
 import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
-import { myConfig } from '@config/env';
-import Redis from 'ioredis';
 import { rdsDBOps } from '@/db/rds/ops';
+import { redisOps } from '@/redis/ops';
+import { scanKeysPaginated } from '@/redis/redisHelper';
 
 const app = Router();
 
 
 app.get('/all', async (_req: Request, res: Response) => {
-
-    const redis: Redis = await getRedisClient();
-  
+  try {
+    const r = await getRedisClient();
+    const result = await scanKeysPaginated(r, '*');
     
-    const result: Record<string, any> = {};
-    const stream = redis.scanStream({ match: '*', count: 100 });
-  
-    stream.on('data', async (keys: string[]) => {
-      stream.pause(); // Prevent overwhelming the stream during async operations
-  
-      await Promise.all(keys.map(async (key) => {
-        try {
-          const raw = await redis.get(key);
-          if (raw == null) return;
-  
-          try {
-            result[key] = JSON.parse(raw); // Parse JSON if possible
-          } catch {
-            result[key] = raw; // Fallback to raw string
-          }
-        } catch (e) {
-          console.error('Error fetching key', key, e);
-        }
-      }));
-  
-      stream.resume();
+    console.log('✅ Scan complete, sending response');
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Redis scan error:', error);
+    res.status(500).json({ 
+      error: 'Redis scan failed', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
     });
-  
-    stream.on('end', () => {
-      console.log('✅ Scan complete, sending response');
-      res.json(result);
-    });
-  
-    stream.on('error', (err) => {
-      console.error('❌ Scan error', err);
-      res.status(500).json({ error: 'Redis scan failed', details: err.message });
-    });
-  });
+  }
+});
   
 app.get('/get/:key', async (req: Request, res: Response): Promise<void> => {
 const { key } = req.params;
@@ -73,22 +46,16 @@ else {
 }
 );
 
-app.get('/add/:key', async (req: Request, res: Response): Promise<void> => {
-const { key } = req.params;
-if (typeof key !== 'string') {
-    res.status(400).json({ error: 'Key must be a string' });
-    return;
-}
-const redis = await getRedisClient();
-const resp = await redis.set(key, 1);
-if (!resp) {
-    res.status(404).json({ error: `Key "${key}" not valid or something` });
-}
-else {
-    res.json({ key, resp });
-}
-}
-);
+app.get('/add-test', async (req: Request, res: Response): Promise<void> => {
+  const r = await redisOps();
+
+  await r.game.addGameMove("testGameId", 7);
+  await r.game.addGameMove("testGameId", 2);
+  await r.game.addGameMove("testGameId", 3);
+
+  const moves = await r.game.getGameMoves("testGameId");
+  console.log("Moves in Redis:", moves);
+});
 
 app.get('/dynamo-test', async (req: Request, res: Response) => {
 try {

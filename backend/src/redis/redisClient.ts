@@ -4,7 +4,7 @@ import { myConfig } from '@config/env';
 // Store clients by name
 const clients = new Map<string, Redis>();
 
-function createRedisClient(): Redis {
+function createRedisClient(maxRetriesPerRequest: number | null): Redis {
   const client = new Redis({
     host: myConfig.REDIS_HOST || 'redis',
     port: Number(myConfig.REDIS_PORT) || 6379,
@@ -14,7 +14,7 @@ function createRedisClient(): Redis {
       console.log(`[ioredis] reconnect attempt #${times}, delay ${delay}ms`);
       return delay;
     },
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: maxRetriesPerRequest,
   });
 
   client.on('connect', () => console.log('[ioredis] Connected Successfully!'));
@@ -34,7 +34,7 @@ async function getClient(clientName: string): Promise<Redis> {
       return client;
     }
   }
-  const client = createRedisClient();
+  const client = createRedisClient(clientName === 'bullmq' ? null : 3);
   clients.set(clientName, client);
   return client;
 }

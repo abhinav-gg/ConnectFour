@@ -40,8 +40,8 @@ export const UserOperations = {
         console.error('Error creating user:', error);
         if (error.code === '23505') {
           // duplicate key error
-          
-          const usernameExists = await client.query(
+
+          const usernameExists = await pool.query( // safe to use pool here as this check has no side effects
             `SELECT 1 FROM users WHERE username = $1`,
             [normUser]
           );

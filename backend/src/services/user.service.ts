@@ -7,36 +7,22 @@ import { authService } from './auth.service';
 import { GameMode } from '@shared/constants/allgamemodes';
 import { EloNotFound } from '@/types/dbErrors';
 import { StandardStartingElo } from '@shared/constants/game';
+import { getIdentity } from '@/utils/validation';
 
 const userDbOps = rdsDBOps.user;
 
 export const userService = {
-  
-  
-  async getUserProfile(sessionId: string): Promise<UserProfile> { 
-    
-    const identity = await authService.validateToken(sessionId);
 
-    // consider using redis cache for user profiles
-    
-    if (!identity) {
-      throw new Error('Invalid session token');
-    } else if (identity.user) {
-      const user = await userDbOps.getUserByID(identity.user);
-      if (!user) {
-        throw new Error('User not found');
-      }
-      return {
-        username: user.username,
-        pfp: user.profile_pic
-      } as UserProfile;
-    } else if (identity.anon) {
-      return {
-        username: 'Anonymous',
-      } as UserProfile;
-    } else {
-      throw new Error('Invalid identity');
+  async safeGetUserByID(uuid: UUID): Promise<UserProfile> {
+
+    const user = await userDbOps.getUserByID(uuid);
+    if (!user) {
+      throw new Error('User not found');
     }
+    return {
+      username: user.username,
+      pfp: user.profile_pic || undefined,
+    };
   },
 
   async deleteUserAccount(uuid: UUID): Promise<ServiceResponse> {
@@ -47,27 +33,27 @@ export const userService = {
   },
 
 
-  async getUserELO(userId: string, gamemode: GameMode): Promise<number> {
+  getOrSetPlayerElo: async (userId: string, gamemode: GameMode): Promise<number> => {
+    // This function should retrieve the player's Elo rating for the specified game mode.
+    // check redis cache first (future improvement)
 
-    let elo;
+    // if not found, check the database
+
     try {
-      let elo = await userDbOps.getUserEloByID(userId, gamemode);
+      return await rdsDBOps.user.getUserEloByID(userId, gamemode);
     } catch (error: any) {
       if (error instanceof EloNotFound) {
-        elo = StandardStartingElo;
+        // If the Elo rating is not found, initialize it to a default value
 
-        await userDbOps.initEloForUser(userId, gamemode, elo);
+        const elo = StandardStartingElo; // Default Elo value (change as needed)
 
-      } else {
-        throw error;
+        await rdsDBOps.user.initEloForUser(userId, gamemode, elo);
+        return elo;
       }
+      throw error; // Re-throw other errors
     }
-    return elo!;
+
   },
-
-
-
-  
 
   incrUserELO: userDbOps.alterElo.bind(userDbOps),
 

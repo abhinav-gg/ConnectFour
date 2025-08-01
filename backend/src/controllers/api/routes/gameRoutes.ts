@@ -5,12 +5,41 @@ import { GameInfo, TimeControl } from '@shared/types/game';
 import { GameMode } from '@shared/constants/allgamemodes';
 import { getRankedGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes } from '@shared/utils/gamemodes';
 import { validateTimeControl } from '@shared/utils/validation';
+import { gameService } from '@/services/game.service';
+import { rdsDBOps } from '@/db/rds/ops';
+import { userService } from '@/services/user.service';
+import { sendUserToGame } from '@/lib/game.middleware';
 
 
 const gameRouter = Router();
 
+
+gameRouter.post('/player', async (req: Request, res: Response) => {
+    // get username from payload
+    const username = req.body.username;
+    const mode = req.body.mode;
+
+    if (!username) {
+        res.status(400).json({ error: 'Username is required' });
+        return;
+    }
+    const user = await rdsDBOps.user.getUserByUsername(username);
+    let elo;
+
+    if (mode) {
+        elo = await userService.getOrSetPlayerElo(user.id, mode);
+    }
+    const response = {
+        username: user.username,
+        pfp: user.profile_pic,
+        elo: elo
+    };
+
+    res.status(200).json(response);
+});
+
 // Create Game Route
-gameRouter.post('/request', authenticateSession, verifyRecaptcha, async (req: Request, res: Response, next: NextFunction) => {
+gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame, async (req: Request, res: Response) => {
     // Extract the user ID from the request
 
     const userId = (req as any).user.userId;
@@ -47,31 +76,15 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, async (req: Re
         res.status(500).json({ error: 'Invalid Data' });
         return;
     }
-
-    if (gamemode in CompetitiveModes) {
-        // Call matchmaking service
-
-
-
-
-
-
-
-    } else if (gamemode in CasualModes) {
-
-        // create game here
-
-
-
-
-
-
-
-
-
-    } else {
-        res.status(400).json({ error: 'Invalid Game Mode' });
-        return;
+    console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
+    // Try the matchmaking service
+    try {
+        const response = await gameService.joinGameQueue(userId, { gamemode, time_control });
+        res.status(response.status).json(response);
+    }
+    catch (error) {
+        console.log('Failed to request game:', error);
+        res.status(500).json({ error: 'Failed to request game' });
     }
 
     console.log("Game Requested");
@@ -120,45 +133,35 @@ gameRouter.get('/test', async (req: Request, res: Response) => {
 // // });
 
 
-// // gameRouter.post('/status', authenticateSession, async (req: Request, res: Response) => {
-// //     // Check if the player is already in a game
-// //     const userId = (req as any).user?.userId;
+gameRouter.post('/verify-shortcode', authenticateSession, async (req: Request, res: Response) => {
+    // Check if the player is already in a game
+    const userId = (req as any).user?.userId;
 
-// //     if (!userId) {
-// //         res.status(500).json({ error: 'Invalid Data' });
-// //         return;
-// //     }
+    if (!userId) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
 
-// //     const gameId = await dbOperations.GetGameByPlayerLookup(userId);
-// //     console.log('Game ID:', gameId);
+    // unload shortcode from the request body
+    const shortcode = req.body.shortcode;
+    if (!shortcode) {
+        res.status(500).json({ error: 'Invalid Data' });
+        return;
+    }
 
-// //     if (gameId) {
-// //         // First check if the game is still active
-// //         try {
-// //             const game = await dbOperations.GetGameByID(gameId);
-// //             if (game.state === globals.StandardGameStates.ongoing) {
-// //                 // return an error with the shortcode of the ongoing game to redirect to
-// //                 res.status(200).json({
-// //                     event: "sendToRoom",
-// //                     data: { roomId: game.short_id }
-// //                 } as SendToRoom);
-// //                 return;
-// //             } else if (game.state === globals.StandardGameStates.scheduled) {
-// //                 // User is changing the game they are looking for
-// //                 // Remove the user from the lookup and prepare for new game
-// //                 await quitGameSearch(userId);
+    const liveGame = await gameService.GetGameIDByShortCode(shortcode);
+    if (!liveGame) {
+        res.status(404).json({ error: 'Game not found' });
+        return;
+    }
+    
+    // potentially allow the player to join the game or spectate.
 
-// //             } else {
-// //                 throw new Error('GameLookup is not in a state');
-// //             }
-// //         }
-// //         catch (error) {
-// //             console.error('Failed to remove user from game search:', error);
-// //             return;
-// //         }
-// //     }
-// //     res.status(200).json({ message: 'No game found' });
-// // });
+
+
+
+
+});
 
 
 

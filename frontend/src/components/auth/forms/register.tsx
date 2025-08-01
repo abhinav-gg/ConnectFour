@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox" // Import Checkbox
-import { Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { Eye, EyeOff, ArrowLeft, Router } from "lucide-react"
 import { validateEmail, validateUsername, validatePassword } from "@shared/utils/validation"
 import { myConfig } from "@/config/env"
 import { jwtDecode } from "jwt-decode";
@@ -16,7 +16,7 @@ import { UserAccountProvider } from "@shared/types/users"
 import { maskEmail } from "@/utils/masks"
 import { handleGoogleLogin } from "@/utils/googleSignin"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
-
+import { useRouter } from "next/navigation"
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -42,6 +42,8 @@ export function RegisterForm() {
   const [jwtEmail, setJwtEmail] = useState<string | null>(null);
   const [jwtProvider, setJwtProvider] = useState<UserAccountProvider | null>(null);
   const { getRecaptchaToken, activateRecaptcha, isRecaptchaActive  } = useRecaptcha()
+
+  const router = useRouter();
 
   useEffect(() => {
     // Initialize reCAPTCHA
@@ -182,15 +184,18 @@ export function RegisterForm() {
       const response = await fetch(`${myConfig.BACKEND_URL}/auth/google/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, token: jwtToken }),
+        body: JSON.stringify({ username, token: jwtToken, recaptchaToken: await getRecaptchaToken() }),
       });
       setIsLoading(false);
       // In a real app, you'd handle success/failure here
-      if (response.ok) {
-        window.location.href = "/profile";
-      } else {
+      if (!response.ok) {
         const data = await response.json();
         setUsernameError(data.error || "Registration failed");
+      } else {
+        // route the current client to /profile using next router
+
+        console.log("Google registration successful", await response.json());
+        router.push("/profile");
       }
     } else {
 
@@ -206,8 +211,8 @@ export function RegisterForm() {
         const data = await response.json();
         setUsernameError(data.error || "Registration failed");
       } else {
-        console.log("Local registration successful", await response.json());
-        //... do more here TODO
+        const jwt = await response.json() as { jwt: string };
+        router.push(`/auth/verify-email?jwt=${jwt.jwt}`);
       }
       
     }

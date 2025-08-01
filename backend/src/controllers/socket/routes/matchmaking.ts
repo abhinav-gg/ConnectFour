@@ -1,9 +1,44 @@
-// import { dbOperations } from '@/db/operations';
-// import { GameMode, TimeControl } from '@shared/Models/gameInfo';
-// import { eventEmitter } from '@shared/utils/eventEmitter';
-// import { assignGame, createGame, safeGetElo } from './gameHelper';
 
-// // file to control all elements of user matchmaking and game creation
+import { Socket } from 'socket.io';
+import { withNamespace } from '../handlers';
+import { redisOps } from '@/redis/ops';
+
+// Register matchmaking handlers
+export function registerMatchmakingHandlers(soc: Socket) {
+
+  const socket = withNamespace(soc, 'matchmaking');
+
+  socket.on('join', async (data) => {
+    try {
+      console.log('User joined matchmaking:', data);
+      // TODO: Implement join matchmaking logic
+      socket.emit('matchmaking_started', { message: 'Looking for opponents...' });
+    } catch (error) {
+      console.error('Error joining matchmaking:', error);
+      socket.emit('error', { message: 'Failed to join matchmaking' });
+    }
+  });
+
+  socket.on('cancel', async () => {
+    try {
+      console.log('User canceled matchmaking');
+      // TODO: Implement cancel matchmaking logic
+
+      const r = await redisOps()
+      await r.game.leaveUserQueue(socket.data.userId);
+      
+    } catch (error) {
+      
+      console.error('Error leaving matchmaking:', error);
+    }
+  });
+
+
+
+
+  
+}
+
 
 
 // // bellow needs to be re-written with Redis

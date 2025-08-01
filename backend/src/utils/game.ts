@@ -5,7 +5,7 @@ import { EloChange } from "@shared/types/game";
 // Convert UUID string to Buffer (16 bytes)
 
 
-export function genRandomGameKey(): string {
+export function genGameShortcode(): string {
   // return a random 8 character string with numbers and letters (case sensitive)
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890123456789";
   let key = "";
@@ -54,7 +54,7 @@ export function calculateEloChanges(pElo: number, opponentElo: number, pIsRed: b
     };
 }
 
-const preferredDeltaElo = 20;
+export const preferredDeltaElo = 20;
 
 export function getQueuePriority(timeSinceQueued: number, deltaElo: number): number {
     let timePriority = 0;

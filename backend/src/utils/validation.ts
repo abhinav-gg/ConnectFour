@@ -2,6 +2,11 @@ import { PlayerIdentity } from '@/types/custom';
 import { UUID } from 'crypto'
 
 
+export const makeUserIdentity = (u: UUID): string => `user:${u}`;
+export const makeAnonIdentity = (u: UUID): string => `anon:${u}`;
+export const makeBotIdentity = (b: string): string => `bot:${b}`;
+
+
 export const parseUser = (u: string): UUID | null => {
   // user is of the form user:UUID OR anon:
   // if anonymous, return null

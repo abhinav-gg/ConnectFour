@@ -4,6 +4,7 @@
 import type React from "react"
 import { useImperativeHandle, forwardRef, useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import useSound from "@/utils/useSound"
 
 interface Connect4BoardProps {
   interactive?: boolean
@@ -98,6 +99,9 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     const [arrowStartCell, setArrowStartCell] = useState<{ row: number; col: number } | null>(null)
     const [rightMouseDown, setRightMouseDown] = useState(false)
 
+    // Sound effect for piece drop
+    const DropSound = useSound("/counter-fall-long.mp3")
+
     // Utility to detect if device is mobile
     // MOBILE CALCULATION
     const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 567px)").matches
@@ -150,6 +154,11 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       if (!boardState) return
 
       if (!animate_init) return setInternalBoard(boardState)
+
+      // If animate_init is true, animate the initial board state
+      // Reset internal board to empty
+
+      setInternalBoard(defaultBoard);
 
       setInteractive(false)
       // Flatten the board into a list of {row, col, player} for non-null cells
@@ -300,6 +309,9 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         // Animation duration proportional to distance fallen
         const baseDuration = 0.15 // seconds per row
         const duration = baseDuration * (row + 1)
+
+        // Play drop sound when a piece falls (not during animate_init)
+        DropSound.play()
 
         // Get the target cell's position
         const cell = cellRefs.current[row][col]

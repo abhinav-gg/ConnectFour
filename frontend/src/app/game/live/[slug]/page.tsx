@@ -40,9 +40,12 @@
  */
 
 import { useState, useEffect, useRef } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { GameBoardLayout } from "@/components/layouts/game-board-layout"
-import { LiveGameWithAnalysis, LiveGameRef } from "../../../components/game/LiveGameUI"
-import { ChatMessage } from "../../../components/game/utility/chat"
+import { LiveGameWithAnalysis, LiveGameRef } from "@/components/game/LiveGameUI"
+import { ChatMessage } from "@/components/game/utility/chat"
+import useSound from "@/utils/useSound"
+import { useSocketContext } from "@/components/providers/SocketProvider"
 
 interface Move {
   column: number
@@ -51,6 +54,16 @@ interface Move {
 }
 
 export default function LiveGamePage() {
+  const params = useParams()
+  const router = useRouter()
+  const slug = params.slug as string
+  
+  // Extract shortcode from slug or redirect if empty
+  const [shortcode, setShortcode] = useState<string>("")
+  
+  // Use the existing SocketIO hook
+  const { sendJson, connected, close, getLastJson } = useSocketContext()
+
   const [player1Time, setPlayer1Time] = useState(300) // 5 minutes
   const [player2Time, setPlayer2Time] = useState(300) // 5 minutes
   const [scoreRatio, setScoreRatio] = useState(0.5)
@@ -86,6 +99,63 @@ export default function LiveGamePage() {
     { column: 3, player: "red", moveNumber: 3 },
     { column: 5, player: "yellow", moveNumber: 4 },
   ])
+
+  // Handle slug parameter and join matchmaking
+  useEffect(() => {
+    if (!slug || slug.trim() === "") {
+      console.log("🔌 REDIRECT: Empty slug, redirecting to /play/setup")
+      router.push("/play/setup")
+      return
+    }
+    
+    setShortcode(slug)
+    console.log("🔌 SHORTCODE: Extracted from slug:", slug)
+    
+    // Join matchmaking when socket is connected
+    if (connected) {
+      sendJson( "/matchmaking/join", { shortcode: slug })
+      console.log("📤 WEBSOCKET: Sent join matchmaking with shortcode:", slug)
+    }
+  }, [slug, router, connected, sendJson])
+
+  // Listen for socket events
+  useEffect(() => {
+    const lastMessage = getLastJson()
+    if (!lastMessage) return
+
+    // Handle different event types
+    switch (lastMessage.event) {
+      case "/matchmaking/joined":
+        console.log("✅ MATCHMAKING: Successfully joined with shortcode:", lastMessage.data?.shortcode)
+        break
+      
+      case "/game/move":
+        const moveData = lastMessage.data
+        if (moveData) {
+          const newMove: Move = {
+            column: moveData.column,
+            player: moveData.player,
+            moveNumber: moveData.moveNumber,
+          }
+          setMoves(prev => [...prev, newMove])
+          console.log("📨 WEBSOCKET: Received move from opponent:", newMove)
+        }
+        break
+      
+      case "/chat/message":
+        const chatData = lastMessage.data
+        if (chatData && liveGameRef.current) {
+          liveGameRef.current.addReceivedMessage(
+            chatData.message, 
+            chatData.username, 
+            "user", 
+            chatData.color || "red"
+          )
+          console.log("📨 WEBSOCKET: Received chat message:", chatData.message)
+        }
+        break
+    }
+  }, [getLastJson])
 
   // Simulate WebSocket connection for demonstration
   useEffect(() => {
@@ -180,16 +250,37 @@ export default function LiveGamePage() {
     }
     setMoves(prev => [...prev, newMove])
     
-    // Here you would send the move via WebSocket
-    console.log("📤 WEBSOCKET: Sending move to server:", newMove)
+    // Send move via Socket if connected
+    if (connected) {
+      sendJson("/game/move", { 
+        shortcode, 
+        column: col, 
+        moveNumber: newMove.moveNumber,
+        player: newMove.player
+      })
+      console.log("📤 WEBSOCKET: Sending move to server:", newMove)
+    } else {
+      console.log("📤 WEBSOCKET: Not connected, move not sent:", newMove)
+    }
   }
 
   // Chat Event Handlers
   const handleMessageSent = (message: ChatMessage) => {
     console.log(`💬 MESSAGE SENT:`, message)
     
-    // Here you would send the message to backend for validation/censoring
-    console.log("📤 WEBSOCKET: Sending message to server for validation:", message.message)
+    // Send message via Socket if connected
+    if (connected) {
+      sendJson("/chat/message",
+        {
+          shortcode,
+          message: message.message,
+          username: message.username,
+          color: message.color
+      })
+      console.log("📤 WEBSOCKET: Sending message to server:", message.message)
+    } else {
+      console.log("📤 WEBSOCKET: Not connected, message not sent:", message.message)
+    }
 
     // Simulate backend validation/censoring (in real app, this would be async)
     let validatedMessage = { ...message }
@@ -205,7 +296,7 @@ export default function LiveGamePage() {
 
     // Add the validated/censored message back to chat using the correct method
     if (liveGameRef.current) {
-      return;
+      // return;
       liveGameRef.current!.addChatMessage(validatedMessage.message, validatedMessage.username, validatedMessage.type, validatedMessage.color)
       console.log("✅ CHAT: Added validated message via ref")
     } else {

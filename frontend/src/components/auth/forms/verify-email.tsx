@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { maskEmail } from '@/utils/masks'
 import { myConfig } from "@/config/env"
+import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 
 export function VerifyEmailForm(): ReactElement {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""))
@@ -18,6 +19,7 @@ export function VerifyEmailForm(): ReactElement {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [jwt, setJwt] = useState<string | null>(null);
   const [jwtEmail, setJwtEmail] = useState<string | null>(null);
+  const { getRecaptchaToken, activateRecaptcha, isRecaptchaActive  } = useRecaptcha()
   const router = useRouter();
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
@@ -87,35 +89,45 @@ export function VerifyEmailForm(): ReactElement {
       return
     }
 
+    if (!isRecaptchaActive) {
+      setOtpError("Please complete the reCAPTCHA first.")
+      return
+    }
+
     setIsLoading(true)
 
     // TODO: ADD RECAPTCHA)
     const resp = await fetch(`${myConfig.BACKEND_URL}/auth/verify-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: fullOtp, token: jwt }),
+      body: JSON.stringify({ code: fullOtp, token: jwt, recaptchaToken: await getRecaptchaToken() }),
       credentials: 'include', // allow cookies to be set
     });
 
     setIsLoading(false)
 
-    if (resp.ok) {
-      // Success: backend sets sessionToken cookie, redirect to profile or home
-      router.replace("/profile");
-      return;
-    } else {
+    if (!resp.ok) {
       // Error: show backend error message if available
       let msg = "Invalid verification code. Please try again.";
       try {
         const data = await resp.json();
+        console.error("Verification error:", data);
         msg = data.message || data.error || msg;
       } catch {}
       setOtpError(msg);
+    } else {
+      // Success: backend sets sessionToken cookie, redirect to profile or home
+      console.log("Email verified successfully");
+      router.push("/profile");
+      return;
     }
   }
 
   // Focus on the first empty input or the first input only on mount
   useEffect(() => {
+
+    activateRecaptcha(); // Ensure reCAPTCHA is activated on mount
+
     let didFocus = false;
     const firstEmptyIndex = otp.findIndex((digit) => !digit);
     if (firstEmptyIndex !== -1) {

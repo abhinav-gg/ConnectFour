@@ -1,9 +1,6 @@
 import { RecaptchaResponse, RequestWithRecaptcha } from '@/types/custom';
 import { NextFunction, Request, Response } from 'express';
 import { myConfig } from '@config/env';
-import { redisOps } from '@/redis/ops';
-import { Socket } from 'socket.io';
-import * as cookie from 'cookie';
 import { PlayerIdentity } from '@/types/custom';
 import { authService } from '@/services/auth.service';
 
@@ -35,7 +32,7 @@ export const requireUnauthenticated = async (req: AuthenticatedRequest, res: Res
   if (id.anon) {
     return next()
   } else if (id.user) {
-    return res.redirect('/profile')
+    res.status(401).json({ error: 'User is signed in' });
   }
   else {
     next()
@@ -197,7 +194,7 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
       });
       return;
     }
-    console.log(apiResponse)
+    
     // Add verification result to request object
     req.recaptchaResult = apiResponse;
     next();
@@ -210,47 +207,5 @@ export const verifyRecaptcha = async (req: RequestWithRecaptcha, res: Response, 
     return;
   }
 };
-
-
-/**
- * Websocket Session Middleware
- * @param socket 
- * @param next 
- * @returns 
- */
-export const verifySocket = async (socket: Socket, next: (err?: any) => void): Promise<void> => {
-
-  const fail = () => {
-    (socket as any).sessionId = null;
-    (socket as any).userId = null;
-    return next();
-  }
-
-  try {
-    const cookies = cookie.parse(socket.handshake.headers.cookie || '');
-    const sessionId = cookies['sessionToken'];
-    if (!sessionId) {
-      return fail()
-    }
-
-    if ((socket as any).sessionId === sessionId)
-      return next();
-
-    const redis = await redisOps();
-
-    const userId = await redis.user.getSession(sessionId);
-    if (!userId) {
-      return fail()
-    }
-
-    (socket as any).sessionId = sessionId;
-    (socket as any).userId = userId;
-    return next();
-
-  } catch (err: any) {
-    console.error('Socket auth error:', err.name);
-    return next(err)
-  }
-}
 
 

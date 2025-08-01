@@ -28,6 +28,18 @@ export const CasualModes = new Set([
   GameMode.STANDARD_ARMAGEDDON_FRIENDLY,
 ]);
 
+export const FriendlyModes = new Set([
+  GameMode.STANDARD_FRIENDLY,
+  GameMode.STANDARD_ARMAGEDDON_FRIENDLY,
+]);
+
+export const PublicStandardModes = new Set([
+  GameMode.STANDARD_PUBLIC_CASUAL,
+  GameMode.STANDARD_ARMAGEDDON_PUBLIC_CASUAL,
+]);
+
+
+
 
 // CategoriseTime takes a time control object and returns the game category
 // (TODO: define time control object, then function is done)
@@ -60,7 +72,7 @@ export function CategoriseTime(timeControl: TimeControl): TimeCategory {
   }
 }
 
-export function getRankedGameModeByTimeControl(timeControl: TimeControl, base: "standard" | "armageddon"): number {
+export function getRankedGameModeByTimeControl(timeControl: TimeControl, base: string): number {
   if (!validateTimeControl(timeControl)) {
     throw new Error("Invalid time control settings");
   }

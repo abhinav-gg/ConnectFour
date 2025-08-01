@@ -8,7 +8,7 @@ import { myConfig } from '@config/env';
 import { RegUser, UserRegistration } from '@/db/models/User';
 import { hashPassword } from '@/lib/auth/auth';
 import { validateEmail, validatePassword, validateUsername } from '@shared/utils/validation';
-import { EmailDoesNotExist } from '@/types/dbErrors';
+import { EmailDoesNotExist, EmailExists, UsernameExists } from '@/types/dbErrors';
 import { APIResponse } from '@shared/types/Responses';
 import { RedisSchema } from '@/redis/redisSchema';
 import { userService } from '../../../services/user.service';
@@ -185,20 +185,19 @@ authRouter.post('/verify-email', requireUnauthenticated, verifyRecaptcha, async 
 });
 
 // Profile Route
-authRouter.get('/me', optionalAuth, sendUserToGame, async (req: Request, res: Response, next: NextFunction) => {
+authRouter.get('/me', optionalAuth, sendUserToGame, async (req: Request, res: Response) => {
+  
   const userId = (req as any).user?.userId;
 
   try {
     
-    let user;
-    let invalid: boolean = (!userId)
-    
-    if (!invalid) {
-      user = await userService.getUserProfile(userId);
-      invalid = (!user)
+    let user = null;
+
+    if (userId) {
+      user = await userService.safeGetUserByID(userId);
     }
 
-    if (invalid) {
+    if (!user) {
       // Important: CREATE ANONYMOUS USER ALWAYS
 
       const sessionToken = await authService.makeAnonymousSession();
@@ -217,10 +216,6 @@ authRouter.get('/me', optionalAuth, sendUserToGame, async (req: Request, res: Re
     console.error('Failed to fetch user profile:', error);
     res.status(500).json({ error: 'Failed' });
   }
-});
-
-authRouter.get('/valid', authenticateSession, (req: any, res: Response) => {
-  res.json({ message: 'You are authenticated!', user: req.user });
 });
 
 authRouter.post('/logout', authenticateSession, async (req: Request, res: Response): Promise<void> => {
@@ -432,10 +427,15 @@ authRouter.post('/google/register', verifyRecaptcha, async (req: Request, res: a
 
     await authService.loginGoogleUser(emailNormalised);
 
-    res.redirect('/profile'); 
-    
+    res.status(200).json({ message: "Success" });
+
   } catch (error: any) {
     console.error(error)
+    if (error instanceof UsernameExists) {
+      return res.status(400).json({ error: 'Username already exists' });
+    } else if (error instanceof EmailExists) {
+      return res.status(400).json({ error: 'Account already exists' });
+    }
     return res.status(500).json({ error: "Server Error" });
   }
 });

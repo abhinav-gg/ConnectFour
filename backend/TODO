@@ -5,6 +5,20 @@ i dont even want to know what this is a key for:
 play 2 mid tier bots against each other all night and detect specific conditions in a position E.G. 2-3 back to back only winning moves in the positions.
 
 
+
+Disconnects start job
+Reconnect should remove job from queue
+Player moves are fine
+Assume 100% disconnection detection so no need for general game tracking
+
+
+
+
+
+
+
+
+
 tsconfig include all
 "./**/*",
 

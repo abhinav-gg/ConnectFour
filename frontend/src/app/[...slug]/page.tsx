@@ -6,8 +6,9 @@ import React from 'react';
 
 const redirectMap: Record<string, string> = {
   'login': '/auth/login',
-  'bar/login': '/auth/login',
+  'register': '/auth/register',
   'community': 'https://linktr.ee/con4uk',
+  'home': '/',
 };
 
 export default function SlugPage({ params }: { params: { slug: string } }) {

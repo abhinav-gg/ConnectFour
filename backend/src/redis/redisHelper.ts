@@ -1,17 +1,27 @@
 import Redis from 'ioredis';
 import { getRedisClient } from './redisClient';
 
-export async function scanKeys(redis: Redis, pattern: string): Promise<string[]> {
-  const keys: string[] = [];
+export async function scanKeysPaginated(
+  redis: Redis,
+  pattern: string,
+  page: number = 1,
+  pageSize: number = 100
+): Promise<{ keys: string[]; nextCursor: string }> {
   let cursor = '0';
+  let collected: string[] = [];
+  let currentPage = 1;
 
-  do {
-    const [nextCursor, results] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+  while (true) {
+    const [nextCursor, results] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', pageSize);
+    if (currentPage === page) {
+      return { keys: results, nextCursor };
+    }
     cursor = nextCursor;
-    keys.push(...results);
-  } while (cursor !== '0');
+    if (cursor === '0') break;
+    currentPage++;
+  }
 
-  return keys;
+  return { keys: [], nextCursor: '0' };
 }
 
 
@@ -53,4 +63,25 @@ export async function checkRedisHealth(timeoutMs = 2000): Promise<boolean> {
     console.error("Redis health check failed:", err);
     return false;
   }
+}
+
+export function createRedisJson(redis: Redis) {
+  return {
+    async set(key: string, value: any, path = '$'): Promise<'OK'> {
+      return redis.call('JSON.SET', key, path, JSON.stringify(value)) as Promise<'OK'>;
+    },
+
+    async get<T = any>(key: string, path = '$'): Promise<T | null> {
+      const res = await redis.call('JSON.GET', key, path) as string | null;
+      if (!res) return null;
+      return JSON.parse(res) as T;
+    },
+
+    async del(key: string, path = '$'): Promise<number> {
+      // Returns number of paths deleted
+      return redis.call('JSON.DEL', key, path) as Promise<number>;
+    },
+
+    // Add more JSON commands as needed
+  };
 }

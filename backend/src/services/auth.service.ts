@@ -10,7 +10,7 @@ import { generateVerificationCode } from '@/lib/auth/auth';
 import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { EmailSendError } from '@/types/miscErrors';
 import { RegUser, User, UserSchema } from '@/db/models/User';
-import { UsernameExists } from '@/types/dbErrors';
+import { EmailDoesNotExist, UsernameExists } from '@/types/dbErrors';
 import { RedisSchema } from '@/redis/redisSchema';
 import { getIdentity } from '@/utils/validation';
 import { PlayerIdentity } from '@/types/custom';
@@ -98,7 +98,7 @@ export const authService = {
 
     rdsDBOps.user.recordUserLogin(user.id) // Update Last Login
 
-    const sessionToken = await authService.makeUserSession(user.id);
+    const sessionToken = await this.makeUserSession(user.id);
 
     return { status: 200, message: sessionToken };
   
@@ -128,14 +128,15 @@ export const authService = {
       if (user.mail_provider !== UserAccountProvider.Local)
         return { status: 500, message: 'User signed up with a different provider' };
   
-      const passwordMatch = await verifyPassword(user.password_hash!, password);
-      if (!passwordMatch) {
-        return { status: 400, message: 'Invalid user or password' };
-      }
-
+      
       const handleEmailCheck = await this.handleEmailVerificationCheck(user)
       if (handleEmailCheck.status !== 200) {
         return handleEmailCheck; // Return the email verification status if not verified
+      }
+
+      const passwordMatch = await verifyPassword(user.password_hash!, password);
+      if (!passwordMatch) {
+        return { status: 400, message: 'Invalid user or password' };
       }
 
       rdsDBOps.user.recordUserLogin(user.id) // Update Last Login
@@ -183,7 +184,7 @@ export const authService = {
     // send email with vCode
     try {
 
-      sendEmailVerifyCode(vCode, username, email)
+      await sendEmailVerifyCode(vCode, username, email)
       
       await redisOp.user.setEmailCode(email, vCode);
     }
@@ -201,8 +202,16 @@ export const authService = {
   async attemptEmailVerification(email: string, vCode: string): Promise<ServiceResponse> {
 
     const redis = await redisOps();
+    let u: User;
+    try {
 
-    const u = await rdsDBOps.user.getUserByEmail(email)
+      u = await rdsDBOps.user.getUserByEmail(email)
+    } catch (error: any) {
+      if (error instanceof EmailDoesNotExist) {
+        return { status: 404, message: 'Email does not exist' };
+      }
+      return { status: 500, message: 'User not found' };
+    }
 
     if (u.email_verified || u.mail_provider !== UserAccountProvider.Local)
       return { status: 400, message: 'Invalid Action' };

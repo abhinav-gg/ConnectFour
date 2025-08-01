@@ -1,13 +1,9 @@
-import { RecaptchaResponse, RequestWithRecaptcha } from '@/types/custom';
 import { NextFunction, Request, Response } from 'express';
-import { myConfig } from '@config/env';
+import { AuthenticatedRequest } from './auth/middleware';
 import { redisOps } from '@/redis/ops';
+import { myConfig } from '@config/env';
 import { Socket } from 'socket.io';
 import * as cookie from 'cookie';
-import { PlayerIdentity } from '@/types/custom';
-import { authService } from '@/services/auth.service';
-import { AuthenticatedRequest } from './auth/middleware';
-
 
 export const sendUserToGame = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
@@ -15,8 +11,53 @@ export const sendUserToGame = async (req: AuthenticatedRequest, res: Response, n
   
     if (token) {
 
-        // check with redis if that user is in a game. if so then redirect them to that game shortcode
-        console.log("Checking Game For User Authenticated:", token);
+        const r = await redisOps();
+        const gameId = await r.game.getUserQueueGameId(token);
+        if (gameId) {
+            // Redirect the user to the game
+            return res.redirect(`${myConfig.CLIENT_URL}/game/live/${gameId}`);
+        } else {
+          // No game found, continue to the next middleware
+          return next();
+        }
     }
     else return next();
 };
+
+
+
+
+/**
+ * Websocket Session Middleware
+ * @param socket 
+ * @param next 
+ * @returns 
+ */
+export const verifySocket = async (socket: Socket, next: (err?: any) => void): Promise<void> => {
+
+  try {
+    const cookies = cookie.parse(socket.handshake.headers.cookie || '');
+    const sessionId = cookies['sessionToken'];
+    if (!sessionId) {
+      socket.disconnect(true);
+    }
+
+    if ((socket as any).sessionId === sessionId)
+      return next();
+
+    const redis = await redisOps();
+
+    const userId = await redis.user.getSession(sessionId!);
+    if (!userId) {
+      socket.disconnect(true);
+    }
+
+    (socket as any).sessionId = sessionId;
+    (socket as any).userId = userId;
+    return next();
+
+  } catch (err: any) {
+    console.error('Socket auth error:', err);
+    return next(err)
+  }
+}

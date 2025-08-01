@@ -1,15 +1,9 @@
 import { EmailSendError } from "@/types/miscErrors";
 import {loadTemplate, sendEmail} from "./emails"
 import Handlebars from "handlebars";
+import { getEmailQueue } from "@/jobs/sets/email";
 
-export function sendEmailVerifyCode(code: string,  username: string, email: string) {
-
-    // add a dash in the middle (between chr 3 and 4) and split to list
-    const codeToSend = [
-        ...code.slice(0, 3).split(''),
-        '-',
-        ...code.slice(3).split('')
-    ];
+export async function sendEmailVerifyCode(code: string,  username: string, email: string) {
 
     const templateString = loadTemplate("verification-email.html")
 
@@ -34,9 +28,14 @@ export function sendEmailVerifyCode(code: string,  username: string, email: stri
     const html = template({ digits, username });
 
     try {
-        sendEmail(email, "Verify Con4 Account", html)
+        await getEmailQueue().add('sendVerificationEmail', {
+            to: email,
+            subject: "Verify Con4 Account",
+            html
+        });
     } catch {
-        throw new EmailSendError()
+        throw new EmailSendError();
     }
+
 
 }
