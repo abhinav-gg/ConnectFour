@@ -21,12 +21,6 @@ export const CompetitiveModes = new Set([
   ...sRankedArmageddonModes,
 ]);
 
-export const CasualModes = new Set([
-  GameMode.STANDARD_PUBLIC_CASUAL,
-  GameMode.STANDARD_ARMAGEDDON_PUBLIC_CASUAL,
-  GameMode.STANDARD_FRIENDLY,
-  GameMode.STANDARD_ARMAGEDDON_FRIENDLY,
-]);
 
 export const FriendlyModes = new Set([
   GameMode.STANDARD_FRIENDLY,
@@ -38,7 +32,15 @@ export const PublicStandardModes = new Set([
   GameMode.STANDARD_ARMAGEDDON_PUBLIC_CASUAL,
 ]);
 
+export const CasualModes = new Set([
+  ...FriendlyModes,
+  ...PublicStandardModes,
+]);
 
+export const StandardModes = new Set([
+  ...CompetitiveModes,
+  ...CasualModes,
+]);
 
 
 // CategoriseTime takes a time control object and returns the game category

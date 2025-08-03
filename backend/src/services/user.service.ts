@@ -13,11 +13,13 @@ const userDbOps = rdsDBOps.user;
 
 export const userService = {
 
-  async safeGetUserByID(uuid: UUID): Promise<UserProfile> {
-
+  async safeGetUserByID(uuid: UUID | null): Promise<UserProfile> {
+    if (!uuid) {
+      return { username: 'Anonymous' };
+    }
     const user = await userDbOps.getUserByID(uuid);
     if (!user) {
-      throw new Error('User not found');
+      return { username: 'Anonymous' };
     }
     return {
       username: user.username,

@@ -1,13 +1,22 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, MutableRefObject, forwardRef, useImperativeHandle } from "react"
 import { motion } from "framer-motion"
 import { Layout } from "./mainlayout"
 import Board from "../boards/Board"
 import { ScoreBar } from "../game/score-bar"
 import { PlayerInfo } from "../game/player-info"
 import { Timer } from "../game/timer"
-import { User2 } from "lucide-react"
+import { PlayerData } from "@shared/types/users"
+import { BoardHandle } from "../boards/Board"
+
+// Extend window interface for global refresh function
+declare global {
+  interface Window {
+    __gameLayoutRefresh?: () => void
+  }
+}
+
 
 interface GameBoardLayoutProps {
   children: React.ReactNode
@@ -20,49 +29,117 @@ interface GameBoardLayoutProps {
     ariaLabel?: string
   }
   // Controlled state props for game
-  player1Time: number
-  player2Time: number
+  player1Time?: number
+  player2Time?: number
   scoreRatio: number
   isGameRunning: boolean
+  lastMoveProp?: number | null
   // Callbacks to update parent state
-  onPlayer1TimeChange: (newSeconds: number) => void
-  onPlayer2TimeChange: (newSeconds: number) => void
-  onScoreRatioChange: (newRatio: number) => void
+  onPlayer1TimeChange?: (newSeconds: number) => void
+  onPlayer2TimeChange?: (newSeconds: number) => void
+  onScoreRatioChange?: (newRatio: number) => void
   onStartGame: () => void
   onPauseGame: () => void
   onResetGame: () => void
-  // Other display props
+  // Ref-based props for player data
+  meRef?: MutableRefObject<PlayerData | undefined>
+  opponentRef?: MutableRefObject<PlayerData | undefined>
+  isRedRef?: MutableRefObject<boolean>
+  lastMoveRef?: MutableRefObject<number | null>
+  rTimeRef?: MutableRefObject<[number, number]> // [player1Time, player2Time]
+  // Fallback display props
   player1Name?: string
   player2Name?: string
-  player1Icon?: React.ElementType
-  player2Icon?: React.ElementType
   player1Color?: "red" | "yellow"
   player2Color?: "red" | "yellow"
+  // Display options
+  displayScoreBar?: boolean
 }
 
-export function GameBoardLayout({
+export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   children,
   boardProps = {},
-  player1Time,
-  player2Time,
+  player1Time = 300000,
+  player2Time = 300000,
   scoreRatio,
   isGameRunning,
+  lastMoveProp,
+  onPlayer1TimeChange,
+  onPlayer2TimeChange,
+  onScoreRatioChange,
   onStartGame,
   onPauseGame,
   onResetGame,
-  player1Name = "OPPONENT",
-  player2Name = "MYSELF",
-  player1Icon = User2,
-  player2Icon = User2,
+  meRef,
+  opponentRef,
+  isRedRef,
+  lastMoveRef,
+  rTimeRef,
+  player1Name = "Opponent",
+  player2Name = "Player",
   player1Color = "yellow",
   player2Color = "red",
-}: GameBoardLayoutProps) {
+  displayScoreBar = false,
+}, ref) => {
   const defaultBoardProps = {
     interactive: true,
     animate_init: false,
     ariaLabel: "Connect 4 game board",
     ...boardProps,
   }
+
+  // Create a ref to the Board component
+  const boardRef = React.useRef<BoardHandle>(null)
+
+  // Expose board functions through the ref
+  useImperativeHandle(ref, () => ({
+    triggerMoveAnimation: (row: number, col: number, player: number) => {
+      if (boardRef.current) {
+        boardRef.current.triggerMoveAnimation(row, col, player)
+      }
+    },
+    setPremoveCell: (row: number, col: number, player: number) => {
+      if (boardRef.current) {
+        boardRef.current.setPremoveCell(row, col, player)
+      }
+    },
+    clearPremove: () => {
+      if (boardRef.current) {
+        boardRef.current.clearPremove()
+      }
+    },
+  }), [])
+
+  // Compute actual player data from refs with fallback values
+  // If isRedRef is true, me is red (player 2), opponent is yellow (player 1)
+  // If isRedRef is false, me is yellow (player 1), opponent is red (player 2)
+  const isRed = isRedRef?.current ?? true
+  
+  const actualPlayer1Name = (opponentRef?.current?.username || player1Name || "Opponent")
+  const actualPlayer2Name = (meRef?.current?.username || player2Name || "Player")
+  const actualPlayer1Pfp  = (opponentRef?.current?.pfp || undefined) 
+  const actualPlayer2Pfp  = (meRef?.current?.pfp || undefined)
+  
+  // Determine colors based on position and isRed
+  const actualPlayer1Color = isRed ? "yellow" : "red" // Top player color
+  const actualPlayer2Color = isRed ? "red" : "yellow" // Bottom player color
+
+  // Get time data from refs with fallback to props
+  const actualPlayer1Time = rTimeRef?.current?.[0] ?? player1Time ?? 300000
+  const actualPlayer2Time = rTimeRef?.current?.[1] ?? player2Time ?? 300000
+  const actualLastMove = lastMoveRef?.current ?? lastMoveProp ?? null
+
+
+  // Register global refresh function for external triggers
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__gameLayoutRefresh = () => {
+        console.log("🔄 Layout forced refresh triggered")
+        // Force a re-render by updating a dummy state
+        setIsDesktop(prev => prev)
+      }
+    }
+  }, [])
 
   // State to track current viewport for lazy loading
   const [isDesktop, setIsDesktop] = useState(false)
@@ -79,15 +156,15 @@ export function GameBoardLayout({
           onStartGame: onStartGame,
           onPauseGame: onPauseGame,
           onResetGame: onResetGame,
-          player1Time: player1Time,
-          player2Time: player2Time,
+          player1Time: actualPlayer1Time,
+          player2Time: actualPlayer2Time,
           scoreRatio: scoreRatio,
           isGameRunning: isGameRunning,
         })
       }
       return child
     })
-  }, [children, onStartGame, onPauseGame, onResetGame, player1Time, player2Time, scoreRatio, isGameRunning])
+  }, [children, onStartGame, onPauseGame, onResetGame, actualPlayer1Time, actualPlayer2Time, scoreRatio, isGameRunning])
 
   // Refs for the containers
   const desktopContainerRef = React.useRef<HTMLDivElement>(null)
@@ -97,7 +174,7 @@ export function GameBoardLayout({
   // Check viewport size and update state
   React.useEffect(() => {
     const checkViewport = () => {
-      setIsDesktop(window.innerWidth >= 1280) // xl breakpoint is 1280px
+      setIsDesktop(window.innerWidth >= 1024) // lg breakpoint is 1024px
     }
     
     checkViewport()
@@ -120,41 +197,43 @@ export function GameBoardLayout({
     <Layout>
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-screen-2xl mx-auto">
-          {/* Desktop Layout (xl breakpoint and above) */}
-          <div className="hidden xl:flex xl:items-start xl:gap-8 min-h-[90vh]">
+          {/* Desktop Layout (lg breakpoint and above) */}
+          <div className="hidden lg:flex lg:items-start lg:gap-8 min-h-[90vh]">
             {/* Left Section: Score Bar + Board Area - Fixed width based on viewport */}
             <div className="flex items-start">
               {/* Score Bar */}
               <div className="flex flex-col items-center justify-center px-4">
-                <ScoreBar scoreRatio={scoreRatio} className="w-6 h-[90vh]" />
+                <ScoreBar scoreRatio={scoreRatio} topRed={!isRed} className="w-6 h-[90vh]" display={displayScoreBar} />
               </div>
               
               {/* Board Section - Fixed aspect ratio */}
               <div className="flex flex-col justify-between py-8 ml-4" style={{ width: 'min(70vh, 60vw)', height: '90vh' }}>
                 {/* Player 1 Info and Timer (Top) */}
                 <div className="flex justify-between items-center w-full mb-4 flex-shrink-0">
-                  <PlayerInfo name={player1Name} icon={player1Icon} playerColor={player1Color} />
+                  <PlayerInfo name={actualPlayer1Name} playerColor={actualPlayer1Color} profilePicUrl={actualPlayer1Pfp} />
                   <Timer
-                    secondsLeft={player1Time}
+                    millisecondsLeft={actualPlayer1Time}
+                    lastMoveTimestamp={actualLastMove || undefined}
                     isRunning={isGameRunning}
-                    color={player1Color}
+                    color={actualPlayer1Color}
                   />
                 </div>
 
                 {/* Board - Perfect square, constrained by available height */}
                 <div className="flex-1 flex items-center justify-center min-h-0">
                   <div className="aspect-square h-full max-w-full">
-                    <Board {...defaultBoardProps} className="w-full h-full" />
+                    <Board {...defaultBoardProps} ref={boardRef} className="w-full h-full" />
                   </div>
                 </div>
 
                 {/* Player 2 Info and Timer (Bottom) */}
                 <div className="flex justify-between items-center w-full mt-4 flex-shrink-0">
-                  <PlayerInfo name={player2Name} icon={player2Icon} playerColor={player2Color} />
+                  <PlayerInfo name={actualPlayer2Name} playerColor={actualPlayer2Color} profilePicUrl={actualPlayer2Pfp} />
                   <Timer
-                    secondsLeft={player2Time}
+                    millisecondsLeft={actualPlayer2Time}
+                    lastMoveTimestamp={actualLastMove || undefined}
                     isRunning={isGameRunning}
-                    color={player2Color}
+                    color={actualPlayer2Color}
                   />
                 </div>
               </div>
@@ -163,7 +242,7 @@ export function GameBoardLayout({
             {/* Right Section: Side Component - Takes remaining space */}
             <div className="flex-1 min-w-0">
               <motion.div
-                className="bg-brand-secondary rounded-3xl p-8 xl:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col"
+                className="bg-brand-secondary rounded-3xl p-8 lg:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
@@ -173,38 +252,40 @@ export function GameBoardLayout({
             </div>
           </div>
 
-          {/* Mobile/Tablet Layout (xl:hidden) */}
-          <div className="xl:hidden w-full flex flex-col items-center">
+          {/* Mobile/Tablet Layout (lg:hidden) */}
+          <div className="lg:hidden w-full flex flex-col items-center">
             {/* Game Area */}
             <div className="flex-[3] flex min-h-0 w-full max-w-4xl">
               {/* Score Bar */}
               <div className="flex flex-col items-center justify-center px-2">
-                <ScoreBar scoreRatio={scoreRatio} className="w-4 h-[calc(75vh-8rem)]" />
+                <ScoreBar scoreRatio={scoreRatio} topRed={!isRed} className="w-4 h-[calc(75vh-8rem)]" display={displayScoreBar} />
               </div>
 
               {/* Board + Player Info */}
               <div className="flex-1 flex flex-col justify-between py-4 px-2 min-w-0">
                 <div className="flex justify-between items-center w-full flex-shrink-0">
-                  <PlayerInfo name={player1Name} icon={player1Icon} playerColor={player1Color} />
+                  <PlayerInfo name={actualPlayer1Name} playerColor={actualPlayer1Color} profilePicUrl={actualPlayer1Pfp} />
                   <Timer
-                    secondsLeft={player1Time}
+                    millisecondsLeft={actualPlayer1Time}
+                    lastMoveTimestamp={actualLastMove || undefined}
                     isRunning={isGameRunning}
-                    color={player1Color}
+                    color={actualPlayer1Color}
                   />
                 </div>
 
                 <div className="flex-1 flex items-center justify-center w-full py-2 min-h-0">
                   <div className="aspect-square w-full max-h-full">
-                    <Board {...defaultBoardProps} className="w-full h-full" />
+                    <Board {...defaultBoardProps} ref={boardRef} className="w-full h-full" />
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center w-full flex-shrink-0">
-                  <PlayerInfo name={player2Name} icon={player2Icon} playerColor={player2Color} />
+                  <PlayerInfo name={actualPlayer2Name} playerColor={actualPlayer2Color} profilePicUrl={actualPlayer2Pfp} />
                   <Timer
-                    secondsLeft={player2Time}
+                    millisecondsLeft={actualPlayer2Time}
+                    lastMoveTimestamp={actualLastMove || undefined}
                     isRunning={isGameRunning}
-                    color={player2Color}
+                    color={actualPlayer2Color}
                   />
                 </div>
               </div>
@@ -213,7 +294,7 @@ export function GameBoardLayout({
             {/* Side Component - Mobile */}
             <div className="flex-shrink-0 px-4 pb-4 w-full max-w-4xl">
               <motion.div
-                className="bg-brand-secondary rounded-3xl p-6 xl:p-8 shadow-2xl border border-brand-border/40 select-none flex flex-col mx-auto"
+                className="bg-brand-secondary rounded-3xl p-6 lg:p-8 shadow-2xl border border-brand-border/40 select-none flex flex-col mx-auto"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
@@ -231,4 +312,6 @@ export function GameBoardLayout({
       </div>
     </Layout>
   )
-}
+})
+
+GameBoardLayout.displayName = "GameBoardLayout"

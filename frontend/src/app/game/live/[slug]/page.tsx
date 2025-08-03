@@ -42,15 +42,17 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { GameBoardLayout } from "@/components/layouts/game-board-layout"
+import { BoardHandle } from "@/components/boards/Board"
 import { LiveGameWithAnalysis, LiveGameRef } from "@/components/game/LiveGameUI"
-import { ChatMessage } from "@/components/game/utility/chat"
+import { ChatMessage, StandardGameMove } from "@shared/types/Websocket"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
+import { StandardGameMetadata } from "@shared/types/Websocket"
+import { PlayerData } from "@shared/types/users"
 
 interface Move {
   column: number
   player: "red" | "yellow"
-  moveNumber: number
 }
 
 export default function LiveGamePage() {
@@ -62,16 +64,38 @@ export default function LiveGamePage() {
   const [shortcode, setShortcode] = useState<string>("")
   
   // Use the existing SocketIO hook
-  const { sendJson, connected, close, getLastJson } = useSocketContext()
+  const { sendJson, connected, close, getLastJson, onError, onPrefixedMessage } = useSocketContext()
 
-  const [player1Time, setPlayer1Time] = useState(300) // 5 minutes
-  const [player2Time, setPlayer2Time] = useState(300) // 5 minutes
+  // Use refs for data that gets updated by WebSocket events to avoid re-renders
+  const meRef = useRef<PlayerData>()
+  const opponentRef = useRef<PlayerData>()
+  const currentTurnRef = useRef(0)
+  const isRedRef = useRef(false)
+  const lMoveRef = useRef(0)
+  const pTimesRef = useRef<[number, number]>([0, 0])
+  const movesRef = useRef<Move[]>([])
+
   const [scoreRatio, setScoreRatio] = useState(0.5)
-  const [isGameRunning, setIsGameRunning] = useState(true) // Game is live
+  const [isGameRunning, setIsGameRunning] = useState(false) // Game is live
   
   // Analysis Control - Toggle this to hide/show analysis features
   const [showAnalysis, setShowAnalysis] = useState(false)
   const liveGameRef = useRef<LiveGameRef>(null) // Reference to LiveGameWithAnalysis for direct chat control
+  const gameBoardRef = useRef<BoardHandle>(null) // Reference to GameBoardLayout for board control
+
+  // Move navigation state
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0)
+  
+  // Add a state to force re-renders when refs change
+  const [forceUpdate, setForceUpdate] = useState(0)
+  
+  // Create a function to trigger re-renders
+  const triggerUpdate = () => {
+    setForceUpdate(prev => prev + 1)
+    console.log("🔄 DEBUG: Forced component re-render")
+  }
+
+  const [startSFX] = [useSound("/sounds/start.mp3")]
 
   // Chat and Move History State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -93,13 +117,6 @@ export default function LiveGamePage() {
     },
   ])
 
-  const [moves, setMoves] = useState<Move[]>([
-    { column: 4, player: "red", moveNumber: 1 },
-    { column: 4, player: "yellow", moveNumber: 2 },
-    { column: 3, player: "red", moveNumber: 3 },
-    { column: 5, player: "yellow", moveNumber: 4 },
-  ])
-
   // Handle slug parameter and join matchmaking
   useEffect(() => {
     if (!slug || slug.trim() === "") {
@@ -113,105 +130,147 @@ export default function LiveGamePage() {
     
     // Join matchmaking when socket is connected
     if (connected) {
-      sendJson( "/matchmaking/join", { shortcode: slug })
+      sendJson( "matchmaking:join", { shortcode: slug })
       console.log("📤 WEBSOCKET: Sent join matchmaking with shortcode:", slug)
     }
   }, [slug, router, connected, sendJson])
 
   // Listen for socket events
   useEffect(() => {
-    const lastMessage = getLastJson()
-    if (!lastMessage) return
+    if (!connected || !shortcode) return
 
-    // Handle different event types
-    switch (lastMessage.event) {
-      case "/matchmaking/joined":
-        console.log("✅ MATCHMAKING: Successfully joined with shortcode:", lastMessage.data?.shortcode)
-        break
-      
-      case "/game/move":
-        const moveData = lastMessage.data
-        if (moveData) {
-          const newMove: Move = {
-            column: moveData.column,
-            player: moveData.player,
-            moveNumber: moveData.moveNumber,
+    onPrefixedMessage("matchmaking", (event, data) => {
+      switch (event) {
+        case "failed":
+          console.error("📨 WEBSOCKET: Failed to join matchmaking")
+          router.push("/play/setup")
+          break
+        case "joined":
+          console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
+          // Handle successful join (e.g., update UI, start game)
+
+          if (shortcode !== data.shortcode) {
+            console.error("Shortcode mismatch in matchmaking data", shortcode, data.shortcode)
+            return // Don't process if shortcodes don't match
           }
-          setMoves(prev => [...prev, newMove])
-          console.log("📨 WEBSOCKET: Received move from opponent:", newMove)
+          
+          break
+        default:
+          console.warn(`📨 WEBSOCKET: Unhandled matchmaking event ${event} with data:`, data)
+      }
+    });
+
+    
+    onPrefixedMessage("game", (event, data) => {
+      switch (event) {
+
+        case "setup": {
+
+          const setupData = data as StandardGameMetadata
+
+          // start setting the props as needed:
+          meRef.current = setupData.me
+          opponentRef.current = setupData.opponent
+          isRedRef.current = setupData.iRed
+          lMoveRef.current = setupData.lTime
+          pTimesRef.current = setupData.rTimes
+          currentTurnRef.current = setupData.turn
+          // Debug: Log after setting refs
+          console.log("🐛 DEBUG: After setting refs:", JSON.stringify({
+            me: meRef.current,
+            opponent: opponentRef.current
+          }))
+
+          // IMPORTANT: Force re-render since refs don't cause re-renders
+          triggerUpdate()
+          
+          // Also trigger layout refresh if available
+          if ((window as any).__gameLayoutRefresh) {
+            (window as any).__gameLayoutRefresh()
+            console.log("🔄 DEBUG: Triggered layout refresh")
+          } else {
+            console.error("❌ DEBUG: Layout refresh function not available!")
+          }
+
+          // Handle setup data (e.g., update UI, initialize game state)
+          console.log("📨 WEBSOCKET: Received setup data:", JSON.stringify(setupData))
+
+          break;
         }
-        break
-      
-      case "/chat/message":
-        const chatData = lastMessage.data
-        if (chatData && liveGameRef.current) {
-          liveGameRef.current.addReceivedMessage(
-            chatData.message, 
-            chatData.username, 
-            "user", 
-            chatData.color || "red"
-          )
-          console.log("📨 WEBSOCKET: Received chat message:", chatData.message)
+        case "chat" : {
+          // Add the validated/censored message back to chat using the correct method
+          const validatedMessage = data as ChatMessage
+          if (liveGameRef.current) {
+            liveGameRef.current!.addChatMessage(validatedMessage.message, validatedMessage.username, validatedMessage.type, validatedMessage.color)
+            console.log("✅ CHAT: Added validated message via ref")
+          } else {
+            console.error("❌ CHAT: LiveGameRef not available to add message")
+          }
+          break;
         }
-        break
-    }
-  }, [getLastJson])
+        case "move": {
+          // Handle incoming move data
+          const moveData = data as StandardGameMove
+          console.log("📨 WEBSOCKET: Received move data:", JSON.stringify(moveData))
 
-  // Simulate WebSocket connection for demonstration
-  useEffect(() => {
+          // Update moves state with the new move
+          const playerColor = moveData.player === 1 ? "red" : "yellow"
+          movesRef.current = [...movesRef.current, { column: moveData.col, player: playerColor }]
+          lMoveRef.current = moveData.lMove
+          
+          // call game board reference triggerMoveAnimation
+          setIsGameRunning(true) // Ensure game is running to animate moves
+          if (gameBoardRef.current && gameBoardRef.current.triggerMoveAnimation) {
+            gameBoardRef.current.triggerMoveAnimation(moveData.row, moveData.col, moveData.player)
+            console.log("🎯 BOARD: Triggered move animation for column", moveData.col)
+          } else {
+            console.warn("⚠️ BOARD: GameBoardRef not available for move animation")
+          }
+          
+          // Update current turn
+          currentTurnRef.current = currentTurnRef.current + 1
+          
+          // Update last move timestamp
+          lMoveRef.current = moveData.lMove;
+          pTimesRef.current = moveData.rTimes;
+          // Update current move index to show latest move
+          setCurrentMoveIndex(movesRef.current.length)
 
-    // Simulate receiving a message from opponent after 5 seconds
-    const messageTimer = setTimeout(() => {
-      // Use the LiveGameUI ref to add messages directly to chat
-      if (liveGameRef.current) {
-        liveGameRef.current.addReceivedMessage("Nice move!", "Opponent", "user", "red")
-        console.log("📨 WEBSOCKET: Received message from opponent via ref: Nice move!")
+          // Force re-render and trigger UI refresh 
+          triggerUpdate()
+          
+          // Trigger UI refresh in case player timers changed
+          if ((window as any).__gameLayoutRefresh) {
+            (window as any).__gameLayoutRefresh()
+          }
+
+          break;
+        }
+
+        default:
+          console.warn(`📨 WEBSOCKET: Unhandled event ${event} with data:`, data)
+          break;
+
       }
-    }, 5000)
+    });
 
-    // Simulate receiving another message after 10 seconds
-    const systemMessageTimer = setTimeout(() => {
-      if (liveGameRef.current) {
-        liveGameRef.current.addSystemMessage("Game will end in 2 minutes", "Game Server")
-        console.log("📨 WEBSOCKET: Received system message via ref with custom username")
+    const handleCloseSocket = () => {
+      if (connected) {
+        sendJson("game:leave", {  })
       }
-    }, 10000)
+    };
 
-    // Simulate receiving another system message after 15 seconds with default username
-    const defaultSystemMessageTimer = setTimeout(() => {
-      if (liveGameRef.current) {
-        liveGameRef.current.addSystemMessage("Connection stable")
-        console.log("📨 WEBSOCKET: Received system message via ref with default username")
-      }
-    }, 15000)
+    window.addEventListener('pagehide', handleCloseSocket); // preferred
+    window.addEventListener('beforeunload', handleCloseSocket); // fallback for older browsers
 
-    // Simulate adding a chat message from external source after 20 seconds
-    const externalChatTimer = setTimeout(() => {
-      if (liveGameRef.current) {
-        liveGameRef.current.addChatMessage("Hello from external source!", "API Bot", "user", "yellow")
-        console.log("📨 WEBSOCKET: Added chat message from external source via ref")
-      }
-    }, 20000)
-
-    // Simulate receiving a move from opponent after 8 seconds
-    const moveTimer = setTimeout(() => {
-      const newMove: Move = {
-        column: 2,
-        player: "yellow",
-        moveNumber: moves.length + 1,
-      }
-      setMoves(prev => [...prev, newMove])
-      console.log("📨 WEBSOCKET: Received move from opponent:", newMove)
-    }, 8000)
-
+    
     return () => {
-      clearTimeout(messageTimer)
-      clearTimeout(systemMessageTimer)
-      clearTimeout(defaultSystemMessageTimer)
-      clearTimeout(externalChatTimer)
-      clearTimeout(moveTimer)
+      // Cleanup listeners on unmount
+      window.removeEventListener('pagehide', handleCloseSocket);
+      window.removeEventListener('beforeunload', handleCloseSocket);
+      // consider custom disonnect logic if needed
     }
-  }, [moves.length])
+  }, [connected, shortcode])
 
   const handleStartGame = () => {
     console.log("🎮 START GAME clicked")
@@ -225,12 +284,11 @@ export default function LiveGamePage() {
   
   const handleResetGame = () => {
     console.log("🔄 RESET GAME clicked")
-    setPlayer1Time(300)
-    setPlayer2Time(300)
     setScoreRatio(0.5)
     setIsGameRunning(false)
     setChatMessages([])
-    setMoves([])
+    movesRef.current = []
+    setCurrentMoveIndex(0)
     
     // Clear the chat using the ref
     if (liveGameRef.current) {
@@ -241,26 +299,16 @@ export default function LiveGamePage() {
 
   const handleColumnAttempt = (col: number) => {
     console.log(`🎯 COLUMN ATTEMPT: Player attempted move in column ${col}`)
-    
-    // Add new move to moves array
-    const newMove: Move = {
-      column: col,
-      player: moves.length % 2 === 0 ? "red" : "yellow",
-      moveNumber: moves.length + 1,
-    }
-    setMoves(prev => [...prev, newMove])
-    
+        
     // Send move via Socket if connected
     if (connected) {
-      sendJson("/game/move", { 
+      sendJson("game:move", { 
         shortcode, 
-        column: col, 
-        moveNumber: newMove.moveNumber,
-        player: newMove.player
+        move: col,
       })
-      console.log("📤 WEBSOCKET: Sending move to server:", newMove)
+      console.log("📤 WEBSOCKET: Sending move to server:", col)
     } else {
-      console.log("📤 WEBSOCKET: Not connected, move not sent:", newMove)
+      console.log("📤 WEBSOCKET: Not connected, move not sent:")
     }
   }
 
@@ -270,59 +318,41 @@ export default function LiveGamePage() {
     
     // Send message via Socket if connected
     if (connected) {
-      sendJson("/chat/message",
+      sendJson("game:chat",
         {
           shortcode,
-          message: message.message,
-          username: message.username,
-          color: message.color
-      })
+          message: message.message
+        })
       console.log("📤 WEBSOCKET: Sending message to server:", message.message)
     } else {
       console.log("📤 WEBSOCKET: Not connected, message not sent:", message.message)
-    }
-
-    // Simulate backend validation/censoring (in real app, this would be async)
-    let validatedMessage = { ...message }
-    
-    // Example: Simple profanity filter simulation
-    if (message.message.toLowerCase().includes('bad')) {
-      validatedMessage = {
-        ...message,
-        message: message.message.replace(/bad/gi, '***')
-      }
-      console.log("🚫 BACKEND: Message censored:", validatedMessage.message)
-    }
-
-    // Add the validated/censored message back to chat using the correct method
-    if (liveGameRef.current) {
-      // return;
-      liveGameRef.current!.addChatMessage(validatedMessage.message, validatedMessage.username, validatedMessage.type, validatedMessage.color)
-      console.log("✅ CHAT: Added validated message via ref")
-    } else {
-      console.error("❌ CHAT: LiveGameRef not available to add message")
     }
   }
 
   // Move History Event Handlers
   const handleMoveClick = (moveIndex: number) => {
     console.log(`📖 MOVE CLICKED: Move ${moveIndex + 1}`)
+    setCurrentMoveIndex(moveIndex)
   }
 
   const handleFirstMove = () => {
     console.log("⏮️ FIRST MOVE clicked")
+    setCurrentMoveIndex(0)
   }
 
   const handlePreviousMove = () => {
     console.log("⏪ PREVIOUS MOVE clicked")
+    setCurrentMoveIndex(Math.max(0, currentMoveIndex - 1))
   }
 
   const handleNextMove = () => {
     console.log("⏩ NEXT MOVE clicked")
+    setCurrentMoveIndex(Math.min(movesRef.current.length, currentMoveIndex + 1))
   }
 
   const handleLastMove = () => {
     console.log("⏭️ LAST MOVE clicked")
+    setCurrentMoveIndex(movesRef.current.length)
   }
 
   // Game Control Event Handlers
@@ -346,20 +376,23 @@ export default function LiveGamePage() {
 
   return (
     <GameBoardLayout
-      player1Name="Opponent"
-      player2Name="You"
-      player1Color="red"
-      player2Color="yellow"
-      player1Time={player1Time}
-      player2Time={player2Time}
+      ref={gameBoardRef}
+      meRef={meRef}
+      opponentRef={opponentRef}
+      isRedRef={isRedRef}
+      lastMoveRef={lMoveRef}
+      rTimeRef={pTimesRef}
+      player1Time={opponentRef.current?.time || 300000}
+      player2Time={meRef.current?.time || 300000}
+      lastMoveProp={lMoveRef.current}
       scoreRatio={scoreRatio}
       isGameRunning={isGameRunning}
+      onPlayer1TimeChange={() => {}} // No-op for now
+      onPlayer2TimeChange={() => {}} // No-op for now  
+      onScoreRatioChange={() => {}} // No-op for now
       onStartGame={handleStartGame}
       onPauseGame={handlePauseGame}
       onResetGame={handleResetGame}
-      onPlayer1TimeChange={setPlayer1Time}
-      onPlayer2TimeChange={setPlayer2Time}
-      onScoreRatioChange={setScoreRatio}
       boardProps={{
         interactive: true,
         animate_init: false,
@@ -371,8 +404,10 @@ export default function LiveGamePage() {
         key="unique-livegame-instance" // FIXED: Ensure only one instance across desktop/mobile layouts
         ref={liveGameRef}
         initialChatMessages={chatMessages}
-        moves={moves}
-        currentUser="You"
+        movesRef={movesRef}
+        meRef={meRef}
+        totalMoveCount={movesRef.current.length}
+        currentMoveIndex={currentMoveIndex}
         onMessageSent={handleMessageSent}
         onMoveClick={handleMoveClick}
         onFirstMove={handleFirstMove}

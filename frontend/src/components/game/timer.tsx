@@ -6,40 +6,48 @@ import { Clock } from "lucide-react"
 import { cn } from "@/utils/cn"
 
 interface TimerProps {
-  secondsLeft: number
+  millisecondsLeft: number
   isRunning: boolean
   color?: "red" | "yellow"
-  onTimeChange?: (newSeconds: number) => void
+  lastMoveTimestamp?: number // Unix timestamp of the last move
+  onTimeChange?: (newMilliseconds: number) => void
   onTimeUp?: () => void
 }
 
 export function Timer({
-  secondsLeft,
+  millisecondsLeft,
   isRunning,
   color = "yellow",
+  lastMoveTimestamp,
   onTimeChange,
   onTimeUp,
 }: TimerProps) {
-  const [displayMilliseconds, setDisplayMilliseconds] = useState(secondsLeft * 1000)
-  const totalTimeRef = useRef(secondsLeft * 1000)
-  const startTimeRef = useRef<number | null>(null)
+  const [displayMilliseconds, setDisplayMilliseconds] = useState(millisecondsLeft)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const lastReportedSecondRef = useRef(secondsLeft)
+  const lastReportedMillisecondsRef = useRef(millisecondsLeft)
+
+  // Calculate accurate remaining time based on last move timestamp
+  const calculateRemainingTime = (): number => {
+    if (!lastMoveTimestamp || !isRunning) {
+      return millisecondsLeft
+    }
+
+    const currentTime = Date.now()
+    const timeSinceLastMove = currentTime - lastMoveTimestamp
+    const remaining = millisecondsLeft - timeSinceLastMove
+
+    return Math.max(0, remaining)
+  }
 
   // Initialize or resume the timer
   useEffect(() => {
     if (isRunning) {
-      // If resuming, calculate based on current displayMilliseconds
-      totalTimeRef.current = displayMilliseconds
-      startTimeRef.current = Date.now()
-
       intervalRef.current = setInterval(tick, 10)
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
-      startTimeRef.current = null
     }
 
     return () => {
@@ -48,36 +56,29 @@ export function Timer({
         intervalRef.current = null
       }
     }
-  }, [isRunning])
+  }, [isRunning, lastMoveTimestamp])
 
-  // If `secondsLeft` prop changes externally, reflect that
+  // Update display when props change
   useEffect(() => {
-    if (!isRunning) {
-      setDisplayMilliseconds(secondsLeft * 1000)
-      totalTimeRef.current = secondsLeft * 1000
-      lastReportedSecondRef.current = secondsLeft
-    }
-  }, [secondsLeft])
+    const remaining = calculateRemainingTime()
+    setDisplayMilliseconds(remaining)
+    lastReportedMillisecondsRef.current = remaining
+  }, [millisecondsLeft, lastMoveTimestamp, isRunning])
 
   const tick = () => {
-    if (startTimeRef.current === null) return
+    const remaining = calculateRemainingTime()
+    setDisplayMilliseconds(remaining)
 
-    const elapsed = Date.now() - startTimeRef.current
-    const remaining = totalTimeRef.current - elapsed
-
-    const clamped = Math.max(0, remaining)
-    setDisplayMilliseconds(clamped)
-
-    const currentSeconds = Math.floor(clamped / 1000)
-    if (onTimeChange && currentSeconds !== lastReportedSecondRef.current) {
-      onTimeChange(currentSeconds)
-      lastReportedSecondRef.current = currentSeconds
+    // Report changes to parent
+    if (onTimeChange && remaining !== lastReportedMillisecondsRef.current) {
+      onTimeChange(remaining)
+      lastReportedMillisecondsRef.current = remaining
     }
 
-    if (clamped <= 0) {
+    // Check if time is up
+    if (remaining <= 0) {
       clearInterval(intervalRef.current!)
       intervalRef.current = null
-      startTimeRef.current = null
       onTimeUp?.()
     }
   }

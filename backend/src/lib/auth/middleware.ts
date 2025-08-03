@@ -3,11 +3,40 @@ import { NextFunction, Request, Response } from 'express';
 import { myConfig } from '@config/env';
 import { PlayerIdentity } from '@/types/custom';
 import { authService } from '@/services/auth.service';
+import { Socket } from 'socket.io';
 
 
 export interface AuthenticatedRequest extends Request {
-  user?: { userId: string | null; };
+  identity?: PlayerIdentity;
 }
+
+/**
+ * Helper function to get user UUID from request, throwing error if anonymous
+ * @param req AuthenticatedRequest
+ * @returns user UUID
+ * @throws Error if user is anonymous or not authenticated
+ */
+export const requireReqUserUUID = (req: AuthenticatedRequest): string => {
+  if (!req.identity?.user) {
+    throw new Error('User authentication required');
+  }
+  return req.identity.user;
+};
+
+/**
+ * Helper function to get any player ID (user or anonymous) from request
+ * @param req AuthenticatedRequest  
+ * @returns user UUID or anonymous UUID
+ * @throws Error if not authenticated
+ */
+export const getReqPlayerUUID = (req: AuthenticatedRequest): string => {
+  const playerId = req.identity?.user || req.identity?.anon;
+  if (!playerId) {
+    throw new Error('Authentication required');
+  }
+  return playerId;
+};
+
 
 /** ANONYMOUS OR NONE
  * Middleware to ensure user is NOT logged in
@@ -30,6 +59,7 @@ export const requireUnauthenticated = async (req: AuthenticatedRequest, res: Res
   }
 
   if (id.anon) {
+    req.identity = id;
     return next()
   } else if (id.user) {
     res.status(401).json({ error: 'User is signed in' });
@@ -61,10 +91,10 @@ export const authenticateSession = async (req: AuthenticatedRequest, res: Respon
   }
   
   if (id.anon) {
-    req.user = {userId: id.anon}
+    req.identity = id;
     return next();
   } else if (id.user) {
-    req.user = {userId: id.user}
+    req.identity = id;
     return next();
   } // bots can't login
   else {
@@ -95,6 +125,7 @@ export const requireSignedIn = async (req: AuthenticatedRequest, res: Response, 
     res.status(401).json({ error: 'User is anonymous still' });
     return;
   } else if (id.user) {
+    req.identity = id;
     next()
   }
   else {
@@ -124,10 +155,10 @@ export const optionalAuth = async (req: AuthenticatedRequest, res: Response, nex
   }
   
   if (id.anon) {
-    req.user = {userId: id.anon}
+    req.identity = id;
     return next()
   } else if (id.user) {
-    req.user = {userId: id.user}
+    req.identity = id;
     return next()
   }
   else {
@@ -138,14 +169,10 @@ export const optionalAuth = async (req: AuthenticatedRequest, res: Response, nex
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  const userId = req.user?.userId;
-  console.log('User ID:', userId, req);
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-
   try {
+    const userId = requireReqUserUUID(req);
+    console.log('User ID:', userId, req);
+
     // Check the user with tag "Admin"
     if (!(await authService.checkAdministrator(userId))) {
       res.status(404); // just pretend the page doesn't exist
@@ -155,7 +182,7 @@ export const authenticateAdmin = async (req: AuthenticatedRequest, res: Response
     next();
   } catch (error) {
     console.error('Failed to fetch user profile:', error);
-    next(error);
+    res.status(404); // pretend the endpoint doesn't exist
   }
 };
 

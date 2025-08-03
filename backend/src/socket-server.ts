@@ -2,7 +2,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { myConfig } from '@config/env';
-import { verifySocket } from '@/lib/game.middleware';
+import { verifySocket, sendSocketUserToGame } from '@/lib/game.middleware';
 import { initSocketIO } from '@/controllers/socket/index'
 import { handleDisconnect, registerSocketHandler } from '@/controllers/socket/handlers'
 import { bootstrap } from './bootstrap';
@@ -18,6 +18,7 @@ const server = createServer(express());
 const io = initSocketIO(server)
 
 io.use(verifySocket);
+io.use(sendSocketUserToGame);
 
 // Handle connections
 io.on('connection', (socket) => {
@@ -25,17 +26,34 @@ io.on('connection', (socket) => {
   
 
   // Add more handlers here
-  // registerSocketHandler.game(socket);
-  // registerSocketHandler.matchmaking(socket);
-  // registerSocketHandler.reg(socket);
+  registerSocketHandler.game(socket);
+  registerSocketHandler.matchmaking(socket);
+
+
+  socket.on('auth:me', async () => {
+
+    verifySocket(socket, async (err) => {
+      if (err) {
+        console.error('Socket authentication failed:', err);
+        socket.disconnect(true);
+        return;
+      }
+    });
+
+    // send response for the user to re-ping the api....
+
+  });
+
 
   // Listen for the ping event from the client
   socket.on("ping", () => {
     console.log(`Received ping from ${socket.id}`);
     
     // You can respond with a pong if you want
-    socket.emit("pong", { time: new Date().toISOString() });
+    socket.emit("message", { time: new Date().toISOString() });
   });
+
+
 });
 
 io.on('disconnect', async (socket) => {

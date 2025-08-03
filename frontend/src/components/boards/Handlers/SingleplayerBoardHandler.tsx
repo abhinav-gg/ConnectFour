@@ -11,12 +11,25 @@ export default function SingleplayerBoardHandler() {
   console.log("REFRESH", game.current)
 
   const handleAttemptMove = (col: number) => {
-    const result = game.current.makeMove(col);
-    if (result.success) {
-      const player = game.current.currentPlayer === 0 ? 1 : 0
-      boardRef.current?.triggerMoveAnimation(result.row, col, player);
-      console.log(result.row, col, player)
-      setGameOver(game.current.gameOver); // <-- This triggers a re-render!
+    boardRef.current?.clearPremove();
+    const colMax = game.current.getAvailableRow(col);
+    if (colMax === -1) {
+      console.warn("Column is full, cannot make move");
+      return;
+    }
+    // 50% change to make a premove instead 
+    const doPremove = Math.random() < 0.5;
+    if (doPremove) {
+      boardRef.current?.setPremoveCell(colMax, col, game.current.currentPlayer);
+    } else {
+
+      const result = game.current.makeMove(col);
+      if (result.success) {
+        const player = game.current.currentPlayer === 0 ? 1 : 0
+        boardRef.current?.triggerMoveAnimation(result.row, col, player);
+        console.log(result.row, col, player)
+        setGameOver(game.current.gameOver); // <-- This triggers a re-render!
+      }
     }
   };
 

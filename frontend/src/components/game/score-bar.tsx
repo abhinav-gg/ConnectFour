@@ -7,11 +7,13 @@ interface ScoreBarProps {
   scoreRatio: number // 0 (all red) to 1 (all yellow), controlled by parent
   className?: string
   topRed?: boolean // if true, red is on top; if false, red is on bottom
+  display?: boolean // if false, the score bar won't be displayed, but still maintains its space
 }
 
-export function ScoreBar({ scoreRatio, className, topRed = true }: ScoreBarProps) {
+export function ScoreBar({ scoreRatio, className, topRed = true, display = true }: ScoreBarProps) {
   const animatedScoreRatio = useMotionValue(scoreRatio)
   const yellowHeight = useTransform(animatedScoreRatio, (ratio) => `${ratio * 100}%`)
+  const redHeight = useTransform(animatedScoreRatio, (ratio) => `${(1 - ratio) * 100}%`)
 
   // Animate the motion value whenever the scoreRatio prop changes
   useEffect(() => {
@@ -23,6 +25,7 @@ export function ScoreBar({ scoreRatio, className, topRed = true }: ScoreBarProps
   const containerClass = cn(
     "relative w-6 h-full rounded-full overflow-hidden",
     topRed ? "flex flex-col-reverse bg-brand-accent-red" : "flex flex-col-reverse bg-brand-accent-yellow",
+    !display && "opacity-0", // Make invisible but keep the space
     className
   )
 
@@ -36,7 +39,7 @@ export function ScoreBar({ scoreRatio, className, topRed = true }: ScoreBarProps
       ) : (
         <motion.div
           className="absolute bottom-0 left-0 w-full bg-brand-accent-red rounded-b-full"
-          style={{ height: useTransform(animatedScoreRatio, (ratio) => `${(1 - ratio) * 100}%`) }}
+          style={{ height: redHeight }}
         />
       )}
     </div>

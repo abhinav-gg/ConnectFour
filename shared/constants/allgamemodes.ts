@@ -1,5 +1,5 @@
 
-export const StandardGameMode = {
+export const AllGameModes = {
   ERROR: 0,
   STANDARD_PUBLIC_CASUAL: 1,
   STANDARD_ARMAGEDDON_PUBLIC_CASUAL: 2,
@@ -18,7 +18,7 @@ export const StandardGameMode = {
 
 
 export const GameMode = {
-  ...StandardGameMode,
+  ...AllGameModes,
 } satisfies Record<string, number>;
 
 export type GameMode = number;

@@ -2,6 +2,12 @@
 import { Socket } from 'socket.io';
 import { withNamespace } from '../handlers';
 import { redisOps } from '@/redis/ops';
+import { gameService } from '@/services/game.service';
+import { getIdentity } from '@/utils/validation';
+import { getIdentityFromSocket } from '@/lib/game.middleware';
+import { RoomSchema } from '../socketRoomSchema';
+import { liveGameService } from '@/services/livegame.service';
+import { GameContext } from '@/utils/gameContext';
 
 // Register matchmaking handlers
 export function registerMatchmakingHandlers(soc: Socket) {
@@ -11,8 +17,56 @@ export function registerMatchmakingHandlers(soc: Socket) {
   socket.on('join', async (data) => {
     try {
       console.log('User joined matchmaking:', data);
-      // TODO: Implement join matchmaking logic
-      socket.emit('matchmaking_started', { message: 'Looking for opponents...' });
+      const identity = getIdentityFromSocket(socket);
+      if (!identity) {
+        throw new Error('User identity is required to join matchmaking');
+      }
+      
+      const shortCode = data.shortcode;
+      if (!shortCode) {
+        throw new Error('Short code is required to join matchmaking');
+      }
+
+      // Create fresh GameContext at socket level
+      const gameContext = await GameContext.fromShortcode(identity, shortCode);
+      const response = await gameService.tryJoinGameWithContext(gameContext);
+      
+      console.log('Matchmaking response:', response);
+      if (response.status === 404) {
+        socket.emit('failed');
+        return;
+      }
+      socket.join(RoomSchema.game.key(shortCode));
+      socket.emit('joined', { message: 'Looking for opponents...', shortcode: shortCode });
+
+      if (response.status == 100) {
+        await gameService.StartStandardGame(response.message);
+      }
+      
+
+    } catch (error) {
+      console.error('Error joining matchmaking:', error);
+      socket.emit('error', { message: 'Failed to join matchmaking' });
+    }
+  });
+  
+  
+  
+  socket.on('spectate', async (data) => {
+    try {
+      console.log('User joined spectate:', data);
+            
+      const shortCode = data.shortcode;
+      if (!shortCode) {
+        throw new Error('Short code is required to join matchmaking');
+      }
+
+      
+      
+      socket.join(RoomSchema.game.key(shortCode));
+      socket.emit('joined', { message: 'Looking for opponents...', shortcode: shortCode });
+      
+
     } catch (error) {
       console.error('Error joining matchmaking:', error);
       socket.emit('error', { message: 'Failed to join matchmaking' });
@@ -26,7 +80,7 @@ export function registerMatchmakingHandlers(soc: Socket) {
 
       const r = await redisOps()
       await r.game.leaveUserQueue(socket.data.userId);
-      
+
     } catch (error) {
       
       console.error('Error leaving matchmaking:', error);

@@ -5,8 +5,11 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AnalysisHeader } from "@/components/game/utility/analysis-header"
 import { ColumnAnalysis } from "@/components/game/utility/column-analysis"
 import { MoveHistory } from "@/components/game/utility//move-history"
-import GameChat, { ChatMessage, ChatRef } from "@/components/game/utility/chat"
+import GameChat, { ChatRef } from "@/components/game/utility/chat"
+import { ChatMessage } from "@shared/types/Websocket"
 import { GameControls } from "@/components/game/utility/game-controls"
+import { GameActions } from "@/components/game/utility/game-actions"
+import { PlayerData } from "@shared/types/users"
 
 export interface LiveGameRef {
   addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
@@ -18,7 +21,7 @@ export interface LiveGameRef {
 interface Move {
   column: number
   player: "red" | "yellow"
-  moveNumber: number
+  moveNumber?: number
 }
 
 interface LiveGameWithAnalysisProps {
@@ -35,7 +38,11 @@ interface LiveGameWithAnalysisProps {
   // Chat and Move History Props
   initialChatMessages?: ChatMessage[]
   moves?: Move[]
+  movesRef?: React.MutableRefObject<Move[]>
+  meRef?: React.MutableRefObject<PlayerData | undefined>
   currentUser?: string
+  totalMoveCount?: number
+  currentMoveIndex?: number
   
   // Event Handlers
   onMessageSent?: (message: ChatMessage) => void
@@ -56,8 +63,12 @@ interface LiveGameWithAnalysisProps {
 export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>((props, ref) => {
   const {
     initialChatMessages = [], // Default to empty array here instead of in JSX
-    moves,
+    moves = [],
+    movesRef,
+    meRef,
     currentUser = "You",
+    totalMoveCount = 0,
+    currentMoveIndex: propCurrentMoveIndex = 0,
     onMessageSent,
     onMoveClick,
     onFirstMove,
@@ -71,12 +82,21 @@ export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysis
     showAnalysisFeatures = true, // Default to true for backward compatibility
   } = props
 
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(0)
-  const [maxMoves] = useState(moves?.length || 16) // Use actual moves length or default
   const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
   const chatRef = useRef<ChatRef>(null)
-  const [chatUid] = useState(() => `chat-uid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-  console.log("🆔 GameChat: Component mounted with UID:", chatUid)
+  
+  // Use refs for dynamic data or fallback to props
+  const actualMoves = movesRef?.current || moves
+  const actualCurrentUser = meRef?.current?.username || currentUser
+  const actualTotalMoveCount = movesRef ? movesRef.current.length : totalMoveCount
+  
+  // Transform moves to include moveNumber for MoveHistory component
+  const movesWithNumbers = actualMoves.map((move, index) => ({
+    ...move,
+    moveNumber: move.moveNumber || index + 1
+  }))
+  
+  // const [chatUid] = useState(() => `chat-uid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
 
   const handleMessageSent = (message: ChatMessage) => {
@@ -86,27 +106,7 @@ export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysis
 
   useEffect(() => {
     
-    if (!chatRef.current) {
-      // chatRef.current = {
-      //   addChatMessage: (message, username, type, color) => {
-      //     console.log("Adding chat message:", message, username, type, color)
-      //     chatRef.current?.sendMessage(message, username, type, color)
-      //   },
-      //   addSystemMessage: (message, username) => {
-      //     console.log("Adding system message:", message, username)
-      //     chatRef.current?.addSystemMessage(message, username)
-      //   },
-      //   addReceivedMessage: (message, username, type, color) => {
-      //     console.log("Adding received message:", message, username, type, color)
-      //     chatRef.current?.addReceivedMessage(message, username, type, color)
-      //   },
-      //   clearMessages: () => {
-      //     console.log("Clearing chat messages")
-      //     chatRef.current?.clearMessages()
-      //   }
-      // }
-      console.error("❌ CHAT: chatRef.current is not initialized")
-    }
+    
   }, []);
 
   // Expose chat functions to parent component
@@ -124,28 +124,6 @@ export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysis
       chatRef.current?.clearMessages()
     }
   }), [])
-
-  const handleFirstMove = () => {
-    setCurrentMoveIndex(0)
-    onFirstMove?.()
-  }
-  
-  const handlePreviousMove = () => {
-    const newIndex = Math.max(0, currentMoveIndex - 1)
-    setCurrentMoveIndex(newIndex)
-    onPreviousMove?.()
-  }
-  
-  const handleNextMove = () => {
-    const newIndex = Math.min(maxMoves - 1, currentMoveIndex + 1)
-    setCurrentMoveIndex(newIndex)
-    onNextMove?.()
-  }
-  
-  const handleLastMove = () => {
-    setCurrentMoveIndex(maxMoves - 1)
-    onLastMove?.()
-  }
 
   const handleResign = () => {
     console.log("Player resigned")
@@ -206,7 +184,7 @@ export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysis
 
       {/* Move History - Fixed Height */}
       <div className="flex-shrink-0 h-[220px]">
-        <MoveHistory moves={moves} onMoveClick={handleMoveClick} />
+        <MoveHistory moves={movesWithNumbers} onMoveClick={onMoveClick} />
       </div>
 
       {/* Chat Section - Takes remaining space with fixed height */}
@@ -214,22 +192,24 @@ export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysis
         <GameChat 
           ref={chatRef}
           initialMessages={initialChatMessages}
-          onMessageSent={handleMessageSent} 
-          currentUser={currentUser} 
+          onMessageSent={handleMessageSent}
+          currentUser={actualCurrentUser} 
         />
       </div>
 
       {/* Game Controls - Fixed Height */}
-      <div className="flex-shrink-0 mt-4">
-        <GameControls
-          onFirstMove={handleFirstMove}
-          onPreviousMove={handlePreviousMove}
-          onNextMove={handleNextMove}
-          onLastMove={handleLastMove}
+      <div className="flex-shrink-0 mt-4 space-y-4">
+        <GameActions
           onResign={handleResign}
           onOfferDraw={handleOfferDraw}
-          canGoBack={currentMoveIndex > 0}
-          canGoForward={currentMoveIndex < maxMoves - 1}
+        />
+        <GameControls
+          onFirstMove={onFirstMove}
+          onPreviousMove={onPreviousMove}
+          onNextMove={onNextMove}
+          onLastMove={onLastMove}
+          totalMoveCount={actualTotalMoveCount}
+          currentMoveIndex={propCurrentMoveIndex}
         />
       </div>
     </div>

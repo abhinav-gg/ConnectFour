@@ -3,6 +3,7 @@ import { io, Socket } from "socket.io-client";
 
 interface UseSocketIoOptions {
   onMessage?: (data: any) => void;
+  onPrefixedMessage?: (event: string, data: any) => void;
   onConnect?: () => void;
   onDisconnect?: (reason: string) => void;
   onError?: (error: Error) => void;
@@ -10,6 +11,9 @@ interface UseSocketIoOptions {
 }
 
 interface UseSocketIoResult {
+  onMessage: (callback: (data: any) => void) => void;
+  onPrefixedMessage: (prefix: string, callback: (event: string, data: any) => void) => void;
+  onError: (callback: (error: Error) => void) => void;
   sendJson: (event: string, data: object) => void;
   connected: boolean;
   close: () => void;
@@ -21,11 +25,12 @@ function useSocketIo(
   options: UseSocketIoOptions = {}
 ): UseSocketIoResult {
   const {
-    onMessage,
+    onMessage: initialOnMessage,
+    onPrefixedMessage: initialOnPrefixedMessage,
     onConnect,
     onDisconnect,
-    onError,
-    heartbeatInterval = 60000,
+    onError: initialOnError,
+    heartbeatInterval = 6000,
   } = options;
 
   const [hasMounted, setHasMounted] = useState(false);
@@ -33,6 +38,11 @@ function useSocketIo(
   const lastJsonRef = useRef<any | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [connected, setConnected] = useState(false);
+  
+  // Callback refs for dynamic event handling
+  const onMessageCallbackRef = useRef<((data: any) => void) | null>(initialOnMessage || null);
+  const onPrefixedMessageCallbacksRef = useRef<Map<string, (event: string, data: any) => void>>(new Map());
+  const onErrorCallbackRef = useRef<((error: Error) => void) | null>(initialOnError || null);
 
   useEffect(() => {
     setHasMounted(true);
@@ -80,7 +90,22 @@ function useSocketIo(
 
     socket.on("message", (data) => {
       lastJsonRef.current = data;
-      onMessage?.(data);
+      onMessageCallbackRef.current?.(data);
+    });
+
+    // Listen to all events for prefixed message handling
+    socket.onAny((event, data) => {
+      if (event !== "message" && event !== "connect" && event !== "disconnect" && event !== "error") {
+        lastJsonRef.current = { event, data };
+        
+        // Check all registered prefixes
+        onPrefixedMessageCallbacksRef.current.forEach((callback, prefix) => {
+          if (event.startsWith(prefix)) {
+            const eventWithoutPrefix = event.slice(prefix.length + 1); // +1 to remove the colon
+            callback(eventWithoutPrefix, data);
+          }
+        });
+      }
     });
 
     socket.on('reconnect_attempt', (attempt) => {
@@ -96,9 +121,9 @@ function useSocketIo(
     });
 
     socket.on("error", (err) => {
-      onError?.(err);
+      onErrorCallbackRef.current?.(err);
     });
-  }, [url, onConnect, onDisconnect, onMessage, onError, startHeartbeat, stopHeartbeat]);
+  }, [url, onConnect, onDisconnect, startHeartbeat, stopHeartbeat]);
 
   useEffect(() => {
     if (!hasMounted) return;
@@ -126,7 +151,28 @@ function useSocketIo(
 
   const getLastJson = useCallback(() => lastJsonRef.current, []);
 
-  return { sendJson, connected, close, getLastJson };
+  // Callback registration functions
+  const registerOnMessage = useCallback((callback: (data: any) => void) => {
+    onMessageCallbackRef.current = callback;
+  }, []);
+
+  const registerOnPrefixedMessage = useCallback((prefix: string, callback: (event: string, data: any) => void) => {
+    onPrefixedMessageCallbacksRef.current.set(prefix, callback);
+  }, []);
+
+  const registerOnError = useCallback((callback: (error: Error) => void) => {
+    onErrorCallbackRef.current = callback;
+  }, []);
+
+  return { 
+    onMessage: registerOnMessage,
+    onPrefixedMessage: registerOnPrefixedMessage,
+    onError: registerOnError,
+    sendJson, 
+    connected, 
+    close, 
+    getLastJson 
+  };
 }
 
 export default useSocketIo;

@@ -6,15 +6,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AnimatePresence, motion } from "framer-motion"
 import { Send, ChevronDown } from "lucide-react"
+import { ChatMessage } from "@shared/types/Websocket"
 
-export interface ChatMessage {
-  id: string
-  username: string
-  message: string
-  type: "user" | "system" | "game"
-  color: "red" | "yellow" | "white"
-  timestamp: Date
-  uid?: string // Added UID property for unique identification
+const quickMessages = ["HI", "GL", "GG", "GTG"]
+
+function expandShortMessage(msg: string): string {
+  switch (msg.toUpperCase()) {
+    case "HI":
+      return "Hello!";
+    case "GL":
+      return "Good Luck!";
+    case "GG":
+      return "Good Game!";
+    case "GTG":
+      return "Got To Go!";
+    default:
+      return msg; // Return original message if no expansion
+  }
 }
 
 export interface ChatRef {
@@ -99,7 +107,6 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
       type,
       color,
       timestamp: new Date(),
-      uid,
     };
 
     console.log("📨 WEBSOCKET: Received message with UID ----------------------->:", uid, newMessage);
@@ -165,7 +172,7 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
         color,
         timestamp: new Date(),
       }
-      console.log("📨 WEBSOCKET: Received message via ref ----------------------->:", newMessage)
+
       setChatMessages(prev => {
         const newMessages = [...prev, newMessage]
         return newMessages.length > maxMessages ? newMessages.slice(-maxMessages) : newMessages
@@ -220,13 +227,10 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
         username: currentUser,
         message: inputMessage.trim(),
         type: "user",
-        color: "yellow",
         timestamp: new Date(),
       }
-
-      // ONLY notify parent for validation/server sending - DON'T add to state here
-      onMessageSent?.(newMessage)
       
+      onMessageSent?.(newMessage)
       setInputMessage("")
     }
   }
@@ -247,8 +251,6 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
         return "text-white"
     }
   }
-
-  const quickMessages = ["HI", "GL", "GG", "GTG"]
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -330,9 +332,8 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
               const newMessage: ChatMessage = {
                 id: generateMessageId(),
                 username: currentUser,
-                message: msg,
+                message: expandShortMessage(msg),
                 type: "user",
-                color: "yellow",
                 timestamp: new Date(),
               }
 

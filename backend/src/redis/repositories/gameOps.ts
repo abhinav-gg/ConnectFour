@@ -68,7 +68,8 @@ export function GameOperations(redis: Redis) {
 
     async addGameMove(gameId: string, move: Move, ttl?: number): Promise<void> {
       const key = genRedisGameMove(gameId);
-      await redis.rpush(key, move, 'EX', ttl || RedisSchema.game.ttl);
+      await redis.rpush(key, move);
+      await redis.expire(key, ttl || RedisSchema.game.ttl);
     },  
 
     async getGameMoves(gameId: string): Promise<Move[]> {
@@ -79,20 +80,18 @@ export function GameOperations(redis: Redis) {
 
     async setInitGameMoves(gameId: string, ttl?: number): Promise<void> {
       const key = genRedisGameMove(gameId);
-      await redisJson.set(key, [], '$');
-      await redis.expire(key, ttl || RedisSchema.game.ttl);
+      await redis.del(key); // Remove any existing moves list
     },
 
     ///////////////////////////////////
 
     async getGameMetadata(gameId: string): Promise<GameMetadata | null> {
       const key = genRedisGameMeta(gameId)
-      const rawJson = await redis.get(key);
-      if (!rawJson) return null;
+      const rawJson = await redisJson.get(key);
+      if (!rawJson || !Array.isArray(rawJson) || rawJson.length !== 1) return null;
 
       try {
-        const parsed = JSON.parse(rawJson);
-        return RedisSchema.game.metadata.schema.parse(parsed);
+        return RedisSchema.game.metadata.schema.parse(rawJson[0]);
       } catch (err) {
         console.error('Invalid data in Redis:', err);
         return null; // or throw, depending on your design
@@ -117,14 +116,19 @@ export function GameOperations(redis: Redis) {
 
     async addUserToGameMetadata(gameId: string, userId: string): Promise<void> {
       const key = genRedisGameMeta(gameId);
-      await redis.call('JSON.ARRAPPEND', key, '$.players', userId);
+      await redisJson.arrappend(key, '$.players', userId);
     },
 
     async updateGameMetadataState(gameId: string, newState: number): Promise<void> {
       const key = genRedisGameMeta(gameId);
-      await redis.call('JSON.SET', key, '$.state', newState);
+      await redisJson.set(key, '$.state', newState);
     },
 
+
+    async cancelGameDrawOffer(gameId: string): Promise<void> {
+      const key = genRedisGameMeta(gameId);
+      await redisJson.set(key, '$.drawOffer', [false, false]);
+    },
 
 
     ///////////////////////////////////////////////////////////////////////
@@ -149,8 +153,9 @@ export function GameOperations(redis: Redis) {
         cTurn: 0,
         mTimes: [],
         rTimes: [],
-        lMost: null
-      }));
+        lMove: null,
+        draws: [],
+      } as GameTimedata));
     },
 
 
@@ -180,19 +185,15 @@ export function GameOperations(redis: Redis) {
 
     
     async findGameByShortcode(shortcode: string): Promise<string | null> {
-      const result = await redis.call('FT.SEARCH', 'idx:game:meta', `@shortcode:${shortcode}`, 'LIMIT', '0', '1');
-
+      const result = await redis.call('FT.SEARCH', 'idx:game:meta', `@shortcode:${shortcode}`, 'LIMIT', '0', '1')
       const [total, ...rest] = result as any[];
-
+      
       if (total === 0) return null;
-
+      
       const redisKey = rest[0];
-      const flatData = rest[1] as Record<string, string>;
 
-      const shortcodeValue = flatData['$.shortcode'];
-      console.log("FOUND BY", shortcodeValue)
-
-      return redisKey;
+      const parts = redisKey.split(':');
+      return parts[2] || null;
     },
 
 
@@ -201,17 +202,9 @@ export function GameOperations(redis: Redis) {
 
     async getUserQueueGameId(userId: string): Promise<string | null> {
       const key = genRedisUserKey(userId);
-      const raw = await redisJson.get(key);
-      console.log("User queue data for", userId, ":", raw);
-      if (!raw) return null;
-    
-      try {
-        const data = JSON.parse(raw) as UserQueue;
-        return data?.gameId ?? null;
-      } catch (err) {
-        // console.error('[getUserQueueGameId] Invalid queue data:', err);
-        return null;
-      }
+      const raw = await redisJson.get(key, '$.gameId') as string[] | null;
+      if (!raw || raw.length !== 1) return null;
+      return raw[0];  
     },
 
     async leaveUserQueue(userId: string): Promise<void> {
@@ -223,9 +216,21 @@ export function GameOperations(redis: Redis) {
       const key = genRedisUserKey(userId);
 
       // Store the full JSON object at root path
-      await redisJson.set(key, data);
+      await redisJson.set(key, '$', data);
 
       await redis.expire(key, ttl || RedisSchema.user.queue.ttl);
+      
+    },
+
+    async assignUserToGameQueue(userId: string, gameId: string, elo?: number | null): Promise<void> {
+      const key = genRedisUserKey(userId);
+      
+      await redisJson.set(key, '$.gameId', gameId);
+      if (elo != null) {
+        await redisJson.set(key, '$.elo', elo);
+      } else {
+        await redisJson.del(key, '$.elo');
+      }
       
     },
 
@@ -244,6 +249,8 @@ export function GameOperations(redis: Redis) {
       query,
       'LIMIT', '0', String(limit)
       ) as any[];
+
+      console.log("Potential matches found:", result);
 
       const total = result[0] as number;
       if (total === 0) return [];

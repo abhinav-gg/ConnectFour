@@ -2,6 +2,7 @@
 
 import { myConfig } from '@/config/env';
 import { UserProfile } from '@shared/types/users';
+import { useSocketContext } from './SocketProvider';
 import React, {
   createContext,
   useContext,
@@ -9,6 +10,7 @@ import React, {
   useState,
   ReactNode,
   useCallback,
+  useRef,
 } from 'react';
 
 interface LocalUser extends UserProfile {
@@ -52,13 +54,31 @@ export const refreshUserExternally = async () => {
 
 export const UserProvider = ({ children }: UserProviderProps) => {
   const [user, setUser] = useState<LocalUser | null>(null);
+  const fetchingRef = useRef(false);
+  const { onMessage, onPrefixedMessage, onError } = useSocketContext();
+
+  useEffect(() => {
+    // Register error logging
+    onError((error) => {
+      console.error('Socket error:', error);
+    });
+  }, [onMessage, onPrefixedMessage, onError]);
+    
 
   const fetchAndSetUser = useCallback(async () => {
+    if (fetchingRef.current) return;
+
+    fetchingRef.current = true;
+    console.log('Fetching user data...');
     try {
       const res = await fetch(`${myConfig.BACKEND_URL}/auth/me`, {
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('User not authenticated');
+      if (!res.ok) {
+        
+        // this is actually a really bad error, we should not be here
+        throw new Error('Failed to fetch user data');
+      }
 
       const data = await res.json();
 
@@ -77,6 +97,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     } catch {
       setUser(null);
       localStorage.removeItem(CACHE_KEY);
+    } finally {
+      fetchingRef.current = false;
     }
   }, []);
 
@@ -94,6 +116,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       const isValid = Date.now() - parsed.cachedAt < CACHE_TTL;
       if (isValid) {
         setUser(parsed);
+        
         return;
       }
       localStorage.removeItem(CACHE_KEY);

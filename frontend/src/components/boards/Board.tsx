@@ -4,7 +4,20 @@
 import type React from "react"
 import { useImperativeHandle, forwardRef, useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { ChevronDown } from "lucide-react"
 import useSound from "@/utils/useSound"
+
+// Color mapping for additional player tokens beyond red (0) and yellow (1)
+const PLAYER_COLORS = {
+  10: { bg: "bg-black", hex: "#000000" },
+  11: { bg: "bg-white", hex: "#ffffff" },
+  12: { bg: "bg-blue-500", hex: "#3b82f6" },
+  13: { bg: "bg-green-500", hex: "#22c55e" },
+  14: { bg: "bg-purple-500", hex: "#a855f7" },
+  15: { bg: "bg-pink-500", hex: "#ec4899" },
+  16: { bg: "bg-orange-500", hex: "#f97316" },
+  17: { bg: "bg-cyan-500", hex: "#06b6d4" },
+}
 
 interface Connect4BoardProps {
   interactive?: boolean
@@ -12,6 +25,7 @@ interface Connect4BoardProps {
   boardState?: (number | null)[][]
   gameOver?: boolean
   animate_init: boolean
+  showLastMoveHighlight?: boolean
 
   ariaLabel?: string
   className?: string
@@ -28,30 +42,36 @@ interface Arrow {
 }
 
 const getColorName = (tok: number | null): string => {
+  if (tok === null) return "empty"
+  // Keep existing behavior for 0 (red) and 1 (yellow)
   switch (tok) {
     case 0:
       return "red"
     case 1:
       return "yellow"
     default:
-      return "empty"
+      return String(tok) // Return the number as a string for custom colors
   }
 }
 
 const getHexCode = (tok: number | null): string => {
+  if (tok === null) return ""
+  // Keep existing behavior for 0 (red) and 1 (yellow)
   switch (tok) {
     case 0:
       return "#e3342f"
     case 1:
       return "#fbbf24"
     default:
-      return ""
+      // Return custom color hex code or fallback to a default
+      return PLAYER_COLORS[tok as keyof typeof PLAYER_COLORS]?.hex || "#808080"
   }
 }
 
 export interface BoardHandle {
   triggerMoveAnimation: (row: number, col: number, player: number) => void
-  setPremoveCell: (row: number, col: number, plauer: number) => void
+  setPremoveCell: (row: number, col: number, player: number) => void
+  clearPremove: () => void
 }
 
 const Board = forwardRef<BoardHandle, Connect4BoardProps>(
@@ -62,6 +82,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       boardState,
       gameOver = false,
       animate_init = false,
+      showLastMoveHighlight = true,
 
       ariaLabel = "Connect 4 game board",
       className = "",
@@ -99,8 +120,12 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     const [arrowStartCell, setArrowStartCell] = useState<{ row: number; col: number } | null>(null)
     const [rightMouseDown, setRightMouseDown] = useState(false)
 
+    // New state for last move highlight and premove
+    const [lastMoveHighlight, setLastMoveHighlightState] = useState<{ row: number; col: number } | null>(null)
+    const [premoveColumn, setPremoveColumn] = useState<number | null>(null)
+
     // Sound effect for piece drop
-    const DropSound = useSound("/counter-fall-long.mp3")
+    const DropSound = useSound("/sounds/counter-fall-long.mp3")
 
     // Utility to detect if device is mobile
     // MOBILE CALCULATION
@@ -158,7 +183,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       // If animate_init is true, animate the initial board state
       // Reset internal board to empty
 
-      setInternalBoard(defaultBoard);
+      setInternalBoard(defaultBoard)
 
       setInteractive(false)
       // Flatten the board into a list of {row, col, player} for non-null cells
@@ -210,6 +235,10 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
                 )
                 return newBoard
               })
+              // Set last move highlight after the piece has landed (only if showLastMoveHighlight is true)
+              if (showLastMoveHighlight) {
+                setLastMoveHighlightState({ row, col })
+              }
               // check if this is the last falling piece, if so setInteractive(true);
               if (i === cells.length - 1) {
                 setInteractive(interactive)
@@ -227,7 +256,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       return () => {
         cancelled = true
       }
-    }, [animate_init])
+    }, [animate_init, showLastMoveHighlight])
 
     // Calculate column from mouse position
     const getColumnFromMousePosition = (e: React.MouseEvent, boardElement: HTMLElement) => {
@@ -352,11 +381,22 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
             // console.log("BOARD UPDATE", row, col, player)
             return newBoard
           })
+          // Set last move highlight after the piece has landed (only if showLastMoveHighlight is true)
+          if (showLastMoveHighlight) {
+            setLastMoveHighlightState({ row, col })
+          }
         }, duration * 1000)
         setCurrentPlayer(player === 0 ? 1 : 0)
       },
 
-      setPremoveCell(row, col, player) {},
+      setPremoveCell(row, col, player) {
+        // Set premove for the column
+        setPremoveColumn(col)
+      },
+
+      clearPremove() {
+        setPremoveColumn(null)
+      },
     }))
 
     const handleColumnClick = (col: number) => {
@@ -544,25 +584,39 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     }
 
     const getCellColor = (cellValue: string, isGhost = false) => {
+      // Handle standard red and yellow colors as before
       switch (cellValue) {
         case "red":
           return isGhost ? "bg-brand-accent-red opacity-50" : "bg-brand-accent-red"
         case "yellow":
           return isGhost ? "bg-brand-accent-yellow opacity-50" : "bg-brand-accent-yellow"
-        default:
+        case "empty":
           return "bg-brand-accent-blue-dark opacity-60"
+        default:
+          // For custom player numbers, use the color mapping
+          const playerNum = parseInt(cellValue, 10)
+          if (!isNaN(playerNum) && PLAYER_COLORS[playerNum as keyof typeof PLAYER_COLORS]) {
+            const bgClass = PLAYER_COLORS[playerNum as keyof typeof PLAYER_COLORS].bg
+            return isGhost ? `${bgClass} opacity-50` : bgClass
+          }
+          // Fallback color for unrecognized values
+          return isGhost ? "bg-gray-500 opacity-50" : "bg-gray-500"
       }
     }
 
-    const getHighlightStyle = (highlightState: HighlightState) => {
+    const getHighlightStyle = (highlightState: HighlightState, isLastMove = false) => {
       const ringWidth = isMobile ? "ring-4" : "ring-8"
+
+      if (isLastMove) {
+        return `${ringWidth} ring-green-500 ring-opacity-90 shadow-md`
+      }
+
       switch (highlightState) {
         case "red":
           return `${ringWidth} ring-brand-accent-red ring-opacity-90 shadow-md`
         case "yellow":
           return `${ringWidth} ring-brand-accent-yellow ring-opacity-90 shadow-md`
         case "none":
-        default:
           return ""
       }
     }
@@ -572,7 +626,10 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       const state = cellValue === "empty" ? "Empty" : `${cellValue} piece`
       const highlightState = highlightedCells.get(getCellKey(row, col))
       const highlighted = highlightState ? `, highlighted ${highlightState}` : ""
-      return `${position}, ${state}${highlighted}`
+      const isLastMove =
+        showLastMoveHighlight && lastMoveHighlight && lastMoveHighlight.row === row && lastMoveHighlight.col === col
+      const lastMoveText = isLastMove ? ", last move" : ""
+      return `${position}, ${state}${highlighted}${lastMoveText}`
     }
 
     // Check if this cell should show a ghost token
@@ -582,7 +639,20 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       return dropRow === row && internalBoard[row][col] === null
     }
 
-    // Get highlight state for a cell
+    // Check if this cell should show a premove chevron
+    const shouldShowPremoveChevron = (row: number, col: number) => {
+      if (premoveColumn === null || premoveColumn !== col) return false
+      return internalBoard[row][col] === null
+    }
+
+    // Check if this cell is the last move
+    const isLastMoveCell = (row: number, col: number) => {
+      return (
+        showLastMoveHighlight && lastMoveHighlight && lastMoveHighlight.row === row && lastMoveHighlight.col === col
+      )
+    }
+
+    // Get highlight state for a cell - updated to handle numeric states
     const getCellHighlightState = (row: number, col: number): HighlightState => {
       return highlightedCells.get(getCellKey(row, col)) || "none"
     }
@@ -746,6 +816,8 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
             >
               {row.map((cell, colIndex) => {
                 const isGhost = shouldShowGhost(rowIndex, colIndex)
+                const showPremoveChevron = shouldShowPremoveChevron(rowIndex, colIndex)
+                const isLastMove = isLastMoveCell(rowIndex, colIndex)
                 const highlightState = getCellHighlightState(rowIndex, colIndex)
                 const displayValue = isGhost ? currentPlayer : cell
 
@@ -755,7 +827,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
                     ref={(el) => {
                       cellRefs.current[rowIndex][colIndex] = el
                     }}
-                    className="flex-shrink-0 flex items-center justify-center no-drag"
+                    className="flex-shrink-0 flex items-center justify-center no-drag relative"
                     draggable={false}
                     onDragStart={(e) => e.preventDefault()}
                     style={{
@@ -770,7 +842,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
                       rounded-full 
                       transition-all duration-200
                       ${isGhost ? "animate-pulse" : ""}
-                      ${getHighlightStyle(highlightState)}
+                      ${getHighlightStyle(highlightState, isLastMove ?? false)}
                       cursor-pointer relative z-30
                       no-drag
                     `}
@@ -783,6 +855,24 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
                       onDragStart={(e) => e.preventDefault()}
                       draggable={false}
                     />
+
+                    {/* Animated premove chevron indicator */}
+                    {showPremoveChevron && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
+                        <motion.div
+                          animate={{
+                            y: [-2, 2, -2], // Bob up and down by 4px total
+                          }}
+                          transition={{
+                            duration: 1.5, // Slower, more gentle animation
+                            repeat: Number.POSITIVE_INFINITY,
+                            ease: "easeInOut",
+                          }}
+                        >
+                          <ChevronDown className="w-6 h-6 text-green-500 opacity-50" strokeWidth={3} />
+                        </motion.div>
+                      </div>
+                    )}
                   </div>
                 )
               })}

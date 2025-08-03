@@ -67,7 +67,7 @@ export async function checkRedisHealth(timeoutMs = 2000): Promise<boolean> {
 
 export function createRedisJson(redis: Redis) {
   return {
-    async set(key: string, value: any, path = '$'): Promise<'OK'> {
+    async set(key: string, path = '$', value: any): Promise<'OK'> {
       return redis.call('JSON.SET', key, path, JSON.stringify(value)) as Promise<'OK'>;
     },
 
@@ -82,6 +82,14 @@ export function createRedisJson(redis: Redis) {
       return redis.call('JSON.DEL', key, path) as Promise<number>;
     },
 
-    // Add more JSON commands as needed
+    async exists(key: string, path = '$'): Promise<boolean> {
+      const exists = await redis.call('JSON.TYPE', key, path) as string;
+      return exists !== 'null';
+    },
+
+    async arrappend(key: string, path: string, value: any): Promise<number> {
+      // Returns the new length of the array after appending
+      return redis.call('JSON.ARRAPPEND', key, path, JSON.stringify(value)) as Promise<number>;
+    }
   };
 }

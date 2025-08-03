@@ -20,7 +20,6 @@ export const parseUser = (u: string): UUID | null => {
   return null;
 }
 
-
 export const isAnonIdentity = (id: string): boolean => id.startsWith("anon:")
 export const isUserIdentity = (id: string): boolean => id.startsWith("user:")
 export const isBotIdentity = (id: string): boolean => id.startsWith("bot:")
@@ -38,3 +37,9 @@ export const getIdentity = (id: string): PlayerIdentity => {
   return {}
 }
 
+export const getIdentityString = (id: PlayerIdentity): string => {
+  if (id.user) return makeUserIdentity(id.user);
+  if (id.anon) return makeAnonIdentity(id.anon);
+  if (id.bot) return makeBotIdentity(id.bot);
+  throw new Error('Invalid identity');
+}

@@ -121,7 +121,7 @@ export const UserOperations = {
     );
 
     if (result.rowCount !== 1) {
-      throw new Error()
+      throw new Error(`User not found: ${id}`);
     }
 
     const user = UserSchema.parse(result.rows[0]);

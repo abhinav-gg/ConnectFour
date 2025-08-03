@@ -12,7 +12,7 @@ Player moves are fine
 Assume 100% disconnection detection so no need for general game tracking
 
 
-
+restructure live game ui
 
 
 
@@ -23,7 +23,7 @@ tsconfig include all
 "./**/*",
 
 Dev Cmds:
-ssh -i C:\ProgramData\ssh\Con4User.pem -N -L 5432:con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com:5432 ec2-user@54.166.12.176
+ssh -i C:\ProgramData\ssh\Con4User.pem -N -L 5432:con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com:5432 ec2-user@44.196.230.60
 
 psql -h con4-relational.c096oucyo5dq.us-east-1.rds.amazonaws.com -U postgres -d con4db -p 5432
 

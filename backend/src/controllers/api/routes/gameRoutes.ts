@@ -1,6 +1,6 @@
 // src/routes/authRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
-import { authenticateSession, verifyRecaptcha } from '@/lib/auth/middleware';
+import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/auth/middleware';
 import { GameInfo, TimeControl } from '@shared/types/game';
 import { GameMode } from '@shared/constants/allgamemodes';
 import { getRankedGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes } from '@shared/utils/gamemodes';
@@ -9,6 +9,7 @@ import { gameService } from '@/services/game.service';
 import { rdsDBOps } from '@/db/rds/ops';
 import { userService } from '@/services/user.service';
 import { sendUserToGame } from '@/lib/game.middleware';
+import { getIdentityString } from '@/utils/validation';
 
 
 const gameRouter = Router();
@@ -39,10 +40,14 @@ gameRouter.post('/player', async (req: Request, res: Response) => {
 });
 
 // Create Game Route
-gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame, async (req: Request, res: Response) => {
-    // Extract the user ID from the request
-
-    const userId = (req as any).user.userId;
+gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame, async (req: AuthenticatedRequest, res: Response) => {
+    let userId: string;
+    try {
+        userId = getIdentityString(req.identity!);
+    } catch (error) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+    }
 
     let gamemode: GameMode;
     let time_control: TimeControl;
@@ -69,18 +74,19 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
                 throw new Error('Game mode does not match time control');
             }
         }
-
     }
     catch (error) {
         console.log('Failed to extract or validate data:', error);
         res.status(500).json({ error: 'Invalid Data' });
         return;
     }
+
+    
     console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
     // Try the matchmaking service
     try {
         const response = await gameService.joinGameQueue(userId, { gamemode, time_control });
-        res.status(response.status).json(response);
+        res.status(response.status).json({ gameLink: `/game/live/${response.message}` });
     }
     catch (error) {
         console.log('Failed to request game:', error);
@@ -131,37 +137,6 @@ gameRouter.get('/test', async (req: Request, res: Response) => {
 // //         data: { roomId, moves: moveList }
 // //     }); // change as needed to return the moves
 // // });
-
-
-gameRouter.post('/verify-shortcode', authenticateSession, async (req: Request, res: Response) => {
-    // Check if the player is already in a game
-    const userId = (req as any).user?.userId;
-
-    if (!userId) {
-        res.status(500).json({ error: 'Invalid Data' });
-        return;
-    }
-
-    // unload shortcode from the request body
-    const shortcode = req.body.shortcode;
-    if (!shortcode) {
-        res.status(500).json({ error: 'Invalid Data' });
-        return;
-    }
-
-    const liveGame = await gameService.GetGameIDByShortCode(shortcode);
-    if (!liveGame) {
-        res.status(404).json({ error: 'Game not found' });
-        return;
-    }
-    
-    // potentially allow the player to join the game or spectate.
-
-
-
-
-
-});
 
 
 

@@ -1,6 +1,6 @@
 // src/routes/authRoutes.ts
 import { NextFunction, Router, Request, Response } from 'express';
-import { authenticateAdmin, authenticateSession, verifyRecaptcha, requireUnauthenticated, optionalAuth } from '@/lib/auth/middleware';
+import { authenticateAdmin, authenticateSession, verifyRecaptcha, requireUnauthenticated, optionalAuth, AuthenticatedRequest, getReqPlayerUUID, requireReqUserUUID } from '@/lib/auth/middleware';
 import { authService } from '@/services/auth.service';
 import { ServiceResponse, GoogleTokenResponse } from '@/types/custom';
 import { UserAccountProvider } from "@shared/types/users";
@@ -14,6 +14,7 @@ import { RedisSchema } from '@/redis/redisSchema';
 import { userService } from '../../../services/user.service';
 import { sendUserToGame } from '@/lib/game.middleware';
 import { rdsDBOps } from '@/db/rds/ops';
+import { UUID } from 'crypto';
 
 
 const authRouter = Router();
@@ -185,21 +186,16 @@ authRouter.post('/verify-email', requireUnauthenticated, verifyRecaptcha, async 
 });
 
 // Profile Route
-authRouter.get('/me', optionalAuth, sendUserToGame, async (req: Request, res: Response) => {
+authRouter.get('/me', optionalAuth, sendUserToGame, async (req: AuthenticatedRequest, res: Response) => {
   
-  const userId = (req as any).user?.userId;
-
   try {
+
+    const userId = req.identity?.user || req.identity?.anon;
     
-    let user = null;
+    let user = await userService.safeGetUserByID(userId ?? null);
 
-    if (userId) {
-      user = await userService.safeGetUserByID(userId);
-    }
-
-    if (!user) {
-      // Important: CREATE ANONYMOUS USER ALWAYS
-
+    if (user.username === "Anonymous") {
+      
       const sessionToken = await authService.makeAnonymousSession();
       res.cookie('sessionToken', sessionToken, {
         httpOnly: true,
@@ -207,7 +203,6 @@ authRouter.get('/me', optionalAuth, sendUserToGame, async (req: Request, res: Re
         sameSite: 'strict',
         maxAge: 1000 * UserSessionTTL, // in milliseconds
       });
-      user = {username: "Anonymous"}
     }
 
     res.json(user);
@@ -218,14 +213,9 @@ authRouter.get('/me', optionalAuth, sendUserToGame, async (req: Request, res: Re
   }
 });
 
-authRouter.post('/logout', authenticateSession, async (req: Request, res: Response): Promise<void> => {
-  // If the user is authenticated, proceed to clear the session token cookie
-  const userId = (req as any).user?.userId;
-  if (!userId) {
-    res.status(401).json({ error: 'Unauthorized' });
-  }
+authRouter.post('/logout', authenticateSession, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-
+    const userId = getReqPlayerUUID(req);
     await authService.logoutUser(userId); // Revoke the session token
     res.clearCookie('sessionToken'); // Clear the session token cookie
     res.json({ status: 'Success' }); // Return success response
@@ -236,8 +226,8 @@ authRouter.post('/logout', authenticateSession, async (req: Request, res: Respon
   }
 });
 
-authRouter.get('/isadmin', authenticateSession, authenticateAdmin, async (req: Request, res: Response, next: NextFunction) => {
-  res.json({ isAdmin: true });
+authRouter.get('/isadmin', authenticateSession, authenticateAdmin, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  res.json({ isAdmin: false });
 });
 
 authRouter.get('/test', (req: Request, res: Response) => {

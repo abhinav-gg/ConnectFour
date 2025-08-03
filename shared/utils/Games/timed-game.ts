@@ -1,13 +1,14 @@
 import { StandardGame } from './game';
-import { GameInfo, Move, TimedMoveResult } from '../../types/game';
+import { GameInfo, Move, Player, TimedMoveResult } from '../../types/game';
+import { GameState } from '@shared/constants/allgamestates';
 
 export class TimedStandardGame {
   private game: StandardGame;
 
-  private moveTimes: number[] = [];
   private lastMoveTimestamp: number | null = null; // Track last move timestamp for timing
   private timeLeft: [number, number];
   private gameInfo: GameInfo;
+  private timedOutPlayer: Player | null = null; // Track if a player has timed out
 
   constructor(
     gameInfo:GameInfo, // 5 min in ms
@@ -19,12 +20,12 @@ export class TimedStandardGame {
                      1000 * (gameInfo.time_control.base_time + gameInfo.time_control.disadvantage)];
   }
 
-  loadStandard(pTimes: number[], lMove: number, cTurn: number, GameString: string): void {
+  loadStandard(pTimes: number[], lMove: number, cTurn: number, GameString: number[]): void {
     // assert pTimes is an array of numbers with length 2
     if (!Array.isArray(pTimes) || pTimes.length !== 2 || !pTimes.every(Number.isFinite)) {
       throw new Error("Invalid move times array");
     }
-    this.moveTimes = pTimes;
+    this.timeLeft = pTimes as [number, number];
     this.lastMoveTimestamp = lMove;
     this.game = new StandardGame(GameString);
 
@@ -42,13 +43,20 @@ export class TimedStandardGame {
 
     if (moveDuration > this.timeLeft[currentPlayer]) {
       // If the move duration exceeds the time left, the player has timed out
-      throw new Error("Time's up!");
+      // end the game here
+      console.log(`Player ${currentPlayer} timed out after ${moveDuration}ms`);
+      this.game.winner = currentPlayer === 0 ? 1 : 0; // Set the opponent as the winner
+      this.game.gameOver = true;
+      this.timedOutPlayer = currentPlayer; // Track the timed out player
+      return {
+        success: false,
+      };
+      
     }
 
     const result = this.game.makeMove(col);
     
     if (result.success) {
-      this.moveTimes.push(moveDuration);
       this.timeLeft[currentPlayer] += this.gameInfo.time_control.increment * 1000; // Add increment time
       this.timeLeft[currentPlayer] -= moveDuration;
       this.lastMoveTimestamp = now;
@@ -63,7 +71,6 @@ export class TimedStandardGame {
 
   reset(): void {
     this.game.reset();
-    this.moveTimes = [];
     this.lastMoveTimestamp = Date.now();
     this.timeLeft = [this.gameInfo.time_control.base_time, this.gameInfo.time_control.base_time];
   }
@@ -75,14 +82,6 @@ export class TimedStandardGame {
 
   getBoard() {
     return this.game.getBoard();
-  }
-
-  getLegalMoves(): Move[] {
-    return this.game.getLegalMoves();
-  }
-
-  exportMoves(): string {
-    return this.game.exportMoves();
   }
 
   setMoveIndex(index: number): boolean {
@@ -105,10 +104,6 @@ export class TimedStandardGame {
     return this.gameInfo;
   }
 
-  getMoveTimes(): number[] {
-    return this.moveTimes;
-  }
-
   getLastMoveTimestamp(): number {
     return this.lastMoveTimestamp ?? -1;
   }
@@ -125,11 +120,28 @@ export class TimedStandardGame {
     return this.game.currentMoveIndex;
   }
 
-  getWinner() {
-    return this.game.winner;
+  getGameState(): GameState {
+   
+    if (!this.game.gameOver) {
+      return GameState.IN_PROGRESS;
+    }
+
+    if (this.game.winner === null) {
+      if (this.timedOutPlayer !== null) {
+        return this.timedOutPlayer === 0 ? GameState.RED_TIMEOUT : GameState.YELLOW_TIMEOUT;
+      }
+      return GameState.DRAW_FULL;
+    }
+
+    return this.game.winner === 0 ? GameState.RED_WIN : GameState.YELLOW_WIN;
+
   }
 
   isGameOver(): boolean {
     return this.game.gameOver;
   }
+
+
+
+
 }

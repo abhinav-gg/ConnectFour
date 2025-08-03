@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const GameMetadataSchema = z.object({
   shortcode: z.string().length(8).nullable().optional(),
   players: z.array(z.string()),
-  startTimestamp: z.number(),
+  startTimestamp: z.number().nullable(),
   gamemode: z.number(),
   base_time: z.number(),
   increment: z.number(),
@@ -17,8 +17,9 @@ export type GameMetadata = z.infer<typeof GameMetadataSchema>;
 export const GameTimedataSchema = z.object({
   cTurn: z.number(),
   mTimes: z.array(z.number()),
-  rTime: z.array(z.number()).nullable().optional(),
-  lMost: z.number().nullable().optional(),
+  rTimes: z.array(z.number()).nullable(),
+  lMove: z.number().nullable(),
+  draws: z.array(z.boolean()).nullable(),
 });
 
 export type GameTimedata = z.infer<typeof GameTimedataSchema>;

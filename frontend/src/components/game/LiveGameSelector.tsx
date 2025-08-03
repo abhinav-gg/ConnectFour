@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -78,8 +78,11 @@ export function LiveGameSelection() {
   // Custom timing states
   const [baseTime, setBaseTime] = useState(3) // minutes
   const [bonusTime, setBonusTime] = useState(2) // seconds
-  const [initialBonus, setInitialBonus] = useState(5) // seconds
+  const [initialBonus, setInitialBonus] = useState(10) // seconds
+  const [isStartingGame, setIsStartingGame] = useState(false) // Cooldown state
+  const [cooldownSeconds, setCooldownSeconds] = useState(0) // Cooldown timer
   const { getRecaptchaToken, isRecaptchaActive, activateRecaptcha } = useRecaptcha()
+  const router = useRouter()
 
   useEffect(() => {
     // Activate reCAPTCHA when the component mounts
@@ -165,7 +168,40 @@ export function LiveGameSelection() {
     return `${baseTime} min | ${bonusTime} sec | ${initialBonus} sec`;
   };
 
+  // Helper function to determine the current game mode type based on time settings
+  const getCurrentGameModeType = () => {
+    // Custom timing
+    if (showCustomTimings) return "Custom";
+    
+    // Check if it matches a bullet configuration
+    if (baseTime <= 2) return "Bullet";
+    
+    // Check if it matches a blitz configuration
+    if (baseTime <= 5) return "Blitz";
+    
+    // Otherwise it's rapid
+    return "Rapid";
+  };
+
   const handleStartGame = async () => {
+    if (isStartingGame) return // Prevent multiple submissions during cooldown
+
+    setIsStartingGame(true)
+    setCooldownSeconds(5)
+
+    // Start countdown timer
+    const countdownInterval = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval)
+          setIsStartingGame(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    // Send game request immediately
     const tc = {
       base_time: baseTime * 60,
       increment: bonusTime,
@@ -189,26 +225,37 @@ export function LiveGameSelection() {
       return;
     }
 
-    const response = await fetch(`${myConfig.BACKEND_URL}/game/request`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        gamemode,
-        time_control: tc,
-        recaptchaToken: await getRecaptchaToken(),
-      }),
-      credentials: "include",
-    });
+    try {
+      const response = await fetch(`${myConfig.BACKEND_URL}/game/request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          gamemode,
+          time_control: tc,
+          recaptchaToken: await getRecaptchaToken(),
+        }),
+        credentials: "include",
+      });
 
-    if (!response.ok) {
-      console.error("Failed to start game:", await response.json());
-      return;
+      if (!response.ok) {
+        console.error("Failed to start game:", await response.json());
+        return;
+      }
+
+      const gameLink = await response.json() as { gameLink: string };
+      router.push(gameLink.gameLink);
+
+    } catch (error) {
+      console.error("Error starting game:", error);
     }
+  }
 
-    console.log(await response.json());
-
+  const handleCancelSearch = () => {
+    console.log("Game search cancelled by user");
+    setIsStartingGame(false)
+    setCooldownSeconds(0)
   }
 
   const handleCustomTimingsSave = () => {
@@ -233,35 +280,7 @@ export function LiveGameSelection() {
       transition={{ duration: 0.3 }}
       onClick={handleDropdownClose} // Close dropdown when clicking outside
     >
-      {/* Current Time Control Display and Info Icon */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-white font-bold text-base">Current: {getTimeControlLabel()}</div>
-        <div
-          className="relative"
-          onMouseEnter={() => setShowInfoTooltip(true)}
-          onMouseLeave={() => setShowInfoTooltip(false)}
-        >
-          <Info className="w-5 h-5 text-brand-text-muted cursor-help" />
-          <AnimatePresence>
-            {showInfoTooltip && (
-              <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ duration: 0.2 }}
-                className="absolute right-full top-1/2 -translate-y-1/2 mr-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg whitespace-nowrap z-20"
-              >
-                1 | 2 | 3 :                                                        <br/>
-                1: Base time (starting time for both players)                      <br/>
-                2: Bonus per move (time added after making each move)              <br/>
-                3: Disadvantage for red (for more explanation visit /info)
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Casual Section */}
+      {/* Casual Section - Moved above time control display */}
       <div className="space-y-2 mb-4">
         <div className="relative dropdown-container">
           <button
@@ -301,6 +320,34 @@ export function LiveGameSelection() {
                     <span className="text-white text-base">{option.label}</span>
                   </button>
                 ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Time Control Display and Info Icon - Moved below game mode selection */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-white font-bold text-base">{getCurrentGameModeType()}: {getTimeControlLabel()}</div>
+        <div
+          className="relative"
+          onMouseEnter={() => setShowInfoTooltip(true)}
+          onMouseLeave={() => setShowInfoTooltip(false)}
+        >
+          <Info className="w-5 h-5 text-brand-text-muted cursor-help" />
+          <AnimatePresence>
+            {showInfoTooltip && (
+              <motion.div
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute right-full top-1/2 -translate-y-1/2 mr-2 p-2 bg-gray-900 text-white text-xs rounded-md shadow-lg whitespace-nowrap z-20"
+              >
+                1 | 2 | 3 :                                                        <br/>
+                1: Base time (starting time for both players)                      <br/>
+                2: Bonus per move (time added after making each move)              <br/>
+                3: Disadvantage for red (for more explanation visit /info)
               </motion.div>
             )}
           </AnimatePresence>
@@ -352,10 +399,18 @@ export function LiveGameSelection() {
 
       {/* Start Game Button - pushed to bottom */}
       <Button
-        onClick={handleStartGame}
-        className="w-full h-12 text-base font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg mt-2" // mt-2 for small gap
+        onClick={isStartingGame ? handleCancelSearch : handleStartGame}
+        disabled={false}
+        className={cn(
+          "w-full h-12 text-base font-bold rounded-lg mt-2",
+          isStartingGame 
+            ? "bg-red-600 hover:bg-red-700 text-white" 
+            : "bg-blue-600 hover:bg-blue-700 text-white"
+        )}
       >
-        Start Game
+        {isStartingGame 
+          ? `Cancel Game Search (${cooldownSeconds}s)` 
+          : "Start Game"}
       </Button>
     </motion.div>
   )

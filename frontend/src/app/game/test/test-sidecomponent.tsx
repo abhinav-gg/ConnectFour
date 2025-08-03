@@ -20,6 +20,19 @@ interface TestControlsProps {
   onStartGame: () => void
   onPauseGame: () => void
   onResetGame: () => void
+  // Game Start Popup Props
+  showStartPopup: boolean
+  onShowStartPopup: () => void
+  gameMode: string
+  onGameModeChange: (mode: string) => void
+  timeControl: string
+  onTimeControlChange: (control: string) => void
+  gameUrl: string
+  onGameUrlChange: (url: string) => void
+  opponentName: string
+  onOpponentNameChange: (name: string) => void
+  opponentRating: number
+  onOpponentRatingChange: (rating: number) => void
   // Game End Popup Props
   showEndPopup: boolean
   onShowEndPopup: () => void
@@ -52,6 +65,19 @@ export function TestControls({
   onStartGame,
   onPauseGame,
   onResetGame,
+  // Game Start Popup Props
+  showStartPopup,
+  onShowStartPopup,
+  gameMode,
+  onGameModeChange,
+  timeControl,
+  onTimeControlChange,
+  gameUrl,
+  onGameUrlChange,
+  opponentName,
+  onOpponentNameChange,
+  opponentRating,
+  onOpponentRatingChange,
   // Game End Popup Props
   showEndPopup,
   onShowEndPopup,
@@ -194,6 +220,85 @@ export function TestControls({
         <p>Current Player 2 Time: {player2Time}s</p>
         <p>Current Score Ratio: {scoreRatio.toFixed(2)}</p>
         <p>Game Running: {isGameRunning ? "Yes" : "No"}</p>
+      </div>
+
+      {/* Game Start Popup Controls */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold">Game Start Popup</h3>
+        
+        <Button onClick={onShowStartPopup} className="w-full bg-blue-600 hover:bg-blue-700">
+          Show Game Start Popup
+        </Button>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="game-mode">Game Mode</Label>
+            <Input
+              id="game-mode"
+              value={gameMode}
+              onChange={(e) => onGameModeChange(e.target.value)}
+              className="mt-1"
+              placeholder="Enter game mode..."
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="time-control">Time Control</Label>
+            <Input
+              id="time-control"
+              value={timeControl}
+              onChange={(e) => onTimeControlChange(e.target.value)}
+              className="mt-1"
+              placeholder="Enter time control..."
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="game-url">Game URL</Label>
+            <Input
+              id="game-url"
+              value={gameUrl}
+              onChange={(e) => onGameUrlChange(e.target.value)}
+              className="mt-1"
+              placeholder="https://con4.uk/game/live/XXXXXX"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="opponent-name">Opponent Name</Label>
+              <Input
+                id="opponent-name"
+                value={opponentName}
+                onChange={(e) => onOpponentNameChange(e.target.value)}
+                className="mt-1"
+                placeholder="Opponent"
+              />
+            </div>
+            <div>
+              <Label htmlFor="opponent-rating">Opponent Rating</Label>
+              <Input
+                id="opponent-rating"
+                type="number"
+                value={opponentRating}
+                onChange={(e) => onOpponentRatingChange(Number(e.target.value))}
+                className="mt-1"
+                placeholder="1500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-slate-800 rounded-lg">
+          <h4 className="text-sm font-semibold mb-2">How to Edit Props:</h4>
+          <ul className="text-xs text-brand-text-muted space-y-1">
+            <li>• <strong>Game Mode:</strong> Enter any game mode text</li>
+            <li>• <strong>Time Control:</strong> Enter any time control text</li>
+            <li>• <strong>Game URL:</strong> Set the game invite URL</li>
+            <li>• <strong>Opponent Info:</strong> Set name and rating to simulate match found</li>
+            <li>• <strong>Match Found:</strong> When opponent info is set, match found animation will play</li>
+          </ul>
+        </div>
       </div>
 
       {/* Game End Popup Controls */}

@@ -1,12 +1,56 @@
-import { EloChange, PlayerData } from "./game";
-import { UUID } from "crypto";
+import { EloChange } from "./game";
+import { PlayerData } from "./users";
 
 
 // Generic EventMessage utility
-export type EventMessage<T extends string, D> = {
+export type EventMessage<T = string, D = any> = {
   event: T;
   data: D;
 };
+
+
+export interface ChatMessage {
+  id?: string
+  username: string
+  message: string
+  type: "user" | "system" | "spectator"
+  color?: "red" | "yellow" | "white"
+  timestamp?: Date
+}
+
+export interface StandardGameMetadata {
+  moves: number[];
+  shortcode: string;
+  gamemode: number;
+  rTimes: [number, number];
+  lTime: number;
+  me: PlayerData;
+  opponent: PlayerData;
+  eloChanges: EloChange | null;
+  turn: number;
+  iRed: boolean;
+}
+
+export interface StandardGameMove {
+  col: number;
+  row: number;
+  player: number; // 0 for red, 1 for yellow
+  rTimes: [number, number]; // Remaining times for red and yellow players
+  lMove: number; // Last move timestamp
+}
+
+export interface StandardSpectatingMetadata {
+  shortcode: string;
+  gamemode: number;
+  rTimes: [number, number];
+  lTime: number;
+  red: PlayerData;
+  yellow: PlayerData;
+  turn: number;
+}
+
+export type ChatMessageEvent = EventMessage<'chatMessage', ChatMessage>;
+
 
 // Game message types
 
@@ -74,64 +118,28 @@ export type ClientGameMessage = GameStart | PlayerDisconnected | PlayerReconnect
 
 /////////// SENT TO SERVER BY FRONTEND ///////////
 
-export type ResponseError = {
-  event: 'error';
-  data: { message: string; };
-};
+export type ResponseError = EventMessage<'error', {
+  message: string;
+}>;
 
-// export type OfferDraw = {
-//   event: 'offerDraw';
-//   data: { roomId: RoomID; };
-// };
+export type IResign = EventMessage<'resign', {
+  
+}>;
 
-// export type AcceptDraw = {
-//   event: 'acceptDraw';
-//   data: { roomId: RoomID; };
-// };
+export type OfferDraw = EventMessage<'offerDraw', {
+  
+}>;
 
-// export type Resign = {
-//   event: 'resign';
-//   data: { roomId: RoomID; };
-// };
+export type AcceptDraw = EventMessage<'acceptDraw', {
+  
+}>;
 
-// export type OfferRematch = {
-//   event: 'offerRematch';
-//   data: { roomId: RoomID; };
-// };
+export type MakeMove = EventMessage<'makeMove', {
+  col: number;
+}>;
 
-// export type JoinGame = {
-//   event: 'joinGame';
-//   data: { roomId: RoomID; };
-// };
+export type SendMessage = EventMessage<'sendMessage', {
+  message: string;
+}>;
 
-// export type MakeMove = {
-//   event: 'makeMove';
-//   data: { roomId: RoomID; col: number; };
-// };
-
-// export type PlayerTimeOut = {
-//   event: 'playerTimeOut';
-//   data: { roomId: RoomID; };
-// }
-
-// export type OpponentAbandoned = {
-//   event: 'opponentAbandoned';
-//   data: { roomId: RoomID; };
-// }
-
-// export type SendMessage = {
-//   event: 'sendMessage';
-//   data: { roomId: RoomID; message: string; };
-// };
-
-// export type ServerMessage = ResponseError | OfferDraw | AcceptDraw | Resign
-//                           | OfferRematch | JoinGame | MakeMove | PlayerTimeOut | SendMessage
-//                           | OpponentAbandoned;
-
-export interface ChatMessage {
-    playerNumber: number;
-    username: string;
-    message: string;
-    isAnnouncement: boolean;
-}
 

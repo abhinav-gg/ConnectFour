@@ -8,18 +8,44 @@ import authRouter from '@/controllers/api/routes/authRoutes';
 import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
-import { scanKeysPaginated } from '@/redis/redisHelper';
+import { createRedisJson, scanKeysPaginated } from '@/redis/redisHelper';
 
 const app = Router();
 
 
+
+
+async function getRedisValue(key: string): Promise<string | null> {
+  const redis = await getRedisClient();
+  let resp;
+  try {
+    resp = await redis.get(key);
+  } catch {
+    try {
+      const rJ = createRedisJson(redis);
+      resp = await rJ.get(key);
+    } catch (err) {
+      return null; // or throw, depending on your design
+    }
+  } 
+  if (!resp) {
+      return null;
+  }
+  return resp;
+}
+
 app.get('/all', async (_req: Request, res: Response) => {
   try {
     const r = await getRedisClient();
-    const result = await scanKeysPaginated(r, '*');
-    
+    const { keys } = await scanKeysPaginated(r, '*');
+    const result: Record<string, string | null> = {};
+
+    for (const key of keys) {
+      result[key] = await getRedisValue(key);
+    }
+
     console.log('✅ Scan complete, sending response');
-    res.json(result);
+    res.json({ keys: Object.entries(result).map(([key, value]) => ({ key, value })) });
   } catch (error) {
     console.error('❌ Redis scan error:', error);
     res.status(500).json({ 
@@ -28,33 +54,53 @@ app.get('/all', async (_req: Request, res: Response) => {
     });
   }
 });
+
   
 app.get('/get/:key', async (req: Request, res: Response): Promise<void> => {
-const { key } = req.params;
-if (typeof key !== 'string') {
-    res.status(400).json({ error: 'Key must be a string' });
-    return;
-}
-const redis = await getRedisClient();
-const resp = await redis.get(key);
-if (!resp) {
-    res.status(404).json({ error: `Key "${key}" not found` });
-}
-else {
-    res.json({ key, resp });
-}
-}
-);
+  const { key } = req.params;
+  if (typeof key !== 'string') {
+      res.status(400).json({ error: 'Key must be a string' });
+      return;
+  }
 
-app.get('/add-test', async (req: Request, res: Response): Promise<void> => {
-  const r = await redisOps();
+  const value = await getRedisValue(key);
+  if (value) {
+      res.json({ key, value });
+  } else {
+      res.status(404).json({ error: 'Key not found' });
+  }
+});
 
-  await r.game.addGameMove("testGameId", 7);
-  await r.game.addGameMove("testGameId", 2);
-  await r.game.addGameMove("testGameId", 3);
+app.get('/clearredis', async (req: Request, res: Response): Promise<void> => {
+  
+  const redis = await getRedisClient();
+  let message = {game: '', user: ''};
+  try {
+    const { keys } = await scanKeysPaginated(redis, 'game:*'); // Adjust the pattern as needed
+    if (keys.length > 0) {
+      await redis.del(...keys);
+      message.game = 'Redis cache cleared successfully';
+    } else {
+      message.game = 'No keys found to clear';
+    }
+  } catch (error) {
+    console.error('Error clearing Redis cache:', error);
+    res.status(500).json({ error: 'Failed to clear Redis cache' });
+  }
+  try {
+    const { keys } = await scanKeysPaginated(redis, 'user:*'); // Adjust the pattern as needed
+    if (keys.length > 0) {
+      await redis.del(...keys);
+      message.user = 'Redis cache cleared successfully';
+    } else {
+      message.user = 'No keys found to clear';
+    }
+  } catch (error) {
+    console.error('Error clearing Redis cache:', error);
+    res.status(500).json({ error: 'Failed to clear Redis cache' });
+  }
 
-  const moves = await r.game.getGameMoves("testGameId");
-  console.log("Moves in Redis:", moves);
+  res.json(message);  
 });
 
 app.get('/dynamo-test', async (req: Request, res: Response) => {
