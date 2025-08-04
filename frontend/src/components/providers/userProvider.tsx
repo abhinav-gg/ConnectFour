@@ -12,6 +12,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
+import { useError } from './errorProvider';
 
 interface LocalUser extends UserProfile {
   cachedAt: number;
@@ -56,6 +57,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   const [user, setUser] = useState<LocalUser | null>(null);
   const fetchingRef = useRef(false);
   const { onMessage, onPrefixedMessage, onError } = useSocketContext();
+  const { showError } = useError();
 
   useEffect(() => {
     // Register error logging
@@ -95,6 +97,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         localStorage.removeItem(CACHE_KEY);
       }
     } catch {
+      showError('Backend Failure. Please try again later.', 'error', -1);
       setUser(null);
       localStorage.removeItem(CACHE_KEY);
     } finally {

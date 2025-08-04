@@ -3,9 +3,8 @@ import { motion } from "framer-motion"
 import { Zap, User, Bot, LayoutGrid, ArrowRight, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-type GameSelectProps = {}
 
-export function GameSelect({}: GameSelectProps) {
+export function GameSelect() {
   const router = useRouter()
 
   const gameModes = [

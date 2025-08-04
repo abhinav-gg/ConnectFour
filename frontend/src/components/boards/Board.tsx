@@ -884,4 +884,5 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
   },
 )
 
+Board.displayName = 'Board';
 export default Board

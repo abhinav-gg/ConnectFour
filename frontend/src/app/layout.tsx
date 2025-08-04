@@ -4,6 +4,8 @@ import { myConfig } from '@/config/env';
 import { SocketProvider } from '@/components/providers/SocketProvider';
 import { UserProvider } from '@/components/providers/userProvider';
 import { RecaptchaProvider } from '@/components/providers/RecaptchaProvider';
+import { ErrorProvider } from '@/components/providers/errorProvider';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Con4 - Play Four In A Row Online',
@@ -27,13 +29,17 @@ export default function RootLayout({
       <meta property="og:title" content="Con4 - Play Four In A Row Online" />
       <meta property="og:description" content="A competitive and fun online Four-In-A-Row game built with analysis, opening books and so much more! Play Four In a Row today!" />
       <body>
-        <SocketProvider url={myConfig.WEBSOCKET_URL}>
-          <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
-            <UserProvider>
-              {children}
-            </UserProvider>
-          </RecaptchaProvider>
-        </SocketProvider>
+        <ErrorProvider>
+          <SocketProvider url={myConfig.WEBSOCKET_URL}>
+            <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
+              <UserProvider>
+                  <Suspense fallback={<div>Loading... Nicer Loading Coming Soon...</div>}>
+                    {children}
+                  </Suspense>
+              </UserProvider>
+            </RecaptchaProvider>
+          </SocketProvider>
+        </ErrorProvider>
       </body>
     </html>
   );

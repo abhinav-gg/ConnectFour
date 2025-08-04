@@ -245,7 +245,7 @@ export function LiveGameSelection() {
       }
 
       const gameLink = await response.json() as { gameLink: string };
-      router.push(gameLink.gameLink);
+      router.replace(gameLink.gameLink);
 
     } catch (error) {
       console.error("Error starting game:", error);

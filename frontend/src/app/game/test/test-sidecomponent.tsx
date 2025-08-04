@@ -17,7 +17,6 @@ interface TestControlsProps {
   onPlayer1TimeChange: (newTime: number) => void
   onPlayer2TimeChange: (newTime: number) => void
   onScoreRatioChange: (newRatio: number) => void
-  onStartGame: () => void
   onPauseGame: () => void
   onResetGame: () => void
   // Game Start Popup Props
@@ -62,7 +61,6 @@ export function TestControls({
   onPlayer1TimeChange,
   onPlayer2TimeChange,
   onScoreRatioChange,
-  onStartGame,
   onPauseGame,
   onResetGame,
   // Game Start Popup Props
@@ -158,43 +156,6 @@ export function TestControls({
       transition={{ duration: 0.6 }}
     >
       <h2 className="text-2xl font-bold text-center">Game Controls</h2>
-
-      {/* Timer Controls */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold">Timers</h3>
-        <div className="flex gap-2">
-          <Button onClick={onStartGame} disabled={isGameRunning} className="flex-1">
-            Start Timers
-          </Button>
-          <Button onClick={onPauseGame} disabled={!isGameRunning} className="flex-1" variant="secondary">
-            Pause Timers
-          </Button>
-        </div>
-        <Button onClick={onResetGame} className="w-full bg-transparent" variant="outline">
-          Reset Game State
-        </Button>
-
-        <div className="space-y-2">
-          <Label htmlFor="p1-time">Player 1 Time (seconds)</Label>
-          <Input
-            id="p1-time"
-            type="number"
-            value={p1TimeInput}
-            onChange={(e) => handleP1TimeChange(e.target.value)}
-            className="w-full"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="p2-time">Player 2 Time (seconds)</Label>
-          <Input
-            id="p2-time"
-            type="number"
-            value={p2TimeInput}
-            onChange={(e) => handleP2TimeChange(e.target.value)}
-            className="w-full"
-          />
-        </div>
-      </div>
 
       {/* Score Bar Control */}
       <div className="space-y-4">

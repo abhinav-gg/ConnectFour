@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import { myConfig } from '@config/env';
 import { verifySocket, sendSocketUserToGame } from '@/lib/game.middleware';
 import { initSocketIO } from '@/controllers/socket/index'
-import { handleDisconnect, registerSocketHandler } from '@/controllers/socket/handlers'
+import { registerSocketHandler } from '@/controllers/socket/handlers'
 import { bootstrap } from './bootstrap';
 import { liveGameService } from './services/livegame.service';
 
@@ -57,8 +57,17 @@ io.on('connection', (socket) => {
 });
 
 io.on('disconnect', async (socket) => {
-  handleDisconnect(socket);
-  await liveGameService.HandleDisconnect(socket.userId);
+  
+  // Clean up user state, remove from rooms, etc.
+  console.log(`Cleaning up user ${socket.id}`);
+  
+  // Leave all rooms
+  socket.rooms.forEach((room: string) => {
+    if (room !== socket.id) {
+      socket.leave(room);
+      console.log(`User ${socket.id} left room ${room}`);
+    }
+    });
 });
 
 
@@ -72,6 +81,7 @@ async function startSocketio() {
 
 }
 
-startSocketio().catch(console.error);
-
-
+startSocketio().catch((err) => {
+  console.error('Startup failed:', err);
+  process.exit(1); // ! Exit with error so host/service restarts
+});

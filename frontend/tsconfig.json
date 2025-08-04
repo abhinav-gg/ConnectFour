@@ -38,9 +38,9 @@
     ".next/types/**/*.ts",
     "next-env.d.ts",
     "next.config.js",
-    "out/types/**/*.ts"
-, "src/app/leaderboard"  ],
+    "out/types/**/*.ts" ],
   "exclude": [
     "node_modules"
   ]
 }
+  

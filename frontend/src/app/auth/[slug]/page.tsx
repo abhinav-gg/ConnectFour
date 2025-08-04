@@ -1,3 +1,4 @@
+// app/auth/[slug]/page.tsx
 import { notFound } from 'next/navigation';
 import { LoginForm } from '@/components/auth/forms/login';
 import { RegisterForm } from '@/components/auth/forms/register';
@@ -7,28 +8,27 @@ import { LogoutUser } from '@/components/auth/forms/logout';
 import { BoardSpaceLayout } from '@/components/layouts/board-space-layout';
 
 const forms: Record<string, JSX.Element> = {
-  "login": <LoginForm />,
-  "register": <RegisterForm />,
-  "reset-pwd": <ResetPasswordForm />,
-  "verify-email": <VerifyEmailForm />,
-  "logout": <LogoutUser />
+  'login': <LoginForm />,
+  'register': <RegisterForm />,
+  'reset-pwd': <ResetPasswordForm />,
+  'verify-email': <VerifyEmailForm />,
+  'logout': <LogoutUser />,
 };
 
-interface PageProps {
-  params: { slug: string };
+// Static paths for export
+export async function generateStaticParams() {
+  return Object.keys(forms).map((slug) => ({ slug }))
 }
 
-const AuthSlugPage = async({ params }: PageProps) => {
-  const form = forms[(await params).slug];
+// Required for SSG-compatible dynamic routes
+export const dynamic = 'force-static'
 
-  if (!form) notFound();
+// ✅ FIXED: Treat `params` as a Promise
+export default async function AuthSlugPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params
+  const form = forms[resolvedParams.slug]
 
-  return (
-    <BoardSpaceLayout
-      boardColumnRatio="50%">
-      {form}
-    </BoardSpaceLayout>
-  )
+  if (!form) return notFound()
+
+  return <BoardSpaceLayout boardColumnRatio="50%">{form}</BoardSpaceLayout>
 }
-
-export default AuthSlugPage

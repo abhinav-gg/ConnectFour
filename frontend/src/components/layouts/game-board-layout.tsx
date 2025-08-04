@@ -32,13 +32,13 @@ interface GameBoardLayoutProps {
   player1Time?: number
   player2Time?: number
   scoreRatio: number
-  isGameRunning: boolean
+  isGameRunning?: boolean // Keep for backwards compatibility
+  isGameRunningRef?: MutableRefObject<boolean> // New ref-based prop
   lastMoveProp?: number | null
   // Callbacks to update parent state
   onPlayer1TimeChange?: (newSeconds: number) => void
   onPlayer2TimeChange?: (newSeconds: number) => void
   onScoreRatioChange?: (newRatio: number) => void
-  onStartGame: () => void
   onPauseGame: () => void
   onResetGame: () => void
   // Ref-based props for player data
@@ -47,11 +47,12 @@ interface GameBoardLayoutProps {
   isRedRef?: MutableRefObject<boolean>
   lastMoveRef?: MutableRefObject<number | null>
   rTimeRef?: MutableRefObject<[number, number]> // [player1Time, player2Time]
+  currentTurnRef?: MutableRefObject<number> // Current player's turn (0 or 1)
   // Fallback display props
   player1Name?: string
   player2Name?: string
-  player1Color?: "red" | "yellow"
-  player2Color?: "red" | "yellow"
+  player1Pfp?: string
+  player2Pfp?: string
   // Display options
   displayScoreBar?: boolean
 }
@@ -62,12 +63,9 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   player1Time = 300000,
   player2Time = 300000,
   scoreRatio,
-  isGameRunning,
+  isGameRunning = false,
+  isGameRunningRef,
   lastMoveProp,
-  onPlayer1TimeChange,
-  onPlayer2TimeChange,
-  onScoreRatioChange,
-  onStartGame,
   onPauseGame,
   onResetGame,
   meRef,
@@ -75,10 +73,9 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   isRedRef,
   lastMoveRef,
   rTimeRef,
+  currentTurnRef,
   player1Name = "Opponent",
   player2Name = "Player",
-  player1Color = "yellow",
-  player2Color = "red",
   displayScoreBar = false,
 }, ref) => {
   const defaultBoardProps = {
@@ -128,7 +125,18 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   const actualPlayer1Time = rTimeRef?.current?.[0] ?? player1Time ?? 300000
   const actualPlayer2Time = rTimeRef?.current?.[1] ?? player2Time ?? 300000
   const actualLastMove = lastMoveRef?.current ?? lastMoveProp ?? null
+  const currentTurn = currentTurnRef?.current ?? 0
+  
+  // Use ref-based game running state if available, otherwise fall back to prop
+  const actualIsGameRunning = isGameRunningRef?.current ?? isGameRunning
 
+  // Determine which timer should be running
+  // Player 1 (top) timer runs when currentTurn === 0
+  // Player 2 (bottom) timer runs when currentTurn === 1
+  const isPlayer2TimerRunning = actualIsGameRunning && currentTurn === 0 && isRed
+  const isPlayer1TimerRunning = actualIsGameRunning && !isPlayer2TimerRunning
+
+  console.log("TEST CURRENT PLAYER TIMERS: ", isPlayer1TimerRunning, isPlayer2TimerRunning)
 
   // Register global refresh function for external triggers
   useEffect(() => {
@@ -153,18 +161,17 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
       if (React.isValidElement(child) && typeof child.type !== "string") {
         return React.cloneElement(child as React.ReactElement<any>, {
           key: componentKey, // Stable key to maintain identity
-          onStartGame: onStartGame,
           onPauseGame: onPauseGame,
           onResetGame: onResetGame,
           player1Time: actualPlayer1Time,
           player2Time: actualPlayer2Time,
           scoreRatio: scoreRatio,
-          isGameRunning: isGameRunning,
+          isGameRunning: actualIsGameRunning, // Use the actual game running state
         })
       }
       return child
     })
-  }, [children, onStartGame, onPauseGame, onResetGame, actualPlayer1Time, actualPlayer2Time, scoreRatio, isGameRunning])
+  }, [children, onPauseGame, onResetGame, actualPlayer1Time, actualPlayer2Time, scoreRatio, actualIsGameRunning])
 
   // Refs for the containers
   const desktopContainerRef = React.useRef<HTMLDivElement>(null)
@@ -214,7 +221,7 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer1Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isGameRunning}
+                    isRunning={isPlayer1TimerRunning}
                     color={actualPlayer1Color}
                   />
                 </div>
@@ -232,7 +239,7 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer2Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isGameRunning}
+                    isRunning={isPlayer2TimerRunning}
                     color={actualPlayer2Color}
                   />
                 </div>
@@ -268,7 +275,7 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer1Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isGameRunning}
+                    isRunning={isPlayer1TimerRunning}
                     color={actualPlayer1Color}
                   />
                 </div>
@@ -284,7 +291,7 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer2Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isGameRunning}
+                    isRunning={isPlayer2TimerRunning}
                     color={actualPlayer2Color}
                   />
                 </div>

@@ -1,4 +1,3 @@
-
 import { Socket } from 'socket.io';
 import { withNamespace } from '../handlers';
 import { redisOps } from '@/redis/ops';
@@ -29,7 +28,7 @@ export function registerMatchmakingHandlers(soc: Socket) {
 
       // Create fresh GameContext at socket level
       const gameContext = await GameContext.fromShortcode(identity, shortCode);
-      const response = await gameService.tryJoinGameWithContext(gameContext);
+      const response = await gameService.tryJoinGame(gameContext);
       
       console.log('Matchmaking response:', response);
       if (response.status === 404) {
@@ -76,21 +75,19 @@ export function registerMatchmakingHandlers(soc: Socket) {
   socket.on('cancel', async () => {
     try {
       console.log('User canceled matchmaking');
-      // TODO: Implement cancel matchmaking logic
+      
+      const identity = getIdentityFromSocket(socket);
+      if (!identity) {
+        throw new Error('User identity is required to cancel matchmaking');
+      }
 
-      const r = await redisOps()
-      await r.game.leaveUserQueue(socket.data.userId);
+      const gameContext = new GameContext(identity);
+      await gameService.QuitGameSearch(gameContext);
 
     } catch (error) {
-      
       console.error('Error leaving matchmaking:', error);
     }
   });
-
-
-
-
-  
 }
 
 
@@ -153,9 +150,5 @@ export function registerMatchmakingHandlers(soc: Socket) {
 //         throw error;
 //     }
 // }
-
-
-
-//
 
 

@@ -1,29 +1,30 @@
-'use client'
-
-import { notFound, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import React from 'react';
+import { redirect, notFound } from 'next/navigation'
 
 const redirectMap: Record<string, string> = {
-  'login': '/auth/login',
-  'register': '/auth/register',
-  'community': 'https://linktr.ee/con4uk',
-  'home': '/',
-};
+  login: '/auth/login',
+  register: '/auth/register',
+  community: 'https://linktr.ee/con4uk',
+  home: '/',
+  profile: '/',
+}
 
-export default function SlugPage({ params }: { params: { slug: string } }) {
-    const router = useRouter();
-    const { slug = [] } = React.use(params as unknown as Promise<{ slug?: string[] }>);
-    const slugPath = slug.join('/');
-    const target = redirectMap[slugPath];
+export async function generateStaticParams() {
+  return [
+    { slug: ['login'] },
+    { slug: ['register'] },
+    { slug: ['community'] },
+    { slug: ['home'] },
+    { slug: ['profile'] },
+  ]
+}
 
-    useEffect(() => {
-        if (!target) {
-            console.error(target)
-            notFound();
-        }
-        router.replace(target);
-      });
-    
-  return <></>;
+export const dynamic = 'force-static'
+
+export default async function Page({ params }: { params: Promise<{ slug?: string[] }> }) {
+  const resolvedParams = await params
+  const slugPath = (resolvedParams.slug || []).join('/')
+  const target = redirectMap[slugPath]
+
+  if (!target) return notFound()
+  redirect(target)
 }

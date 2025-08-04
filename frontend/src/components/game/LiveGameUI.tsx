@@ -60,7 +60,7 @@ interface LiveGameWithAnalysisProps {
   showAnalysisFeatures?: boolean // New prop to control analysis visibility
 }
 
-export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>((props, ref) => {
+const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>((props, ref) => {
   const {
     initialChatMessages = [], // Default to empty array here instead of in JSX
     moves = [],
@@ -215,3 +215,7 @@ export const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysis
     </div>
   )
 })
+
+
+LiveGameWithAnalysis.displayName = "LiveGameWithAnalysis"
+export default LiveGameWithAnalysis

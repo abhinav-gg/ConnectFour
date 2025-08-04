@@ -12,7 +12,6 @@ export default function LiveGamePage() {
   const [isGameRunning, setIsGameRunning] = useState(false) // Game starts paused
 
   // Handlers for game state changes
-  const handleStartGame = () => setIsGameRunning(true)
   const handlePauseGame = () => setIsGameRunning(false)
   const handleResetGame = () => {
     setPlayer1Time(300000)
@@ -25,13 +24,10 @@ export default function LiveGamePage() {
     <GameBoardLayout
       player1Name="Player 1"
       player2Name="Player 2"
-      player1Color="yellow"
-      player2Color="red"
       player1Time={player1Time}
       player2Time={player2Time}
       scoreRatio={scoreRatio}
       isGameRunning={isGameRunning}
-      onStartGame={handleStartGame}
       onPauseGame={handlePauseGame}
       onResetGame={handleResetGame}
       displayScoreBar={false} // Hide score bar on setup page
