@@ -2,7 +2,6 @@ import { Socket } from "socket.io";
 import { withNamespace } from "../handlers";
 import { liveGameService } from "@/services/livegame.service";
 import { getIdentityFromSocket } from "@/lib/game.middleware";
-import { RoomSchema } from "../socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
 
 
