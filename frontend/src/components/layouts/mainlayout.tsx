@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { AppSidebar } from "../sidebar"
+import dynamic from 'next/dynamic'
 import { Footer } from "../footer"
 import { Menu } from "lucide-react"
 import { motion } from "framer-motion"
@@ -11,6 +11,7 @@ interface LayoutProps {
   children: React.ReactNode
 }
 
+const AppSidebar = dynamic(() => import("../sidebar").then(mod => mod.AppSidebar), { ssr: false })
 
 export function Layout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)

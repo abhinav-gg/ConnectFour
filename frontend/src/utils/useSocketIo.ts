@@ -95,13 +95,15 @@ function useSocketIo(
 
     // Listen to all events for prefixed message handling
     socket.onAny((event, data) => {
-      if (event !== "message" && event !== "connect" && event !== "disconnect" && event !== "error") {
+      console.log(`[useSocketIO] Socket event received: ${event}`, data);
+      if (event !== "message" && event !== "connect" && event !== "disconnect" && event !== "error" && event !== "ping" && event !== "pong") {
         lastJsonRef.current = { event, data };
         
         // Check all registered prefixes
         onPrefixedMessageCallbacksRef.current.forEach((callback, prefix) => {
-          if (event.startsWith(prefix)) {
+          if (event.startsWith(prefix + ":")) {
             const eventWithoutPrefix = event.slice(prefix.length + 1); // +1 to remove the colon
+            console.log(`[useSocketIO] Prefix match found: ${prefix} -> event: ${eventWithoutPrefix}`);
             callback(eventWithoutPrefix, data);
           }
         });
@@ -157,6 +159,7 @@ function useSocketIo(
   }, []);
 
   const registerOnPrefixedMessage = useCallback((prefix: string, callback: (event: string, data: any) => void) => {
+    console.log(`[useSocketIO] Registering prefix handler for: ${prefix}`);
     onPrefixedMessageCallbacksRef.current.set(prefix, callback);
   }, []);
 

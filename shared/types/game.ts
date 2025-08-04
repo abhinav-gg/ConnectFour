@@ -16,7 +16,7 @@ export type TimedMoveResult = {
 // export interface AnalysisProps {
 //     eval: number
 //     nextMoveMade: { column: number; evaluation: number | null }[]
-// }
+// } 
 
 export type EloChange = {
     win: number;

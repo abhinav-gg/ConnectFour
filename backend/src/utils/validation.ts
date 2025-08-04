@@ -12,7 +12,7 @@ export const parseUser = (u: string): UUID | null => {
   // if anonymous, return null
   // otherwise get the UUID
   if (!u) return null;
-  if (u === "anon:") return null;
+  if (u.startsWith("anon:")) return null;
   const match = /^user:([a-fA-F0-9-]{36})$/.exec(u);
   if (match) {
     return match[1] as UUID;

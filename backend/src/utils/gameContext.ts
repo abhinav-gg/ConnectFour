@@ -38,10 +38,11 @@ export class GameContext {
     // Resolve gameId from shortcode
     async resolveGameId(): Promise<string | null> {
         if (this.gameId) return this.gameId;
-        if (!this.shortcode) return null;
-
         const r = await redisOps();
-        this.gameId = await r.game.findGameByShortcode(this.shortcode);
+        this.gameId = await r.game.getUserQueueGameId(this.userId);
+        if (!this.gameId && this.shortcode) {
+            this.gameId = await r.game.findGameByShortcode(this.shortcode);
+        }
         return this.gameId;
     }
 
@@ -129,7 +130,7 @@ export class GameContext {
     }
 
     // Get the opponent's userId
-    async getOpponentUserId(): Promise<string | null> {
+    async get2PlayerOpponentUserId(): Promise<string | null> {
         const metadata = await this.getMetadata();
         const playerIndex = await this.getPlayerIndex();
         

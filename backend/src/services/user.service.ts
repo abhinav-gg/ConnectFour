@@ -11,7 +11,7 @@ const userDbOps = rdsDBOps.user;
 
 export const userService = {
 
-  async safeGetUserByID(uuid: UUID | null): Promise<UserProfile> {
+  async GetUserByID(uuid: UUID | null): Promise<UserProfile> {
     if (!uuid) {
       return { username: 'Anonymous' };
     }

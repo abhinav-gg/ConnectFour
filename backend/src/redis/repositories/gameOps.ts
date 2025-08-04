@@ -158,6 +158,16 @@ export function GameOperations(redis: Redis) {
       } as GameTimedata));
     },
 
+    async updateGameTimedata(gameId: string, updates: Partial<GameTimedata>): Promise<void> {
+      const key = genRedisGameTime(gameId);
+      const currentTimedata = await this.getGameTimes(gameId);
+      if (!currentTimedata) {
+        throw new Error('Game timedata not found');
+      }
+
+      const updatedTimedata = { ...currentTimedata, ...updates };
+      await redis.call('JSON.SET', key, '$', JSON.stringify(updatedTimedata));
+    },
 
     ////////////////////////////////////////////////////////////
 

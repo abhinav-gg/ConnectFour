@@ -39,7 +39,9 @@ export function registerMatchmakingHandlers(soc: Socket) {
       socket.emit('joined', { message: 'Looking for opponents...', shortcode: shortCode });
 
       if (response.status == 100) {
-        await gameService.StartStandardGame(response.message);
+        // Create a new GameContext for the returned gameId
+        const startGameContext = await GameContext.fromGameId(identity, response.message);
+        await gameService.StartStandardGame(startGameContext);
       }
       
 

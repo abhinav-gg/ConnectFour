@@ -189,13 +189,9 @@ authRouter.post('/verify-email', requireUnauthenticated, verifyRecaptcha, async 
 authRouter.get('/me', optionalAuth, sendUserToGame, async (req: AuthenticatedRequest, res: Response) => {
   
   try {
-
-    const userId = req.identity?.user || req.identity?.anon;
     
-    let user = await userService.safeGetUserByID(userId ?? null);
+    if (!req.identity) {
 
-    if (user.username === "Anonymous") {
-      
       const sessionToken = await authService.makeAnonymousSession();
       res.cookie('sessionToken', sessionToken, {
         httpOnly: true,
@@ -203,7 +199,10 @@ authRouter.get('/me', optionalAuth, sendUserToGame, async (req: AuthenticatedReq
         sameSite: 'strict',
         maxAge: 1000 * UserSessionTTL, // in milliseconds
       });
-    }
+    } 
+    
+    const userId = req.identity?.user;
+    const user = await userService.GetUserByID(userId ?? null);
 
     res.json(user);
 

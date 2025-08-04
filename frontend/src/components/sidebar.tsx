@@ -84,7 +84,7 @@ interface AppSidebarProps {
 export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false, onClose }: AppSidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
-  const { user } = useUser();
+  const { user, isAnonymous } = useUser();
 
   const handleLinkClick = () => {
     if (isMobile && onClose) {
@@ -206,7 +206,7 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
             <img src={user?.pfp || "/icons/user.svg?height=28&width=28"} alt="Profile" className="w-full h-full object-cover" />
           </div>
           {(!collapsed || isMobile) && (
-            <span className="text-sm font-medium transition-opacity duration-300">Profile</span>
+            <span className="text-sm font-medium transition-opacity duration-300">{(isAnonymous) ? "Profile" : user?.username}</span>
           )}
         </button>
       </div>

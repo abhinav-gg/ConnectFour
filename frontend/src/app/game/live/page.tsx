@@ -86,6 +86,12 @@ export default function LiveGamePage() {
   // Move navigation state
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0)
   
+  // Game Start Modal State
+  const [showStartPopup, setShowStartPopup] = useState(false)
+  const [gameMode, setGameMode] = useState("Standard")
+  const [timeControl, setTimeControl] = useState("5+3")
+  const [gameUrl, setGameUrl] = useState("")
+  
   // Add a state to force re-renders when refs change
   const [forceUpdate, setForceUpdate] = useState(0)
   
@@ -117,45 +123,24 @@ export default function LiveGamePage() {
     },
   ])
 
-  // Handle URL parameter and join matchmaking
+  // Step 1: Register ALL socket handlers immediately on mount (prevents race condition)
   useEffect(() => {
-    const roomParam = searchParams.get('r')
+    console.log("🔌 WEBSOCKET: Registering event handlers immediately")
     
-    if (!roomParam || roomParam.trim() === "") {
-      console.log("🔌 REDIRECT: Empty or missing ?r parameter, redirecting to /play/setup")
-      router.push("/play/setup")
-      return
-    }
-    
-    setShortcode(roomParam)
-    console.log("🔌 SHORTCODE: Extracted from URL parameter ?r=", roomParam)
-    
-    // Join matchmaking when socket is connected
-    if (connected) {
-      sendJson("matchmaking:join", { shortcode: roomParam })
-      console.log("📤 WEBSOCKET: Sent join matchmaking with shortcode:", roomParam)
-    }
-  }, [searchParams, router, connected, sendJson])
-
-  // Listen for socket events
-  useEffect(() => {
-    if (!connected || !shortcode) return
-
     onPrefixedMessage("matchmaking", (event, data) => {
+      console.log("� WEBSOCKET: Received matchmaking event:", event, "with data:", data)
       switch (event) {
         case "failed":
-          console.error("📨 WEBSOCKET: Failed to join matchmaking")
+          console.warn("📨 WEBSOCKET: Failed to join matchmaking")
+          setShowStartPopup(false)
           router.push("/play/setup")
           break
         case "joined":
           console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
-          // Handle successful join (e.g., update UI, start game)
-
-          if (shortcode !== data.shortcode) {
+          if (data.shortcode && shortcode && shortcode !== data.shortcode) {
             console.error("Shortcode mismatch in matchmaking data", shortcode, data.shortcode)
             return // Don't process if shortcodes don't match
           }
-          
           break
         default:
           console.warn(`📨 WEBSOCKET: Unhandled matchmaking event ${event} with data:`, data)
@@ -163,10 +148,22 @@ export default function LiveGamePage() {
     });
 
     onPrefixedMessage("game", (event, data) => {
+      console.log("📨 WEBSOCKET: Received game event:", event, "with data:", data)
       switch (event) {
 
         case "setup": {
           const setupData = data as StandardGameMetadata
+
+          // Phase 2: Data is now automatically available through the refs
+          // No need to manually update state - the modal will read from refs
+          console.log("🎮 MATCHMAKING: Opponent data available in refs for phase 2")
+          
+          // Keep the popup open for a moment to show the match found animation
+          // Then close it after the user sees the match
+          setTimeout(() => {
+            setShowStartPopup(false)
+            console.log("🎮 MATCHMAKING: Closed start popup after showing match found")
+          }, 3000) // Show match found for 3 seconds
 
           // start setting the props as needed:
           meRef.current = setupData.me
@@ -247,6 +244,7 @@ export default function LiveGamePage() {
         case "end": {
           // Game has ended
           isGameRunningRef.current = false
+          setShowStartPopup(false) // Ensure start popup is closed
           console.log("🏁 GAME: Game has ended")
           
           break;
@@ -258,10 +256,41 @@ export default function LiveGamePage() {
 
       }
     });
+    
+  }, []); // Empty dependency array - register handlers once immediately on mount
+
+  // Step 2: Handle URL parameter and join matchmaking (connection-dependent logic)
+  useEffect(() => {
+    const roomParam = searchParams.get('r')
+    
+    if (!roomParam || roomParam.trim() === "") {
+      console.log("🔌 REDIRECT: Empty or missing ?r parameter, redirecting to /play/setup")
+      router.push("/play/setup")
+      return
+    }
+    
+    setShortcode(roomParam)
+    setGameUrl(`${window.location.origin}/game/live?r=${roomParam}`)
+    console.log("🔌 SHORTCODE: Extracted from URL parameter ?r=", roomParam)
+    
+    // Show start popup when page loads
+    setShowStartPopup(true)
+    
+    // Join matchmaking when socket is connected
+    if (connected) {
+      sendJson("matchmaking:join", { shortcode: roomParam })
+      console.log("📤 WEBSOCKET: Sent join matchmaking with shortcode:", roomParam)
+    }
+  }, [searchParams, router, connected, sendJson])
+
+  // Handle cleanup listeners  
+  useEffect(() => {
+    let sentLeave = false;
 
     const handleCloseSocket = () => {
-      if (connected) {
+      if (connected && !sentLeave) {
         sendJson("game:leave", {  })
+        sentLeave = true;
       }
     };
 
@@ -275,7 +304,7 @@ export default function LiveGamePage() {
       window.removeEventListener('beforeunload', handleCloseSocket);
       // consider custom disonnect logic if needed
     }
-  }, [connected, shortcode])
+  }, [connected, sendJson])
 
   
   const handleResetGame = () => {
@@ -369,6 +398,18 @@ export default function LiveGamePage() {
     console.log("⚙️ SETTINGS clicked")
   }
 
+  const handleCancelMatchmaking = () => {
+    console.log("🎮 START POPUP: Cancelled matchmaking")
+    setShowStartPopup(false)
+    // Send cancel message to server if needed
+    if (connected && shortcode) {
+      sendJson("matchmaking:leave", { shortcode })
+      console.log("📤 WEBSOCKET: Sent leave matchmaking")
+    }
+    // Redirect back to setup
+    router.push("/play/setup")
+  }
+
 
   return (
     <>
@@ -430,21 +471,18 @@ export default function LiveGamePage() {
       onReviewGame={handleReviewGame}
       onNewGame={handleNewGame}
       onRematch={handleRematch}
-    />
+    /> */}
 
     <GameStartModal
       open={showStartPopup}
-      onOpenChange={handleCloseStartPopup}
       gameMode={gameMode}
       timeControl={timeControl}
-      playerRating={playerRating}
-      opponentName={opponentName}
-      opponentRating={opponentRating}
       gameUrl={gameUrl}
-      onCancel={handleCloseStartPopup}
-      myName={myName}
-      myPfp={myPfp}
-    /> */}
+      onCancel={handleCancelMatchmaking}
+      meRef={meRef}
+      opponentRef={opponentRef}
+      forceUpdateTrigger={forceUpdate}
+    />
     </>
   )
 }

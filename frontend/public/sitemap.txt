@@ -1,8 +1,8 @@
 https://con4.uk/
-https://con4.uk/about-us
-https://con4.uk/events
-https://con4.uk/events/ichack25
 https://con4.uk/login
+https://con4.uk/auth/login
 https://con4.uk/register
-https://con4.uk/openings
-https://con4.uk/analysis
+https://con4.uk/auth/register
+https://con4.uk/tools
+https://con4.uk/community
+https://con4.uk/play

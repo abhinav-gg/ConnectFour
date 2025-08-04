@@ -2,7 +2,6 @@ import { Socket } from "socket.io";
 import { withNamespace } from "../handlers";
 import { liveGameService } from "@/services/livegame.service";
 import { getIdentityFromSocket } from "@/lib/game.middleware";
-import { RoomSchema } from "../socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
 
 
@@ -144,7 +143,7 @@ export function registerGameHandlers(sock: Socket) {
 
             // Create fresh GameContext at socket level for draw acceptance
             const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            await liveGameService.ConfirmDraw(gameContext);
+            await liveGameService.HandleDraw(gameContext);
             
         } catch (error) {
             console.error('Error accepting draw:', error);

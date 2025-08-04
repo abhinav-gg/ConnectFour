@@ -1,8 +1,12 @@
 const path = require('path');
 
-/** @type {import('next').NextConfig} */
+console.log('[DEBUG] Loading next.config.js');
+
+const sharedPath = path.resolve(__dirname, '../shared');
+console.log('[DEBUG] Shared alias resolved to:', sharedPath);
+
 const nextConfig = {
-  output: 'export',
+  // output: 'export',
   distDir: 'out',
   images: {
     unoptimized: true,
@@ -10,11 +14,12 @@ const nextConfig = {
   reactStrictMode: false,
 
   experimental: {
-    externalDir: true, // 👈 allows importing from outside the Next.js root (e.g. ../shared)
+    externalDir: true,
   },
 
   webpack(config) {
-    config.resolve.alias['@shared'] = path.resolve(__dirname, '../shared');
+    console.log('[DEBUG] Webpack config modified with @shared alias');
+    config.resolve.alias['@shared'] = sharedPath;
     return config;
   },
 };

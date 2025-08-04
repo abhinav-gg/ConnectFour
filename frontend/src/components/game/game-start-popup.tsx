@@ -1,48 +1,41 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, MutableRefObject } from "react"
 import { Button } from "@/components/ui/button"
 import { TreePine, Rocket, Copy, Check, Swords } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { PlayerData } from "@shared/types/users"
 
 interface GameStartModalProps {
   open: boolean
-  onOpenChange: () => void
   gameMode: string
   timeControl: string
-  playerRating: number
-  opponentName?: string
-  opponentRating?: number
   gameUrl?: string
   onCancel: () => void
-  myName?: string
-  myPfp?: string
+  meRef: MutableRefObject<PlayerData | undefined>
+  opponentRef: MutableRefObject<PlayerData | undefined>
+  forceUpdateTrigger?: number // Add this to trigger re-renders when refs change
 }
 
 export function GameStartModal({
   open,
-  onOpenChange,
   gameMode,
   timeControl,
-  playerRating,
-  opponentName,
-  opponentRating,
   gameUrl = "https://con4.uk/game/live/AWLFIJ",
   onCancel,
-  myName = "MYSELF",
-  myPfp = "/icons/user.svg",
+  meRef,
+  opponentRef,
+  forceUpdateTrigger,
 }: GameStartModalProps) {
   const [copied, setCopied] = useState(false)
   const [showMatchFound, setShowMatchFound] = useState(false)
 
   // Update the match found state based on opponent data
+  // This will re-run whenever forceUpdateTrigger changes
   useEffect(() => {
-    if (open && opponentName && opponentRating) {
-      setShowMatchFound(true)
-    } else {
-      setShowMatchFound(false)
-    }
-  }, [open, opponentName, opponentRating])
+    const hasOpponentData = open && opponentRef.current?.username && opponentRef.current?.elo
+    setShowMatchFound(!!hasOpponentData)
+  }, [open, forceUpdateTrigger])
 
   const handleCopyUrl = async () => {
     try {
@@ -57,6 +50,19 @@ export function GameStartModal({
   const handleCancel = () => {
     setShowMatchFound(false)
     onCancel()
+  }
+
+  const handleOverlayClick = () => {
+    // Only allow clicking outside to close during phase 2 (match found)
+    if (showMatchFound) {
+      setShowMatchFound(false)
+      onCancel()
+    }
+  }
+
+  const handleModalClick = (e: React.MouseEvent) => {
+    // Prevent clicks inside the modal from closing it
+    e.stopPropagation()
   }
 
   const getGameModeIcon = () => {
@@ -103,6 +109,7 @@ export function GameStartModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
+            onClick={handleOverlayClick}
           />
           
           {/* Modal content */}
@@ -117,17 +124,31 @@ export function GameStartModal({
                 stiffness: 300, 
                 damping: 30
               }}
+              onClick={handleModalClick}
             >
               {/* Fixed height container to prevent resizing */}
               <div className="bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl overflow-hidden shadow-2xl h-[600px]">
                 <div className="relative h-full flex flex-col">
                   {/* Header with Logo and Title - Left aligned icon with centered text */}
                   <div className="flex items-center p-8 pb-6 relative">
-                    {/* Swords Icon - Fixed position */}
+                    {/* Swords Icon - Fixed position with conditional animation */}
                     <motion.div
                       initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ duration: 0.6, type: "spring", stiffness: 200 }}
+                      animate={{ 
+                        scale: 1, 
+                        rotate: showMatchFound ? 0 : [0, 10, -10, 5, -5, 0] // Loop only during phase 1
+                      }}
+                      transition={{ 
+                        scale: { duration: 0.6, type: "spring", stiffness: 200 },
+                        rotate: showMatchFound 
+                          ? { duration: 0.3 } // Quick settle for phase 2
+                          : { 
+                              duration: 2, 
+                              repeat: Infinity, 
+                              ease: "easeInOut",
+                              delay: 0.6 // Start after initial animation
+                            }
+                      }}
                       className="absolute left-8"
                     >
                       <Swords className="w-12 h-12 text-white" />
@@ -208,22 +229,22 @@ export function GameStartModal({
                         <div className="flex items-center gap-4">
                           <div className="w-20 h-20 bg-black rounded-lg flex items-center justify-center overflow-hidden">
                             <img
-                              src={myPfp}
+                              src={meRef.current?.pfp || "/icons/user.svg"}
                               alt="Player Avatar"
                               className="w-full h-full object-cover"
                             />
                           </div>
                           <div>
-                            <p className="text-white text-2xl font-bold">{myName}</p>
+                            <p className="text-white text-2xl font-bold">{meRef.current?.username || "You"}</p>
                           </div>
                         </div>
-                        <div className="text-white text-4xl font-bold">{playerRating}</div>
+                        <div className="text-white text-4xl font-bold">{meRef.current?.elo || 1200}</div>
                       </motion.div>
 
                       {/* Conditional Content - Fills the remaining space */}
                       <div className="flex-grow">
                         <AnimatePresence mode="wait" initial={false}>
-                          {showMatchFound && opponentName && opponentRating ? (
+                          {showMatchFound && opponentRef.current?.username && opponentRef.current?.elo ? (
                             // Match Found State
                             <motion.div
                               key="match-found-content"
@@ -233,9 +254,9 @@ export function GameStartModal({
                               transition={{ duration: 0.5 }}
                               className="h-full flex flex-col justify-center"
                             >
-                              {/* VS */}
+                              {/* VS - Centered between players */}
                               <motion.div
-                                className="text-center py-4"
+                                className="flex justify-center py-4"
                                 initial={{ opacity: 0, scale: 0.5 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.4, delay: 0.2 }}
@@ -253,16 +274,16 @@ export function GameStartModal({
                                 <div className="flex items-center gap-4">
                                   <div className="w-20 h-20 bg-black rounded-lg flex items-center justify-center overflow-hidden">
                                     <img
-                                      src="/placeholder.svg?height=80&width=80"
+                                      src={opponentRef.current?.pfp || "/icons/user.svg"}
                                       alt="Opponent Avatar"
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
                                   <div>
-                                    <p className="text-white text-2xl font-bold">{opponentName}</p>
+                                    <p className="text-white text-2xl font-bold">{opponentRef.current?.username}</p>
                                   </div>
                                 </div>
-                                <div className="text-white text-4xl font-bold">{opponentRating}</div>
+                                <div className="text-white text-4xl font-bold">{opponentRef.current?.elo}</div>
                               </motion.div>
                             </motion.div>
                           ) : (

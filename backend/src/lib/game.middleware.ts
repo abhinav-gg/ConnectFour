@@ -16,9 +16,10 @@ export const sendUserToGame = async (req: AuthenticatedRequest, res: Response, n
         const r = await redisOps();
         const gameId = await r.game.getUserQueueGameId(userId);
         if (gameId) {
+          console.log(`[Middleware] User ${userId} is in game ${gameId}, redirecting...`);
             // Redirect the user to the game
-            res.status(302).json({ gameLink: `/game/live/${gameId}` });
-            return;
+          res.status(302).json({ gameLink: `/game/live?r=${gameId}` });
+          return;
         } else {
           // No game found, continue to the next middleware
           return next();
