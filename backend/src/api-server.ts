@@ -59,8 +59,10 @@ async function startAPI() {
   });
 }
 
-startAPI().catch(console.error);
-
+startAPI().catch((err) => {
+  console.error('Startup failed:', err);
+  process.exit(1); // ! Exit with error so host/service restarts
+});
 
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received: closing DB pool...');

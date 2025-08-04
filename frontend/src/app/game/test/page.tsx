@@ -5,6 +5,7 @@ import { GameBoardLayout } from "../../../components/layouts/game-board-layout"
 import { TestControls } from "./test-sidecomponent"
 import { GameEndModal, GameResult, GameEndReason } from "../../../components/game/game-end-popup"
 import { GameStartModal } from "../../../components/game/game-start-popup"
+import { useError } from "@/components/providers/errorProvider"
 
 export default function GameTestPage() {
   const [player1Time, setPlayer1Time] = useState(90)
@@ -41,8 +42,9 @@ export default function GameTestPage() {
   const [mistakes, setMistakes] = useState(1)
   const [blunders, setBlunders] = useState(0)
   const [greatMoves, setGreatMoves] = useState(3)
+  // import from error
+  const { showError } = useError()
 
-  const handleStartGame = () => setIsGameRunning(true)
   const handlePauseGame = () => setIsGameRunning(false)
   const handleResetGame = () => {
     setPlayer1Time(90)
@@ -88,6 +90,7 @@ export default function GameTestPage() {
   
   // Clean up timeouts when component unmounts
   useEffect(() => {
+    showError("This is a test error message", "error");
     return () => {
       if (timeoutRef.current.matchFound) clearTimeout(timeoutRef.current.matchFound);
       if (timeoutRef.current.gameStart) clearTimeout(timeoutRef.current.gameStart);
@@ -106,13 +109,10 @@ export default function GameTestPage() {
       <GameBoardLayout
         player1Name="Test Player 1"
         player2Name="Test Player 2"
-        player1Color="yellow"
-        player2Color="red"
         player1Time={player1Time * 1000}
         player2Time={player2Time * 1000}
         scoreRatio={scoreRatio}
         isGameRunning={isGameRunning}
-        onStartGame={handleStartGame}
         onPauseGame={handlePauseGame}
         onResetGame={handleResetGame}
         boardProps={{
@@ -130,7 +130,6 @@ export default function GameTestPage() {
           onPlayer1TimeChange={setPlayer1Time}
           onPlayer2TimeChange={setPlayer2Time}
           onScoreRatioChange={setScoreRatio}
-          onStartGame={handleStartGame}
           onPauseGame={handlePauseGame}
           onResetGame={handleResetGame}
           // Game End Popup Props

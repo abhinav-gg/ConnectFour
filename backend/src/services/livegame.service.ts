@@ -10,11 +10,12 @@ import { ChatMessage } from "@shared/types/Websocket";
 import { userService } from "./user.service";
 import { parseUser } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
+import { GameState } from "@shared/constants/allgamestates";
 
 export const liveGameService = {
     
 
-    async AbortGameWithContext(gameContext: GameContext): Promise<void> {
+    async AbortGame(gameContext: GameContext): Promise<void> {
         // Get fresh metadata to check game status
         gameContext.invalidateMetadata();
         const metadata = await gameContext.getMetadata();
@@ -25,34 +26,16 @@ export const liveGameService = {
         // remove the game from redis
     },
 
-    async AbortGame(userId: string): Promise<void> {
-        // Get user's current game
-        const r = await redisOps();
-        const gameId = await r.game.getUserQueueGameId(userId);
-        if (!gameId) return;
+    async handleDisconnect(gameContext: GameContext): Promise<void> {
 
-        // Create fresh game context
-        const gameContext = await GameContext.fromGameId(userId, gameId);
-        await this.AbortGameWithContext(gameContext);
-    },
+        console.log("ATTEMPTING DISCONNECT HANDLER", gameContext.userId, gameContext.shortcode);
 
-    async HandleDisconnectWithContext(gameContext: GameContext): Promise<void> {
         const socket = getSocketIO();
         // if the user was in a game then this becomes a bit of a problem
         // TODO: Implement disconnect handling logic
     },
 
-    async HandleDisconnect(userId: string): Promise<void> {
-        const r = await redisOps();
-        const gameId = await r.game.getUserQueueGameId(userId);
-        if (!gameId) return;
-
-        // Create fresh game context for the disconnected user
-        const gameContext = await GameContext.fromGameId(userId, gameId);
-        await this.HandleDisconnectWithContext(gameContext);
-    },
-
-    async AttemptDrawWithContext(gameContext: GameContext): Promise<void> {
+    async AttemptDraw(gameContext: GameContext): Promise<void> {
         // Get fresh game data
         gameContext.invalidateMetadata();
         const metadata = await gameContext.getMetadata();
@@ -67,17 +50,8 @@ export const liveGameService = {
         // TODO: Implement draw attempt logic
     },
 
-    async AttemptDraw(userId: string): Promise<void> {
-        const r = await redisOps();
-        const gameId = await r.game.getUserQueueGameId(userId);
-        if (!gameId) return;
 
-        // Create fresh game context
-        const gameContext = await GameContext.fromGameId(userId, gameId);
-        await this.AttemptDrawWithContext(gameContext);
-    },
-
-    async ConfirmDrawWithContext(gameContext: GameContext): Promise<void> {
+    async ConfirmDraw(gameContext: GameContext): Promise<void> {
         // Get fresh game data
         gameContext.invalidateMetadata();
         const metadata = await gameContext.getMetadata();
@@ -90,42 +64,23 @@ export const liveGameService = {
         // TODO: Implement draw confirmation logic
     },
 
-    async ConfirmDraw(userId: string): Promise<void> {
-        const r = await redisOps();
-        const gameId = await r.game.getUserQueueGameId(userId);
-        if (!gameId) return;
-
-        // Create fresh game context
-        const gameContext = await GameContext.fromGameId(userId, gameId);
-        await this.ConfirmDrawWithContext(gameContext);
-    },
-
-    async ResignWithContext(gameContext: GameContext): Promise<void> {
+    async Resign(gameContext: GameContext): Promise<void> {
         // Get fresh game data
-        gameContext.invalidateMetadata();
-        const metadata = await gameContext.getMetadata();
-        if (!metadata) return;
-        
-        // if game state is ended do nothing
-        // current player resigns the game, end and store the game
-        // otherwise do nothing
-        
-        // TODO: Implement resignation logic
+        gameContext.invalidateAll();
+        const playerIndex = await gameContext.getPlayerIndex();
+        if (playerIndex === null) return; // user is not in the game
+
+        let result = GameState.ERRORED;
+        if (playerIndex === 0) {
+            result = GameState.RED_RESIGNED;
+        } else {
+            result = GameState.YELLOW_RESIGNED;
+        }
+
+        this.HandleGameOver(gameContext, result);
     },
 
-    async Resign(userId: string): Promise<void> {
-        const r = await redisOps();
-        const gameId = await r.game.getUserQueueGameId(userId);
-        if (!gameId) return;
-
-        // Create fresh game context
-        const gameContext = await GameContext.fromGameId(userId, gameId);
-        await this.ResignWithContext(gameContext);
-    },
-
-
-
-    async HandleChatMessageWithContext(gameContext: GameContext, message: string): Promise<void> {
+    async HandleChatMessage(gameContext: GameContext, message: string): Promise<void> {
         // Validate player is in the game room with fresh data
         gameContext.invalidatePlayerData();
         await gameContext.validatePlayerInRoom();
@@ -154,14 +109,7 @@ export const liveGameService = {
         } as ChatMessage);
     },
 
-    async HandleChatMessage(sender: string, shortcode: string, message: string): Promise<void> {
-        // Create fresh game context to manage all game data
-        const gameContext = await GameContext.fromShortcode(sender, shortcode);
-        await this.HandleChatMessageWithContext(gameContext, message);
-    },
-
-
-    async HandleGameMoveWithContext(gameContext: GameContext, col: number): Promise<ServiceResponse> {
+    async HandleGameMove(gameContext: GameContext, col: number): Promise<ServiceResponse> {
         // Validate player is in the game room with fresh data
         gameContext.invalidatePlayerData();
         await gameContext.validatePlayerInRoom();
@@ -223,7 +171,7 @@ export const liveGameService = {
 
         if (Game.isGameOver()) {
             // handle game over logic
-            await this.HandleGameOver(gameContext.gameId, Game.getGameState());
+            await this.HandleGameOver(gameContext, Game.getGameState());
             return { status: 200, message: 'Game over' };
         } else {
             // handle the move in redis
@@ -274,30 +222,45 @@ export const liveGameService = {
         }
     },
 
-    async HandleGameMove(sender: string, shortcode: string, col: number): Promise<ServiceResponse> {
-        // Create fresh game context to manage all game data
-        const gameContext = await GameContext.fromShortcode(sender, shortcode);
-        return await this.HandleGameMoveWithContext(gameContext, col);
-    },
-
-
-    async HandleGameOver (gameId: string, state: number): Promise<void> {
+    async HandleGameOver (gameContext: GameContext, state: number): Promise<void> {
         // check that the game exists in redis
-
-        const r = await redisOps();
-        // update the game state in redis
-        await r.game.updateGameMetadataState(gameId, state);
-
         // Invalidate any cached GameContext data since game state changed
         // Note: In a real implementation, you might want to notify specific users
         // For now, we'll just update the state and let future GameContext calls refresh
 
+        const r = await redisOps();
+        console.log("HANDLING GAME OVER", gameContext.gameId, state);
+
+        if (!gameContext.gameId) {
+            throw new Error('Game ID is null');
+        }
+        
+        gameContext.invalidateMetadata();
+        const metadata = await gameContext.getMetadata();
+        if (!metadata) {
+            throw new Error('Game metadata not found');
+        }
+        await gameContext.validatePlayerInRoom();
+        
+        if (metadata.state !== GameState.IN_PROGRESS)
+            return; // if game state is not in progress, do nothing
+        
+        
+        await r.game.updateGameMetadataState(gameContext.gameId, state);
+    
+        // free up the players of the game
+        const gameMeta = await gameContext.getMetadata();
+        gameMeta?.players.forEach(async (player) => {
+            await r.game.leaveUserQueue(player);
+        });
+
         // end by starting a job to store the game from gameService
         // gameService.StoreGame(gameId);
+
     },
 
 
-    async HandleDrawOfferWithContext(gameContext: GameContext): Promise<ServiceResponse> {
+    async HandleDrawOffer(gameContext: GameContext): Promise<ServiceResponse> {
         // Validate player is in the game room with fresh data
         gameContext.invalidatePlayerData();
         await gameContext.validatePlayerInRoom();
@@ -314,16 +277,13 @@ export const liveGameService = {
         
         // TODO: Implement draw offer logic with Redis operations
         // For now, return a placeholder response
+
+
+        // end by starting a job to store the game from gameService
+        // gameService.StoreGame(gameId);
+
         return { status: 200, message: 'Draw offer handled' };
     },
-
-    async HandleDrawOffer(sender: string, shortcode: string): Promise<ServiceResponse> {
-        // Create fresh game context to manage all game data
-        const gameContext = await GameContext.fromShortcode(sender, shortcode);
-        return await this.HandleDrawOfferWithContext(gameContext);
-    }
-
-
 
 
 }

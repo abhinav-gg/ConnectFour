@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import MainLogoAnimated from '@/components/boards/mainlogo_animated';
 
 interface DragState {
   velocityX: number;
@@ -146,15 +145,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      <Dashboard 
-        closed={true}/>
       <div className="flex-1 relative overflow-hidden">
-        {/* Main Logo */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-1/3 h-1/3">
-            <MainLogoAnimated />
-          </div>
-        </div>
 
         {/* Animated Text */}
         <div className="absolute inset-x-0 bottom-12 text-center font-bold text-black text-lg z-10">

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom"
 import { useEffect, useState } from "react"
 import { Play, Puzzle, GraduationCap, Wrench, Calendar, Users, Bell, Settings } from "lucide-react"
 import { useUser } from "@/components/providers/userProvider";
+import Link from "next/link"
 
 // Tooltip Portal Component
 function TooltipPortal({
@@ -124,7 +125,7 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
     >
       {/* Header - Fixed */}
       <div className={`${collapsed && !isMobile ? "p-2" : "p-3"} border-b border-brand-border flex-shrink-0`}>
-        <a
+        <Link
           href="/home"
           className={`flex items-center ${collapsed && !isMobile ? "justify-center" : "gap-2"} group relative`}
           onClick={handleLinkClick}
@@ -144,14 +145,14 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
           {(!collapsed || isMobile) && (
             <span className="text-lg font-bold text-white transition-opacity duration-300"></span>
           )}
-        </a>
+        </Link>
       </div>
 
       {/* Navigation Content - Scrollable on mobile if needed */}
       <div className={`flex-1 px-1 py-2 flex flex-col justify-start min-h-0 ${isMobile ? "overflow-y-auto" : ""}`}>
         <nav className="space-y-1">
           {navigationItems.map((item) => (
-            <a
+            <Link
               key={item.title}
               href={item.url}
               onClick={handleLinkClick}
@@ -179,7 +180,7 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
                   `}
                 />
               )}
-            </a>
+            </Link>
           ))}
         </nav>
       </div>

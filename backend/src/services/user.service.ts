@@ -3,11 +3,9 @@ import { rdsDBOps } from '@/db/rds/ops';
 import { ServiceResponse } from '@/types/custom';
 import { UserProfile } from '@shared/types/users';
 import { UUID } from 'crypto';
-import { authService } from './auth.service';
 import { GameMode } from '@shared/constants/allgamemodes';
 import { EloNotFound } from '@/types/dbErrors';
 import { StandardStartingElo } from '@shared/constants/game';
-import { getIdentity } from '@/utils/validation';
 
 const userDbOps = rdsDBOps.user;
 

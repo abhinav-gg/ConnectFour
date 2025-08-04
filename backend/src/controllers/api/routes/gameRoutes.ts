@@ -10,6 +10,7 @@ import { rdsDBOps } from '@/db/rds/ops';
 import { userService } from '@/services/user.service';
 import { sendUserToGame } from '@/lib/game.middleware';
 import { getIdentityString } from '@/utils/validation';
+import { GameContext } from '@/utils/gameContext';
 
 
 const gameRouter = Router();
@@ -83,10 +84,11 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
 
     
     console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
-    // Try the matchmaking service
+    
     try {
-        const response = await gameService.joinGameQueue(userId, { gamemode, time_control });
-        res.status(response.status).json({ gameLink: `/game/live/${response.message}` });
+        const gameContext = new GameContext(userId);
+        const response = await gameService.joinGameQueue(gameContext, { gamemode, time_control });
+        res.status(response.status).json({ gameLink: `/game/live?r=${response.message}` });
     }
     catch (error) {
         console.log('Failed to request game:', error);

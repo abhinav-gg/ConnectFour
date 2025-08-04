@@ -1,5 +1,4 @@
-"use client"
-
+'use client'
 /*
  * LiveGame Test Page with WebSocket Integration Points
  * 
@@ -40,15 +39,17 @@
  */
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { GameBoardLayout } from "@/components/layouts/game-board-layout"
 import { BoardHandle } from "@/components/boards/Board"
-import { LiveGameWithAnalysis, LiveGameRef } from "@/components/game/LiveGameUI"
+import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/LiveGameUI"
 import { ChatMessage, StandardGameMove } from "@shared/types/Websocket"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
 import { StandardGameMetadata } from "@shared/types/Websocket"
 import { PlayerData } from "@shared/types/users"
+import { GameEndModal } from "@/components/game/game-end-popup"
+import { GameStartModal } from "@/components/game/game-start-popup"
 
 interface Move {
   column: number
@@ -56,11 +57,10 @@ interface Move {
 }
 
 export default function LiveGamePage() {
-  const params = useParams()
   const router = useRouter()
-  const slug = params.slug as string
+  const searchParams = useSearchParams()
   
-  // Extract shortcode from slug or redirect if empty
+  // Extract shortcode from URL parameter ?r=SHORTCODE
   const [shortcode, setShortcode] = useState<string>("")
   
   // Use the existing SocketIO hook
@@ -69,14 +69,14 @@ export default function LiveGamePage() {
   // Use refs for data that gets updated by WebSocket events to avoid re-renders
   const meRef = useRef<PlayerData>()
   const opponentRef = useRef<PlayerData>()
-  const currentTurnRef = useRef(0)
+  const currentTurnRef = useRef(-1)
   const isRedRef = useRef(false)
   const lMoveRef = useRef(0)
   const pTimesRef = useRef<[number, number]>([0, 0])
   const movesRef = useRef<Move[]>([])
+  const isGameRunningRef = useRef(false) // Use ref instead of state to persist without re-renders
 
   const [scoreRatio, setScoreRatio] = useState(0.5)
-  const [isGameRunning, setIsGameRunning] = useState(false) // Game is live
   
   // Analysis Control - Toggle this to hide/show analysis features
   const [showAnalysis, setShowAnalysis] = useState(false)
@@ -117,23 +117,25 @@ export default function LiveGamePage() {
     },
   ])
 
-  // Handle slug parameter and join matchmaking
+  // Handle URL parameter and join matchmaking
   useEffect(() => {
-    if (!slug || slug.trim() === "") {
-      console.log("🔌 REDIRECT: Empty slug, redirecting to /play/setup")
+    const roomParam = searchParams.get('r')
+    
+    if (!roomParam || roomParam.trim() === "") {
+      console.log("🔌 REDIRECT: Empty or missing ?r parameter, redirecting to /play/setup")
       router.push("/play/setup")
       return
     }
     
-    setShortcode(slug)
-    console.log("🔌 SHORTCODE: Extracted from slug:", slug)
+    setShortcode(roomParam)
+    console.log("🔌 SHORTCODE: Extracted from URL parameter ?r=", roomParam)
     
     // Join matchmaking when socket is connected
     if (connected) {
-      sendJson( "matchmaking:join", { shortcode: slug })
-      console.log("📤 WEBSOCKET: Sent join matchmaking with shortcode:", slug)
+      sendJson("matchmaking:join", { shortcode: roomParam })
+      console.log("📤 WEBSOCKET: Sent join matchmaking with shortcode:", roomParam)
     }
-  }, [slug, router, connected, sendJson])
+  }, [searchParams, router, connected, sendJson])
 
   // Listen for socket events
   useEffect(() => {
@@ -160,12 +162,10 @@ export default function LiveGamePage() {
       }
     });
 
-    
     onPrefixedMessage("game", (event, data) => {
       switch (event) {
 
         case "setup": {
-
           const setupData = data as StandardGameMetadata
 
           // start setting the props as needed:
@@ -175,6 +175,10 @@ export default function LiveGamePage() {
           lMoveRef.current = setupData.lTime
           pTimesRef.current = setupData.rTimes
           currentTurnRef.current = setupData.turn
+          
+          // Game is running once setup is complete
+          isGameRunningRef.current = true
+          
           // Debug: Log after setting refs
           console.log("🐛 DEBUG: After setting refs:", JSON.stringify({
             me: meRef.current,
@@ -217,9 +221,10 @@ export default function LiveGamePage() {
           const playerColor = moveData.player === 1 ? "red" : "yellow"
           movesRef.current = [...movesRef.current, { column: moveData.col, player: playerColor }]
           lMoveRef.current = moveData.lMove
+
+          isGameRunningRef.current = true // Ensure game is running after any move
           
           // call game board reference triggerMoveAnimation
-          setIsGameRunning(true) // Ensure game is running to animate moves
           if (gameBoardRef.current && gameBoardRef.current.triggerMoveAnimation) {
             gameBoardRef.current.triggerMoveAnimation(moveData.row, moveData.col, moveData.player)
             console.log("🎯 BOARD: Triggered move animation for column", moveData.col)
@@ -227,23 +232,23 @@ export default function LiveGamePage() {
             console.warn("⚠️ BOARD: GameBoardRef not available for move animation")
           }
           
-          // Update current turn
-          currentTurnRef.current = currentTurnRef.current + 1
+          // Update current turn - alternate between 0 and 1
+          currentTurnRef.current = (currentTurnRef.current + 1) % 2
           
-          // Update last move timestamp
+          // Update last move timestamp and remaining times
           lMoveRef.current = moveData.lMove;
           pTimesRef.current = moveData.rTimes;
+          
           // Update current move index to show latest move
           setCurrentMoveIndex(movesRef.current.length)
 
-          // Force re-render and trigger UI refresh 
-          triggerUpdate()
+          break;
+        }
+        case "end": {
+          // Game has ended
+          isGameRunningRef.current = false
+          console.log("🏁 GAME: Game has ended")
           
-          // Trigger UI refresh in case player timers changed
-          if ((window as any).__gameLayoutRefresh) {
-            (window as any).__gameLayoutRefresh()
-          }
-
           break;
         }
 
@@ -272,20 +277,11 @@ export default function LiveGamePage() {
     }
   }, [connected, shortcode])
 
-  const handleStartGame = () => {
-    console.log("🎮 START GAME clicked")
-    setIsGameRunning(true)
-  }
-  
-  const handlePauseGame = () => {
-    console.log("⏸️ PAUSE GAME clicked")
-    setIsGameRunning(false)
-  }
   
   const handleResetGame = () => {
     console.log("🔄 RESET GAME clicked")
     setScoreRatio(0.5)
-    setIsGameRunning(false)
+    isGameRunningRef.current = false
     setChatMessages([])
     movesRef.current = []
     setCurrentMoveIndex(0)
@@ -375,6 +371,7 @@ export default function LiveGamePage() {
 
 
   return (
+    <>
     <GameBoardLayout
       ref={gameBoardRef}
       meRef={meRef}
@@ -382,16 +379,13 @@ export default function LiveGamePage() {
       isRedRef={isRedRef}
       lastMoveRef={lMoveRef}
       rTimeRef={pTimesRef}
+      currentTurnRef={currentTurnRef}
+      isGameRunningRef={isGameRunningRef} // Pass ref instead of state
       player1Time={opponentRef.current?.time || 300000}
       player2Time={meRef.current?.time || 300000}
       lastMoveProp={lMoveRef.current}
       scoreRatio={scoreRatio}
-      isGameRunning={isGameRunning}
-      onPlayer1TimeChange={() => {}} // No-op for now
-      onPlayer2TimeChange={() => {}} // No-op for now  
-      onScoreRatioChange={() => {}} // No-op for now
-      onStartGame={handleStartGame}
-      onPauseGame={handlePauseGame}
+      onPauseGame={() => {}}
       onResetGame={handleResetGame}
       boardProps={{
         interactive: true,
@@ -421,5 +415,36 @@ export default function LiveGamePage() {
         showAnalysisFeatures={showAnalysis}
       />
     </GameBoardLayout>
+
+    {/* <GameEndModal
+      isOpen={showEndPopup}
+      onClose={handleCloseEndPopup}
+      result={gameResult}
+      reason={gameReason}
+      playerName={playerName}
+      playerRating={playerRating}
+      ratingChange={ratingChange}
+      mistakes={mistakes}
+      blunders={blunders}
+      greatMoves={greatMoves}
+      onReviewGame={handleReviewGame}
+      onNewGame={handleNewGame}
+      onRematch={handleRematch}
+    />
+
+    <GameStartModal
+      open={showStartPopup}
+      onOpenChange={handleCloseStartPopup}
+      gameMode={gameMode}
+      timeControl={timeControl}
+      playerRating={playerRating}
+      opponentName={opponentName}
+      opponentRating={opponentRating}
+      gameUrl={gameUrl}
+      onCancel={handleCloseStartPopup}
+      myName={myName}
+      myPfp={myPfp}
+    /> */}
+    </>
   )
 }

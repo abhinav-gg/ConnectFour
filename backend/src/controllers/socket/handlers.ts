@@ -10,19 +10,6 @@ export const registerSocketHandler = {
   matchmaking: registerMatchmakingHandlers,
 }
 
-// Disconnect handler
-export function handleDisconnect(socket: Socket) {
-  // Clean up user state, remove from rooms, etc.
-  console.log(`Cleaning up user ${socket.id}`);
-  
-  // Leave all rooms
-  socket.rooms.forEach(room => {
-    if (room !== socket.id) {
-      socket.leave(room);
-      console.log(`User ${socket.id} left room ${room}`);
-    }
-  });
-}
 
 export function leaveUserRooms(socket: Socket) {
   // Remove user from all rooms they are part of

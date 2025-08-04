@@ -6,11 +6,36 @@ import { RoomSchema } from "../socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
 
 
+async function handleDisconnectSocket(socket: Socket) {
+    try {
+        const userId = getIdentityFromSocket(socket);
+        if (!userId) {
+            console.warn('User identity not found on disconnect');
+            return;
+        }
+
+        // Create fresh GameContext at socket level
+        const gameContext = new GameContext(userId);
+        await liveGameService.handleDisconnect(gameContext);
+
+    } catch (error) {
+        console.error('Error handling disconnect:', error);
+    }
+}
+
+
 // Register game-related handlers
 export function registerGameHandlers(sock: Socket) {
 
     const socket = withNamespace(sock, 'game');
 
+    // Handle disconnect and leave events using the same handler
+    const disconnectHandler = async () => {
+        await handleDisconnectSocket(socket);
+    };
+
+    sock.on('disconnect', disconnectHandler);
+    socket.on('leave', disconnectHandler);
 
     // Game chat handling
     socket.on('chat', async (data) => {
@@ -25,7 +50,7 @@ export function registerGameHandlers(sock: Socket) {
 
             // Create fresh GameContext at socket level
             const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            await liveGameService.HandleChatMessageWithContext(gameContext, message);
+            await liveGameService.HandleChatMessage(gameContext, message);
 
         } catch (error) {
             console.error('Error handling game chat:', error);
@@ -47,7 +72,7 @@ export function registerGameHandlers(sock: Socket) {
 
             // Create fresh GameContext at socket level
             const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            const attemptedMove = await liveGameService.HandleGameMoveWithContext(gameContext, move);
+            const attemptedMove = await liveGameService.HandleGameMove(gameContext, move);
 
             if (attemptedMove.status !== 200) {
                 socket.emit('error', { message: attemptedMove.message });
@@ -74,7 +99,7 @@ export function registerGameHandlers(sock: Socket) {
             
             // Create fresh GameContext at socket level to handle resignation
             const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            await liveGameService.ResignWithContext(gameContext);
+            await liveGameService.Resign(gameContext);
             
             // socket.emit('left_game', { gameId });
         } catch (error) {
@@ -96,7 +121,7 @@ export function registerGameHandlers(sock: Socket) {
 
             // Create fresh GameContext at socket level for draw offer
             const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            const response = await liveGameService.HandleDrawOfferWithContext(gameContext);
+            const response = await liveGameService.HandleDrawOffer(gameContext);
             
             if (response.status !== 200) {
                 socket.emit('error', { message: response.message });
@@ -119,7 +144,7 @@ export function registerGameHandlers(sock: Socket) {
 
             // Create fresh GameContext at socket level for draw acceptance
             const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            await liveGameService.ConfirmDrawWithContext(gameContext);
+            await liveGameService.ConfirmDraw(gameContext);
             
         } catch (error) {
             console.error('Error accepting draw:', error);
