@@ -168,9 +168,7 @@ export function GameOperations(redis: Redis) {
       const updatedTimedata = { ...currentTimedata, ...updates };
       await redis.call('JSON.SET', key, '$', JSON.stringify(updatedTimedata));
     },
-
-    ////////////////////////////////////////////////////////////
-
+    
     async updateGameTimeAfterMove(
       gameId: string,
       newMoveTime: number,
@@ -188,11 +186,8 @@ export function GameOperations(redis: Redis) {
         .call('JSON.SET', key, '$.lMove', lastMoveTimestamp)
         .exec();
     },
-
-
-
-
-
+    
+    ////////////////////////////////////////////////////////////
     
     async findGameByShortcode(shortcode: string): Promise<string | null> {
       const result = await redis.call('FT.SEARCH', 'idx:game:meta', `@shortcode:${shortcode}`, 'LIMIT', '0', '1')

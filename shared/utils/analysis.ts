@@ -5,18 +5,18 @@ import { IConnect4Solver, getConnect4Solver } from "@shared/WASM/con4Solver.type
 
 
 export class SelfAnalysis {
-    
-  private gameState: StandardGame; 
-  private solver: IConnect4Solver;
 
-  private constructor(game: StandardGame, solver: IConnect4Solver) { 
+  protected gameState: StandardGame;
+  protected solver: IConnect4Solver;
+
+  protected constructor(game: StandardGame, solver: IConnect4Solver) { 
     this.gameState = game;
     this.solver = solver;
   }
 
   static async load(game: StandardGame): Promise<SelfAnalysis> {
-      const solver = await getConnect4Solver();
-      return new SelfAnalysis(game, solver);
+    const solver = await getConnect4Solver();
+    return new SelfAnalysis(game, solver);
   }
 
   sortedBestMoves(arr: number[]): number[][] {

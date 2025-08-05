@@ -21,7 +21,7 @@ export function GameStartModal({
   open,
   gameMode,
   timeControl,
-  gameUrl = "https://con4.uk/game/live/AWLFIJ",
+  gameUrl,
   onCancel,
   meRef,
   opponentRef,
@@ -39,7 +39,7 @@ export function GameStartModal({
 
   const handleCopyUrl = async () => {
     try {
-      await navigator.clipboard.writeText(gameUrl)
+      await navigator.clipboard.writeText(gameUrl || "no-url")
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {

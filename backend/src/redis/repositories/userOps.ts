@@ -20,7 +20,10 @@ export function UserOperations(redis: Redis) {
 
     async getSession(sessionId: string): Promise<string | null> {
       const key = genRedisSessionKey(sessionId);
-      return await redis.get(key);
+      const session = await redis.get(key);
+      if (!session) return null;
+      await redis.expire(key, RedisSchema.session.ttl); // Refresh TTL
+      return session;
     },
 
     async dropSession(sessionId: string) {

@@ -84,7 +84,7 @@ export function registerMatchmakingHandlers(soc: Socket) {
       }
 
       const gameContext = new GameContext(identity);
-      await gameService.QuitGameSearch(gameContext);
+      await gameService.QuitPlayerQueue(gameContext);
 
     } catch (error) {
       console.error('Error leaving matchmaking:', error);

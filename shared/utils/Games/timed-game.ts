@@ -141,7 +141,9 @@ export class TimedStandardGame {
     return this.game.gameOver;
   }
 
-
+  hasTimedOutPlayer(): boolean {
+    return this.timedOutPlayer !== null;
+  }
 
 
 }

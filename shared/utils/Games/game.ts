@@ -227,4 +227,25 @@ export class StandardGame {
   }
 
 
+  cumulativeMoves() {
+    let index = 0;
+    const value = this.exportMoves();
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+      next(): IteratorResult<string> {
+        if (index <= value.length) {
+          const result = value.slice(0, index);
+          index++;
+          return { value: result, done: false };
+        } else {
+          return { value: undefined, done: true };
+        }
+      }
+    };
+  }
+
+
 }

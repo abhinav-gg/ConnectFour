@@ -1,7 +1,7 @@
 import { dynamoDBOps } from "@/db/dynamodb/ops";
 import { redisOps } from "@/redis/ops";
 import { ServiceResponse } from "@/types/custom";
-import { GameInfo, TimeControl } from "@shared/types/game";
+import { EloChange, GameInfo, TimeControl } from "@shared/types/game";
 import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes } from "@shared/utils/gamemodes";
 import { packGameInfo, packGameInfoToString } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
@@ -159,8 +159,8 @@ export const gameService = {
     /**
      * Function called to quit the matchmaking queue for a user.
      */
-    async QuitGameSearch (gameContext: GameContext): Promise<void> {
-        
+    async QuitPlayerQueue (gameContext: GameContext): Promise<void> {
+        console.log("Safely quitting game queue for user:", gameContext.userId);
         const r = await redisOps();
         const gameId = await gameContext.resolveGameId();
         if (gameId) {
@@ -196,7 +196,6 @@ export const gameService = {
     async CreateGame (gameinfo: GameInfo): Promise<GameMetadata & { id: string }> {
 
         // create a new game with the given gamemode and time control
-
         const r = await redisOps();
 
         const shortcode = genGameShortcode();
@@ -281,11 +280,10 @@ export const gameService = {
                 throw new Error('Players not found in game metadata');
             }
 
-            // GET THE ELO CHANGES HERE
-            const p1Elo = await userService.getOrSetPlayerElo(p1Id, gameMeta.gamemode);
-            const p2Elo = await userService.getOrSetPlayerElo(p2Id, gameMeta.gamemode);
-            p1EloChange = calculateEloChanges(p1Elo, p2Elo, true);
-            p2EloChange = calculateEloChanges(p2Elo, p1Elo, false);
+            const allEloChanges = await this.getGameEloChanges(gameContext);
+            p1EloChange = allEloChanges.get(p1Id);
+            p2EloChange = allEloChanges.get(p2Id);
+
         }
 
         // each player needs to be send the game setup metadata
@@ -319,10 +317,7 @@ export const gameService = {
      */
     async StoreGame (gameContext: GameContext): Promise<void> {
 
-        // check that the game exists in redis
-        // Store the game data in the NOSQL database game table
-
-        if (!gameContext.gameId) {
+        if (!gameContext.resolveGameId()) {
             throw new Error('Game ID is null');
         }
 
@@ -330,14 +325,21 @@ export const gameService = {
 
         // Get all game data using GameContext for consistency
         const { metadata: gameMeta, timedata: gameTimes, moves: gameMoves } = await gameContext.getAllGameData();
-        if (!gameMeta) {
+        if (!gameMeta || !gameTimes) {
             throw new Error('Game not found in redis');
         }
 
         // process data here 
 
         // Store the game shortcode map in the NOSQL database game shortcode table if there is one
-        // await dynamoDBOps.game.StoreGame(gameContext.gameId, gameMeta, gameTimes, gameMoves);
+        const Game = {
+            p: gameContext.gameId,
+            c: gameMeta.shortcode,
+            u: gameMeta.players,
+            d:null,
+            i:null,
+            r: gameMeta.state,
+        }
 
         // For each player in the game, store in the playerdata table
 
@@ -348,8 +350,7 @@ export const gameService = {
 
         // recalculate the elo change with the result of the game (it is a pure function)
 
-        // remove the game from redis
-        await r.game.dropGame(gameContext.gameId);
+        
     },
 
     async AssignPlayerToGame (gameId: string, userId: string, elo?: number | null, gameMeta?: GameMetadata): Promise<void> {
@@ -545,7 +546,44 @@ export const gameService = {
     },
 
     
+    async getGameEloChanges (gameContext: GameContext): Promise<Map<string, EloChange>> {
+        // Get elo changes for all players in the game
+        const eloChanges: Map<string, EloChange> = new Map();
 
+        gameContext.invalidateMetadata();
+        const gameMeta = await gameContext.getMetadata();
+        if (!gameMeta) {
+            throw new Error('Game metadata not found');
+        }
+
+        if (!StandardModes.has(gameMeta.gamemode)) {
+            throw new Error ('Unimplemented gamemode for elo changes');
+        } else {
+
+            if (CasualModes.has(gameMeta.gamemode)) {
+                // Casual games do not have elo changes
+                return eloChanges;
+            }
+
+            // GET THE ELO CHANGES HERE
+
+            const p1Id  = parseUser(gameMeta.players[0]);
+            const p2Id  = parseUser(gameMeta.players[1]);
+            if (!p1Id || !p2Id) {
+                throw new Error('A player not found in game metadata or anonymous player');
+            }
+            const p1Elo = await userService.getOrSetPlayerElo(p1Id, gameMeta.gamemode);
+            const p2Elo = await userService.getOrSetPlayerElo(p2Id, gameMeta.gamemode);
+            const p1EloChange = calculateEloChanges(p1Elo, p2Elo, true);
+            const p2EloChange = calculateEloChanges(p2Elo, p1Elo, false);
+
+            eloChanges.set(gameMeta.players[0], p1EloChange);
+            eloChanges.set(gameMeta.players[1], p2EloChange);
+        }
+
+
+        return eloChanges;
+    }
 
 
 

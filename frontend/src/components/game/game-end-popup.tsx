@@ -3,19 +3,17 @@
 import { Button } from "@/components/ui/button"
 import { Trophy, HelpCircle, AlertCircle, X, ArrowUp, ArrowDown, Minus, Award } from "lucide-react"
 import { motion } from "framer-motion"
-import { useEffect, useState } from "react"
-
-export type GameResult = "win" | "loss" | "draw"
-export type GameEndReason = "checkmate" | "timeout" | "resignation" | "draw" | "abandonment"
+import { useEffect, useState, MutableRefObject } from "react"
+import { GameState, RedWinStates, YellowWinStates, DrawStates } from "@shared/constants/allgamestates"
+import { EloChange } from "@shared/types/game"
 
 interface GameEndModalProps {
   isOpen: boolean
   onClose: () => void
-  result: GameResult
-  reason: GameEndReason
-  playerName: string
-  playerRating: number
-  ratingChange: number
+  state: GameState
+  meRef: MutableRefObject<any>
+  isRedRef: MutableRefObject<boolean>
+  eloChangesRef: MutableRefObject<EloChange | null>
   mistakes: number
   blunders: number
   greatMoves: number
@@ -27,11 +25,10 @@ interface GameEndModalProps {
 export function GameEndModal({
   isOpen,
   onClose,
-  result,
-  reason,
-  playerName,
-  playerRating,
-  ratingChange,
+  state,
+  meRef,
+  isRedRef,
+  eloChangesRef,
   mistakes,
   blunders,
   greatMoves,
@@ -39,9 +36,29 @@ export function GameEndModal({
   onNewGame,
   onRematch,
 }: GameEndModalProps) {
-  const [animatedRating, setAnimatedRating] = useState(playerRating - ratingChange)
-  const [displayRating, setDisplayRating] = useState(playerRating - ratingChange)
+  const [animatedRating, setAnimatedRating] = useState(0)
+  const [displayRating, setDisplayRating] = useState(0)
   const [showRatingChange, setShowRatingChange] = useState(false)
+
+  const playerName = meRef.current?.username || "Player"
+  const isRed = isRedRef.current
+  
+  // Determine game outcome once at the top
+  const isWin = (RedWinStates.has(state) && isRed) || (YellowWinStates.has(state) && !isRed)
+  const isLoss = (RedWinStates.has(state) && !isRed) || (YellowWinStates.has(state) && isRed)
+  const isDraw = DrawStates.has(state)
+  
+  // Get actual player rating and changes from refs
+  const currentRating = meRef.current?.elo
+  const eloChanges = eloChangesRef.current
+  
+  // Determine the actual rating change based on game outcome
+  const actualRatingChange = eloChanges ? 
+    (isWin ? eloChanges.win : isLoss ? eloChanges.loss : eloChanges.draw) : 
+    0;
+  
+  // Check if elo data is available for display
+  const showEloSection = currentRating != null && eloChanges != null
 
   // Animate number counter
   const animateNumber = (from: number, to: number, duration: number = 1000) => {
@@ -65,8 +82,8 @@ export function GameEndModal({
   }
 
   useEffect(() => {
-    if (isOpen) {
-      const originalRating = playerRating - ratingChange
+    if (isOpen && showEloSection) {
+      const originalRating = currentRating - actualRatingChange
       // Reset animation state when popup opens
       setAnimatedRating(originalRating)
       setDisplayRating(originalRating)
@@ -74,37 +91,51 @@ export function GameEndModal({
       
       // Start animation after a short delay
       const timer = setTimeout(() => {
-        animateNumber(originalRating, playerRating, 1200)
-        setAnimatedRating(playerRating)
+        animateNumber(originalRating, currentRating, 1200)
+        setAnimatedRating(currentRating)
       }, 1000)
 
       return () => clearTimeout(timer)
+    } else if (isOpen) {
+      // Reset states when elo data is not available
+      setShowRatingChange(false)
+      setDisplayRating(0)
+      setAnimatedRating(0)
     }
-  }, [isOpen, playerRating, ratingChange])
+  }, [isOpen, currentRating, actualRatingChange, showEloSection])
   const getResultText = () => {
-    switch (result) {
-      case "win":
-        return "You Won"
-      case "loss":
-        return "You Lost"
-      case "draw":
-        return "Draw"
-      default:
-        return "Game Over"
+    if (isDraw) {
+      return "Draw"
     }
+    
+    if (isWin) {
+      return "You Won"
+    }
+    
+    if (isLoss) {
+      return "You Lost"
+    }
+    
+    return "Game Over" // Fallback
   }
 
   const getReasonText = () => {
-    switch (reason) {
-      case "checkmate":
-        return "By Checkmate"
-      case "timeout":
+    switch (state) {
+      case GameState.RED_WIN:
+      case GameState.YELLOW_WIN:
+        return "By Victory"
+      case GameState.RED_TIMEOUT:
+      case GameState.YELLOW_TIMEOUT:
         return "By Timeout"
-      case "resignation":
+      case GameState.RED_RESIGNED:
+      case GameState.YELLOW_RESIGNED:
         return "By Resignation"
-      case "abandonment":
-        return "By Abandonment"
-      case "draw":
+      case GameState.RED_DISCONNECTED:
+      case GameState.YELLOW_DISCONNECTED:
+        return "By Disconnection"
+      case GameState.DRAW_FULL:
+        return "Board Full"
+      case GameState.AGREED_DRAW:
         return "By Agreement"
       default:
         return ""
@@ -112,33 +143,39 @@ export function GameEndModal({
   }
 
   const getTrophyIcon = () => {
-    switch (result) {
-      case "win":
-        return Trophy
-      case "loss":
-        return X
-      case "draw":
-        return Award
-      default:
-        return Trophy
+    if (isDraw) {
+      return Award
     }
+    
+    if (isWin) {
+      return Trophy
+    }
+    
+    if (isLoss) {
+      return X
+    }
+    
+    return Trophy // Fallback
   }
 
   const getTrophyColor = () => {
-    switch (result) {
-      case "win":
-        return "text-yellow-400"
-      case "loss":
-        return "text-red-400"
-      case "draw":
-        return "text-blue-400"
-      default:
-        return "text-gray-400"
+    if (isDraw) {
+      return "text-blue-400"
     }
+    
+    if (isWin) {
+      return "text-yellow-400"
+    }
+    
+    if (isLoss) {
+      return "text-red-400"
+    }
+    
+    return "text-gray-400" // Fallback
   }
 
-  const getRatingChangeDisplay = (change: number, result: GameResult) => {
-    if (result === "win") {
+  const getRatingChangeDisplay = (change: number) => {
+    if (isWin) {
       // Win: Always green up arrow (even if change is 0 or negative due to some edge case)
       return {
         icon: ArrowUp,
@@ -146,7 +183,7 @@ export function GameEndModal({
         bgColor: "from-green-400 to-green-600",
         text: change > 0 ? `+${change}` : change < 0 ? `${change}` : "0"
       }
-    } else if (result === "loss") {
+    } else if (isLoss) {
       // Loss: Always red down arrow
       return {
         icon: ArrowDown,
@@ -154,7 +191,7 @@ export function GameEndModal({
         bgColor: "from-red-400 to-red-600",
         text: change > 0 ? `+${change}` : change < 0 ? `${change}` : "0"
       }
-    } else if (result === "draw") {
+    } else if (isDraw) {
       // Draw: Always grey up arrow (even if there's a change)
       return {
         icon: change < 0 ? ArrowDown : ArrowUp,
@@ -268,11 +305,11 @@ export function GameEndModal({
               >
                 <p className="text-gray-300 text-sm uppercase tracking-wide">{playerName}</p>
                 <motion.p 
-                  className="text-white text-3xl font-bold"
+                  className={`text-white text-3xl font-bold ${!showEloSection ? 'invisible' : ''}`}
                   animate={{ 
                     scale: showRatingChange ? [1, 1.1, 1] : 1,
-                    color: showRatingChange && ratingChange > 0 ? "#4ade80" : 
-                           showRatingChange && ratingChange < 0 ? "#f87171" : "#ffffff"
+                    color: showRatingChange && actualRatingChange > 0 ? "#4ade80" : 
+                           showRatingChange && actualRatingChange < 0 ? "#f87171" : "#ffffff"
                   }}
                   transition={{ duration: 0.5, delay: 1.2 }}
                 >
@@ -282,7 +319,7 @@ export function GameEndModal({
             </div>
 
             {/* Rating Change - Only show for the player */}
-            {showRatingChange && (
+            {showRatingChange && showEloSection && (
               <motion.div 
                 className="flex items-center gap-2"
                 initial={{ opacity: 0, x: 20 }}
@@ -290,7 +327,7 @@ export function GameEndModal({
                 transition={{ duration: 0.4, delay: 1.1 }}
               >
                 {(() => {
-                  const changeInfo = getRatingChangeDisplay(ratingChange, result)
+                  const changeInfo = getRatingChangeDisplay(actualRatingChange)
                   const IconComponent = changeInfo.icon
                   
                   return (

@@ -48,8 +48,10 @@ import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
 import { StandardGameMetadata } from "@shared/types/Websocket"
 import { PlayerData } from "@shared/types/users"
+import { GameState } from "@shared/constants/allgamestates"
 import { GameEndModal } from "@/components/game/game-end-popup"
 import { GameStartModal } from "@/components/game/game-start-popup"
+import { EloChange } from "@shared/types/game"
 
 interface Move {
   column: number
@@ -75,6 +77,7 @@ export default function LiveGamePage() {
   const pTimesRef = useRef<[number, number]>([0, 0])
   const movesRef = useRef<Move[]>([])
   const isGameRunningRef = useRef(false) // Use ref instead of state to persist without re-renders
+  const eloChangesRef = useRef<EloChange | null>(null)
 
   const [scoreRatio, setScoreRatio] = useState(0.5)
   
@@ -94,6 +97,12 @@ export default function LiveGamePage() {
   
   // Add a state to force re-renders when refs change
   const [forceUpdate, setForceUpdate] = useState(0)
+  
+  // Game End Modal State
+  const [showEndPopup, setShowEndPopup] = useState(false)
+  const [gameState, setGameState] = useState<GameState | null>(null)
+  const [playerRating, setPlayerRating] = useState(1200) // Default rating
+  const [ratingChange, setRatingChange] = useState(0)
   
   // Create a function to trigger re-renders
   const triggerUpdate = () => {
@@ -172,26 +181,19 @@ export default function LiveGamePage() {
           lMoveRef.current = setupData.lTime
           pTimesRef.current = setupData.rTimes
           currentTurnRef.current = setupData.turn
-          
-          // Game is running once setup is complete
           isGameRunningRef.current = true
-          
-          // Debug: Log after setting refs
-          console.log("🐛 DEBUG: After setting refs:", JSON.stringify({
-            me: meRef.current,
-            opponent: opponentRef.current
-          }))
+          eloChangesRef.current = setupData.eloChanges
 
           // IMPORTANT: Force re-render since refs don't cause re-renders
           triggerUpdate()
           
-          // Also trigger layout refresh if available
-          if ((window as any).__gameLayoutRefresh) {
-            (window as any).__gameLayoutRefresh()
-            console.log("🔄 DEBUG: Triggered layout refresh")
-          } else {
-            console.error("❌ DEBUG: Layout refresh function not available!")
-          }
+          // // Also trigger layout refresh if available
+          // if ((window as any).__gameLayoutRefresh) {
+          //   (window as any).__gameLayoutRefresh()
+          //   console.log("🔄 DEBUG: Triggered layout refresh")
+          // } else {
+          //   console.error("❌ DEBUG: Layout refresh function not available!")
+          // }
 
           // Handle setup data (e.g., update UI, initialize game state)
           console.log("📨 WEBSOCKET: Received setup data:", JSON.stringify(setupData))
@@ -215,7 +217,7 @@ export default function LiveGamePage() {
           console.log("📨 WEBSOCKET: Received move data:", JSON.stringify(moveData))
 
           // Update moves state with the new move
-          const playerColor = moveData.player === 1 ? "red" : "yellow"
+          const playerColor = moveData.player === 0 ? "red" : "yellow"
           movesRef.current = [...movesRef.current, { column: moveData.col, player: playerColor }]
           lMoveRef.current = moveData.lMove
 
@@ -241,11 +243,18 @@ export default function LiveGamePage() {
 
           break;
         }
-        case "end": {
+        case "over": {
           // Game has ended
           isGameRunningRef.current = false
           setShowStartPopup(false) // Ensure start popup is closed
-          console.log("🏁 GAME: Game has ended")
+          const { result } = data
+          // this result is the state to use
+
+          // Set game state and show end popup
+          setGameState(result)
+          setShowEndPopup(true)
+
+          console.log("🏁 GAME: Game has ended", { result })
           
           break;
         }
@@ -410,6 +419,30 @@ export default function LiveGamePage() {
     router.push("/play/setup")
   }
 
+  // Game End Modal Handlers
+  const handleCloseEndPopup = () => {
+    console.log("🏁 END POPUP: Closed")
+    setShowEndPopup(false)
+  }
+
+  const handleReviewGame = () => {
+    console.log("📊 REVIEW GAME clicked")
+    // TODO: Implement game review functionality
+    setShowEndPopup(false)
+  }
+
+  const handleNewGame = () => {
+    console.log("🆕 NEW GAME clicked") 
+    setShowEndPopup(false)
+    router.push("/play/setup")
+  }
+
+  const handleRematch = () => {
+    console.log("🔄 REMATCH clicked")
+    // TODO: Implement rematch functionality
+    setShowEndPopup(false)
+  }
+
 
   return (
     <>
@@ -457,21 +490,20 @@ export default function LiveGamePage() {
       />
     </GameBoardLayout>
 
-    {/* <GameEndModal
+    <GameEndModal
       isOpen={showEndPopup}
       onClose={handleCloseEndPopup}
-      result={gameResult}
-      reason={gameReason}
-      playerName={playerName}
-      playerRating={playerRating}
-      ratingChange={ratingChange}
-      mistakes={mistakes}
-      blunders={blunders}
-      greatMoves={greatMoves}
+      state={gameState || GameState.ERRORED}
+      meRef={meRef}
+      isRedRef={isRedRef}
+      eloChangesRef={eloChangesRef}
+      mistakes={0} // TODO: Get from game analysis
+      blunders={0} // TODO: Get from game analysis  
+      greatMoves={0} // TODO: Get from game analysis
       onReviewGame={handleReviewGame}
       onNewGame={handleNewGame}
       onRematch={handleRematch}
-    /> */}
+    />
 
     <GameStartModal
       open={showStartPopup}

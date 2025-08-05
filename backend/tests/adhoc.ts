@@ -10,10 +10,11 @@ import { packGameInfo, unpackGameInfo } from "@/utils/binary";
 import { TimedStandardGame } from "@shared/utils/Games/timed-game";
 import { CategoriseTime } from "@shared/utils/gamemodes";
 import { redisOps } from "@/redis/ops";
+import { GameReview } from "@/utils/gameReview";
 
 console.log("This is an adhoc test file for backend tests.");
 
-let boardTest = new StandardGame("5");
+let boardTest = new StandardGame("4444413663256723312");
 
 console.log(boardTest.prettyPrintBoard(), boardTest.hashCode);
 // // boardTest.makeMove(3);
@@ -35,6 +36,11 @@ console.log(boardTest.prettyPrintBoard(), boardTest.hashCode);
 (async () => {
 
 console.log("starting")
+
+const review = await GameReview.load(boardTest);
+console.log("Review loaded:");
+
+console.log("Classified Moves:", review.classifyMoves());
 
 // for (let dElo = 0; dElo <= 100; dElo++) {
 //     for (let dTime = 0; dTime < 1000000; dTime += 300) {

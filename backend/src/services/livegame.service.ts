@@ -194,11 +194,8 @@ export const liveGameService = {
 
         const r = await redisOps();
 
-        if (Game.isGameOver()) {
-            // handle game over logic
-            await this.HandleGameOver(gameContext, Game.getGameState());
-            return { status: 200, message: 'Game over' };
-        } else {
+        if (!Game.hasTimedOutPlayer()) {
+            
             // handle the move in redis
             await r.game.addGameMove(gameContext.gameId, col);
             
@@ -223,15 +220,7 @@ export const liveGameService = {
                 Game.getLastMoveTimestamp(),
             );
             
-            // Update cached timedata in context
-            const newTimedata = {
-                ...gameTimes,
-                cTurn: Game.getCurrentPlayer(),
-                rTimes: Game.getTimeLeft() as [number, number],
-                lMove: Game.getLastMoveTimestamp(),
-                mTimes: [...gameTimes.mTimes, deltaTime]
-            };
-            gameContext.updateCachedTimedata(newTimedata);
+            gameContext.invalidateTimedata();   
 
             // broadcast the move to the game room
             const socket = getSocketIO();
@@ -242,9 +231,25 @@ export const liveGameService = {
                 rTimes: Game.getTimeLeft(),
                 lMove: Game.getLastMoveTimestamp(),
             });
-            
-            return { status: 200, message: 'Move made successfully' };
+        } else {
+            // update the game times
+            await r.game.updateGameTimedata(
+                gameContext.gameId,
+                {
+                    rTimes: Game.getTimeLeft(),
+                    cTurn: Game.getCurrentPlayer(),
+                }
+            );
         }
+
+        if (Game.isGameOver()) {
+            // handle game over logic
+            await this.HandleGameOver(gameContext, Game.getGameState());
+            return { status: 200, message: 'Game over' };
+        }
+
+        return { status: 200, message: 'Move made successfully' };
+    
     },
 
     async HandleGameOver (gameContext: GameContext, state: number): Promise<void> {
@@ -262,7 +267,8 @@ export const liveGameService = {
         
         gameContext.invalidateMetadata();
         const metadata = await gameContext.getMetadata();
-        if (!metadata) {
+        const timedata = await gameContext.getTimedata();
+        if (!metadata || !timedata) {
             throw new Error('Game metadata not found');
         }
         await gameContext.validatePlayerInRoom();
@@ -274,6 +280,11 @@ export const liveGameService = {
         await r.game.updateGameMetadataState(gameContext.gameId, state);
     
         // Notify all players about the game over
+        const socket = getSocketIO();
+        socket.to(RoomSchema.game.key(gameContext.shortcode!)).emit('game:over', {
+            result: state,
+            finalTimes: timedata.rTimes,
+        });
 
         // Free the players of the game
         await this.FreeGamePlayers(gameContext);
@@ -314,8 +325,9 @@ export const liveGameService = {
         
         // Get fresh metadata to check game state
         gameContext.invalidateMetadata();
+        const gameId = await gameContext.resolveGameId();
         const metadata = await gameContext.getMetadata();
-        if (!metadata || !gameContext.gameId) return;
+        if (!metadata || !gameId) return;
 
         // if the game state is not scheduled then do nothing
         if (metadata.state !== GameState.SCHEDULED) return;
@@ -323,7 +335,8 @@ export const liveGameService = {
         // free up the players of the game
         const r = await redisOps();
         metadata.players.forEach(async (player) => {
-            await r.game.leaveUserQueue(player);
+            const playerContext = await GameContext.fromGameId(player, gameId);
+            await gameService.QuitPlayerQueue(playerContext);
         });
 
     },
