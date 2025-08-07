@@ -603,15 +603,19 @@ export function LiveGameSelection() {
       {/* Custom Timings Modal */}
       <AnimatePresence>
         {showCustomTimings && (
-          <motion.div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowCustomTimings(false)}
-          >
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Custom overlay */}
             <motion.div
-              className="bg-brand-secondary rounded-2xl p-6 w-full max-w-md space-y-6"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCustomTimings(false)}
+            />
+            
+            {/* Modal content */}
+            <motion.div
+              className="relative bg-brand-secondary rounded-2xl p-6 w-full max-w-md space-y-6 pointer-events-auto"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -659,7 +663,7 @@ export function LiveGameSelection() {
                 Save
               </Button>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </motion.div>

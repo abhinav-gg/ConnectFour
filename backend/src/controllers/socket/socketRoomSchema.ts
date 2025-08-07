@@ -11,6 +11,10 @@ export const RoomSchema = {
         pattern: "game:",
     },
 
+    spectating: {
+        key: (shortcode: string) => `spectating:${shortcode}`,
+        pattern: "spectating:",
+    },
 
     matchmaking: {
         key: (shortcode: string) => `matchmaking:${shortcode}`,

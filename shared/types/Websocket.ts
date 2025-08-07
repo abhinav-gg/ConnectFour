@@ -40,12 +40,12 @@ export interface StandardGameMove {
 }
 
 export interface StandardSpectatingMetadata {
+  moves: number[];
   shortcode: string;
   gamemode: number;
   rTimes: [number, number];
   lTime: number;
-  red: PlayerData;
-  yellow: PlayerData;
+  players: PlayerData[];
   turn: number;
 }
 

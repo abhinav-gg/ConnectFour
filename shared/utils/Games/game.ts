@@ -20,7 +20,15 @@ export class StandardGame {
     this.currentMoveIndex = -1;
     this.currentPlayer = 0; // Start with player 0 (Red)
 
+    if (movesOrString) {
+      this.load(movesOrString);
+    }
+  }
 
+
+  // Initialize the game with an array of moves or a string of moves
+  load(movesOrString: Move[] | string): void {
+    this.reset();
     if (typeof movesOrString === "string") {
 
       // first verify that the string contains only digits from 1 to COLS and length <= COLS * ROWS

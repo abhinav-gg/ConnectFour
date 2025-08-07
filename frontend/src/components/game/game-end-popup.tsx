@@ -123,7 +123,7 @@ export function GameEndModal({
     switch (state) {
       case GameState.RED_WIN:
       case GameState.YELLOW_WIN:
-        return "By Victory"
+        return "By Checkmate"
       case GameState.RED_TIMEOUT:
       case GameState.YELLOW_TIMEOUT:
         return "By Timeout"
@@ -283,38 +283,47 @@ export function GameEndModal({
 
           {/* Player Rating Section */}
           <motion.div 
-            className="flex items-center justify-between mb-8"
+            className={`${showEloSection ? 'flex items-center justify-between' : 'flex items-center justify-center'} mb-8`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
           >
             <div className="flex items-center gap-4">
-              {/* Player Avatar Placeholder */}
+              {/* Player Avatar */}
               <motion.div 
-                className="w-16 h-16 bg-black rounded-lg flex items-center justify-center"
+                className="w-16 h-16 bg-black rounded-lg flex items-center justify-center overflow-hidden"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.4, delay: 0.9, type: "spring" }}
               >
-                <span className="text-white text-xs">Icon</span>
+                <img
+                  src={meRef.current?.pfp || "/icons/user.svg"}
+                  alt="Player Avatar"
+                  className="w-full h-full object-cover"
+                />
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 1.0 }}
+                className={!showEloSection ? "text-center" : ""}
               >
-                <p className="text-gray-300 text-sm uppercase tracking-wide">{playerName}</p>
-                <motion.p 
-                  className={`text-white text-3xl font-bold ${!showEloSection ? 'invisible' : ''}`}
-                  animate={{ 
-                    scale: showRatingChange ? [1, 1.1, 1] : 1,
-                    color: showRatingChange && actualRatingChange > 0 ? "#4ade80" : 
-                           showRatingChange && actualRatingChange < 0 ? "#f87171" : "#ffffff"
-                  }}
-                  transition={{ duration: 0.5, delay: 1.2 }}
-                >
-                  {displayRating}
-                </motion.p>
+                <p className={`${showEloSection ? 'text-gray-300 text-sm uppercase tracking-wide' : 'text-white text-2xl font-bold'}`}>
+                  {playerName}
+                </p>
+                {showEloSection && (
+                  <motion.p 
+                    className="text-white text-3xl font-bold"
+                    animate={{ 
+                      scale: showRatingChange ? [1, 1.1, 1] : 1,
+                      color: showRatingChange && actualRatingChange > 0 ? "#4ade80" : 
+                             showRatingChange && actualRatingChange < 0 ? "#f87171" : "#ffffff"
+                    }}
+                    transition={{ duration: 0.5, delay: 1.2 }}
+                  >
+                    {displayRating}
+                  </motion.p>
+                )}
               </motion.div>
             </div>
 

@@ -10,18 +10,13 @@ import { ChatMessage } from "@shared/types/Websocket"
 import { GameControls } from "@/components/game/utility/game-controls"
 import { GameActions } from "@/components/game/utility/game-actions"
 import { PlayerData } from "@shared/types/users"
+import { StandardGame } from "@shared/utils/Games/game"
 
 export interface LiveGameRef {
   addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
   addSystemMessage: (message: string, username?: string) => void
   addReceivedMessage: (message: string, username: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
   clearChat: () => void
-}
-
-interface Move {
-  column: number
-  player: "red" | "yellow"
-  moveNumber?: number
 }
 
 interface LiveGameWithAnalysisProps {
@@ -37,11 +32,9 @@ interface LiveGameWithAnalysisProps {
   
   // Chat and Move History Props
   initialChatMessages?: ChatMessage[]
-  moves?: Move[]
-  movesRef?: React.MutableRefObject<Move[]>
+  game?: StandardGame // Direct game integration
   meRef?: React.MutableRefObject<PlayerData | undefined>
   currentUser?: string
-  totalMoveCount?: number
   currentMoveIndex?: number
   
   // Event Handlers
@@ -63,11 +56,9 @@ interface LiveGameWithAnalysisProps {
 const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>((props, ref) => {
   const {
     initialChatMessages = [], // Default to empty array here instead of in JSX
-    moves = [],
-    movesRef,
+    game,
     meRef,
     currentUser = "You",
-    totalMoveCount = 0,
     currentMoveIndex: propCurrentMoveIndex = 0,
     onMessageSent,
     onMoveClick,
@@ -86,19 +77,9 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
   const chatRef = useRef<ChatRef>(null)
   
   // Use refs for dynamic data or fallback to props
-  const actualMoves = movesRef?.current || moves
   const actualCurrentUser = meRef?.current?.username || currentUser
-  const actualTotalMoveCount = movesRef ? movesRef.current.length : totalMoveCount
+  const actualTotalMoveCount = game ? game.getMoves().length : 0
   
-  // Transform moves to include moveNumber for MoveHistory component
-  const movesWithNumbers = actualMoves.map((move, index) => ({
-    ...move,
-    moveNumber: move.moveNumber || index + 1
-  }))
-  
-  // const [chatUid] = useState(() => `chat-uid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-
-
   const handleMessageSent = (message: ChatMessage) => {
     console.log("Message sent via chat component:", message)
     onMessageSent?.(message)
@@ -184,7 +165,13 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
 
       {/* Move History - Fixed Height */}
       <div className="flex-shrink-0 h-[220px]">
-        <MoveHistory moves={movesWithNumbers} onMoveClick={onMoveClick} />
+        {game ? (
+          <MoveHistory game={game} onMoveClick={onMoveClick} />
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            No game data available
+          </div>
+        )}
       </div>
 
       {/* Chat Section - Takes remaining space with fixed height */}

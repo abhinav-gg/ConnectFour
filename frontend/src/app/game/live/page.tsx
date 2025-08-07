@@ -38,25 +38,22 @@
  * 📤📨 WebSocket Messages (send/receive)
  */
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { GameBoardLayout } from "@/components/layouts/game-board-layout"
 import { BoardHandle } from "@/components/boards/Board"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/LiveGameUI"
-import { ChatMessage, StandardGameMove } from "@shared/types/Websocket"
+import { ChatMessage, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
+import { useUser } from "@/components/providers/userProvider"
 import { StandardGameMetadata } from "@shared/types/Websocket"
 import { PlayerData } from "@shared/types/users"
 import { GameState } from "@shared/constants/allgamestates"
 import { GameEndModal } from "@/components/game/game-end-popup"
 import { GameStartModal } from "@/components/game/game-start-popup"
 import { EloChange } from "@shared/types/game"
-
-interface Move {
-  column: number
-  player: "red" | "yellow"
-}
+import { StandardGame } from "@shared/utils/Games/game"
 
 export default function LiveGamePage() {
   const router = useRouter()
@@ -67,6 +64,9 @@ export default function LiveGamePage() {
   
   // Use the existing SocketIO hook
   const { sendJson, connected, close, getLastJson, onError, onPrefixedMessage } = useSocketContext()
+  
+  // Get user context for fallback player data
+  const { user } = useUser()
 
   // Use refs for data that gets updated by WebSocket events to avoid re-renders
   const meRef = useRef<PlayerData>()
@@ -75,9 +75,23 @@ export default function LiveGamePage() {
   const isRedRef = useRef(false)
   const lMoveRef = useRef(0)
   const pTimesRef = useRef<[number, number]>([0, 0])
-  const movesRef = useRef<Move[]>([])
   const isGameRunningRef = useRef(false) // Use ref instead of state to persist without re-renders
   const eloChangesRef = useRef<EloChange | null>(null)
+  const myGame = useRef(new StandardGame()) // Use a new instance of StandardGame for this live game
+
+  // Initialize meRef with user context data as fallback
+  useEffect(() => {
+    if (user && !meRef.current) {
+      meRef.current = {
+        username: user.username,
+        pfp: user.pfp || '/icons/user.svg',
+        time: 300000, // Default 5 minutes in milliseconds
+        elo: undefined // Will be updated when real data arrives
+      }
+      console.log("🔄 INIT: Set initial meRef from user context:", meRef.current)
+      triggerUpdate() // Force re-render to show the initial data
+    }
+  }, [user])
 
   const [scoreRatio, setScoreRatio] = useState(0.5)
   
@@ -101,14 +115,21 @@ export default function LiveGamePage() {
   // Game End Modal State
   const [showEndPopup, setShowEndPopup] = useState(false)
   const [gameState, setGameState] = useState<GameState | null>(null)
-  const [playerRating, setPlayerRating] = useState(1200) // Default rating
-  const [ratingChange, setRatingChange] = useState(0)
+  const [isSpectating, setIsSpectating] = useState(false)
   
   // Create a function to trigger re-renders
   const triggerUpdate = () => {
     setForceUpdate(prev => prev + 1)
     console.log("🔄 DEBUG: Forced component re-render")
   }
+
+  // Effect to ensure game board ref stays in sync with game state
+  useEffect(() => {
+    if (myGame.current && gameBoardRef.current) {
+      // The board will automatically update via props since boardState is derived from myGame
+      console.log("🔄 GAME: Game state updated, board will reflect changes")
+    }
+  }, [forceUpdate]) // Trigger when forceUpdate changes
 
   const [startSFX] = [useSound("/sounds/start.mp3")]
 
@@ -150,6 +171,7 @@ export default function LiveGamePage() {
             console.error("Shortcode mismatch in matchmaking data", shortcode, data.shortcode)
             return // Don't process if shortcodes don't match
           }
+          setGameMode("TEST GAMEMODE")
           break
         default:
           console.warn(`📨 WEBSOCKET: Unhandled matchmaking event ${event} with data:`, data)
@@ -162,7 +184,53 @@ export default function LiveGamePage() {
 
         case "setup": {
           const setupData = data as StandardGameMetadata
+          // Keep the popup open for a moment to show the match found animation
+          // Then close it after the user sees the match
+          setTimeout(() => {
+            setShowStartPopup(false)
+            console.log("🎮 MATCHMAKING: Closed start popup after showing match found")
+          }, 3000) // Show match found for 3 seconds
 
+          // start setting the props as needed:
+          // Update meRef with server data, preserving fallback data where needed
+          meRef.current = {
+            username: setupData.me.username,
+            pfp: setupData.me.pfp || meRef.current?.pfp || '/icons/user.svg',
+            time: setupData.me.time,
+            elo: setupData.me.elo
+          }
+          opponentRef.current = setupData.opponent
+          isRedRef.current = setupData.iRed
+          lMoveRef.current = setupData.lTime
+          pTimesRef.current = setupData.rTimes
+          currentTurnRef.current = setupData.turn
+          isGameRunningRef.current = true
+          eloChangesRef.current = setupData.eloChanges
+          myGame.current = new StandardGame(setupData.moves || [])
+          
+          // Update current move index to show the latest move if there are existing moves
+          if (setupData.moves && setupData.moves.length > 0) {
+            setCurrentMoveIndex(setupData.moves.length)
+            console.log(`🎮 GAME: Set currentMoveIndex to ${setupData.moves.length} for existing moves`)
+          }
+          
+          console.log("🎮 MATCHMAKING: Updated meRef with server data:", meRef.current)
+          // IMPORTANT: Force re-render since refs don't cause re-renders
+          triggerUpdate()
+          
+          // // Also trigger layout refresh if available
+          // if ((window as any).__gameLayoutRefresh) {
+          //   (window as any).__gameLayoutRefresh()
+          //   console.log("🔄 DEBUG: Triggered layout refresh")
+          // } else {
+          //   console.error("❌ DEBUG: Layout refresh function not available!")
+          // }
+
+          break;
+        }
+        case "spectate": {
+          const setupData = data as StandardSpectatingMetadata
+          setIsSpectating(true)
           // Phase 2: Data is now automatically available through the refs
           // No need to manually update state - the modal will read from refs
           console.log("🎮 MATCHMAKING: Opponent data available in refs for phase 2")
@@ -175,28 +243,23 @@ export default function LiveGamePage() {
           }, 3000) // Show match found for 3 seconds
 
           // start setting the props as needed:
-          meRef.current = setupData.me
-          opponentRef.current = setupData.opponent
-          isRedRef.current = setupData.iRed
+          // meRef.current = setupData.me
+          // opponentRef.current = setupData.opponent
+          // isRedRef.current = setupData.iRed
           lMoveRef.current = setupData.lTime
           pTimesRef.current = setupData.rTimes
           currentTurnRef.current = setupData.turn
           isGameRunningRef.current = true
-          eloChangesRef.current = setupData.eloChanges
-
-          // IMPORTANT: Force re-render since refs don't cause re-renders
-          triggerUpdate()
+          // eloChangesRef.current = setupData.eloChanges
           
-          // // Also trigger layout refresh if available
-          // if ((window as any).__gameLayoutRefresh) {
-          //   (window as any).__gameLayoutRefresh()
-          //   console.log("🔄 DEBUG: Triggered layout refresh")
-          // } else {
-          //   console.error("❌ DEBUG: Layout refresh function not available!")
-          // }
-
-          // Handle setup data (e.g., update UI, initialize game state)
-          console.log("📨 WEBSOCKET: Received setup data:", JSON.stringify(setupData))
+          // Create game instance with existing moves for spectating
+          if (setupData.moves) {
+            myGame.current = new StandardGame(setupData.moves)
+            setCurrentMoveIndex(setupData.moves.length)
+            console.log(`🎮 SPECTATE: Set up game with ${setupData.moves.length} existing moves`)
+            console.log("🎮 SPECTATE: Board state after setup:", myGame.current.getBoard())
+            triggerUpdate() // Force re-render to show the board state
+          }
 
           break;
         }
@@ -216,11 +279,15 @@ export default function LiveGamePage() {
           const moveData = data as StandardGameMove
           console.log("📨 WEBSOCKET: Received move data:", JSON.stringify(moveData))
 
-          // Update moves state with the new move
-          const playerColor = moveData.player === 0 ? "red" : "yellow"
-          movesRef.current = [...movesRef.current, { column: moveData.col, player: playerColor }]
-          lMoveRef.current = moveData.lMove
+          // Update the game instance with the new move
+          try {
+            myGame.current.makeMove(moveData.col)
+            console.log("🎮 GAME: Updated game instance with move", moveData.col)
+          } catch (error) {
+            console.error("❌ GAME: Failed to update game instance with move", moveData.col, error)
+          }
 
+          lMoveRef.current = moveData.lMove
           isGameRunningRef.current = true // Ensure game is running after any move
           
           // call game board reference triggerMoveAnimation
@@ -237,9 +304,8 @@ export default function LiveGamePage() {
           // Update last move timestamp and remaining times
           lMoveRef.current = moveData.lMove;
           pTimesRef.current = moveData.rTimes;
-          
           // Update current move index to show latest move
-          setCurrentMoveIndex(movesRef.current.length)
+          setCurrentMoveIndex(myGame.current.getMoves().length)
 
           break;
         }
@@ -321,8 +387,27 @@ export default function LiveGamePage() {
     setScoreRatio(0.5)
     isGameRunningRef.current = false
     setChatMessages([])
-    movesRef.current = []
     setCurrentMoveIndex(0)
+    
+    // Reset the game instance
+    myGame.current.reset()
+    console.log("🎮 GAME: Reset game instance")
+    
+    // Reset meRef to fallback user context data
+    if (user) {
+      meRef.current = {
+        username: user.username,
+        pfp: user.pfp || '/icons/user.svg',
+        time: 300000, // Default 5 minutes in milliseconds
+        elo: undefined // Will be updated when new game data arrives
+      }
+      console.log("🔄 RESET: Reset meRef to user context fallback:", meRef.current)
+    } else {
+      meRef.current = undefined
+    }
+    
+    // Clear opponent data
+    opponentRef.current = undefined
     
     // Clear the chat using the ref
     if (liveGameRef.current) {
@@ -333,7 +418,10 @@ export default function LiveGamePage() {
 
   const handleColumnAttempt = (col: number) => {
     console.log(`🎯 COLUMN ATTEMPT: Player attempted move in column ${col}`)
-        
+    if (isSpectating) {
+      console.log("👁️ SPECTATING: Player is spectating, move not sent")
+      return
+    }
     // Send move via Socket if connected
     if (connected) {
       sendJson("game:move", { 
@@ -349,7 +437,10 @@ export default function LiveGamePage() {
   // Chat Event Handlers
   const handleMessageSent = (message: ChatMessage) => {
     console.log(`💬 MESSAGE SENT:`, message)
-    
+    if (isSpectating) {
+      console.log("👁️ SPECTATING: Player is spectating, TODO: spectator only chat")
+      return
+    }
     // Send message via Socket if connected
     if (connected) {
       sendJson("game:chat",
@@ -381,16 +472,17 @@ export default function LiveGamePage() {
 
   const handleNextMove = () => {
     console.log("⏩ NEXT MOVE clicked")
-    setCurrentMoveIndex(Math.min(movesRef.current.length, currentMoveIndex + 1))
+    setCurrentMoveIndex(Math.min(myGame.current.getMoves().length, currentMoveIndex + 1))
   }
 
   const handleLastMove = () => {
     console.log("⏭️ LAST MOVE clicked")
-    setCurrentMoveIndex(movesRef.current.length)
+    setCurrentMoveIndex(myGame.current.getMoves().length)
   }
 
   // Game Control Event Handlers
   const handleResign = () => {
+    console.log(myGame.current.getBoard())
     console.log("🏳️ RESIGN clicked")
   }
 
@@ -410,6 +502,9 @@ export default function LiveGamePage() {
   const handleCancelMatchmaking = () => {
     console.log("🎮 START POPUP: Cancelled matchmaking")
     setShowStartPopup(false)
+    if (isGameRunningRef.current) {
+      return;
+    }
     // Send cancel message to server if needed
     if (connected && shortcode) {
       sendJson("matchmaking:leave", { shortcode })
@@ -455,8 +550,7 @@ export default function LiveGamePage() {
       rTimeRef={pTimesRef}
       currentTurnRef={currentTurnRef}
       isGameRunningRef={isGameRunningRef} // Pass ref instead of state
-      player1Time={opponentRef.current?.time || 300000}
-      player2Time={meRef.current?.time || 300000}
+      myGameRef={myGame} // Pass the game ref for move management
       lastMoveProp={lMoveRef.current}
       scoreRatio={scoreRatio}
       onPauseGame={() => {}}
@@ -472,9 +566,8 @@ export default function LiveGamePage() {
         key="unique-livegame-instance" // FIXED: Ensure only one instance across desktop/mobile layouts
         ref={liveGameRef}
         initialChatMessages={chatMessages}
-        movesRef={movesRef}
+        game={myGame.current}
         meRef={meRef}
-        totalMoveCount={movesRef.current.length}
         currentMoveIndex={currentMoveIndex}
         onMessageSent={handleMessageSent}
         onMoveClick={handleMoveClick}

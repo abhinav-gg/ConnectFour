@@ -6,33 +6,16 @@ import { LiveGameSelection } from "@/components/game/LiveGameSelector"
 
 export default function LiveGamePage() {
   // State for game board layout, managed here
-  const [player1Time, setPlayer1Time] = useState(300000) // 5 minutes in milliseconds
-  const [player2Time, setPlayer2Time] = useState(300000) // 5 minutes in milliseconds
   const [scoreRatio, setScoreRatio] = useState(0.5)
-  const [isGameRunning, setIsGameRunning] = useState(false) // Game starts paused
-
-  // Handlers for game state changes
-  const handlePauseGame = () => setIsGameRunning(false)
-  const handleResetGame = () => {
-    setPlayer1Time(300000)
-    setPlayer2Time(300000)
-    setScoreRatio(0.5)
-    setIsGameRunning(false)
-  }
-
   return (
     <GameBoardLayout
-      player1Name="Player 1"
-      player2Name="Player 2"
-      player1Time={player1Time}
-      player2Time={player2Time}
       scoreRatio={scoreRatio}
-      isGameRunning={isGameRunning}
-      onPauseGame={handlePauseGame}
-      onResetGame={handleResetGame}
       displayScoreBar={false} // Hide score bar on setup page
-    >
-      {/* LiveGameSelection is the child component */}
+      onPauseGame={function (): void {
+        throw new Error("Function not implemented.")
+      } } onResetGame={function (): void {
+        throw new Error("Function not implemented.")
+      } }    >
       <LiveGameSelection />
     </GameBoardLayout>
   )

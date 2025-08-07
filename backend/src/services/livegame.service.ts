@@ -152,27 +152,10 @@ export const liveGameService = {
             return { status: 403, message: 'Not your turn' };
         }
 
-        // create the game object
-        const Game = new TimedStandardGame({
-            gamemode: gameMeta.gamemode,
-            time_control: {
-                base_time: gameMeta.base_time,
-                increment: gameMeta.increment,
-                disadvantage: gameMeta.disadvantage,
-            }
-        } as GameInfo);
-        
-        let lMove = gameTimes.lMove;
-        if (!lMove) {
-            lMove = Date.now();
+        const Game = await this.loadTimedGame(gameContext);
+        if (!Game) {
+            return { status: 404, message: 'Game not found' };
         }
-
-        let rTimes = gameTimes.rTimes;
-        if (gameTimes.mTimes.length === 0) {
-            rTimes = Game.getTimeLeft();
-        }
-        console.log("BEFORE LOADING STANDARD", rTimes, lMove, gameTimes.cTurn, moves);
-        Game.loadStandard(rTimes!, lMove, gameTimes.cTurn, moves);
         
         let deltaTime = -1;
         let result;
@@ -265,7 +248,6 @@ export const liveGameService = {
             throw new Error('Game ID is null');
         }
         
-        gameContext.invalidateMetadata();
         const metadata = await gameContext.getMetadata();
         const timedata = await gameContext.getTimedata();
         if (!metadata || !timedata) {
@@ -319,6 +301,43 @@ export const liveGameService = {
         return { status: 200, message: 'Draw offer handled' };
     },
 
+    async loadTimedGame(gameContext: GameContext): Promise<TimedStandardGame | null> {
+        // create the game object
+        const { metadata: gameMeta, timedata: gameTimes, moves } = await gameContext.getAllGameData();
+        if (!gameTimes || !gameMeta || !gameContext.gameId) {
+            console.error("Failed to load timed game: missing game data");
+            return null;
+        }
+        const Game = new TimedStandardGame({
+            gamemode: gameMeta.gamemode,
+            time_control: {
+                base_time: gameMeta.base_time,
+                increment: gameMeta.increment,
+                disadvantage: gameMeta.disadvantage,
+            }
+        } as GameInfo);
+        
+        let lMove = gameTimes.lMove;
+        if (!lMove) {
+            lMove = Date.now();
+        }
+
+        let rTimes = gameTimes.rTimes;
+        if (gameTimes.mTimes.length === 0) {
+            rTimes = Game.getTimeLeft();
+        }
+        console.log("BEFORE LOADING STANDARD", rTimes, lMove, gameTimes.cTurn, moves);
+        Game.loadStandard(rTimes!, lMove, gameTimes.cTurn, moves);
+        if (!Game) {
+            console.error("Failed to load timed game");
+            return null;
+        }
+        return Game;
+    },
+
+
+
+    
 
 
     async FreeGamePlayers(gameContext: GameContext): Promise<void> {
@@ -333,8 +352,8 @@ export const liveGameService = {
         if (metadata.state !== GameState.SCHEDULED) return;
 
         // free up the players of the game
-        const r = await redisOps();
         metadata.players.forEach(async (player) => {
+            console.log("FREEING PLAYER", player, gameId);
             const playerContext = await GameContext.fromGameId(player, gameId);
             await gameService.QuitPlayerQueue(playerContext);
         });
@@ -364,6 +383,20 @@ export const liveGameService = {
         // and that neither player has timed out of the game
 
         return { status: 500, message: 'Game is in progress' };
+    },
+
+
+
+    async isPlayerSocketConnected(uIdentity: string): Promise<boolean> {
+        const socket = getSocketIO();
+        const playerSocket = socket?.sockets?.sockets.get(RoomSchema.user.key(uIdentity));
+        
+        if (playerSocket) {
+            // check if the socket is still connected
+            return playerSocket.connected;
+        }
+        
+        return false;
     },
 
 

@@ -33,7 +33,7 @@ export function GameStartModal({
   // Update the match found state based on opponent data
   // This will re-run whenever forceUpdateTrigger changes
   useEffect(() => {
-    const hasOpponentData = open && opponentRef.current?.username && opponentRef.current?.elo
+    const hasOpponentData = open && opponentRef.current?.username
     setShowMatchFound(!!hasOpponentData)
   }, [open, forceUpdateTrigger])
 
@@ -53,9 +53,7 @@ export function GameStartModal({
   }
 
   const handleOverlayClick = () => {
-    // Only allow clicking outside to close during phase 2 (match found)
     if (showMatchFound) {
-      setShowMatchFound(false)
       onCancel()
     }
   }
@@ -238,13 +236,13 @@ export function GameStartModal({
                             <p className="text-white text-2xl font-bold">{meRef.current?.username || "You"}</p>
                           </div>
                         </div>
-                        <div className="text-white text-4xl font-bold">{meRef.current?.elo || 1200}</div>
+                        <div className="text-white text-4xl font-bold">{meRef.current?.elo || "?"}</div>
                       </motion.div>
 
                       {/* Conditional Content - Fills the remaining space */}
                       <div className="flex-grow">
                         <AnimatePresence mode="wait" initial={false}>
-                          {showMatchFound && opponentRef.current?.username && opponentRef.current?.elo ? (
+                          {showMatchFound ? (
                             // Match Found State
                             <motion.div
                               key="match-found-content"
@@ -280,10 +278,10 @@ export function GameStartModal({
                                     />
                                   </div>
                                   <div>
-                                    <p className="text-white text-2xl font-bold">{opponentRef.current?.username}</p>
+                                    <p className="text-white text-2xl font-bold">{opponentRef.current?.username || "Opponent"}</p>
                                   </div>
                                 </div>
-                                <div className="text-white text-4xl font-bold">{opponentRef.current?.elo}</div>
+                                <div className="text-white text-4xl font-bold">{opponentRef.current?.elo || "?"}</div>
                               </motion.div>
                             </motion.div>
                           ) : (

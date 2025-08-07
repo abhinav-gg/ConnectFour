@@ -229,7 +229,7 @@ export const UserOperations = {
 
   async alterElo(userId: string, mode: number, delta: number): Promise<void> {
     await pool.query(
-      `UPDATE elo
+      `UPDATE player_elo
         SET elo = elo + $1
         WHERE player = $2 AND mode = $3`,
       [delta, userId, mode]
@@ -240,7 +240,7 @@ export const UserOperations = {
   async getUserEloByID(userId: string, mode: number): Promise<number> {
     const result = await pool.query(
       `SELECT elo
-        FROM elo
+        FROM player_elo
         WHERE player = $1 AND mode = $2`,
       [userId, mode]
     );
@@ -255,7 +255,7 @@ export const UserOperations = {
 
   async initEloForUser(userId: string, mode: number, elo: number): Promise<void> {
     await pool.query(
-      `INSERT INTO elo (player, mode, elo)
+      `INSERT INTO player_elo (player, mode, elo)
         VALUES ($1, $2, $3)`,
       [userId, mode, elo]
     );

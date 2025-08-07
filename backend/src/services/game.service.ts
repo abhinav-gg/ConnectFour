@@ -2,6 +2,7 @@ import { dynamoDBOps } from "@/db/dynamodb/ops";
 import { redisOps } from "@/redis/ops";
 import { ServiceResponse } from "@/types/custom";
 import { EloChange, GameInfo, TimeControl } from "@shared/types/game";
+import { PlayerData } from "@shared/types/users";
 import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes } from "@shared/utils/gamemodes";
 import { packGameInfo, packGameInfoToString } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
@@ -50,26 +51,30 @@ export const gameService = {
                 return { status: 500, message: 'Game Error - unable to get game metadata' };
             }
 
-            return { status: 400, message: 'Already in a game' };
+            await r.game.leaveUserQueue(gameContext.userId);
         }
 
         if (CompetitiveModes.has(gamemode)) {
 
-            await this.joinCompetitiveQueue(gameContext.userId, gameInfo);
+            return { status: 404, message: 'Not Implemented Yet' };
+            // const competitiveResult = await this.joinCompetitiveQueue(gameContext, gameInfo);
+            // if (competitiveResult) {
+            //     return competitiveResult;
+            // }
+            // If null returned, user was added to queue - return appropriate message
+            return { status: 202, message: 'Added to matchmaking queue' };
 
         } else if (CasualModes.has(gamemode)) {
 
-            return await this.joinCasualQueue(gameContext.userId, gameInfo);
+            return await this.joinCasualQueue(gameContext, gameInfo);
 
         } else {
             return { status: 400, message: 'Invalid Game Mode' };
         }
-
-        return { status: 500, message: 'TODO' };
     },
 
 
-    async joinCasualQueue (userId: string, gameInfo: GameInfo): Promise<ServiceResponse> {
+    async joinCasualQueue (gameContext: GameContext, gameInfo: GameInfo): Promise<ServiceResponse> {
         
         const { gamemode } = gameInfo;
 
@@ -79,81 +84,48 @@ export const gameService = {
 
         const r = await redisOps();
 
-        await r.game.addOrUpdateUserGameQueue(userId, {
+        await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
             gameinfo: packGameInfoToString(gameInfo),
             timeAdded: Date.now(),            
         } as UserQueue);
-        console.log(`User ${userId} added to casual queue for game mode ${gamemode}`);
+        console.log(`User ${gameContext.userId} added to casual queue for game mode ${gamemode}`);
 
         // For friendly or casual games, we can directly create a game and return the shortcode
-
         const gameMeta = await this.CreateGame(gameInfo);
         
-        await this.AssignPlayerToGame(gameMeta.id, userId, null, gameMeta);
+        // Create a new GameContext for the new game
+        const newGameContext = await GameContext.fromGameId(gameContext.userId, gameMeta.id);
+        await this.AssignPlayerToGame(newGameContext);
         return { status: 200, message: gameMeta.shortcode || gameMeta.id };
 
     },
 
 
-    async joinCompetitiveQueue (userId: string,  gameInfo: GameInfo): Promise<ServiceResponse | null> {
+    async joinCompetitiveQueue (gameContext: GameContext, gameInfo: GameInfo): Promise<ServiceResponse | null> {
         // if the user is already in a game or already in a queue, throw an error
+        
+        const r = await redisOps();
+        const { gamemode } = gameInfo;
 
         // get user elo for the gamemode
+        const userElo = await userService.getOrSetPlayerElo(gameContext.userId, gamemode);
+        
+        // Add user to the competitive queue
+        await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
+            gameinfo: packGameInfoToString(gameInfo),
+            timeAdded: Date.now(),
+            elo: userElo,
+        } as UserQueue);
+        
+        console.log(`User ${gameContext.userId} added to competitive queue for game mode ${gamemode} with ELO ${userElo}`);
+        
+        // TODO: Implement actual matchmaking logic
         // check redis game players with this gamemode and sort by elo AND time added
-        
         // if there is a good match, call create game to set up the game and return the string gameID
-
-        // if there is no match, add user to redis queue for this gamemode and time control
-        // return null if no match is found so the user is shown a "Searching for match" message
-
-        // IF
-        // REDIS
-        // IS
-        // Less
-        // THAN 50
-        // PAIR WITH BOT
-
-        // Check if the user is already in the game lookup
-
+        // if there is no match, user stays in queue
         
-        // const userElo = await userService.getOrSetPlayerElo(userId, gamemode);
-    
-        let priority = 0;
-        // get the time since the user was added to the game lookup maybe??
-
-        // if (priority > 0) {
-        //     const gameId = await dbOperations.GetGameByPlayerLookup(userId);
-        //     if (!gameId) {
-        //         await dbOperations.FinishedGameLookup(userId); // remove from game lookup if they are not in a game
-        //     } else {
-
-        //         try {
-        //             const game = await dbOperations.GetGameByID(gameId!);
-        
-        //             if (game.state === globals.StandardGameStates.ongoing) {
-        //                 res.status(200).json({ event: 'sendToRoom', 
-        //                     data: { roomId: game.short_id }
-        //             } as SendToRoom);
-        //                 return;
-        //             }
-        //             else if (game.state === globals.StandardGameStates.scheduled) {
-        //                 //Update the game lookup here
-        //                 await dbOperations.FinishedGameLookup(userId);
-        //                 //Delete the game player entry here
-        //                 await dbOperations.UnassignGame(game.id, userId);
-        //             }
-        //             else {
-        //                 await dbOperations.FinishedGameLookup(userId);
-        //             }
-        //         }
-        //         catch (error) {
-        //             console.log('Failed to remove user from game search:', error);
-        //             return;
-        //         }
-        //     }
-        // }
-            
-            return null; // Placeholder for actual matchmaking logic
+        // For now, just return null to indicate user was added to queue
+        return null;
     },
 
     /**
@@ -288,7 +260,7 @@ export const gameService = {
 
         // each player needs to be send the game setup metadata
         const io = getSocketIO();
-        if (!meOnly || gameContext.userId === p1Id) {
+        if (!meOnly || gameContext.userId === gameMeta.players[0]) {
             console.log("Sending setup to player 1:", p1);
             io.to(RoomSchema.user.key(gameMeta.players[0])).emit(RoomSchema.game.key("setup"), {
                 ...SettingUpData,
@@ -298,7 +270,7 @@ export const gameService = {
                 eloChanges: p1EloChange,
             });
         } 
-        if (!meOnly || gameContext.userId === p2Id) {
+        if (!meOnly || gameContext.userId === gameMeta.players[1]) {
             console.log("Sending setup to player 2:", p2);
             io.to(RoomSchema.user.key(gameMeta.players[1])).emit(RoomSchema.game.key("setup"), {
                 ...SettingUpData,
@@ -312,12 +284,11 @@ export const gameService = {
 
     /**
      * Store a game from redis into the NOSQL database.
-     * @param gameId 
-     * @param gameData 
      */
     async StoreGame (gameContext: GameContext): Promise<void> {
 
-        if (!gameContext.resolveGameId()) {
+        const gameId = await gameContext.resolveGameId();
+        if (!gameId) {
             throw new Error('Game ID is null');
         }
 
@@ -333,11 +304,11 @@ export const gameService = {
 
         // Store the game shortcode map in the NOSQL database game shortcode table if there is one
         const Game = {
-            p: gameContext.gameId,
+            p: gameId,
             c: gameMeta.shortcode,
             u: gameMeta.players,
-            d:null,
-            i:null,
+            d: null,
+            i: null,
             r: gameMeta.state,
         }
 
@@ -350,27 +321,26 @@ export const gameService = {
 
         // recalculate the elo change with the result of the game (it is a pure function)
 
-        
+        // TODO: Implement actual game storage logic
+        console.log('Game storage not yet implemented', Game, requiredPlayers);
     },
 
-    async AssignPlayerToGame (gameId: string, userId: string, elo?: number | null, gameMeta?: GameMetadata): Promise<void> {
+    async AssignPlayerToGame (gameContext: GameContext, elo?: number | null): Promise<void> {
 
         // check that the player is not already in a game and exists in the redis players list
         const r = await redisOps();
-        const myId = await this.getGameIDOfPlayer(userId);
-        console.log("MYID -------------------" + myId + userId + " GAMEID: " + gameId);
-        if (myId && myId !== gameId) {
-            throw new Error('Player is already in a different game');
+        if (!gameContext.gameId) {
+            throw new Error('Game ID is null');
         }
 
         try {
-            await r.game.assignUserToGameQueue(userId, gameId, elo);
+            await r.game.assignUserToGameQueue(gameContext.userId, gameContext.gameId, elo);
         } catch (error) {
 
-            let gameMetadata = gameMeta;
+            let gameMetadata = await gameContext.getMetadata();
             if (!gameMetadata) {
                 // Create a temporary context to get metadata if not provided
-                const tempContext = await GameContext.fromGameId(userId, gameId);
+                const tempContext = await GameContext.fromGameId(gameContext.userId, gameContext.gameId);
                 const metadata = await tempContext.getMetadata();
                 if (!metadata) {
                     throw new Error('Game metadata not found');
@@ -378,7 +348,7 @@ export const gameService = {
                 gameMetadata = metadata;
             }
 
-            await r.game.addOrUpdateUserGameQueue(userId, {
+            await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
                 gameinfo: packGameInfoToString({
                     gamemode: gameMetadata.gamemode,
                     time_control: {
@@ -389,12 +359,12 @@ export const gameService = {
                 } as GameInfo),
                 timeAdded: Date.now(),
                 elo,
-                gameId
+                gameId: gameContext.gameId,
                 } as UserQueue);
         }
-        await r.game.addUserToGameMetadata(gameId, userId);
-        
-        
+        await r.game.addUserToGameMetadata(gameContext.gameId, gameContext.userId);
+
+
     },
 
     async tryJoinGame(gameContext: GameContext): Promise<ServiceResponse> {
@@ -406,32 +376,46 @@ export const gameService = {
             if (!metadata || !gameContext.gameId) {
                 return { status: 404, message: 'Game not found' };
             }
-            
+            console.log("Trying to join game with ID:", gameContext.gameId, "and metadata:", metadata);
             // Check if user is already in this game with fresh data
             gameContext.invalidatePlayerData();
             const isAlreadyPlayer = await gameContext.isPlayerInGame();
             if (isAlreadyPlayer) {
-                console.log("RECONNECTING SPECIFIC PLAYER")
-                await this.ReconnectPlayer(gameContext, true);
-                return { status: 200, message: 'Already in the game' };
+
+                if (metadata.state === GameState.IN_PROGRESS) {
+                    console.log("RECONNECTING SPECIFIC PLAYER");
+                    await this.ReconnectPlayer(gameContext, true);
+                    return { status: 200, message: 'Reconnected to game' };
+                } else if (metadata.state === GameState.SCHEDULED) {
+                    console.log("Already waiting for game to start");
+                    return { status: 200, message: 'Already in the game' };
+                } else {
+                    console.log("Game is in an unexpected state:", metadata.state);
+                    // TODO LOAD GAME.....
+                    return { status: 404, message: 'Game is not ongoing' };
+                }
             }
             
             // Check if user can join (using fresh metadata)
             const canJoin = await this.checkPlayerCanJoinGame(gameContext);
             if (canJoin) {
                 // assume no elo for now...
-                await this.AssignPlayerToGame(gameContext.gameId, gameContext.userId, null, metadata);
+                await this.AssignPlayerToGame(gameContext);
                 
                 if (CasualModes.has(metadata.gamemode)) {
-                    if (metadata.state === GameState.SCHEDULED && 
-                        metadata.players.length + 1 === 2) {
+                    // Refresh metadata after adding player
+                    gameContext.invalidateMetadata();
+                    const updatedMetadata = await gameContext.getMetadata();
+                    if (updatedMetadata && updatedMetadata.state === GameState.SCHEDULED && 
+                        updatedMetadata.players.length === 2) {
                         // If the game is scheduled and now has 2 players, start the game
+                        await this.StartStandardGame(gameContext);
                         return { status: 100, message: gameContext.gameId };
                     }
                 }
             } else {
-                // spectating logic here
-                // look for the game
+                await this.SpectateGame(gameContext);
+                return { status: 101, message: 'Spectating Game' };
             }
             return { status: 200, message: 'Game joined successfully' };
         } catch (error) {
@@ -470,10 +454,10 @@ export const gameService = {
         await gameContext.validatePlayerInRoom();
     },
 
-    async checkPlayerInGame( userId: string, gameId: string): Promise<void> {
+    async checkPlayerInGame(gameContext: GameContext): Promise<void> {
         // check that the player is not already in a game and exists in the redis players list
-        const myId = await this.getGameIDOfPlayer(userId);
-        if (myId && myId === gameId) {
+        const myId = await this.getGameIDOfPlayer(gameContext.userId);
+        if (myId && myId === gameContext.gameId) {
             return; // Player is in the game
         } 
         throw new Error('Player is not in the game');
@@ -481,20 +465,12 @@ export const gameService = {
 
     async SpectateGame(gameContext: GameContext): Promise<void> {
         // Get fresh metadata for spectating decisions
-        gameContext.invalidateMetadata();
-        const metadata = await gameContext.getMetadata();
-        if (!metadata) {
-            throw new Error('Game not found');
-        }
+        const gameMeta = await gameContext.getMetadata();
+
+        // send spectating data
+
+
         
-        // Check if user is already a player (cannot spectate own game) with fresh data
-        gameContext.invalidatePlayerData();
-        const isPlayer = await gameContext.isPlayerInGame();
-        if (isPlayer) {
-            throw new Error('Cannot spectate own game');
-        }
-        
-        // TODO: Implement spectating logic
     },
 
     async GetGameIDByShortCode (shortCode: string): Promise<string | null> {

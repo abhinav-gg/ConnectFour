@@ -42,8 +42,11 @@ export function registerMatchmakingHandlers(soc: Socket) {
         // Create a new GameContext for the returned gameId
         const startGameContext = await GameContext.fromGameId(identity, response.message);
         await gameService.StartStandardGame(startGameContext);
+      } else if (response.status == 101) {
+        // Spectating logic
+        socket.join(RoomSchema.spectating.key(shortCode));
+        socket.emit('spectating', { message: 'You are spectating the game', shortcode: shortCode });
       }
-      
 
     } catch (error) {
       console.error('Error joining matchmaking:', error);

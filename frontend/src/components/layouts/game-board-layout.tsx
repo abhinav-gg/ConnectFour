@@ -29,10 +29,7 @@ interface GameBoardLayoutProps {
     ariaLabel?: string
   }
   // Controlled state props for game
-  player1Time?: number
-  player2Time?: number
   scoreRatio: number
-  isGameRunning?: boolean // Keep for backwards compatibility
   isGameRunningRef?: MutableRefObject<boolean> // New ref-based prop
   lastMoveProp?: number | null
   // Callbacks to update parent state
@@ -48,9 +45,8 @@ interface GameBoardLayoutProps {
   lastMoveRef?: MutableRefObject<number | null>
   rTimeRef?: MutableRefObject<[number, number]> // [player1Time, player2Time]
   currentTurnRef?: MutableRefObject<number> // Current player's turn (0 or 1)
+  myGameRef?: MutableRefObject<any> // Reference to the game instance for move management
   // Fallback display props
-  player1Name?: string
-  player2Name?: string
   player1Pfp?: string
   player2Pfp?: string
   // Display options
@@ -60,10 +56,7 @@ interface GameBoardLayoutProps {
 export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   children,
   boardProps = {},
-  player1Time = 300000,
-  player2Time = 300000,
   scoreRatio,
-  isGameRunning = false,
   isGameRunningRef,
   lastMoveProp,
   onPauseGame,
@@ -74,19 +67,56 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   lastMoveRef,
   rTimeRef,
   currentTurnRef,
-  player1Name = "Opponent",
-  player2Name = "Player",
+  myGameRef,
   displayScoreBar = false,
 }, ref) => {
+  // Add state to track when myGameRef changes to trigger re-renders
+  const [gameRefVersion, setGameRefVersion] = useState(0)
+  const [lastGameRef, setLastGameRef] = useState(myGameRef?.current)
+  
+  // Effect to track when the game ref actually changes (including new instances)
+  useEffect(() => {
+    const currentGameRef = myGameRef?.current
+    if (currentGameRef !== lastGameRef) {
+      setLastGameRef(currentGameRef)
+      setGameRefVersion(prev => prev + 1)
+      console.log("🔄 GAME BOARD LAYOUT: Game ref changed, triggering board refresh", {
+        hasNewRef: !!currentGameRef,
+        boardState: currentGameRef?.getBoard()
+      })
+    }
+  }) // No dependencies - check every render
+
+  // Use the game ref directly for board state - this will update when gameRefVersion changes
+  const boardState = React.useMemo(() => {
+    if (!myGameRef?.current) {
+      console.log("🔄 GAME BOARD LAYOUT: No game ref, using empty board")
+      return Array(6).fill(null).map(() => Array(7).fill(null))
+    }
+    const board = myGameRef.current.getBoard()
+    console.log("🔄 GAME BOARD LAYOUT: Computed board state from game ref:", board)
+    return board
+  }, [gameRefVersion])
+
   const defaultBoardProps = {
+    boardState: boardState, // Use the reactive board state
     interactive: true,
     animate_init: false,
+    showLastMoveHighlight: true,
+    gameOver: myGameRef?.current?.gameOver ?? false,
     ariaLabel: "Connect 4 game board",
-    ...boardProps,
+    ...boardProps, // This can still override if needed
   }
 
   // Create a ref to the Board component
   const boardRef = React.useRef<BoardHandle>(null)
+  
+  // Effect to reload board when myGameRef changes or on page reload
+  useEffect(() => {
+    if (myGameRef?.current && boardRef.current) {
+      console.log("🔄 BOARD: Game ref updated, board will use new state via props")
+    }
+  }, [myGameRef?.current])
 
   // Expose board functions through the ref
   useImperativeHandle(ref, () => ({
@@ -112,8 +142,8 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   // If isRedRef is false, me is yellow (player 1), opponent is red (player 2)
   const isRed = isRedRef?.current ?? true
   
-  const actualPlayer1Name = (opponentRef?.current?.username || player1Name || "Opponent")
-  const actualPlayer2Name = (meRef?.current?.username || player2Name || "Player")
+  const actualPlayer1Name = (opponentRef?.current?.username || "Opponent")
+  const actualPlayer2Name = (meRef?.current?.username || "Player")
   const actualPlayer1Pfp  = (opponentRef?.current?.pfp || undefined) 
   const actualPlayer2Pfp  = (meRef?.current?.pfp || undefined)
   
@@ -122,21 +152,19 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   const actualPlayer2Color = isRed ? "red" : "yellow" // Bottom player color
 
   // Get time data from refs with fallback to props
-  const actualPlayer1Time = rTimeRef?.current?.[0] ?? player1Time ?? 300000
-  const actualPlayer2Time = rTimeRef?.current?.[1] ?? player2Time ?? 300000
+  const actualPlayer1Time = rTimeRef?.current?.[isRed ? 1 : 0] ?? 300000
+  const actualPlayer2Time = rTimeRef?.current?.[isRed ? 0 : 1] ?? 300000
   const actualLastMove = lastMoveRef?.current ?? lastMoveProp ?? null
-  const currentTurn = currentTurnRef?.current ?? 0
+  const currentTurn = currentTurnRef?.current
   
   // Use ref-based game running state if available, otherwise fall back to prop
-  const actualIsGameRunning = isGameRunningRef?.current ?? isGameRunning
-
+  const actualIsGameRunning = isGameRunningRef?.current
+  
   // Determine which timer should be running
   // Player 1 (top) timer runs when currentTurn === 0
   // Player 2 (bottom) timer runs when currentTurn === 1
-  const isPlayer2TimerRunning = actualIsGameRunning && currentTurn === 0 && isRed
+  const isPlayer2TimerRunning = actualIsGameRunning && ((currentTurn === 0 && isRed) || (currentTurn === 1 && !isRed))
   const isPlayer1TimerRunning = actualIsGameRunning && !isPlayer2TimerRunning
-
-  console.log("TEST CURRENT PLAYER TIMERS: ", isPlayer1TimerRunning, isPlayer2TimerRunning)
 
   // Register global refresh function for external triggers
   useEffect(() => {
@@ -221,7 +249,7 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer1Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer1TimerRunning}
+                    isRunning={isPlayer1TimerRunning!}
                     color={actualPlayer1Color}
                   />
                 </div>
@@ -229,7 +257,12 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                 {/* Board - Perfect square, constrained by available height */}
                 <div className="flex-1 flex items-center justify-center min-h-0">
                   <div className="aspect-square h-full max-w-full">
-                    <Board {...defaultBoardProps} ref={boardRef} className="w-full h-full" />
+                    <Board 
+                      key={`board-${gameRefVersion}`} 
+                      {...defaultBoardProps} 
+                      ref={boardRef} 
+                      className="w-full h-full" 
+                    />
                   </div>
                 </div>
 
@@ -239,7 +272,7 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer2Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer2TimerRunning}
+                    isRunning={isPlayer2TimerRunning!}
                     color={actualPlayer2Color}
                   />
                 </div>
@@ -275,14 +308,19 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer1Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer1TimerRunning}
+                    isRunning={isPlayer1TimerRunning!}
                     color={actualPlayer1Color}
                   />
                 </div>
 
                 <div className="flex-1 flex items-center justify-center w-full py-2 min-h-0">
                   <div className="aspect-square w-full max-h-full">
-                    <Board {...defaultBoardProps} ref={boardRef} className="w-full h-full" />
+                    <Board 
+                      key={`board-mobile-${gameRefVersion}`} 
+                      {...defaultBoardProps} 
+                      ref={boardRef} 
+                      className="w-full h-full" 
+                    />
                   </div>
                 </div>
 
@@ -291,7 +329,7 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
                   <Timer
                     millisecondsLeft={actualPlayer2Time}
                     lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer2TimerRunning}
+                    isRunning={isPlayer2TimerRunning!}
                     color={actualPlayer2Color}
                   />
                 </div>

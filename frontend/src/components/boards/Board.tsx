@@ -176,6 +176,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
     // Animate initial board state if animate_init is true
     useEffect(() => {
+      console.log("Animating initial board state:", animate_init, "with boardState:", boardState)
       if (!boardState) return
 
       if (!animate_init) return setInternalBoard(boardState)

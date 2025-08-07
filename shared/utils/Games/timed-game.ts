@@ -41,17 +41,10 @@ export class TimedStandardGame {
     const currentPlayer = this.getCurrentPlayer();
     const moveDuration = now - (this.lastMoveTimestamp ?? now); // the first move will have a duration of 0
 
-    if (moveDuration > this.timeLeft[currentPlayer]) {
-      // If the move duration exceeds the time left, the player has timed out
-      // end the game here
-      console.log(`Player ${currentPlayer} timed out after ${moveDuration}ms`);
-      this.game.winner = currentPlayer === 0 ? 1 : 0; // Set the opponent as the winner
-      this.game.gameOver = true;
-      this.timedOutPlayer = currentPlayer; // Track the timed out player
+    if (this.checkPlayerTimeOut()) {
       return {
         success: false,
       };
-      
     }
 
     const result = this.game.makeMove(col);
@@ -68,6 +61,23 @@ export class TimedStandardGame {
       deltaTime: moveDuration,
     };
   }
+
+
+  checkPlayerTimeOut(): boolean {
+    const now = Date.now();
+    const moveDuration = now - (this.lastMoveTimestamp ?? now); // the first move will have a duration of 0
+
+    if (moveDuration > this.timeLeft[this.game.currentPlayer]) {
+      console.log(`Player ${this.game.currentPlayer} timed out after ${moveDuration}ms`);
+      this.game.winner = this.game.currentPlayer === 0 ? 1 : 0; // Set the opponent as the winner
+      this.game.gameOver = true;
+      this.timedOutPlayer = this.game.currentPlayer; // Track the timed out player
+      return true;
+    }
+
+    return false;
+  }
+
 
   reset(): void {
     this.game.reset();
