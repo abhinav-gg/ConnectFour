@@ -14,7 +14,7 @@ export default function Component() {
 
   // Simple intersection observers with console logging - check if entirely in view
   const { ref: heroRef, inView: heroInView } = useInView({
-    threshold: 0.75, // Component must be entirely in view
+    threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
       if (inView) console.log("Hero section came entirely into view")
@@ -22,7 +22,7 @@ export default function Component() {
   })
 
   const { ref: puzzlesRef, inView: puzzlesInView } = useInView({
-    threshold: 0.75, // Component must be entirely in view
+    threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
       if (inView) console.log("Puzzles section came entirely into view")
@@ -30,7 +30,7 @@ export default function Component() {
   })
 
   const { ref: watchRef, inView: watchInView } = useInView({
-    threshold: 0.75, // Component must be entirely in view
+    threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
       if (inView) console.log("Watch section came entirely into view")
@@ -38,7 +38,7 @@ export default function Component() {
   })
 
   const { ref: learnRef, inView: learnInView } = useInView({
-    threshold: 0.75, // Component must be entirely in view
+    threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
       if (inView) console.log("Learn section came entirely into view")

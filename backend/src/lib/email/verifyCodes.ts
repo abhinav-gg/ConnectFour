@@ -1,7 +1,7 @@
 import { EmailSendError } from "@/types/miscErrors";
 import {loadTemplate, sendEmail} from "./emails"
 import Handlebars from "handlebars";
-import { getEmailQueue } from "@/jobs/sets/email";
+import { JobSets } from "@/jobs";
 
 export async function sendEmailVerifyCode(code: string,  username: string, email: string) {
 
@@ -28,7 +28,7 @@ export async function sendEmailVerifyCode(code: string,  username: string, email
     const html = template({ digits, username });
 
     try {
-        await getEmailQueue().add('sendVerificationEmail', {
+        await JobSets.getEmailQueue().add('sendVerificationEmail', {
             to: email,
             subject: "Verify Con4 Account",
             html

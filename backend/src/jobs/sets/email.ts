@@ -1,35 +1,19 @@
 // lib/jobs/sets/email.ts
-import { createJobSet } from '../createJobSet';
+import { createJobSet } from '../jobset/createJobSet';
 import { sendEmail } from '@/lib/email/emails';
 import type { Queue } from 'bullmq';
+import { JobKeys } from '../jobKeys';
 
-let emailQueue: Queue | undefined;
-
-export async function setupEmailJobSet() {
+export async function setupEmailJobSet(): Promise<Queue> {
   const { queue } = await createJobSet({
-    queueName: 'emailQueue',
+    queueName: JobKeys.email.queueName,
     processor: async (job) => {
       const { to, subject, html } = job.data;
       await sendEmail(to, subject, html);
     },
   });
 
-  emailQueue = queue;
+  return queue;
 }
 
-export function getEmailQueue(): Queue {
-  if (!emailQueue) {
-    throw new Error('Email queue not initialized. Call setupEmailJobSet() first.');
-  }
-  return emailQueue;
-}
-
-
-
-// await getEmailQueue().add('delayed-reminder', {
-//   to: 'user@example.com',
-//   subject: 'Reminder!',
-//   html: '<p>Your event starts soon.</p>',
-// }, {
-//   delay: 5 * 60 * 1000, // 5 minutes delay
-// });
+// Note: Getters are centralized in jobs/index.ts

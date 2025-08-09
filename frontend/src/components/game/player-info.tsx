@@ -27,7 +27,7 @@ export function PlayerInfo({ name, playerColor, className, profilePicUrl }: Play
       <img
         src={profilePicUrl || defaultPic}
         alt={name + " profile"}
-        className="w-7 h-7 rounded-sm object-cover bg-brand-border border border-brand-border"
+        className="w-12 h-12 aspect-square rounded-sm object-cover bg-brand-border border border-brand-border"
       />
       <span className={cn("font-semibold text-lg", colorClass)}>{name}</span>
     </motion.div>

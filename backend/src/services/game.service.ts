@@ -374,6 +374,10 @@ export const gameService = {
             const metadata = await gameContext.getMetadata();
             
             if (!metadata || !gameContext.gameId) {
+
+
+                // NO SQL HERE
+
                 return { status: 404, message: 'Game not found' };
             }
             console.log("Trying to join game with ID:", gameContext.gameId, "and metadata:", metadata);
@@ -391,7 +395,7 @@ export const gameService = {
                     return { status: 200, message: 'Already in the game' };
                 } else {
                     console.log("Game is in an unexpected state:", metadata.state);
-                    // TODO LOAD GAME.....
+                    // TODO LOAD GAME from REDIS
                     return { status: 404, message: 'Game is not ongoing' };
                 }
             }

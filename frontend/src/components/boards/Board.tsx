@@ -72,6 +72,8 @@ export interface BoardHandle {
   triggerMoveAnimation: (row: number, col: number, player: number) => void
   setPremoveCell: (row: number, col: number, player: number) => void
   clearPremove: () => void
+  // New: undo animation
+  undoMoveAnimation: (row: number, col: number, player: number) => void
 }
 
 const Board = forwardRef<BoardHandle, Connect4BoardProps>(
@@ -109,6 +111,16 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         targetLeft: number
       }[]
     >([])
+    // New: rising pieces for undo animation
+    const [risingPieces, setRisingPieces] = useState<
+      {
+        col: number
+        targetRow: number
+        player: number
+        duration: number
+        id: string
+      }[]
+    >([])
     const [moveBufferActive, setMoveBufferActive] = useState(false)
     const [mouseHeld, setMouseHeld] = useState(false)
     const [heldColumn, setHeldColumn] = useState<number | null>(null)
@@ -131,6 +143,8 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     // MOBILE CALCULATION
     const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 567px)").matches
     const getFallId = (row: number, col: number, player: number) => `${row}-${col}-${player}`
+    // New: unique id generator for rising pieces
+    const getRiseId = (row: number, col: number, player: number) => `undo-${row}-${col}-${player}`
 
     // Create a unique key for each cell position
     const getCellKey = (row: number, col: number) => `${row}-${col}`
@@ -196,6 +210,11 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
           }
         })
       })
+
+      if (cells.length === 0) {
+        setInteractive(true) // No pieces to animate, set interactive immediately
+        return
+      }
       // Sort cells for bottom-left to top-right animation
       cells.sort((a, b) => {
         if (a.row !== b.row) return b.row - a.row // bottom to top
@@ -397,6 +416,46 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
       clearPremove() {
         setPremoveColumn(null)
+      },
+
+      // New: reverse/lift animation for undo
+      undoMoveAnimation(row, col, player) {
+        // Basic bounds validation
+        if (row < 0 || row > 5 || col < 0 || col > 6) return
+        // Validate the expected piece is present
+        if (internalBoard[row][col] !== player) return
+        // Avoid overlapping with another animation in the same cell
+        if (fallingPieces.length > 0) return
+
+        // Compute duration to mirror drop timing
+        const baseDuration = 0.15
+        const duration = baseDuration * (row + 1)
+        const riseId = getRiseId(row, col, player)
+
+        // Immediately clear the static piece so only the animation is visible
+        setInternalBoard((prev) =>
+          prev.map((r, ri) => r.map((c, ci) => (ri === row && ci === col ? null : c))),
+        )
+
+        // Clear last move highlight if it matches the undone cell
+        setLastMoveHighlightState((prev) => (prev && prev.row === row && prev.col === col ? null : prev))
+
+        // Start the rising animation
+        setRisingPieces((prev) => [
+          ...prev,
+          {
+            col,
+            targetRow: row,
+            player,
+            duration,
+            id: riseId,
+          },
+        ])
+
+        // After animation completes, set current player back to the undone player
+        setTimeout(() => {
+          setCurrentPlayer(player)
+        }, duration * 1000)
       },
     }))
 
@@ -796,6 +855,67 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
                     ease: [0.25, 0.46, 0.45, 0.94],
                   }}
                   onAnimationComplete={() => setFallingPieces((prev) => prev.filter((p) => p.id !== piece.id))}
+                />
+              </motion.svg>
+            )
+          })}
+        </AnimatePresence>
+
+        {/* New: Rising Piece Animation (Undo) - Reverse of falling */}
+        <AnimatePresence>
+          {risingPieces.map((piece) => {
+            const maskId = `rising-piece-mask-${piece.id}`
+            const holes: { cx: number; cy: number; radius: number }[] = []
+            for (let r = 0; r <= piece.targetRow; r++) {
+              const cell = cellRefs.current[r][piece.col]
+              if (cell && boardContainerRef.current) {
+                const boardRect = boardContainerRef.current.getBoundingClientRect()
+                const cellRect = cell.getBoundingClientRect()
+                const cx = cellRect.left - boardRect.left + cellRect.width / 2
+                const cy = cellRect.top - boardRect.top + cellRect.height / 2
+                const radius = cellRect.width * 0.425
+                holes.push({ cx, cy, radius })
+              }
+            }
+            const startCy = holes.length > 0 ? holes[holes.length - 1].cy : 0 // start at target cell
+            const endCy = holes.length > 0 ? holes[0].cy : 0 // end at top hole
+            const cx = holes.length > 0 ? holes[0].cx : 0
+
+            return (
+              <motion.svg
+                key={piece.id}
+                className="absolute z-50 pointer-events-none"
+                style={{
+                  left: 0,
+                  top: 0,
+                  width: boardContainerRef.current?.offsetWidth,
+                  height: boardContainerRef.current?.offsetHeight,
+                }}
+                width={boardContainerRef.current?.offsetWidth}
+                height={boardContainerRef.current?.offsetHeight}
+              >
+                <defs>
+                  <mask id={maskId}>
+                    <rect x="0" y="0" width="100%" height="100%" fill="black" />
+                    {holes.map((hole, idx) => (
+                      <circle key={idx} cx={hole.cx} cy={hole.cy} r={hole.radius} fill="white" />
+                    ))}
+                  </mask>
+                </defs>
+                <motion.circle
+                  cx={cx}
+                  initial={{ cy: startCy }}
+                  animate={{ cy: endCy }}
+                  r={holes.length > 0 ? holes[0].radius : 0}
+                  fill={getHexCode(piece.player)}
+                  mask={`url(#${maskId})`}
+                  style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))" }}
+                  transition={{
+                    type: "tween",
+                    duration: piece.duration,
+                    ease: [0.25, 0.46, 0.45, 0.94],
+                  }}
+                  onAnimationComplete={() => setRisingPieces((prev) => prev.filter((p) => p.id !== piece.id))}
                 />
               </motion.svg>
             )

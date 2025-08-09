@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scrollbar-custom">
+    <html lang="en" className="scrollbar-custom bg-brand-primary">
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="Con4" />
       <meta property="og:title" content="Con4 - Play Four In A Row Online" />

@@ -36,6 +36,8 @@ interface LiveGameWithAnalysisProps {
   meRef?: React.MutableRefObject<PlayerData | undefined>
   currentUser?: string
   currentMoveIndex?: number
+  // Optional override for the move list to display (e.g., include pending animation)
+  movesOverride?: number[]
   
   // Event Handlers
   onMessageSent?: (message: ChatMessage) => void
@@ -60,6 +62,7 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
     meRef,
     currentUser = "You",
     currentMoveIndex: propCurrentMoveIndex = 0,
+    movesOverride,
     onMessageSent,
     onMoveClick,
     onFirstMove,
@@ -166,7 +169,7 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
       {/* Move History - Fixed Height */}
       <div className="flex-shrink-0 h-[220px]">
         {game ? (
-          <MoveHistory game={game} onMoveClick={onMoveClick} />
+          <MoveHistory game={game} onMoveClick={onMoveClick} moves={movesOverride} />
         ) : (
           <div className="h-full flex items-center justify-center text-gray-500">
             No game data available

@@ -11,6 +11,11 @@ import { userService } from "./user.service";
 import { parseUser } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
+import { GameMode } from "@shared/constants/allgamemodes";
+import { StandardModes } from "@shared/utils/gamemodes";
+import { JobSets } from "@/jobs";
+import { JobKeys } from "@/jobs/jobKeys";
+import { Job } from "bullmq/dist/esm/classes/job";
 
 export const liveGameService = {
     
@@ -40,17 +45,52 @@ export const liveGameService = {
 
     async handleDisconnect(gameContext: GameContext): Promise<void> {
 
-        console.log("ATTEMPTING DISCONNECT HANDLER", gameContext.userId, gameContext.shortcode);
+        try {
+            await gameContext.validatePlayerInRoom();
+        } catch (error) {
+            console.error("Player is not in the game room, skipping disconnection logic", error);
+            return; // Player is not in the game room, skip disconnection logic
+        }
 
-        const socket = getSocketIO();
-        
-        
-        // send message to the game room
+        if (!gameContext.gameId || !gameContext.userId) {
+            console.error("Game ID or User ID is missing for resetting disconnect job");
+            return;
+        }
 
+        const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
+        await JobSets.getGameDisconnectionQueue().add(
+            jobId,
+            {
+                gameId: gameContext.gameId,
+                playerId: gameContext.userId,
+            },
+            {
+                // delay is set by default in the job set
+                removeOnComplete: true,
+                removeOnFail: true,
+            }
+        );
+        console.log(`✅ Scheduled game disconnection job with ID: ${jobId}`);
+    },
 
-        // start a job to handle the disconnect
+    async dropDisconnectJob(gameContext: GameContext): Promise<void> {
+        // Reset the disconnect job for the game
+        // import jobset here and remove the job. (UUID is gameContext.gameId and gameContext.userId)
 
+        await gameContext.validatePlayerInRoom();
+        if (!gameContext.gameId || !gameContext.userId) {
+            console.error("Game ID or User ID is missing for resetting disconnect job");
+            return;
+        }
 
+        const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
+        const job = await JobSets.getGameDisconnectionQueue().getJob(jobId);
+        if (job) {
+            await job.remove();
+            console.log(`❌ Canceled game disconnection job with ID: ${jobId}`);
+        } else {
+            console.log(`⚠️ Job ${jobId} not found or already processed`);
+        }
     },
 
     async HandleDraw(gameContext: GameContext): Promise<void> {
@@ -90,19 +130,39 @@ export const liveGameService = {
     },
 
     async Resign(gameContext: GameContext): Promise<void> {
+
         // Get fresh game data
         gameContext.invalidateAll();
         const playerIndex = await gameContext.getPlayerIndex();
-        if (playerIndex === null) return; // user is not in the game
+        const metadata = await gameContext.getMetadata();
+        if (!metadata || !gameContext.gameId || !playerIndex) return;
 
-        let result = GameState.ERRORED;
-        if (playerIndex === 0) {
-            result = GameState.RED_RESIGNED;
-        } else {
-            result = GameState.YELLOW_RESIGNED;
+        await gameContext.validatePlayerInRoom();
+
+        // if game state is not in progress do nothing
+        if (metadata.state !== GameState.IN_PROGRESS) return;
+
+        // check for timeouts first
+        const response = await this.checkForTimeout(gameContext);
+        if (response.status !== 200) {
+            console.log("Game resigned due to timeout", response.message);
+            return; // if the game is already over, do nothing
         }
 
-        this.HandleGameOver(gameContext, result);
+        if (StandardModes.has(metadata.gamemode)) {
+            // Handle game end here
+            let result;
+            if (playerIndex === 0) {
+                result = GameState.RED_RESIGNED;
+            } else {
+                result = GameState.YELLOW_RESIGNED;
+            }
+            this.HandleGameOver(gameContext, result);
+        } else {
+            // Handle other game modes
+            console.error("Unsupported game mode for resignation");
+            return;
+        }
     },
 
     async HandleChatMessage(gameContext: GameContext, message: string): Promise<void> {
@@ -337,9 +397,6 @@ export const liveGameService = {
 
 
 
-    
-
-
     async FreeGamePlayers(gameContext: GameContext): Promise<void> {
         
         // Get fresh metadata to check game state
@@ -362,7 +419,7 @@ export const liveGameService = {
 
 
 
-    async GetStatus(gameContext: GameContext): Promise<ServiceResponse> {
+    async checkForTimeout(gameContext: GameContext): Promise<ServiceResponse> {
         // Validate player is in the game room with fresh data
         gameContext.invalidatePlayerData();
         await gameContext.validatePlayerInRoom();
@@ -376,13 +433,23 @@ export const liveGameService = {
 
         // if game state is not in progress, return the current state
         if (metadata.state !== GameState.IN_PROGRESS) {
-            return { status: 200, message: `Game is currently in state: ${metadata.state}` };
+            return { status: 400, message: `Game is currently in state: ${metadata.state}` };
         }
 
-        // here we verify that neither player has disconnected for more than 30 seconds
-        // and that neither player has timed out of the game
+        const Game = await this.loadTimedGame(gameContext);
+        if (!Game) {
+            return { status: 404, message: 'Timed game not found' };
+        }
 
-        return { status: 500, message: 'Game is in progress' };
+        // Check if the current player has timed out
+        if (Game.checkPlayerTimeOut()) {
+            // Handle game over due to timeout
+            await this.HandleGameOver(gameContext, Game.getGameState());
+            return { status: 100, message: 'Player has timed out' };
+        }
+
+        // If no timeout, return successfully
+        return { status: 200, message: 'Game is in progress' };
     },
 
 
@@ -398,6 +465,51 @@ export const liveGameService = {
         
         return false;
     },
+
+
+
+    async DisconnectPlayer(gameContext: GameContext): Promise<void> {
+        const playerId = gameContext.userId;
+        const gameId = gameContext.gameId;
+        if (!playerId || !gameId) {
+            console.error("Player ID or Game ID is missing for disconnection");
+            return;
+        } 
+        await gameContext.validatePlayerInRoom();   
+        const isConnected = await this.isPlayerSocketConnected(playerId);
+        if (isConnected) {
+          // The player has reconnected, so we can skip the disconnection logic
+          console.log(`Player ${playerId} has reconnected, skipping disconnection logic.`);
+          return;
+        }
+
+        // The player is disconnected, so we can proceed with the disconnection logic
+        const playerNumber = await gameContext.getPlayerIndex()!;
+        const gameMeta = await gameContext.getMetadata();
+        if (!playerNumber || !gameMeta) {
+            console.error("Player number or game metadata is missing for disconnection");
+            return;
+        }
+
+        if (StandardModes.has(gameMeta.gamemode)) {
+            // Handle game end here
+            await this.HandleGameOver(gameContext,
+                playerNumber === 0 ? GameState.RED_DISCONNECTED : GameState.YELLOW_DISCONNECTED
+            );
+            return;
+        } else {
+            // Handle other game modes
+            console.error("Unsupported game mode for disconnection");
+            return;
+        }
+    },
+
+
+
+
+
+
+
 
 
 }

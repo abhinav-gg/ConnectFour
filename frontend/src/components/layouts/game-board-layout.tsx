@@ -10,14 +10,6 @@ import { Timer } from "../game/timer"
 import { PlayerData } from "@shared/types/users"
 import { BoardHandle } from "../boards/Board"
 
-// Extend window interface for global refresh function
-declare global {
-  interface Window {
-    __gameLayoutRefresh?: () => void
-  }
-}
-
-
 interface GameBoardLayoutProps {
   children: React.ReactNode
   boardProps?: {
@@ -38,6 +30,7 @@ interface GameBoardLayoutProps {
   onScoreRatioChange?: (newRatio: number) => void
   onPauseGame: () => void
   onResetGame: () => void
+  onTimeUp?: () => void // Called when either player's time runs out
   // Ref-based props for player data
   meRef?: MutableRefObject<PlayerData | undefined>
   opponentRef?: MutableRefObject<PlayerData | undefined>
@@ -51,9 +44,31 @@ interface GameBoardLayoutProps {
   player2Pfp?: string
   // Display options
   displayScoreBar?: boolean
+  // NEW: external version signal and ready callback
+  boardVersion?: number
+  onBoardReady?: () => void
+  // NEW: re-render position (remount Board) only when this changes
+  positionVersion?: number
 }
 
-export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
+function HydrationCheck() {
+  const [isClient, setIsClient] = React.useState(false);
+  const renderTime = Date.now();
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  return (
+    <div style={{ fontFamily: 'monospace', marginTop: '2rem' }}>
+      <p>Hydration Test:</p>
+      <p>Is client: {isClient ? '✅ YES' : '❌ NO'}</p>
+      <p>Render time: {renderTime}</p>
+    </div>
+  );
+}
+
+export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({ 
   children,
   boardProps = {},
   scoreRatio,
@@ -69,7 +84,15 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   currentTurnRef,
   myGameRef,
   displayScoreBar = false,
+  boardVersion = 0,
+  onBoardReady,
+  positionVersion = 0,
+  onTimeUp,
 }, ref) => {
+  // Ensure consistent SSR/CSR markup: delay reading refs until after mount
+  const [hasMounted, setHasMounted] = useState(false)
+  useEffect(() => setHasMounted(true), [])
+
   // Add state to track when myGameRef changes to trigger re-renders
   const [gameRefVersion, setGameRefVersion] = useState(0)
   const [lastGameRef, setLastGameRef] = useState(myGameRef?.current)
@@ -82,28 +105,39 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
       setGameRefVersion(prev => prev + 1)
       console.log("🔄 GAME BOARD LAYOUT: Game ref changed, triggering board refresh", {
         hasNewRef: !!currentGameRef,
-        boardState: currentGameRef?.getBoard()
+        boardState: (currentGameRef && typeof (currentGameRef as any).getBoard === 'function') ? (currentGameRef as any).getBoard() : undefined
       })
     }
   }) // No dependencies - check every render
 
-  // Use the game ref directly for board state - this will update when gameRefVersion changes
+  // Use the game ref directly for board state - this will update when versions change
   const boardState = React.useMemo(() => {
+    // Safe fallback: return an empty 6x7 board until mounted and a valid game ref with getBoard() exists
+    const emptyBoard = Array(6).fill(null).map(() => Array(7).fill(null)) as (number | null)[][]
+    if (!hasMounted) return emptyBoard
     if (!myGameRef?.current) {
       console.log("🔄 GAME BOARD LAYOUT: No game ref, using empty board")
-      return Array(6).fill(null).map(() => Array(7).fill(null))
+      return emptyBoard
     }
-    const board = myGameRef.current.getBoard()
-    console.log("🔄 GAME BOARD LAYOUT: Computed board state from game ref:", board)
-    return board
-  }, [gameRefVersion])
+    try {
+      const maybeGame: any = myGameRef.current
+      if (typeof maybeGame.getBoard === 'function') {
+        return maybeGame.getBoard()
+      }
+      console.warn("🔄 GAME BOARD LAYOUT: game ref has no getBoard(), using empty board")
+      return emptyBoard
+    } catch (e) {
+      console.warn("🔄 GAME BOARD LAYOUT: Error reading board from game ref, using empty board", e)
+      return emptyBoard
+    }
+  }, [hasMounted, gameRefVersion, boardVersion])
 
   const defaultBoardProps = {
     boardState: boardState, // Use the reactive board state
     interactive: true,
     animate_init: false,
     showLastMoveHighlight: true,
-    gameOver: myGameRef?.current?.gameOver ?? false,
+    gameOver: hasMounted ? (myGameRef?.current?.gameOver ?? false) : false,
     ariaLabel: "Connect 4 game board",
     ...boardProps, // This can still override if needed
   }
@@ -111,13 +145,6 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   // Create a ref to the Board component
   const boardRef = React.useRef<BoardHandle>(null)
   
-  // Effect to reload board when myGameRef changes or on page reload
-  useEffect(() => {
-    if (myGameRef?.current && boardRef.current) {
-      console.log("🔄 BOARD: Game ref updated, board will use new state via props")
-    }
-  }, [myGameRef?.current])
-
   // Expose board functions through the ref
   useImperativeHandle(ref, () => ({
     triggerMoveAnimation: (row: number, col: number, player: number) => {
@@ -135,50 +162,53 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
         boardRef.current.clearPremove()
       }
     },
+    undoMoveAnimation: (row: number, col: number, player: number) => {
+      if (boardRef.current) {
+        boardRef.current.undoMoveAnimation(row, col, player)
+      }
+    }
   }), [])
 
   // Compute actual player data from refs with fallback values
   // If isRedRef is true, me is red (player 2), opponent is yellow (player 1)
   // If isRedRef is false, me is yellow (player 1), opponent is red (player 2)
-  const isRed = isRedRef?.current ?? true
+  const isRed = (hasMounted && isRedRef?.current !== undefined) ? !!isRedRef.current : true
   
-  const actualPlayer1Name = (opponentRef?.current?.username || "Opponent")
-  const actualPlayer2Name = (meRef?.current?.username || "Player")
-  const actualPlayer1Pfp  = (opponentRef?.current?.pfp || undefined) 
-  const actualPlayer2Pfp  = (meRef?.current?.pfp || undefined)
+  const actualPlayer1Name = (hasMounted && opponentRef?.current?.username) ? opponentRef.current.username : "Opponent"
+  const actualPlayer2Name = (hasMounted && meRef?.current?.username) ? meRef.current.username : "Player"
+  const actualPlayer1Pfp  = (hasMounted && opponentRef?.current?.pfp) ? opponentRef.current.pfp : undefined
+  const actualPlayer2Pfp  = (hasMounted && meRef?.current?.pfp) ? meRef.current.pfp : undefined
   
   // Determine colors based on position and isRed
   const actualPlayer1Color = isRed ? "yellow" : "red" // Top player color
   const actualPlayer2Color = isRed ? "red" : "yellow" // Bottom player color
 
   // Get time data from refs with fallback to props
-  const actualPlayer1Time = rTimeRef?.current?.[isRed ? 1 : 0] ?? 300000
-  const actualPlayer2Time = rTimeRef?.current?.[isRed ? 0 : 1] ?? 300000
-  const actualLastMove = lastMoveRef?.current ?? lastMoveProp ?? null
-  const currentTurn = currentTurnRef?.current
+  const actualPlayer1Time = hasMounted && rTimeRef?.current ? rTimeRef.current[isRed ? 1 : 0] : 300000
+  const actualPlayer2Time = hasMounted && rTimeRef?.current ? rTimeRef.current[isRed ? 0 : 1] : 300000
+  const actualLastMove = hasMounted ? (lastMoveRef?.current ?? lastMoveProp ?? null) : null
+  const currentTurn = hasMounted ? currentTurnRef?.current : undefined
   
   // Use ref-based game running state if available, otherwise fall back to prop
-  const actualIsGameRunning = isGameRunningRef?.current
-  
-  // Determine which timer should be running
-  // Player 1 (top) timer runs when currentTurn === 0
-  // Player 2 (bottom) timer runs when currentTurn === 1
-  const isPlayer2TimerRunning = actualIsGameRunning && ((currentTurn === 0 && isRed) || (currentTurn === 1 && !isRed))
-  const isPlayer1TimerRunning = actualIsGameRunning && !isPlayer2TimerRunning
+  const actualIsGameRunning = hasMounted ? !!isGameRunningRef?.current : false
 
-  // Register global refresh function for external triggers
+  // Add state variables for timer running states
+  const [isPlayer1Running, setIsPlayer1Running] = useState(false)
+  const [isPlayer2Running, setIsPlayer2Running] = useState(false)
+
+  // Effect to update timer running states when refs change
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__gameLayoutRefresh = () => {
-        console.log("🔄 Layout forced refresh triggered")
-        // Force a re-render by updating a dummy state
-        setIsDesktop(prev => prev)
-      }
-    }
-  }, [])
+    const isPlayer2TimerRunning = !!(actualIsGameRunning && ((currentTurn === 0 && isRed) || (currentTurn === 1 && !isRed)))
+    const isPlayer1TimerRunning = !!(actualIsGameRunning && !isPlayer2TimerRunning)
+
+    setIsPlayer1Running(isPlayer1TimerRunning)
+    setIsPlayer2Running(isPlayer2TimerRunning)
+  }, [actualIsGameRunning, currentTurn, isRed])
 
   // State to track current viewport for lazy loading
-  const [isDesktop, setIsDesktop] = useState(false)
+  // Default to mobile layout during SSR/hydration to avoid blank content
+  // Keep SSR/CSR markup stable by not switching layout until after mount
+  const [isDesktop, setIsDesktop] = useState<boolean>(false)
   
   // Stable key for component identity across layouts
   const componentKey = "game-ui-singleton"
@@ -204,7 +234,6 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
   // Refs for the containers
   const desktopContainerRef = React.useRef<HTMLDivElement>(null)
   const mobileContainerRef = React.useRef<HTMLDivElement>(null)
-  const childrenContainerRef = React.useRef<HTMLDivElement>(null)
 
   // Check viewport size and update state
   React.useEffect(() => {
@@ -212,147 +241,176 @@ export const GameBoardLayout = forwardRef<BoardHandle, GameBoardLayoutProps>(({
       setIsDesktop(window.innerWidth >= 1024) // lg breakpoint is 1024px
     }
     
+    // Only check after mount to keep SSR and initial CSR consistent
     checkViewport()
     window.addEventListener('resize', checkViewport)
     
     return () => window.removeEventListener('resize', checkViewport)
   }, [])
 
-  // Move the children container to the appropriate parent
-  React.useEffect(() => {
-    const childrenContainer = childrenContainerRef.current
-    const targetContainer = isDesktop ? desktopContainerRef.current : mobileContainerRef.current
-    
-    if (childrenContainer && targetContainer) {
-      targetContainer.appendChild(childrenContainer)
+  // Notify parent when the Board is ready (mounted with a ref)
+  useEffect(() => {
+    if (boardRef.current) {
+      onBoardReady?.()
     }
-  }, [isDesktop])
+  }, [onBoardReady, gameRefVersion, positionVersion])
 
   return (
     <Layout>
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-screen-2xl mx-auto">
           {/* Desktop Layout (lg breakpoint and above) */}
-          <div className="hidden lg:flex lg:items-start lg:gap-8 min-h-[90vh]">
-            {/* Left Section: Score Bar + Board Area - Fixed width based on viewport */}
-            <div className="flex items-start">
-              {/* Score Bar */}
-              <div className="flex flex-col items-center justify-center px-4">
-                <ScoreBar scoreRatio={scoreRatio} topRed={!isRed} className="w-6 h-[90vh]" display={displayScoreBar} />
-              </div>
-              
-              {/* Board Section - Fixed aspect ratio */}
-              <div className="flex flex-col justify-between py-8 ml-4" style={{ width: 'min(70vh, 60vw)', height: '90vh' }}>
-                {/* Player 1 Info and Timer (Top) */}
-                <div className="flex justify-between items-center w-full mb-4 flex-shrink-0">
-                  <PlayerInfo name={actualPlayer1Name} playerColor={actualPlayer1Color} profilePicUrl={actualPlayer1Pfp} />
-                  <Timer
-                    millisecondsLeft={actualPlayer1Time}
-                    lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer1TimerRunning!}
-                    color={actualPlayer1Color}
-                  />
+          {hasMounted && isDesktop && (
+            <div className="flex lg:items-start lg:gap-8 min-h-[90vh]">
+              {/* Left Section: Score Bar + Board Area - Fixed width based on viewport */}
+              <div className="flex items-start">
+                {/* Score Bar */}
+                <div className="flex flex-col items-center justify-center px-4">
+                  <ScoreBar scoreRatio={scoreRatio} topRed={!isRed} className="w-6 h-[90vh]" display={displayScoreBar} />
                 </div>
+                
+                {/* Board Section - Fixed aspect ratio */}
+                <div className="flex flex-col justify-between py-8 ml-4" style={{ width: 'min(70vh, 60vw)', height: '90vh' }}>
+                  {/* Player 1 Info and Timer (Top) */}
+                  <div className="flex justify-between items-center w-full mb-4 flex-shrink-0">
+                    <PlayerInfo name={actualPlayer1Name} playerColor={actualPlayer1Color} profilePicUrl={actualPlayer1Pfp} />
+                    {hasMounted ? (
+                      <Timer
+                        millisecondsLeft={actualPlayer1Time}
+                        lastMoveTimestamp={actualLastMove || undefined}
+                        isRunning={isPlayer1Running}
+                        color={actualPlayer1Color}
+                        onTimeUp={onTimeUp}
+                      />
+                    ) : (
+                      <div className="w-28 h-8 rounded-full bg-gray-300/60" aria-hidden />
+                    )}
+                  </div>
 
-                {/* Board - Perfect square, constrained by available height */}
-                <div className="flex-1 flex items-center justify-center min-h-0">
-                  <div className="aspect-square h-full max-w-full">
-                    <Board 
-                      key={`board-${gameRefVersion}`} 
-                      {...defaultBoardProps} 
-                      ref={boardRef} 
-                      className="w-full h-full" 
-                    />
+                  {/* Board - Perfect square, constrained by available height */}
+                  <div className="flex-1 flex items-center justify-center min-h-0">
+                    <div className="aspect-square h-full max-w-full">
+                      {hasMounted ? (
+                        <Board 
+                          key={`board-${gameRefVersion}-${positionVersion}`}
+                          {...defaultBoardProps} 
+                          ref={boardRef} 
+                          className="w-full h-full" 
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-xl bg-brand-secondary/40 border border-brand-border/30" aria-hidden />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Player 2 Info and Timer (Bottom) */}
+                  <div className="flex justify-between items-center w-full mt-4 flex-shrink-0">
+                    <PlayerInfo name={actualPlayer2Name} playerColor={actualPlayer2Color} profilePicUrl={actualPlayer2Pfp} />
+                    {hasMounted ? (
+                      <Timer
+                        millisecondsLeft={actualPlayer2Time}
+                        lastMoveTimestamp={actualLastMove || undefined}
+                        isRunning={isPlayer2Running}
+                        color={actualPlayer2Color}
+                        onTimeUp={onTimeUp}
+                      />
+                    ) : (
+                      <div className="w-28 h-8 rounded-full bg-gray-300/60" aria-hidden />
+                    )}
                   </div>
                 </div>
-
-                {/* Player 2 Info and Timer (Bottom) */}
-                <div className="flex justify-between items-center w-full mt-4 flex-shrink-0">
-                  <PlayerInfo name={actualPlayer2Name} playerColor={actualPlayer2Color} profilePicUrl={actualPlayer2Pfp} />
-                  <Timer
-                    millisecondsLeft={actualPlayer2Time}
-                    lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer2TimerRunning!}
-                    color={actualPlayer2Color}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Section: Side Component - Takes remaining space */}
-            <div className="flex-1 min-w-0">
-              <motion.div
-                className="bg-brand-secondary rounded-3xl p-8 lg:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                ref={desktopContainerRef}
-              >
-              </motion.div>
-            </div>
-          </div>
-
-          {/* Mobile/Tablet Layout (lg:hidden) */}
-          <div className="lg:hidden w-full flex flex-col items-center">
-            {/* Game Area */}
-            <div className="flex-[3] flex min-h-0 w-full max-w-4xl">
-              {/* Score Bar */}
-              <div className="flex flex-col items-center justify-center px-2">
-                <ScoreBar scoreRatio={scoreRatio} topRed={!isRed} className="w-4 h-[calc(75vh-8rem)]" display={displayScoreBar} />
               </div>
 
-              {/* Board + Player Info */}
-              <div className="flex-1 flex flex-col justify-between py-4 px-2 min-w-0">
-                <div className="flex justify-between items-center w-full flex-shrink-0">
-                  <PlayerInfo name={actualPlayer1Name} playerColor={actualPlayer1Color} profilePicUrl={actualPlayer1Pfp} />
-                  <Timer
-                    millisecondsLeft={actualPlayer1Time}
-                    lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer1TimerRunning!}
-                    color={actualPlayer1Color}
-                  />
+              {/* Right Section: Side Component - Takes remaining space */}
+              <div className="flex-1 min-w-0">
+                <motion.div
+                  className="bg-brand-secondary rounded-3xl p-8 lg:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  ref={desktopContainerRef}
+                >
+                  {/* Render side children here for desktop */}
+                  {renderedChildren}
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile/Tablet Layout */}
+          {(!hasMounted || !isDesktop) && (
+            <div className="w-full flex flex-col items-center">
+              {/* Game Area */}
+              <div className="flex-[3] flex min-h-0 w-full max-w-4xl">
+                {/* Score Bar */}
+                <div className="flex flex-col items-center justify-center px-2">
+                  <ScoreBar scoreRatio={scoreRatio} topRed={!isRed} className="w-4 h-[calc(75vh-8rem)]" display={displayScoreBar} />
                 </div>
 
-                <div className="flex-1 flex items-center justify-center w-full py-2 min-h-0">
-                  <div className="aspect-square w-full max-h-full">
-                    <Board 
-                      key={`board-mobile-${gameRefVersion}`} 
-                      {...defaultBoardProps} 
-                      ref={boardRef} 
-                      className="w-full h-full" 
-                    />
+                {/* Board + Player Info */}
+                <div className="flex-1 flex flex-col justify-between py-4 px-2 min-w-0">
+                  <div className="flex justify-between items-center w-full flex-shrink-0">
+                    <PlayerInfo name={actualPlayer1Name} playerColor={actualPlayer1Color} profilePicUrl={actualPlayer1Pfp} />
+                    {hasMounted ? (
+                      <Timer
+                        millisecondsLeft={actualPlayer1Time}
+                        lastMoveTimestamp={actualLastMove || undefined}
+                        isRunning={isPlayer1Running}
+                        color={actualPlayer1Color}
+                        onTimeUp={onTimeUp}
+                      />
+                    ) : (
+                      <div className="w-28 h-8 rounded-full bg-gray-300/60" aria-hidden />
+                    )}
+                  </div>
+
+                  <div className="flex-1 flex items-center justify-center w-full py-2 min-h-0">
+                    <div className="aspect-square w-full max-h-full">
+                      {hasMounted ? (
+                        <Board 
+                          key={`board-mobile-${gameRefVersion}-${positionVersion}`}
+                          {...defaultBoardProps} 
+                          ref={boardRef} 
+                          className="w-full h-full" 
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-xl bg-brand-secondary/40 border border-brand-border/30" aria-hidden />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center w-full flex-shrink-0">
+                    <PlayerInfo name={actualPlayer2Name} playerColor={actualPlayer2Color} profilePicUrl={actualPlayer2Pfp} />
+                    {hasMounted ? (
+                      <Timer
+                        millisecondsLeft={actualPlayer2Time}
+                        lastMoveTimestamp={actualLastMove || undefined}
+                        isRunning={isPlayer2Running}
+                        color={actualPlayer2Color}
+                        onTimeUp={onTimeUp}
+                      />
+                    ) : (
+                      <div className="w-28 h-8 rounded-full bg-gray-300/60" aria-hidden />
+                    )}
                   </div>
                 </div>
+              </div>
 
-                <div className="flex justify-between items-center w-full flex-shrink-0">
-                  <PlayerInfo name={actualPlayer2Name} playerColor={actualPlayer2Color} profilePicUrl={actualPlayer2Pfp} />
-                  <Timer
-                    millisecondsLeft={actualPlayer2Time}
-                    lastMoveTimestamp={actualLastMove || undefined}
-                    isRunning={isPlayer2TimerRunning!}
-                    color={actualPlayer2Color}
-                  />
-                </div>
+              {/* Side Component - Mobile */}
+              <div className="flex-shrink-0 px-4 pb-4 w-full max-w-4xl">
+                <motion.div
+                  className="bg-brand-secondary rounded-3xl p-6 lg:p-8 shadow-2xl border border-brand-border/40 select-none flex flex-col mx-auto"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+                  ref={mobileContainerRef}
+                >
+                  {/* Render side children here for mobile */}
+                  {renderedChildren}
+                </motion.div>
               </div>
             </div>
-
-            {/* Side Component - Mobile */}
-            <div className="flex-shrink-0 px-4 pb-4 w-full max-w-4xl">
-              <motion.div
-                className="bg-brand-secondary rounded-3xl p-6 lg:p-8 shadow-2xl border border-brand-border/40 select-none flex flex-col mx-auto"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
-                ref={mobileContainerRef}
-              >
-              </motion.div>
-            </div>
-          </div>
-
-          {/* Single children container that gets moved between layouts */}
-          <div className="flex flex-col" key={componentKey} ref={childrenContainerRef}>
-            {renderedChildren}
-          </div>
+          )}
         </div>
       </div>
     </Layout>

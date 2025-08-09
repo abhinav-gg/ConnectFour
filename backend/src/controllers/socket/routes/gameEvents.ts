@@ -3,6 +3,7 @@ import { withNamespace } from "../handlers";
 import { liveGameService } from "@/services/livegame.service";
 import { getIdentityFromSocket } from "@/lib/game.middleware";
 import { GameContext } from "@/utils/gameContext";
+import { RoomSchema } from "../socketRoomSchema";
 
 
 async function handleDisconnectSocket(socket: Socket) {
@@ -15,6 +16,12 @@ async function handleDisconnectSocket(socket: Socket) {
 
         // Create fresh GameContext at socket level
         const gameContext = new GameContext(userId);
+        const metadata = await gameContext.getMetadata();
+        if (metadata && metadata.shortcode) {
+            socket.leave(RoomSchema.game.key(metadata.shortcode));
+            socket.leave(RoomSchema.spectating.key(metadata.shortcode));
+        }
+
         await liveGameService.handleDisconnect(gameContext);
 
     } catch (error) {

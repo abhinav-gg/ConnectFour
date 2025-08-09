@@ -18,6 +18,7 @@ services:
   
   api:
     build: 
+      context: .
       dockerfile: backend.Dockerfile
     container_name: express-api
     restart: always

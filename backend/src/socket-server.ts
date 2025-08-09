@@ -47,10 +47,9 @@ io.on('connection', (socket) => {
 
   // Listen for the ping event from the client
   socket.on("ping", () => {
-    console.log(`Received ping from ${socket.id}`);
-    
+    // console.log(`Received ping from ${socket.id}`);
     // You can respond with a pong if you want
-    socket.emit("message", { time: new Date().toISOString() });
+    socket.emit("message", { event: "pong", data: "pong" });
   });
 
 

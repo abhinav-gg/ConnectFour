@@ -7,9 +7,11 @@ import { useRef, useEffect, useState } from "react"
 interface MoveHistoryProps {
   game: StandardGame
   onMoveClick?: (moveIndex: number) => void
+  // Optional override to display a custom moves array (e.g., include pending animated move)
+  moves?: number[]
 }
 
-export function MoveHistory({ game, onMoveClick }: MoveHistoryProps) {
+export function MoveHistory({ game, onMoveClick, moves: movesOverride }: MoveHistoryProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
@@ -47,8 +49,8 @@ export function MoveHistory({ game, onMoveClick }: MoveHistoryProps) {
 
   const settings = getResponsiveSettings()
 
-  // Get moves directly from the StandardGame
-  const moves = game.getMoves()
+  // Prefer explicit moves if provided; fallback to game model
+  const moves = movesOverride ?? game.getMoves()
 
   return (
     <div className="h-full flex flex-col">
