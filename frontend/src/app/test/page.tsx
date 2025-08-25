@@ -3,10 +3,10 @@ import SingleplayerBoardHandler from "@/components/boards/Handlers/SingleplayerB
 import PuzzleHandler from "@/components/boards/Handlers/PuzzleHandler";
 import { Puzzle } from "@shared/utils/puzzles";
 import BotChallengeBoardHandler from "@/components/boards/Handlers/BotHandler";
-
+import { FallingCirclesBackground } from "@/components/bganimation";
 
 export default function Page() {
-  return <BotChallengeBoardHandler />
+  return <FallingCirclesBackground />
 
   // return (
   //   <div className="flex flex-col items-center justify-center min-h-screen">

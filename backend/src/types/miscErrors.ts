@@ -6,3 +6,15 @@ export class EmailSendError extends Error {
   }
 }
 
+
+export class GameNotFound extends Error {
+  constructor() {
+    super('Game not found');
+    this.name = "GameNotFound";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+
+
+

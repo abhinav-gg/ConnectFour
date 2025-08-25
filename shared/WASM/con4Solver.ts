@@ -30,7 +30,7 @@ const getConnect4Solver = async (): Promise<IConnect4Solver> => {
   if (cachedSolver) {
     return cachedSolver;
   }
-
+  console.warn('getConnect4Solver() called without cache, initializing...');
   if (isNodeRuntime()) {
     const nodeModulePath = './con4Solver.node';
     const dynamicRequire = eval('require');

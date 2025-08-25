@@ -6,7 +6,7 @@ import { ServiceResponse, GoogleTokenResponse } from '@/types/custom';
 import { UserAccountProvider } from "@shared/types/users";
 import { myConfig } from '@config/env';
 import { RegUser, UserRegistration } from '@/db/models/User';
-import { hashPassword } from '@/lib/auth/auth';
+import { generateSessionToken, hashPassword } from '@/lib/auth/auth';
 import { validateEmail, validatePassword, validateUsername } from '@shared/utils/validation';
 import { EmailDoesNotExist, EmailExists, UsernameExists } from '@/types/dbErrors';
 import { APIResponse } from '@shared/types/Responses';
@@ -14,8 +14,7 @@ import { RedisSchema } from '@/redis/redisSchema';
 import { userService } from '../../../services/user.service';
 import { sendUserToGame } from '@/lib/game.middleware';
 import { rdsDBOps } from '@/db/rds/ops';
-import { UUID } from 'crypto';
-
+import { redisOps } from '@/redis/ops';
 
 const authRouter = Router();
 
@@ -51,7 +50,11 @@ authRouter.post('/register/start', requireUnauthenticated, verifyRecaptcha, asyn
 
     const params = new URLSearchParams({ jwt: preVerifyJwt });
 
-    res.redirect(`/auth/verify-email?${params.toString()}`);
+    // TODO fix....
+    // setup new redis cache for email 
+    // res.redirect(`/auth/verify-email?${params.toString()}`);
+
+    return res.status(200).json({ status: 'verification_required', jwt: preVerifyJwt });
 
   } catch {
     // User does not exist, continue
@@ -146,7 +149,7 @@ authRouter.post('/login', requireUnauthenticated, verifyRecaptcha, async (req: R
     }
   }
   catch (error: any) {
-    console.error(error)
+    console.error(error) // me gusta
   }
 });
 
@@ -233,24 +236,49 @@ authRouter.get('/test', (req: Request, res: Response) => {
   res.json({ message: 'Test endpoint' });
 });
 
-authRouter.get('/google/start', (req, res) => {
-  const queryParams = new URLSearchParams({
-    client_id: myConfig.GOOGLE_CLIENT_ID,
-    redirect_uri: myConfig.GOOGLE_CLIENT_REDIRECT_URI,
-    response_type: 'code',
-    scope: 'openid email profile',
-    access_type: 'offline',
-    prompt: 'consent',
-  });
+authRouter.get('/google/start', async (req, res) => {
+  try {
+    const state = generateSessionToken();
+    // store minimal metadata (e.g., time) for potential auditing
+    const redis = await redisOps();
+    await redis.user.setGoogleOAuthState(state, JSON.stringify({ t: Date.now() }));
 
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
-  res.redirect(googleAuthUrl);
+    const queryParams = new URLSearchParams({
+      client_id: myConfig.GOOGLE_CLIENT_ID,
+      redirect_uri: myConfig.GOOGLE_CLIENT_REDIRECT_URI,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'offline',
+      prompt: 'consent',
+      state,
+    });
+  
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${queryParams.toString()}`;
+    res.redirect(googleAuthUrl);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to initiate OAuth' });
+  }
 });
-
-
 
 authRouter.get("/google/callback", async (req: Request, res: Response): Promise<void> => {
   const code = req.query.code as string;
+  const state = req.query.state as string;
+  // CSRF state validation
+  try {
+    if (!state) {
+      res.status(400).send('Missing state');
+      return;
+    }
+    const redis = await redisOps();
+    const stored = await redis.user.consumeGoogleOAuthState(state);
+    if (!stored) {
+      res.status(400).send('Invalid or expired state');
+      return;
+    }
+  } catch (err) {
+    res.status(500).send('State validation failed');
+    return;
+  }
 
   if (!code) {
     res.status(400).send("Missing code");

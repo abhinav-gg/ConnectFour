@@ -17,6 +17,7 @@ interface UseSocketIoResult {
   sendJson: (event: string, data: object) => void;
   connected: boolean;
   close: () => void;
+  unsubscribePrefixedMessage: (prefix: string) => void;
   getLastJson: () => any | null;
 }
 
@@ -165,6 +166,11 @@ function useSocketIo(
     onErrorCallbackRef.current = callback;
   }, []);
 
+  const unsubscribePrefixedMessage = useCallback((prefix: string) => {
+    console.log(`[useSocketIO] Unsubscribing prefix handler for: ${prefix}`);
+    onPrefixedMessageCallbacksRef.current.delete(prefix);
+  }, []);
+
   return { 
     onMessage: registerOnMessage,
     onPrefixedMessage: registerOnPrefixedMessage,
@@ -172,7 +178,8 @@ function useSocketIo(
     sendJson, 
     connected, 
     close, 
-    getLastJson 
+    getLastJson,
+    unsubscribePrefixedMessage 
   };
 }
 

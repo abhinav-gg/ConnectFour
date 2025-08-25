@@ -24,6 +24,12 @@ io.use(sendSocketUserToGame);
 io.on('connection', (socket) => {
   console.log(`[Socket] Connected: ${socket.id}`);
   
+  // add simple rate limiter here for anything that is not a ping
+  socket.onAny((event) => {
+    if (event !== 'ping') {
+      // Implement your rate limiting logic here TODO
+    } 
+  });
 
   // Add more handlers here
   registerSocketHandler.game(socket);

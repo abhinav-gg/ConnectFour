@@ -32,15 +32,6 @@ export function GameSelect() {
       soon: false,
     },
     {
-      title: "Play Locally",
-      description: "Play a game on the same device",
-      icon: Bot,
-      extraIcon: Sparkles, // For the stars next to the bot
-      extraIconColor: "text-brand-accent-orange",
-      href: "/test",
-      soon: false,
-    },
-    {
       title: "View Tournaments",
       description: "Play in a live event!",
       icon: LayoutGrid, // Matching the visual style of the bracket

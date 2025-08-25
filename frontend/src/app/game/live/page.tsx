@@ -1,25 +1,10 @@
 'use client'
 /*
- * LiveGame Test Page with WebSocket Integration Points
+ * LiveGame Page with WebSocket Integration - Unified Layout
  * 
- * This page demonstrates how to integrate WebSocket functionality with the LiveGameUI component.
- * All user interactions are logged to console for debugging and de      <LiveGameWithAnalysis 
-        ref={liveGameRef}
-        initialChatMessages={chatMessages}
-        moves={moves}
-        currentUser="You"
-        onMessageSent={handleMessageSent}
-        onMoveClick={handleMoveClick}
-        onFirstMove={handleFirstMove}
-        onPreviousMove={handlePreviousMove}
-        onNextMove={handleNextMove}
-        onLastMove={handleLastMove}
-        onResign={handleResign}
-        onOfferDraw={handleOfferDraw}
-        onToggleAnalysis={handleToggleAnalysis}
-        onSettingsClick={handleSettingsClick}
-        showAnalysisFeatures={showAnalysis}
-      />
+ * This page demonstrates WebSocket functionality with the new UnifiedGameLayout.
+ * All user interactions are logged to console for debugging.
+ * 
  * WebSocket Integration Points:
  * - handleSendMessage: Send chat messages to server
  * - handleColumnAttempt: Send moves to server
@@ -39,9 +24,8 @@
  */
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { GameBoardLayout } from "@/components/layouts/game-board-layout"
-import { BoardHandle } from "@/components/boards/Board"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/LiveGameUI"
 import { ChatMessage, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
 import useSound from "@/utils/useSound"
@@ -63,7 +47,7 @@ export default function LiveGamePage() {
   const [shortcode, setShortcode] = useState<string>("")
   
   // Use the existing SocketIO hook
-  const { sendJson, connected, onPrefixedMessage } = useSocketContext()
+  const { sendJson, connected, onPrefixedMessage, unsubscribePrefixedMessage } = useSocketContext()
   
   // Get user context for fallback player data
   const { user } = useUser()
@@ -79,23 +63,34 @@ export default function LiveGamePage() {
   const eloChangesRef = useRef<EloChange | null>(null)
   const myGame = useRef(new StandardGame())
 
-  // UI + rendering version signals
-  // - gameVersion: bump when game model state changes (moves/index)
-  // - timeVersion: bump when timing/turn/lastMove changes
+  // UI + rendering version signals (simplified)
   const [gameVersion, setGameVersion] = useState(0)
-  const [timeVersion, setTimeVersion] = useState(0)
-  // - positionVersion: bump only when we want to remount the Board with a new static position (e.g., go-to-move/reset)
-  const [positionVersion, setPositionVersion] = useState(0)
+  const [boardKey, setBoardKey] = useState("board-0") // For forcing board re-renders
 
   // Board animation control
   const liveGameRef = useRef<LiveGameRef>(null)
-  const gameBoardRef = useRef<BoardHandle>(null)
-  const [animateInit, setAnimateInit] = useState(false) // replay existing moves on first paint
-  const replayPosVersionRef = useRef<number | null>(null)
+  const unifiedLayoutRef = useRef<any>(null) // Reference to the unified layout for board control
+  
+  // Disconnect state tracking
+  const player1DisconnectedRef = useRef(false)
+  const player2DisconnectedRef = useRef(false)
+  const [animateInit, setAnimateInit] = useState(false)
+  const pathname = usePathname()
+  const prevPathRef = useRef(pathname)
+  const sentLeaveRef = useRef(false)
+  
+  // Calculate dynamic title based on game state
+  const getDynamicTitle = (): string => {
+    if (!isGameRunningRef.current) return "Game Paused"
+    if (isSpectating) return "Spectating"
+    
+    const isMyTurn = currentTurnRef.current === (isRedRef.current ? 0 : 1)
+    return isMyTurn ? "Your Turn!" : "Waiting..."
+  }
 
-  // Mark board as ready (prevent replay repeats)
+  // Mark board as ready 
   const handleBoardReady = () => {
-    // Keep animateInit until after initial remounts; gated by positionVersion
+    console.log("🔄 BOARD: Board is ready")
   }
 
   // Initial meRef from user context
@@ -132,19 +127,11 @@ export default function LiveGamePage() {
     {
       id: "1",
       username: "System",
-      message: "Game started!",
+      message: "Waiting for game to start!",
       type: "system",
       color: "white",
       timestamp: new Date(Date.now() - 60000),
-    },
-    {
-      id: "2",
-      username: "Opponent",
-      message: "Good luck!",
-      type: "user",
-      color: "red",
-      timestamp: new Date(Date.now() - 30000),
-    },
+    }
   ])
 
   // Step 1: Register ALL socket handlers immediately on mount
@@ -210,12 +197,7 @@ export default function LiveGamePage() {
 
           // Bump versions so UI reads the new model and timers
           setGameVersion((v) => v + 1)
-          setTimeVersion((v) => v + 1)
-          setPositionVersion((prev) => {
-            const next = prev + 1
-            replayPosVersionRef.current = next
-            return next
-          }) // new position
+          setBoardKey(`board-setup-${Date.now()}`) // Force board re-render
           break
         }
         case "spectate": {
@@ -233,17 +215,18 @@ export default function LiveGamePage() {
             // Replay for spectators on initial mount
             setAnimateInit(setupData.moves.length > 0)
             setGameVersion((v) => v + 1)
-            setTimeVersion((v) => v + 1)
-            setPositionVersion((prev) => {
-              const next = prev + 1
-              replayPosVersionRef.current = next
-              return next
-            })
+            setBoardKey(`board-spectate-${Date.now()}`)
           }
           break
         }
         case "chat": {
           const validatedMessage = data as ChatMessage
+
+          // I'm lazy so there won't be a separate spectator channel for now
+          if (!isSpectating && validatedMessage.type === 'spectator') {
+            return;
+          }
+
           if (liveGameRef.current) {
             liveGameRef.current.addChatMessage(
               validatedMessage.message,
@@ -262,7 +245,7 @@ export default function LiveGamePage() {
           console.log("📨 WEBSOCKET: Received move data:", JSON.stringify(moveData))
 
           // Animate on board immediately
-          if (gameBoardRef.current) {
+          if (unifiedLayoutRef.current) {
             // If we're not at the last move, animate back to current first
             const currentIndex = myGame.current.currentMoveIndex
             const moves = myGame.current.getMoves()
@@ -270,7 +253,7 @@ export default function LiveGamePage() {
               // Animate from current position to latest before showing new move
               animateMoveTransition(currentIndex + 1, moves.length)
             }
-            gameBoardRef.current.triggerMoveAnimation(moveData.row, moveData.col, moveData.player)
+            unifiedLayoutRef.current.triggerMoveAnimation(moveData.row, moveData.col, moveData.player)
           }
 
           // Commit to model immediately and sync UI
@@ -289,7 +272,6 @@ export default function LiveGamePage() {
           isGameRunningRef.current = true
 
           setGameVersion(v => v + 1)
-          setTimeVersion(v => v + 1)
           break
         }
         case "over": {
@@ -300,12 +282,35 @@ export default function LiveGamePage() {
           setShowEndPopup(true)
           console.log("🏁 GAME: Game has ended", { result })
           // Ensure timers stop and UI updates
-          setTimeVersion((v) => v + 1)
           setGameVersion((v) => v + 1)
           break
         }
         case "disconnection": {
-          console.log("🏁 GAME: Player has disconnected")
+          const { player } = data
+          console.log("🏁 GAME: Player has disconnected", { player })
+          
+          // Track which player disconnected
+          if (player === 0) {
+            player1DisconnectedRef.current = true
+          } else if (player === 1) {
+            player2DisconnectedRef.current = true
+          }
+          
+          setGameVersion((v) => v + 1)
+          break
+        }
+        case "reconnection": {
+          const { player } = data
+          console.log("🔌 GAME: Player has reconnected", { player })
+          
+          // Reset disconnect state for reconnected player
+          if (player === 0) {
+            player1DisconnectedRef.current = false
+          } else if (player === 1) {
+            player2DisconnectedRef.current = false
+          }
+          
+          setGameVersion((v) => v + 1)
           break
         }
         default:
@@ -344,25 +349,35 @@ export default function LiveGamePage() {
     }
   }, [connected, shortcode, sendJson])
 
-  // Send a leave message if the page is being closed (best-effort)
   useEffect(() => {
-    let sentLeave = false
-
-    const handleCloseSocket = () => {
-      if (connected && !sentLeave) {
-        sendJson("game:leave", { })
-        sentLeave = true
+    const cleanup = () => {
+      unsubscribePrefixedMessage("matchmaking")
+      unsubscribePrefixedMessage("game")
+      if (connected && !sentLeaveRef.current) {
+        sendJson("game:leave", {})
+        sentLeaveRef.current = true
       }
     }
 
-    window.addEventListener('pagehide', handleCloseSocket)
+    // Trigger cleanup if navigating to a different path
+    if (prevPathRef.current !== pathname) {
+      cleanup()
+      prevPathRef.current = pathname
+    }
+
+    // Trigger cleanup on page unload
+    const handleCloseSocket = () => {
+      cleanup()
+    }
+
     window.addEventListener('beforeunload', handleCloseSocket)
+    window.addEventListener('pagehide', handleCloseSocket)
 
     return () => {
-      window.removeEventListener('pagehide', handleCloseSocket)
       window.removeEventListener('beforeunload', handleCloseSocket)
+      window.removeEventListener('pagehide', handleCloseSocket)
     }
-  }, [connected, sendJson])
+  }, [pathname, connected, sendJson])
 
   // Board animation control
   const handleResetGame = () => {
@@ -392,8 +407,6 @@ export default function LiveGamePage() {
 
     // Bump versions so UI resets
     setGameVersion((v) => v + 1)
-    setTimeVersion((v) => v + 1)
-    setPositionVersion((v) => v + 1)
   }
 
   const handleColumnAttempt = (col: number) => {
@@ -415,14 +428,12 @@ export default function LiveGamePage() {
 
   // Chat Event Handlers
   const handleMessageSent = (message: ChatMessage) => {
-    console.log(`💬 MESSAGE SENT:`, message)
     if (isSpectating) {
       console.log("👁️ SPECTATING: Player is spectating, TODO: spectator only chat")
       return
     }
     if (connected) {
       sendJson("game:chat", { shortcode, message: message.message })
-      console.log("📤 WEBSOCKET: Sending message to server:", message.message)
     } else {
       console.log("📤 WEBSOCKET: Not connected, message not sent:", message.message)
     }
@@ -434,7 +445,7 @@ export default function LiveGamePage() {
   // Helper to calculate which moves need undo/redo animations
   const animateMoveTransition = (fromIndex: number, toIndex: number) => {
     const moves = myGame.current.getMoves()
-    if (!gameBoardRef.current) return
+    if (!unifiedLayoutRef.current) return
 
     if (fromIndex > toIndex) {
       // Going backwards - undo moves from current to target
@@ -442,7 +453,7 @@ export default function LiveGamePage() {
         const move = moves[i - 1] // Get previous move
         const row = myGame.current.getAvailableRow(move) // Already points to the correct row to remove from
         const player = (i - 1) % 2 // Player alternates each move
-        gameBoardRef.current.undoMoveAnimation(row, move, player)
+        unifiedLayoutRef.current.undoMoveAnimation(row, move, player)
       }
     } else {
       // Going forwards - replay moves from current to target
@@ -450,7 +461,7 @@ export default function LiveGamePage() {
         const move = moves[i - 1]
         const row = myGame.current.getAvailableRow(move)
         const player = (i - 1) % 2
-        gameBoardRef.current.triggerMoveAnimation(row, move, player)
+        unifiedLayoutRef.current.triggerMoveAnimation(row, move, player)
       }
     }
   }
@@ -567,32 +578,40 @@ export default function LiveGamePage() {
 
   return (
     <>
-    <GameBoardLayout
-      ref={gameBoardRef}
-      meRef={meRef}
-      opponentRef={opponentRef}
-      isRedRef={isRedRef}
-      lastMoveRef={lMoveRef}
-      rTimeRef={pTimesRef}
-      currentTurnRef={currentTurnRef}
-      isGameRunningRef={isGameRunningRef}
-      myGameRef={myGame}
-      lastMoveProp={lMoveRef.current}
-      scoreRatio={scoreRatio}
-      onPauseGame={() => {}}
-      onResetGame={handleResetGame}
-      // Use version signal to refresh board/timers when refs change
-      boardVersion={Math.max(gameVersion, timeVersion)}
-      positionVersion={positionVersion}
-      onBoardReady={handleBoardReady}
-      onTimeUp={handleTimeUp}
-      boardProps={{
+    <UnifiedGameLayout
+      ref={unifiedLayoutRef}
+      board={{
         interactive: true,
-        // Replay existing moves only for the setup-triggered remount (guards StrictMode double-mount)
-        animate_init: animateInit && positionVersion === replayPosVersionRef.current,
+        animate_init: animateInit,
         onColumnAttempt: handleColumnAttempt,
         ariaLabel: "Live Connect 4 game board",
+        boardState: myGame.current.getBoard(),
+        gameOver: myGame.current.gameOver,
+        key: boardKey,
       }}
+      gameState={{
+        scoreRatioRef: { current: scoreRatio },
+        isGameRunningRef: isGameRunningRef,
+        // Position players correctly: current user at bottom (player2), opponent at top (player1)
+        player1: opponentRef, // Top position
+        player2: meRef,       // Bottom position  
+        player1Time: pTimesRef.current[isRedRef.current ? 1 : 0], // Opponent's time
+        player2Time: pTimesRef.current[isRedRef.current ? 0 : 1], // My time
+        currentTurn: currentTurnRef,
+        lastMoveTimestamp: lMoveRef, // Pass the last move timestamp ref
+        player1IsRed: !isRedRef.current, // Opponent's color (opposite of mine)
+        player1DisconnectedRef: player2DisconnectedRef, // Opponent disconnect status
+        player2DisconnectedRef: player1DisconnectedRef, // My disconnect status (though I shouldn't be disconnected)
+      }}
+      layout={{
+        mode: "full-game",
+        showScoreBar: true,
+        showTimers: true,
+        showPlayerInfo: true,
+        headerText: getDynamicTitle(), // Dynamic title based on game state
+      }}
+      onBoardReady={handleBoardReady}
+      onTimeUp={handleTimeUp}
     >
       <LiveGameWithAnalysis 
         key="unique-livegame-instance"
@@ -613,7 +632,7 @@ export default function LiveGamePage() {
         onSettingsClick={handleSettingsClick}
         showAnalysisFeatures={showAnalysis}
       />
-    </GameBoardLayout>
+    </UnifiedGameLayout>
 
     <GameEndModal
       isOpen={showEndPopup}
@@ -639,7 +658,7 @@ export default function LiveGamePage() {
       meRef={meRef}
       opponentRef={opponentRef}
       // Re-render modal when we update refs
-      forceUpdateTrigger={Math.max(gameVersion, timeVersion)}
+      forceUpdateTrigger={gameVersion}
     />
     </>
   )

@@ -16,6 +16,7 @@ import { StandardModes } from "@shared/utils/gamemodes";
 import { JobSets } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { Job } from "bullmq/dist/esm/classes/job";
+import { GameNotFound } from "@/types/miscErrors";
 
 export const liveGameService = {
     
@@ -48,7 +49,9 @@ export const liveGameService = {
         try {
             await gameContext.validatePlayerInRoom();
         } catch (error) {
-            console.error("Player is not in the game room, skipping disconnection logic", error);
+            if (!(error instanceof GameNotFound)) {
+                console.error("Player is not in the game room, skipping disconnection logic", error);
+            }
             return; // Player is not in the game room, skip disconnection logic
         }
 
@@ -58,19 +61,17 @@ export const liveGameService = {
         }
 
         const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
-        await JobSets.getGameDisconnectionQueue().add(
-            jobId,
-            {
-                gameId: gameContext.gameId,
-                playerId: gameContext.userId,
-            },
-            {
-                // delay is set by default in the job set
-                removeOnComplete: true,
-                removeOnFail: true,
-            }
-        );
-        console.log(`✅ Scheduled game disconnection job with ID: ${jobId}`);
+        // only add the job if it does not exist
+        const existingJob = await JobSets.getGameDisconnectionQueue().getJob(jobId);
+        if (!existingJob) {
+            await JobSets.getGameDisconnectionQueue().add(
+                jobId,
+                {
+                    gameId: gameContext.gameId,
+                    playerId: gameContext.userId,
+                }
+            );
+        }
     },
 
     async dropDisconnectJob(gameContext: GameContext): Promise<void> {
@@ -143,9 +144,9 @@ export const liveGameService = {
         if (metadata.state !== GameState.IN_PROGRESS) return;
 
         // check for timeouts first
-        const response = await this.checkForTimeout(gameContext);
+        const response = await this.checkGameHealth(gameContext);
         if (response.status !== 200) {
-            console.log("Game resigned due to timeout", response.message);
+            console.log("Game ended by resign or something else.", response.message);
             return; // if the game is already over, do nothing
         }
 
@@ -179,7 +180,7 @@ export const liveGameService = {
         // TODO: Add game state check when states are defined
         
         const sanitizedMessage = replaceProfanities(message);
-        const username = await userService.GetUserByID(parseUser(gameContext.userId));
+        const user = await userService.GetUserByID(parseUser(gameContext.userId));
         
         const playerIndex = await gameContext.getPlayerIndex();
         const color = playerIndex === 0 ? 'red' : 'yellow';
@@ -187,7 +188,7 @@ export const liveGameService = {
         // send the message to the opponent
         const socket = getSocketIO();
         socket.to(RoomSchema.game.key(gameContext.shortcode!)).emit('game:chat', {
-            username: username.username,
+            username: user.username,
             message: sanitizedMessage,
             type: 'user',
             color: color,
@@ -419,7 +420,7 @@ export const liveGameService = {
 
 
 
-    async checkForTimeout(gameContext: GameContext): Promise<ServiceResponse> {
+    async checkGameHealth(gameContext: GameContext): Promise<ServiceResponse> {
         // Validate player is in the game room with fresh data
         gameContext.invalidatePlayerData();
         await gameContext.validatePlayerInRoom();

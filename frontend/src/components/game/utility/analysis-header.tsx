@@ -3,13 +3,15 @@
 import { motion } from "framer-motion"
 import { Settings } from "lucide-react"
 import { Toggle } from "@/components/ui/toggle" // Import the Toggle component
+import { getEvaluationBadgeClasses } from "@/utils/colors"
 
 interface AnalysisHeaderProps {
   analysisType?: string
-  isAnalysisEnabled: boolean // Changed from isAnalysisComplete
-  onToggleAnalysis: (enabled: boolean) => void // New prop for toggle change
+  isAnalysisEnabled: boolean
+  onToggleAnalysis: (enabled: boolean) => void
   onSettingsClick?: () => void
-  showAnalysisToggle?: boolean // New prop to control visibility of analysis features
+  showAnalysisToggle?: boolean
+  evaluation?: number // New: raw evaluation for color determination
 }
 
 export function AnalysisHeader({
@@ -18,7 +20,13 @@ export function AnalysisHeader({
   onToggleAnalysis,
   onSettingsClick,
   showAnalysisToggle = true, // Default to true for backward compatibility
+  evaluation = 0, // Default to neutral evaluation
 }: AnalysisHeaderProps) {
+  
+  // Determine badge color based on evaluation and analysis type
+  const getBadgeColor = () => {
+    return getEvaluationBadgeClasses(evaluation)
+  }
   return (
     <motion.div
       className="flex items-center justify-between p-3 mb-4"
@@ -35,7 +43,7 @@ export function AnalysisHeader({
             {/* Analysis Type Badge - Conditionally rendered */}
             {isAnalysisEnabled && (
               <motion.div
-                className="bg-red-600 text-white px-3 py-1 rounded-md font-bold text-sm"
+                className={`${getBadgeColor()} px-3 py-1 rounded-md font-bold text-sm`}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}

@@ -6,6 +6,7 @@ import useSocketIo from '@/utils/useSocketIo';
 interface SocketContextType {
   onMessage: (callback: (data: any) => void) => void;
   onPrefixedMessage: (prefix: string, callback: (event: string, data: any) => void) => void;
+  unsubscribePrefixedMessage: (prefix: string) => void;
   onError: (callback: (error: Error) => void) => void;
   sendJson: (event: string, data: object) => void;
   connected: boolean;
@@ -21,10 +22,10 @@ interface SocketProviderProps {
 }
 
 export function SocketProvider({ url, children }: SocketProviderProps) {
-  const { onMessage, onPrefixedMessage, onError, sendJson, connected, close, getLastJson } = useSocketIo(url);
+  const { onMessage, onPrefixedMessage, onError, sendJson, connected, unsubscribePrefixedMessage, close, getLastJson } = useSocketIo(url);
 
   return (
-    <SocketContext.Provider value={{ onMessage, onPrefixedMessage, onError, sendJson, connected, close, getLastJson }}>
+    <SocketContext.Provider value={{ onMessage, onPrefixedMessage, onError, sendJson, connected, unsubscribePrefixedMessage, close, getLastJson }}>
       {children}
     </SocketContext.Provider>
   );

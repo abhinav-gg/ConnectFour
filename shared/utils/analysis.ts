@@ -1,7 +1,5 @@
-import { Cell, Player } from "@shared/types/game";
 import { StandardGame } from "./Games/game";
-import { COLS, ROWS } from "@shared/constants/game";
-import { IConnect4Solver, getConnect4Solver } from "@shared/WASM/con4Solver.type";
+import { IConnect4Solver, getConnect4Solver } from "../WASM/con4Solver";
 
 
 export class SelfAnalysis {
@@ -50,13 +48,14 @@ export class SelfAnalysis {
   }
   
 
-  finalEval() {
+  Eval() {
       const pos = this.gameState.exportMoves();
       return this.solver.solvePosition(pos);
   }
 
-  finalAnalysis() {
+  Analyze() {
       const pos = this.gameState.exportMoves();
+      console.log("Final Analysis for position:", pos);
       return this.solver.analyzePosition(pos);
   }
 
@@ -75,8 +74,34 @@ export class SelfAnalysis {
   }
 
 
-  getAverageAccuracy() {
-      
+  getAverageAccuracy(aPlayer?: number) {
+
+    const alpha = 0.8; // WEIGHTING
+
+    let Accuracy = [];
+    const player = aPlayer ?? this.gameState.currentPlayer;
+    // iterate through all the moves made
+    const iterator = this.gameState.cumulativeMoves()
+    for (const moves of iterator) {
+      // analyze each move for the specified player
+      if (!iterator.hasNext()) continue;
+      if (moves.length % 2 !== player) continue; // not the current players turn
+      const analysis = this.solver.analyzePosition(moves);
+      const sortedAnal = this.sortedBestMoves(analysis);
+      const move = Number(iterator.getNextAddition()) - 1;
+      const n = sortedAnal.length;
+      // get index of the array in sortedAnal that contains move
+      const i = sortedAnal.findIndex(group => group.includes(move)); 
+      const gi = n === 1 ? 0 : (i) / (n - 1);
+      const xe = Math.max(...analysis);
+      const ne = Math.min(...analysis);
+      const ri = (xe - analysis[move]) / (xe - ne);
+      const acc = 100 * (1 - ((gi * alpha) + (ri * (1 - alpha))));
+      console.log(move, sortedAnal, acc);
+      Accuracy.push(acc);
+    }
+
+    return Accuracy.reduce((a, b) => a + b, 0) / Accuracy.length;
   }
 
 
@@ -86,6 +111,11 @@ export class SelfAnalysis {
     } else {
       return 0.5;
     }
+  }
+
+  getRatio() {
+    const evaluation = this.Eval();
+    return SelfAnalysis.getRatioFromEval(evaluation);
   }
 
 

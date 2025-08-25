@@ -4,17 +4,17 @@ import { calculateEloChanges, calculatePredictedScore, calculateUpdatedElo, getQ
 import { SelfAnalysis } from "@shared/utils/analysis";
 import { PUBLIC_BOTS } from "@shared/utils/botHandler";
 import { Move } from "@shared/types/game";
-import { OpeningManager } from "@/utils/opening-book";
+import { OpeningManager } from "@/utils/tools/opening-book";
 import { getIdentity } from "@/utils/validation";
 import { packGameInfo, unpackGameInfo } from "@/utils/binary";
 import { TimedStandardGame } from "@shared/utils/Games/timed-game";
 import { CategoriseTime } from "@shared/utils/gamemodes";
 import { redisOps } from "@/redis/ops";
-import { GameReview } from "@/utils/gameReview";
+import { GameReview } from "@/utils/tools/gameReview";
 
 console.log("This is an adhoc test file for backend tests.");
 
-let boardTest = new StandardGame("4444413663256723312");
+let boardTest = new StandardGame("4444413663256723312"); //63256723312
 
 console.log(boardTest.prettyPrintBoard(), boardTest.hashCode);
 // // boardTest.makeMove(3);
@@ -35,12 +35,14 @@ console.log(boardTest.prettyPrintBoard(), boardTest.hashCode);
 
 (async () => {
 
-console.log("starting")
+console.log(boardTest.getAllWinningTrajectories());
 
-const review = await GameReview.load(boardTest);
-console.log("Review loaded:");
+// const review = await GameReview.load(boardTest);
 
-console.log("Classified Moves:", review.classifyMoves());
+// console.log(review.Analyze());
+
+
+// console.log(review.getAverageAccuracy(0));
 
 // for (let dElo = 0; dElo <= 100; dElo++) {
 //     for (let dTime = 0; dTime < 1000000; dTime += 300) {

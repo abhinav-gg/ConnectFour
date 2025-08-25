@@ -3,6 +3,7 @@
 export const JobKeys = {
   email: {
     queueName: 'emailQueue',
+    stringId: (email: string, time: string) => `${email}:${time}`
   },
   game_disconnect: {
     queueName: 'gameDisconnectQueue',

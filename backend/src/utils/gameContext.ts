@@ -1,5 +1,6 @@
 import { redisOps } from "@/redis/ops";
 import { GameMetadata, GameTimedata } from "@/redis/redisSchema";
+import { GameNotFound } from "@/types/miscErrors";
 import { Move } from "@shared/types/game";
 
 // A context object to store the game state and reduce Redis calls
@@ -145,7 +146,7 @@ export class GameContext {
         if (!this.gameId) {
             await this.resolveGameId();
             if (!this.gameId) {
-                throw new Error('Game not found');
+                throw new GameNotFound();
             }
         }
 

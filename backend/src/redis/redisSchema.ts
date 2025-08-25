@@ -57,6 +57,10 @@ export const RedisSchema = {
         key: (email: string) => `email:reset:${email}`,
         ttl: 60 * 30, // 30 minutes
       },
+      googleOAuthState: {
+        key: (state: string) => `auth:google:${state}`,
+        ttl: 60 * 5, // 5 minutes
+      },
     },
     
 

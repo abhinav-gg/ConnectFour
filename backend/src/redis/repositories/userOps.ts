@@ -64,6 +64,23 @@ export function UserOperations(redis: Redis) {
       }
     },
 
+    // GOOGLE OAUTH STATE MANAGEMENT
+    async setGoogleOAuthState(state: string, data: string): Promise<void> {
+      const key = RedisSchema.auth.googleOAuthState.key(state);
+      await redis.set(key, data, 'EX', RedisSchema.auth.googleOAuthState.ttl);
+    },
+
+    async consumeGoogleOAuthState(state: string): Promise<string | null> {
+      const key = RedisSchema.auth.googleOAuthState.key(state);
+      const pipeline = redis.multi();
+      pipeline.get(key);
+      pipeline.del(key); // ensure one-time use
+      const results = await pipeline.exec();
+      if (!results) return null;
+      const getResult = results[0][1] as string | null;
+      return getResult;
+    },
+
 
     
 

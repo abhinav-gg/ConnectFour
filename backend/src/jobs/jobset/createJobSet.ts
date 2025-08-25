@@ -49,7 +49,7 @@ export async function createJobSet<T = any>({
   });
 
   worker.on('completed', job => {
-    console.log(`[${queueName}] ✅ Job ${job.id} completed`);
+    console.log(`[${queueName}] ✅ Job ${job.id} ${job.name} completed`);
   });
 
   worker.on('failed', (job, err) => {

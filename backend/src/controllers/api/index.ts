@@ -9,6 +9,8 @@ import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 import { createRedisJson, scanKeysPaginated } from '@/redis/redisHelper';
+import { JobSets } from '@/jobs';
+import { JobKeys } from '@/jobs/jobKeys';
 
 const app = Router();
 
@@ -118,8 +120,10 @@ catch (error) {
 app.get('/test/email', async (req: Request, res: Response) => {
 try {
     console.log("attempt to send")
-    await sendEmailVerifyCode("123543", "Chipinje", "agupta.cam7@gmail.com")
-    // await sendEmailVerifyCode("123543", "Chipinje", "connect-four@outlook.com")
+    await JobSets.getEmailQueue().add(
+      JobKeys.email.stringId("123543", Date.now().toString()),
+      { subject: "hi", to: "agupta.cam7@gmail.com", html: "<h1>Test Email</h1>" }
+    );
     res.json({ message: 'Email sent successfully' });
 }
 catch (error) {

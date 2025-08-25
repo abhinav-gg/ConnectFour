@@ -1,7 +1,7 @@
-import { Move } from '../../types/game';
-import { SelfAnalysis } from '../analysis';
-import { BotBase } from '.';
-import { StandardGame } from '../Games/game';
+import { Move } from '@shared/types/game';
+import { SelfAnalysis } from '@shared/utils/analysis';
+import { BotBase } from '@shared/utils/Bots';
+import { StandardGame } from '@shared/utils/Games/game';
 
 export class PerfectBot extends BotBase<StandardGame, Move> {
   private solver: SelfAnalysis | null = null;

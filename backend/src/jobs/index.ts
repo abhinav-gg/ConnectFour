@@ -44,10 +44,15 @@ async function ensureQueue(name: string, setup: () => Promise<Queue>) {
 }
 
 // Bootstrap API
-export async function setupAllJobs() {
+export async function setupAllAPIJobs() {
   await ensureQueue(JobKeys.email.queueName, setupEmailJobSet);
+  
+}
+
+// Bootstrap API
+export async function setupAllSocketJobs() {
   await ensureQueue(JobKeys.game_disconnect.queueName, setupGameDisconnectJobSet);
-  // Add other job sets similarly
+
 }
 
 // Optional: expose the store for diagnostics

@@ -14,6 +14,7 @@ async function handleDisconnectSocket(socket: Socket) {
             return;
         }
 
+        console.log(`[Socket] User ${userId} disconnected from socket ${socket.id}`);
         // Create fresh GameContext at socket level
         const gameContext = new GameContext(userId);
         const metadata = await gameContext.getMetadata();
@@ -21,8 +22,11 @@ async function handleDisconnectSocket(socket: Socket) {
             socket.leave(RoomSchema.game.key(metadata.shortcode));
             socket.leave(RoomSchema.spectating.key(metadata.shortcode));
         }
-
+        
         await liveGameService.handleDisconnect(gameContext);
+        
+        
+        // leave game rooms if in it and there was an error or invalid response...
 
     } catch (error) {
         console.error('Error handling disconnect:', error);
@@ -46,7 +50,6 @@ export function registerGameHandlers(sock: Socket) {
     // Game chat handling
     socket.on('chat', async (data) => {
         try {
-            console.log('Game chat received:', data);
             const { shortcode, message} = data;
             const userId = getIdentityFromSocket(socket);
             if (!userId) {

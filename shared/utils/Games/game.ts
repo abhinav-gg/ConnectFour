@@ -244,16 +244,60 @@ export class StandardGame {
         return this;
       },
       next(): IteratorResult<string> {
-        if (index <= value.length) {
+        if (this.hasNext()) {
           const result = value.slice(0, index);
           index++;
           return { value: result, done: false };
         } else {
           return { value: undefined, done: true };
         }
-      }
+      },
+      hasNext: () => index <= value.length,
+      getNextAddition: () => value[index - 1] ?? null // account for first iteration always being empty
     };
   }
+
+  getAllWinningTrajectories() {
+    if (!this.winner) return [];
+
+    const trajectories: number[][] = [];
+    const directions = [
+      [0, 1],  // horizontal
+      [1, 0],  // vertical
+      [1, 1],  // diagonal right
+      [1, -1], // diagonal left
+    ];
+    const targetValue = this.winner;
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (this.board[row][col] !== targetValue) continue;
+
+        for (const [dx, dy] of directions) {
+          const trajectory: number[] = [];
+          let r = row;
+          let c = col;
+
+          while (
+            r >= 0 && r < ROWS &&
+            c >= 0 && c < COLS &&
+            this.board[r][c] === targetValue
+          ) {
+            trajectory.push(r * COLS + c); // Convert to single index
+            r += dx;
+            c += dy;
+          }
+
+          if (trajectory.length >= 4) {
+            trajectories.push(trajectory);
+          }
+        }
+      }
+    }
+
+    return trajectories;
+  }
+
 
 
 }

@@ -1,4 +1,4 @@
-import type { IConnect4Solver } from './con4Solver.type';
+import type { IConnect4Solver } from './con4Solver';
 import path from 'path';
 
 let wasmModule: any = null;

@@ -3,10 +3,11 @@ import { checkDynamoHealth } from './db/dynamodb/dynamoClient';
 import { checkRedisHealth } from './redis/redisHelper';
 import { setupGameMetaIndex } from './redis/repositories/gameOps';
 import { getRedisClient } from './redis/redisClient';
-import { OpeningManager } from './utils/opening-book';
-import { setupAllJobs } from './jobs';
+import { OpeningManager } from './utils/tools/opening-book';
+import { setupAllAPIJobs, setupAllSocketJobs } from './jobs';
+import { getConnect4Solver } from '@shared/WASM/con4Solver.node';
 
-export async function bootstrap() {
+async function bootstrap() {
 
     if (!await checkRedisHealth())
         throw new Error("No Redis :(")
@@ -17,12 +18,30 @@ export async function bootstrap() {
     if (!await checkRDSHealth())
         throw new Error("No RDS :(")
 
-    await setupGameMetaIndex(await getRedisClient());
+    await setupGameMetaIndex(await getRedisClient()); // temporary, change to setup all redis schema indexes
+}
 
-    await OpeningManager.initStore();
+export async function bootstrapAPI() {
 
-    await setupAllJobs();
+    await bootstrap();
 
+    await setupAllAPIJobs(); // creates all empty job sets
 
     console.log("[Bootstrap complete]   All services are up and running!");
+
 }
+
+export async function bootstrapSocket() {
+
+    await bootstrap();
+    
+    await OpeningManager.initStore(); // load opening book into RAM
+
+    await setupAllSocketJobs(); // creates all empty job sets
+
+    await getConnect4Solver(); // warm up the WASM module
+
+    console.log("[Bootstrap complete]   All services are up and running!");
+
+}
+
