@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Secrets fetcher - only runs in production
+  secrets-fetcher:
+    build: 
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: secrets-fetcher
+    environment:
+      - NODE_ENV=production
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - SECRET_NAME=${SECRET_NAME:-connectfour/production}
+    volumes:
+      - ./backend:/app/backend
+    command: ["node", "/app/backend/config/aws.js"]
+    restart: "no"
+
+  # Override redis to depend on secrets-fetcher
+  redis:
+    depends_on:
+      secrets-fetcher:
+        condition: service_completed_successfully
+  
+  # Override api to depend on secrets-fetcher
+  api:
+    depends_on:
+      redis:
+        condition: service_healthy
+      secrets-fetcher:
+        condition: service_completed_successfully
+
+volumes:
+  redis-data:

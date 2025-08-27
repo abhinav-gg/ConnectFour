@@ -41,15 +41,6 @@ jobs:
             echo "TAG=latest" >> "$GITHUB_ENV"
           fi
 
-      # Explicitly list and export secrets to environment variables
-      - name: Export listed secrets to environment
-        run: |
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"             >> $GITHUB_ENV
-          echo "API_KEY=${{ secrets.API_KEY }}"                       >> $GITHUB_ENV
-          echo "REDIS_URL=${{ secrets.REDIS_URL }}"                   >> $GITHUB_ENV
-          echo "SOME_OTHER_SECRET=${{ secrets.SOME_OTHER_SECRET }}"   >> $GITHUB_ENV
-          # Add/remove secrets as needed
-
       - name: Build image locally without GHCR tag
         run: |
           docker-compose build
