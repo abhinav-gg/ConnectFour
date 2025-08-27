@@ -6,7 +6,7 @@ import BotChallengeBoardHandler from "@/components/boards/Handlers/BotHandler";
 import { FallingCirclesBackground } from "@/components/bganimation";
 
 export default function Page() {
-  return <FallingCirclesBackground />
+  return <SingleplayerBoardHandler />
 
   // return (
   //   <div className="flex flex-col items-center justify-center min-h-screen">

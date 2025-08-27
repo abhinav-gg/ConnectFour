@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useImperativeHandle, forwardRef } from "react"
+import { useState, useRef, useImperativeHandle, forwardRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { AnalysisHeader } from "@/components/game/utility/analysis-header"
 import { ColumnAnalysis } from "@/components/game/utility/column-analysis"
@@ -8,6 +8,8 @@ import { MoveHistory } from "@/components/game/utility/move-history"
 import { OpeningDescription } from "@/components/game/utility/opening"
 import { EnterMoves } from "@/components/game/utility/enter-moves"
 import { StandardGame } from "@shared/utils/Games/game"
+import { useWASM } from "@/components/providers/wasmProvider"
+import { getEvaluationText } from "@/utils/colors"
 
 export interface ToolUIRef {
   // Add any methods you want to expose to parent components
@@ -16,14 +18,13 @@ export interface ToolUIRef {
 interface ToolUIProps {
   // Game and Move History Props
   game?: StandardGame
+  gameStateVersion?: number // Version number to detect game state changes
   currentMoveIndex?: number
   movesOverride?: number[]
   
   // Analysis Control
   showAnalysisFeatures?: boolean
-  analysisData?: React.MutableRefObject<string[]> // Analysis array ref [header, col1, col2, ..., col7]
-  evaluation?: number // Raw evaluation number for color determination
-  columnEvaluations?: React.MutableRefObject<number[]> // Raw column evaluation numbers for click functionality
+  // Note: Removed external analysis props - ToolUI now manages its own analysis
   
   // Opening Description Props
   openingName?: string
@@ -47,12 +48,10 @@ interface ToolUIProps {
 const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
   const {
     game,
+    gameStateVersion = 0,
     currentMoveIndex = 0,
     movesOverride,
     showAnalysisFeatures = true,
-    analysisData,
-    evaluation = 0,
-    columnEvaluations,
     openingName,
     openingDescription,
     showOpeningDescription = false,
@@ -67,7 +66,146 @@ const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
     onColumnClick,
   } = props
 
+  // UI State
   const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
+
+  // Web Worker for non-blocking WASM analysis
+  const { isReady: wasmReady, isLoading: wasmLoading, error: wasmError, analyzePosition, isAnalyzing } = useWASM()
+
+  // Internal Analysis State
+  const currentAnalysisIdRef = useRef<number>(0)
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(true)
+  const [analysisData, setAnalysisData] = useState<string[]>(() => 
+    wasmReady ? ["Loading..."] : ["Loading WASM..."]
+  )
+  const [currentEvaluation, setCurrentEvaluation] = useState<number>(0)
+  const [columnEvaluations, setColumnEvaluations] = useState<number[]>(Array(7).fill(-1000))
+
+  console.log("🔧 TOOLUI: Component rendering with game:", game?.getMoves().length, "moves")
+  console.log("🔧 TOOLUI: WASM state:", { wasmLoading, wasmReady, wasmError })
+
+  // Initialize analysis when game is available AND WASM is ready
+  useEffect(() => {
+    const initializeAnalysis = async () => {
+      if (!game) {
+        console.log("🔧 TOOLUI: No game available")
+        setAnalysisData(["No game"])
+        setIsAnalysisLoading(false)
+        return
+      }
+
+      if (!wasmReady) {
+        console.log("🔧 TOOLUI: WASM not ready yet")
+        setAnalysisData(["Loading WASM..."])
+        setIsAnalysisLoading(true)
+        return
+      }
+
+      if (wasmError) {
+        console.error("🔧 TOOLUI: WASM error:", wasmError)
+        setAnalysisData(["WASM Error"])
+        setIsAnalysisLoading(false)
+        return
+      }
+
+      try {
+        console.log("🔧 TOOLUI: Initializing analysis for game with", game.getMoves().length, "moves")
+        setIsAnalysisLoading(true)
+        setAnalysisData(["Analyzing..."])
+        
+        // Start analysis immediately using new WASM provider
+        updateAnalysis()
+        
+      } catch (error) {
+        console.error("🔧 TOOLUI: Failed to initialize analysis:", error)
+        setAnalysisData(["Analysis Error"])
+        setIsAnalysisLoading(false)
+      }
+    }
+
+    initializeAnalysis()
+  }, [game, wasmReady, wasmError]) // Re-initialize when WASM state changes
+
+  // Update analysis when game state changes
+  const updateAnalysis = useCallback(async () => {
+    if (!game || !wasmReady) {
+      console.log("🔧 TOOLUI: Cannot update analysis - missing requirements", {
+        hasGame: !!game,
+        wasmReady: wasmReady
+      })
+      return
+    }
+
+    try {
+      console.log("🔧 TOOLUI: Updating analysis...")
+      setIsAnalysisLoading(true)
+      
+      const moves = game.getMoves()
+      console.log("🔧 TOOLUI: Analyzing moves:", moves)
+      
+      // Use new WASM provider for analysis
+      const analysisId = ++currentAnalysisIdRef.current
+      
+      try {
+        const result = await analyzePosition(moves)
+        
+        // Check if this is still the current analysis request
+        if (analysisId !== currentAnalysisIdRef.current) {
+          console.log("🔧 TOOLUI: Analysis outdated, ignoring result")
+          return
+        }
+        
+        console.log("🔧 TOOLUI: Analysis result:", result)
+        
+        const { evaluation, columnResults } = result
+        
+        // Generate header evaluation using the utility function
+        const headerEval = getEvaluationText(evaluation)
+
+        // Process column analysis - use evaluation results directly
+        const columnAnalyses: string[] = []
+        const columnEvals: number[] = []
+        
+        for (let col = 0; col < 7; col++) {
+          const colEval = columnResults[col]
+          columnEvals.push(colEval)
+          
+          // Use the utility function for consistent formatting
+          columnAnalyses.push(getEvaluationText(colEval))
+        }
+
+        console.log("🔧 TOOLUI: Setting analysis data:", [headerEval, ...columnAnalyses])
+        console.log("🔧 TOOLUI: Setting column evaluations:", columnEvals)
+        
+        setAnalysisData([headerEval, ...columnAnalyses])
+        setCurrentEvaluation(evaluation)
+        setColumnEvaluations(columnEvals)
+        setIsAnalysisLoading(false)
+        
+      } catch (error) {
+        console.error("🔧 TOOLUI: Analysis failed:", error)
+        setAnalysisData(["ERROR", "---", "---", "---", "---", "---", "---", "---"])
+        setColumnEvaluations(Array(7).fill(-1000))
+        setIsAnalysisLoading(false)
+      }
+      
+    } catch (error) {
+      console.error("🔧 TOOLUI: Error updating analysis:", error)
+      setAnalysisData(["ERROR", "---", "---", "---", "---", "---", "---", "---"])
+      setColumnEvaluations(Array(7).fill(-1000))
+      setIsAnalysisLoading(false)
+    }
+  }, [game, wasmReady, analyzePosition])
+
+  // Update analysis when game state changes (moves, navigation)
+  useEffect(() => {
+    if (game && gameStateVersion > 0 && wasmReady) {
+      console.log("🔧 TOOLUI: Game state changed (version:", gameStateVersion, "), updating analysis...")
+      
+      // Update analysis asynchronously without blocking
+      updateAnalysis()
+    }
+  }, [gameStateVersion, updateAnalysis, wasmReady]) // React to version changes and WASM state
 
   const handleToggleAnalysis = (enabled: boolean) => {
     if (showAnalysisFeatures) {
@@ -105,12 +243,12 @@ const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
       {showAnalysisFeatures && (
         <div className="flex-shrink-0">
           <AnalysisHeader
-            analysisType={analysisData?.current?.[0] || "Loading..."}
             isAnalysisEnabled={isAnalysisEnabled}
+            isLoading={isAnalysisLoading}
             onToggleAnalysis={handleToggleAnalysis}
             onSettingsClick={handleSettingsClick}
             showAnalysisToggle={true}
-            evaluation={evaluation}
+            evaluation={currentEvaluation}
           />
         </div>
       )}
@@ -127,7 +265,8 @@ const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
               className="overflow-hidden"
             >
               <ColumnAnalysis 
-                evaluations={columnEvaluations?.current}
+                evaluations={columnEvaluations}
+                isLoading={isAnalysisLoading}
                 onColumnClick={onColumnClick}
                 gameOver={game?.gameOver}
               />
@@ -155,7 +294,7 @@ const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
       <div className="flex-shrink-0 h-[200px]">
         <OpeningDescription
           openingName={openingName || "Position Analysis"}
-          description={analysisData?.current?.[0] || openingDescription || "## Current Position Analysis\n\nThis is a **Connect 4** analysis tool that provides:\n\n- **Real-time evaluation** of board positions\n- **Move suggestions** based on perfect play\n- **Interactive exploration** of game lines\n\n### How to Use\n\n1. Click on the board to make moves\n2. Use the move input below to enter sequences\n3. Navigate through move history to analyze positions\n\n*The analysis uses a perfect solver to evaluate all positions accurately.*"}
+          description={analysisData[0] || openingDescription || "## Current Position Analysis\n\nThis is a **Connect 4** analysis tool that provides:\n\n- **Real-time evaluation** of board positions\n- **Move suggestions** based on perfect play\n- **Interactive exploration** of game lines\n\n### How to Use\n\n1. Click on the board to make moves\n2. Use the move input below to enter sequences\n3. Navigate through move history to analyze positions\n\n*The analysis uses a perfect solver to evaluate all positions accurately.*"}
           showCloseButton={showOpeningDescription}
           onClose={showOpeningDescription ? handleCloseOpening : undefined}
         />
@@ -176,6 +315,7 @@ const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
                 onSubmitMoves={handleSubmitMoves}
                 disabled={enterMovesDisabled}
                 placeholder={enterMovesPlaceholder}
+                game={game} // Pass the game prop for export functionality
               />
             </motion.div>
           )}

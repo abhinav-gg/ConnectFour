@@ -55,11 +55,10 @@ export interface UnifiedGameLayoutProps {
   
   // Layout Configuration
   layout?: {
-    mode?: "full-game" | "simple" // Full game mode or simple board + content
     showScoreBar?: boolean
     showTimers?: boolean
     showPlayerInfo?: boolean
-    headerText?: string // New: Header text between top player and timer
+    headerText?: string // Header text between top player and timer
     contentRatio?: "50%" | "66%" // Board vs content ratio
   }
   
@@ -118,6 +117,7 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
   // Expose board methods through ref
   useImperativeHandle(ref, () => ({
     triggerMoveAnimation: (row: number, col: number, player: number) => {
+      console.log("🎮 UnifiedGameLayout: Triggering move animation:", { row, col, player })
       boardRef.current?.triggerMoveAnimation(row, col, player)
     },
     setPremoveCell: (row: number, col: number, player: number) => {
@@ -133,7 +133,6 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
   
   // Extract configuration with defaults
   const {
-    mode = "simple",
     showScoreBar = false,
     showTimers = false,
     showPlayerInfo = false,
@@ -168,11 +167,18 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
   const isPlayer1TimerRunning = showTimers && isGameRunning && currentTurn === 0
   const isPlayer2TimerRunning = showTimers && isGameRunning && currentTurn === 1
   
-  // Responsive state
+  // Responsive state - more granular breakpoints
   const [isDesktop, setIsDesktop] = useState(false)
+  const [isTablet, setIsTablet] = useState(false)
+  const [isMedium, setIsMedium] = useState(false)
   
   useEffect(() => {
-    const checkViewport = () => setIsDesktop(window.innerWidth >= 1024)
+    const checkViewport = () => {
+      const width = window.innerWidth
+      setIsDesktop(width >= 1280)
+      setIsTablet(width >= 1024 && width < 1280)
+      setIsMedium(width >= 649 && width < 1024)
+    }
     checkViewport()
     window.addEventListener('resize', checkViewport)
     return () => window.removeEventListener('resize', checkViewport)
@@ -190,286 +196,190 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
     interactive,
     animate_init,
     ariaLabel,
-    showLastMoveHighlight: mode === "full-game",
+    showLastMoveHighlight: true,
     ...boardProps
   }
   
   // Grid class for content ratio
-  const gridColsClass = contentRatio === "50%" ? "lg:grid-cols-2" : "lg:grid-cols-[2fr_1fr]"
-  
-  // Simple mode (like BoardSpaceLayout)
-  if (mode === "simple") {
-    return (
-      <Layout>
-        <div className="min-h-[calc(100vh-12rem)] flex items-center justify-center p-4">
-          <div className="w-full max-w-7xl mx-auto">
-            {/* Desktop Layout */}
-            <div className={`hidden lg:grid ${gridColsClass} gap-8 xl:gap-16 items-start`}>
-              {/* Board Column */}
-              {showBoard && (
-                <div className="flex justify-center items-center w-full h-full">
-                  {hasMounted ? (
-                    <Board 
-                      key={boardKey}
-                      {...defaultBoardProps} 
-                      ref={boardRef}
-                    />
-                  ) : (
-                    <div className="w-full max-w-md aspect-square rounded-xl bg-brand-secondary/40 border border-brand-border/30" />
-                  )}
-                </div>
-              )}
-              
-              {/* Content Column */}
-              <div className={`w-full ${!showBoard ? "lg:col-span-2" : ""}`}>
-                <motion.div
-                  className="bg-brand-secondary rounded-3xl p-8 lg:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                >
-                  {children}
-                </motion.div>
-              </div>
-            </div>
-            
-            {/* Mobile Layout */}
-            <div className="lg:hidden space-y-6">
-              {showBoard && (
-                <div className="flex justify-center">
-                  {hasMounted ? (
-                    <Board 
-                      key={boardKey}
-                      {...defaultBoardProps} 
-                      ref={boardRef}
-                      className="max-w-sm"
-                    />
-                  ) : (
-                    <div className="w-full max-w-sm aspect-square rounded-xl bg-brand-secondary/40 border border-brand-border/30" />
-                  )}
-                </div>
-              )}
-              
-              <div className="w-full max-w-lg mx-auto">
-                <motion.div
-                  className="bg-brand-secondary rounded-3xl p-6 lg:p-8 shadow-2xl border border-brand-border/40 select-none flex flex-col"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                >
-                  {children}
-                </motion.div>
-              </div>
-            </div>
-          </div>
+  const gridColsClass = contentRatio === "50%" ? "grid-cols-2" : "grid-cols-[2fr_1fr]"
+
+  // Create unified components - single board and content component
+  const unifiedBoardComponent = showBoard && hasMounted ? (
+    <Board 
+      key={boardKey}
+      {...defaultBoardProps} 
+      ref={boardRef}
+      className="w-full h-full"
+    />
+  ) : showBoard ? (
+    <div className="w-full aspect-square rounded-xl bg-brand-secondary/40 border border-brand-border/30" />
+  ) : null
+
+  const unifiedContentComponent = (
+    <motion.div
+      className="bg-brand-secondary rounded-3xl p-6 lg:p-8 xl:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col h-full"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      {children}
+    </motion.div>
+  )
+
+  // Create reusable components for the layout  
+  const scoreBarComponent = showScoreBar ? (
+    <div className="flex flex-col items-center justify-center px-2 lg:px-4">
+      <ScoreBar 
+        scoreRatio={scoreRatio} 
+        topRed={player1IsRed} 
+        className="w-4 lg:w-6 h-[calc(75vh-8rem)] lg:h-[90vh]" 
+        display={true} 
+      />
+    </div>
+  ) : null
+
+  const topPlayerComponent = showPlayerInfo ? (
+    <div className="flex flex-col w-full mb-2 lg:mb-4 flex-shrink-0">
+      {/* Header Text - Always shown above player info */}
+      {headerText && (
+        <div className="text-center mb-2 lg:mb-3">
+          <h2 className="text-white text-sm lg:text-lg font-semibold">{headerText}</h2>
         </div>
-      </Layout>
-    )
-  }
-  
+      )}
+      
+      {/* Player info and timer row */}
+      <div className="flex justify-between items-center w-full">
+        <PlayerInfo 
+          name={player1Data.username} 
+          playerColor={player1Color} 
+          profilePicUrl={player1Data.pfp} 
+        />
+        
+        {showTimers && (
+          <Timer
+            millisecondsLeft={player1Time}
+            isRunning={isPlayer1TimerRunning}
+            color={player1Color}
+            lastMoveTimestamp={lastMoveTimestamp}
+            onTimeUp={onTimeUp}
+            disconnectedRef={gameState.player1DisconnectedRef}
+          />
+        )}
+      </div>
+    </div>
+  ) : null
+
+  const bottomPlayerComponent = showPlayerInfo ? (
+    <div className="flex justify-between items-center w-full mt-2 lg:mt-4 flex-shrink-0">
+      <PlayerInfo 
+        name={player2Data.username} 
+        playerColor={player2Color} 
+        profilePicUrl={player2Data.pfp} 
+      />
+      
+      {showTimers && (
+        <Timer
+          millisecondsLeft={player2Time}
+          isRunning={isPlayer2TimerRunning}
+          color={player2Color}
+          lastMoveTimestamp={lastMoveTimestamp}
+          onTimeUp={onTimeUp}
+          disconnectedRef={gameState.player2DisconnectedRef}
+        />
+      )}
+    </div>
+  ) : null
+
+  const fullGameBoardComponent = showBoard ? (
+    <Board 
+      key={boardKey}
+      {...defaultBoardProps} 
+      ref={boardRef} 
+      className="w-full h-full" 
+    />
+  ) : null
+
+  const fullGameContentComponent = (
+    <motion.div
+      className="bg-brand-secondary rounded-3xl p-6 lg:p-8 xl:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col h-full"
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      {children}
+    </motion.div>
+  )
+
   // Full game mode (like GameBoardLayout)
   return (
     <Layout>
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-screen-2xl mx-auto">
-          {/* Desktop Layout */}
-          {hasMounted && isDesktop && (
-            <div className="flex lg:items-start lg:gap-8 min-h-[90vh]">
+        <div className="w-full max-w-screen-2xl lg:max-w-[98vw] mx-auto">
+          {/* Unified Layout - Works for both mobile and desktop */}
+          {hasMounted && (
+            <div className={`flex ${isDesktop || isTablet ? 'flex-row' : 'flex-col'} lg:items-start lg:gap-3 xl:gap-4 ${isDesktop || isTablet ? 'min-h-[90vh]' : 'min-h-screen gap-4'}`}>
               {/* Game Section */}
-              <div className="flex items-start">
+              <div className={`flex lg:items-start ${isTablet ? 'flex-1' : isDesktop ? 'flex-[2]' : 'flex-none'} lg:flex-initial`}>
                 {/* Score Bar */}
-                {showScoreBar && (
-                  <div className="flex flex-col items-center justify-center px-4">
-                    <ScoreBar 
-                      scoreRatio={scoreRatio} 
-                      topRed={player1IsRed} 
-                      className="w-6 h-[90vh]" 
-                      display={true} 
-                    />
-                  </div>
-                )}
+                {scoreBarComponent}
                 
                 {/* Board Section */}
-                <div className={`flex flex-col justify-between py-8 ${showScoreBar ? 'ml-4' : ''}`} 
-                     style={{ width: 'min(70vh, 60vw)', height: '90vh' }}>
+                <div className={`flex flex-col justify-center ${isDesktop || isTablet ? 'py-4 lg:py-8' : 'py-2'} flex-1 lg:flex-initial ${showScoreBar ? 'ml-2 lg:ml-4' : ''}`} 
+                     style={{ 
+                       width: isDesktop ? 'min(80vh, 75vw)' : isTablet ? 'min(70vh, 45vw)' : '100%', 
+                       height: isDesktop ? '90vh' : isTablet ? '85vh' : 'auto'
+                     }}>
                   
-                  {/* Top Player Section */}
-                  {showPlayerInfo && (
-                    <div className="flex justify-between items-center w-full mb-4 flex-shrink-0">
-                      <PlayerInfo 
-                        name={player1Data.username} 
-                        playerColor={player1Color} 
-                        profilePicUrl={player1Data.pfp} 
-                      />
-                      
-                      {/* Header Text */}
-                      {headerText && (
-                        <div className="flex-1 text-center mx-4">
-                          <h2 className="text-white text-lg font-semibold">{headerText}</h2>
-                        </div>
-                      )}
-                      
-                      {showTimers && (
-                        <Timer
-                          millisecondsLeft={player1Time}
-                          isRunning={isPlayer1TimerRunning}
-                          color={player1Color}
-                          lastMoveTimestamp={lastMoveTimestamp}
-                          onTimeUp={onTimeUp}
-                          disconnectedRef={gameState.player1DisconnectedRef}
-                        />
-                      )}
-                    </div>
-                  )}
+                  {/* Top Player Section - Fixed height to maintain board space */}
+                  <div className="flex-shrink-0 mb-2 lg:mb-4" style={{ height: showPlayerInfo ? 'auto' : '40px' }}>
+                    {topPlayerComponent}
+                  </div>
                   
-                  {/* Board */}
-                  <div className="flex-1 flex items-center justify-center min-h-0">
-                    <div className="aspect-square h-full max-w-full">
-                      {showBoard && (
-                        <Board 
-                          key={boardKey}
-                          {...defaultBoardProps} 
-                          ref={boardRef} 
-                          className="w-full h-full" 
-                        />
-                      )}
+                  {/* Board Container - Always square, bounded by smaller dimension */}
+                  <div className={`flex-1 flex items-center justify-center ${isDesktop || isTablet ? 'px-2 lg:px-4' : 'px-4 py-4'}`}>
+                    <div 
+                      className="aspect-square bg-transparent"
+                      style={{ 
+                        width: isDesktop 
+                          ? 'min(calc(90vh - 200px), calc(75vw - 100px))' 
+                          : isTablet 
+                            ? 'min(calc(85vh - 150px), calc(45vw - 50px))'
+                            : isMedium
+                              ? 'min(calc(66vw - 40px), calc(70vh - 120px))'
+                              : 'min(calc(100vw - 80px), calc(60vh - 100px))',
+                        height: isDesktop 
+                          ? 'min(calc(90vh - 200px), calc(75vw - 100px))' 
+                          : isTablet 
+                            ? 'min(calc(85vh - 150px), calc(45vw - 50px))'
+                            : isMedium
+                              ? 'min(calc(66vw - 40px), calc(70vh - 120px))'
+                              : 'min(calc(100vw - 80px), calc(60vh - 100px))',
+                        maxWidth: isDesktop ? '600px' : isTablet ? '450px' : isMedium ? '500px' : '320px',
+                        maxHeight: isDesktop ? '600px' : isTablet ? '450px' : isMedium ? '500px' : '320px'
+                      }}
+                    >
+                      {unifiedBoardComponent}
                     </div>
                   </div>
                   
-                  {/* Bottom Player Section */}
-                  {showPlayerInfo && (
-                    <div className="flex justify-between items-center w-full mt-4 flex-shrink-0">
-                      <PlayerInfo 
-                        name={player2Data.username} 
-                        playerColor={player2Color} 
-                        profilePicUrl={player2Data.pfp} 
-                      />
-                      
-                      {/* Spacer for header text alignment */}
-                      {headerText && <div className="flex-1 mx-4" />}
-                      
-                      {showTimers && (
-                        <Timer
-                          millisecondsLeft={player2Time}
-                          isRunning={isPlayer2TimerRunning}
-                          color={player2Color}
-                          lastMoveTimestamp={lastMoveTimestamp}
-                          onTimeUp={onTimeUp}
-                          disconnectedRef={gameState.player2DisconnectedRef}
-                        />
-                      )}
-                    </div>
-                  )}
+                  {/* Bottom Player Section - Fixed height to maintain board space */}
+                  <div className="flex-shrink-0 mt-2 lg:mt-4" style={{ height: showPlayerInfo ? 'auto' : '40px' }}>
+                    {bottomPlayerComponent}
+                  </div>
                 </div>
               </div>
               
-              {/* Content Section */}
-              <div className="flex-1 min-w-0">
-                <motion.div
-                  className="bg-brand-secondary rounded-3xl p-8 lg:p-10 shadow-2xl border border-brand-border/40 select-none flex flex-col h-full"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                >
-                  {children}
-                </motion.div>
+              {/* Content Section - Responsive without forced min-widths */}
+              <div className={`${isTablet ? 'flex-[2]' : isDesktop ? 'flex-[3]' : 'flex-none'} min-w-0 ${isDesktop || isTablet ? 'px-4 lg:px-0 pb-4 lg:pb-0' : 'px-2 pb-8'}`}>
+                {unifiedContentComponent}
               </div>
             </div>
           )}
           
-          {/* Mobile Layout */}
-          {(!hasMounted || !isDesktop) && (
-            <div className="w-full flex flex-col items-center">
-              {/* Game Area */}
-              <div className="flex-[3] flex min-h-0 w-full max-w-4xl">
-                {/* Score Bar */}
-                {showScoreBar && (
-                  <div className="flex flex-col items-center justify-center px-2">
-                    <ScoreBar 
-                      scoreRatio={scoreRatio} 
-                      topRed={player1IsRed} 
-                      className="w-4 h-[calc(75vh-8rem)]" 
-                      display={true} 
-                    />
-                  </div>
-                )}
-                
-                {/* Board + Player Info */}
-                <div className="flex-1 flex flex-col justify-between py-4 px-2 min-w-0">
-                  {/* Top Player */}
-                  {showPlayerInfo && (
-                    <div className="flex flex-col items-center w-full flex-shrink-0 mb-2">
-                      {headerText && (
-                        <h2 className="text-white text-sm font-semibold mb-2">{headerText}</h2>
-                      )}
-                      <div className="flex justify-between items-center w-full">
-                        <PlayerInfo 
-                          name={player1Data.username} 
-                          playerColor={player1Color} 
-                          profilePicUrl={player1Data.pfp} 
-                        />
-                        {showTimers && (
-                          <Timer
-                            millisecondsLeft={player1Time}
-                            isRunning={isPlayer1TimerRunning}
-                            color={player1Color}
-                            lastMoveTimestamp={lastMoveTimestamp}
-                            onTimeUp={onTimeUp}
-                            disconnectedRef={gameState.player1DisconnectedRef}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Board */}
-                  <div className="flex-1 flex items-center justify-center w-full py-2 min-h-0">
-                    <div className="aspect-square w-full max-h-full">
-                      {showBoard && (
-                        <Board 
-                          key={boardKey}
-                          {...defaultBoardProps} 
-                          ref={boardRef} 
-                          className="w-full h-full" 
-                        />
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Bottom Player */}
-                  {showPlayerInfo && (
-                    <div className="flex justify-between items-center w-full flex-shrink-0 mt-2">
-                      <PlayerInfo 
-                        name={player2Data.username} 
-                        playerColor={player2Color} 
-                        profilePicUrl={player2Data.pfp} 
-                      />
-                      {showTimers && (
-                        <Timer
-                          millisecondsLeft={player2Time}
-                          isRunning={isPlayer2TimerRunning}
-                          color={player2Color}
-                          lastMoveTimestamp={lastMoveTimestamp}
-                          onTimeUp={onTimeUp}
-                          disconnectedRef={gameState.player2DisconnectedRef}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Content Section - Mobile */}
-              <div className="flex-shrink-0 px-4 pb-4 w-full max-w-4xl">
-                <motion.div
-                  className="bg-brand-secondary rounded-3xl p-6 lg:p-8 shadow-2xl border border-brand-border/40 select-none flex flex-col mx-auto"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
-                >
-                  {children}
-                </motion.div>
-              </div>
+          {/* Loading state for SSR */}
+          {!hasMounted && (
+            <div className="w-full h-[90vh] flex items-center justify-center">
+              <div className="animate-pulse text-white">Loading...</div>
             </div>
           )}
         </div>

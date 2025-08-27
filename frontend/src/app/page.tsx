@@ -7,6 +7,7 @@ import Board from "@/components/boards/Board"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { useInView } from "react-intersection-observer"
+import { FallingCirclesBackground } from "@/components/bganimation"
 
 
 export default function Component() {
@@ -46,6 +47,8 @@ export default function Component() {
   })
 
   return (
+  <>
+    <FallingCirclesBackground/>
     <Layout>
       {/* Skip to main content link */}
       <a
@@ -263,5 +266,6 @@ export default function Component() {
         </div>
       </motion.section>
     </Layout>
+  </>
   )
 }

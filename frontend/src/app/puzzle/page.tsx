@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react"
 import { Puzzle } from "@shared/utils/puzzles"
-import Board, { BoardHandle } from "@/components/boards/Board"
-import { BoardSpaceLayout } from "@/components/layouts/board-space-layout"
+import { BoardHandle } from "@/components/boards/Board"
+import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import { PuzzleUI } from "@/components/puzzles/puzzle-ui"
 import { PuzzleProgress } from "@/components/puzzles/puzzle-progress"
 
@@ -14,7 +14,7 @@ export default function PuzzlePage() {
   const [puzzleFinished, setPuzzleFinished] = useState(false);
   const [puzzleResults, setPuzzleResults] = useState<Array<"success" | "failure">>([]);
   const [showScoreChange, setShowScoreChange] = useState<{change: number, type: "positive" | "negative"} | null>(null);
-  const boardRef = useRef<BoardHandle>(null);
+  const unifiedLayoutRef = useRef<BoardHandle>(null);
   const initialBoardRef = useRef(puzzle.getBoard().map(row => [...row]));
 
   const handleColumnAttempt = (col: number) => {
@@ -32,10 +32,10 @@ export default function PuzzlePage() {
       } else {
         // Animate the board for the correct move
         console.log(result.row1!, result.col1!, puzzle.getMyCol)
-        boardRef.current?.triggerMoveAnimation(result.row1!, result.col1!, puzzle.getMyCol);
+        unifiedLayoutRef.current?.triggerMoveAnimation(result.row1!, result.col1!, puzzle.getMyCol);
         if (typeof result.col2 !== "undefined" && result.col2 !== null) {
           const opponent = puzzle.getMyCol === 0 ? 1 : 0;
-          setTimeout(() => boardRef.current?.triggerMoveAnimation(result.row2!, result.col2!, opponent), 150 * (result.row1!));
+          setTimeout(() => unifiedLayoutRef.current?.triggerMoveAnimation(result.row2!, result.col2!, opponent), 150 * (result.row1!));
         } else {
           setTimeout(() => {
             setPuzzleResults(prev => [...prev, "success"]);
@@ -86,28 +86,36 @@ export default function PuzzlePage() {
   }
 
   return (
-    <BoardSpaceLayout
-      boardRef={boardRef}
-      boardProps={{
+    <UnifiedGameLayout
+      ref={unifiedLayoutRef}
+      layout={{
+        showScoreBar: false,
+        showTimers: false,
+        showPlayerInfo: false,
+        contentRatio: "50%"
+      }}
+      board={{
         interactive: !puzzleFinished,
         boardState: initialBoardRef.current,
         gameOver: puzzleFinished,
         animate_init: false,
         onColumnAttempt: handleColumnAttempt,
       }}
-      space2={<PuzzleProgress puzzleResults={puzzleResults} />}
     >
-      <PuzzleUI
-        score={1082}
-        playedTimes={247}
-        onScoreChange={handleScoreChange}
-        onVote={handleVote}
-        onHint={handleHint}
-        onSolution={handleSolution}
-        currentPlayer={puzzle.getMyCol === 0 ? "red" : "yellow"}
-        showVoting={puzzleFinished}
-        scoreChange={showScoreChange}
-      />
-    </BoardSpaceLayout>
+      <div className="space-y-4">
+        <PuzzleProgress puzzleResults={puzzleResults} />
+        <PuzzleUI
+          score={1082}
+          playedTimes={247}
+          onScoreChange={handleScoreChange}
+          onVote={handleVote}
+          onHint={handleHint}
+          onSolution={handleSolution}
+          currentPlayer={puzzle.getMyCol === 0 ? "red" : "yellow"}
+          showVoting={puzzleFinished}
+          scoreChange={showScoreChange}
+        />
+      </div>
+    </UnifiedGameLayout>
   )
 }

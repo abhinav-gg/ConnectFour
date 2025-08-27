@@ -14,7 +14,9 @@ export default function GameSetupPage() {
           animate_init: false,
         }}
         layout={{
-          mode: "simple", // Use simple mode (replaces BoardSpaceLayout)
+          showScoreBar: false,
+          showTimers: false,
+          showPlayerInfo: false,
           contentRatio: "50%", // Board vs content ratio
         }}
       >

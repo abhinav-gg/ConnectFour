@@ -141,7 +141,6 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
       {/* Analysis Header - Fixed Height */}
       <div className="flex-shrink-0">
         <AnalysisHeader
-          analysisType="M42"
           isAnalysisEnabled={isAnalysisEnabled}
           onToggleAnalysis={handleToggleAnalysis}
           onSettingsClick={handleSettingsClick}

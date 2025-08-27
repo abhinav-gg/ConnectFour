@@ -22,9 +22,9 @@ export function getEvaluationColor(evaluation: number): EvaluationColor {
   } else if (evaluation === 0) {
     return "gray" // Draw
   } else if (evaluation > 0) {
-    return "yellow" // Yellow/second player winning
+    return "red" // red player winning
   } else {
-    return "red" // Red/first player winning
+    return "yellow" // yellow player winning
   }
 }
 
@@ -38,6 +38,8 @@ export function getEvaluationText(evaluation: number): string {
     return "FULL"
   } else if (evaluation === 0) {
     return "DRAW"
+  } else if (Math.abs(evaluation) === 9999) {
+    return "-"
   } else {
     const absEval = Math.abs(evaluation)
     return `M${absEval}`
@@ -50,17 +52,12 @@ export function getEvaluationText(evaluation: number): string {
  * @returns Tailwind CSS classes for badge styling
  */
 export function getEvaluationBadgeClasses(evaluation: number): string {
-  console.log("getEvaluationBadgeClasses called with evaluation:", evaluation)
-  
   if (evaluation === -1000 || evaluation === 0) {
-    console.log("Returning gray badge classes")
     return "bg-gray-600 text-white"
   } else if (evaluation > 0) {
-    console.log("Returning yellow badge classes (positive evaluation)")
-    return "bg-brand-accent-yellow text-white" // Changed to white text
+    return "bg-brand-accent-red text-white" // Changed to white text
   } else {
-    console.log("Returning red badge classes (negative evaluation)")
-    return "bg-brand-accent-red text-white"
+    return "bg-brand-accent-yellow text-white"
   }
 }
 
@@ -81,4 +78,9 @@ export function getEvaluationBackgroundClasses(evaluation: number): string {
     default:
       return "bg-brand-text-muted"
   }
+}
+
+
+export function playableEvaluation(evaluation: number): boolean {
+  return evaluation !== -1000 && Math.abs(evaluation) !== 9999
 }

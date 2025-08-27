@@ -4,281 +4,184 @@ import React, { useRef, useState, useEffect, useCallback } from "react"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import ToolUI from "@/components/game/ToolUI"
 import { StandardGame } from "@shared/utils/Games/game"
-import { SelfAnalysis } from "@shared/utils/analysis"
+import { WASMProvider, useWASM } from "@/components/providers/wasmProvider"
 
-export default function ToolsPage() {
-  // Game state refs
+function ToolsPageContent() {
+  // Simple state management like SingleplayerBoardHandler
   const gameRef = useRef<StandardGame>(new StandardGame())
-  const analysisRef = useRef<SelfAnalysis | null>(null)
-  const unifiedLayoutRef = useRef<any>(null) // Reference to the unified layout for board control
+  const unifiedLayoutRef = useRef<any>(null)
   
-  // State for UI updates
-  const [gameVersion, setGameVersion] = useState(0)
+  // Separate ref for analysis/move history updates - doesn't trigger full re-renders
+  const analysisGameStateRef = useRef<{
+    boardState: (number | null)[][]
+    moves: number[]
+    currentMoveIndex: number
+    gameOver: boolean
+  }>({
+    boardState: gameRef.current.getBoard(),
+    moves: gameRef.current.getMoves(),
+    currentMoveIndex: gameRef.current.currentMoveIndex,
+    gameOver: gameRef.current.gameOver
+  })
+  
+  // WASM state
+  const { isReady: wasmReady } = useWASM()
+  
+  // Simple state - only what's needed for board rendering (stable)
   const [gameOver, setGameOver] = useState(false)
-  const [analysis, setAnalysis] = useState<string>("Position evaluation loading...")
-  const [currentEvaluation, setCurrentEvaluation] = useState<number>(0) // Store raw evaluation
-  const [showOpeningDescription, setShowOpeningDescription] = useState(false)
-  const [isAnalysisLoading, setIsAnalysisLoading] = useState(true)
-  
-  // Analysis data ref for live updates
-  const analysisDataRef = useRef<string[]>(["Position evaluation loading..."])
-  const columnEvaluationsRef = useRef<number[]>(Array(7).fill(-1000)) // Raw evaluation numbers for columns
-  
-  // Initialize analysis on component mount
-  useEffect(() => {
-    const initializeAnalysis = async () => {
-      try {
-        console.log("🔧 TOOLS: Initializing analysis...")
-        setIsAnalysisLoading(true)
-        analysisRef.current = await SelfAnalysis.load(gameRef.current)
-        updateAnalysis()
-        setIsAnalysisLoading(false)
-      } catch (error) {
-        console.error("Failed to load analysis:", error)
-        setAnalysis("Analysis unavailable - WASM solver failed to load")
-        setIsAnalysisLoading(false)
-      }
+  const [gameStateVersion, setGameStateVersion] = useState(0) // For ToolUI notifications only
+  const [boardKey, setBoardKey] = useState(0) // Force board re-renders when needed
+
+  console.log("🔧 TOOLS: Rendering with", gameRef.current.getMoves().length, "moves, WASM ready:", wasmReady)
+
+  // Helper function to update analysis state without causing full re-renders
+  const updateAnalysisGameState = useCallback(() => {
+    analysisGameStateRef.current = {
+      boardState: gameRef.current.getBoard(),
+      moves: gameRef.current.getMoves(),
+      currentMoveIndex: gameRef.current.currentMoveIndex,
+      gameOver: gameRef.current.gameOver
     }
-    
-    initializeAnalysis()
+    // Only increment version to trigger ToolUI analysis updates
+    setGameStateVersion(prev => prev + 1)
   }, [])
-  
-  // Function to update analysis display
-  const updateAnalysis = useCallback(() => {
-    if (analysisRef.current && !isAnalysisLoading) {
-      try {
-        const evaluation = analysisRef.current.Eval()
-        const moveCount = gameRef.current.getMoves().length
-        const currentPlayer = gameRef.current.currentPlayer === 0 ? "Red" : "Yellow"
-        const moves = gameRef.current.getMoves()
-        const positionString = gameRef.current.exportMoves()
-        
-        console.log("=== ANALYSIS DEBUG ===")
-        console.log("Position moves:", moves)
-        console.log("Position string:", positionString)
-        console.log("Move count:", moveCount)
-        console.log("Current player:", currentPlayer)
-        console.log("Raw evaluation:", evaluation)
-        console.log("Evaluation > 0?", evaluation > 0)
-        console.log("Evaluation < 0?", evaluation < 0)
-        console.log("Math.abs(evaluation):", Math.abs(evaluation))
-        
-        // Generate simple analysis text for header - just M(number) or DRAW
-        let headerEval = ""
-        if (Math.abs(evaluation) >= 50) {
-          headerEval = "DRAW"
-        } else {
-          headerEval = `M${Math.abs(evaluation)}`
-        }
-        
-        console.log("Header evaluation text:", headerEval)
-        console.log("Badge color for evaluation", evaluation, "should be:", 
-                   evaluation > 0 ? "yellow" : evaluation < 0 ? "red" : "gray")
-        console.log("Current player to move:", currentPlayer)
-        console.log("Current player index:", gameRef.current.currentPlayer)
-        
-        // Get column analysis using the Analyze() method
-        const columnAnalysisResults = analysisRef.current.Analyze()
-        console.log("Column analysis results:", columnAnalysisResults)
-        
-        const columnAnalyses: string[] = []
-        const columnEvals: number[] = []
-        
-        for (let col = 0; col < 7; col++) {
-          try {
-            const tempGame = new StandardGame(gameRef.current.getMoves())
-            if (tempGame.getAvailableRow(col) !== -1 && !tempGame.gameOver) {
-              // Use the analysis result for this column
-              const colEval = columnAnalysisResults[col]
-              console.log(`Column ${col + 1} evaluation:`, colEval)
-              
-              columnEvals.push(colEval)
-              
-              if (Math.abs(colEval) >= 50) {
-                columnAnalyses.push("DRAW")
-              } else {
-                columnAnalyses.push(`M${Math.abs(colEval)}`)
-              }
-            } else {
-              console.log(`Column ${col + 1}: FULL`)
-              columnEvals.push(-1000) // Full column
-              columnAnalyses.push("FULL")
-            }
-          } catch (error) {
-            console.error(`Column ${col + 1} analysis error:`, error)
-            columnEvals.push(-1000) // Error state
-            columnAnalyses.push("---")
-          }
-        }
-        
-        console.log("Column evaluations:", columnEvals)
-        console.log("Column analyses:", columnAnalyses)
-        console.log("=====================")
-        
-        setAnalysis(headerEval)
-        setCurrentEvaluation(evaluation)
-        analysisDataRef.current = [headerEval, ...columnAnalyses]
-        columnEvaluationsRef.current = columnEvals
-      } catch (error) {
-        console.error("Error updating analysis:", error)
-        setAnalysis("ERROR")
-        analysisDataRef.current = ["ERROR", "---", "---", "---", "---", "---", "---", "---"]
-        columnEvaluationsRef.current = Array(7).fill(-1000)
-      }
-    }
-  }, [isAnalysisLoading])
-  
-  // Handle column attempts (local multiplayer)
+
+  // Simple column handler like SingleplayerBoardHandler
   const handleColumnAttempt = useCallback((col: number) => {
     if (gameRef.current.gameOver) {
-      console.log("🔧 TOOLS: Game is over, ignoring move")
+      console.log("🔧 TOOLS: Game over, ignoring move")
       return
     }
-    
-    console.log(`🔧 TOOLS: Attempting move in column ${col + 1} by player ${gameRef.current.currentPlayer}`)
+
+    console.log(`🔧 TOOLS: Making move in column ${col + 1}`)
     
     const result = gameRef.current.makeMove(col)
     if (result.success) {
-      const player = gameRef.current.currentPlayer === 0 ? 1 : 0 // Previous player who made the move
-      console.log(`🔧 TOOLS: Move successful - row: ${result.row}, col: ${col}, player: ${player}`)
+      const player = gameRef.current.currentPlayer === 0 ? 1 : 0 // Previous player
+      console.log(`🔧 TOOLS: Move successful - triggering animation:`, { row: result.row, col, player })
       
-      // Trigger board animation
+      // Trigger animation immediately
       unifiedLayoutRef.current?.triggerMoveAnimation(result.row, col, player)
       
-      // Update game state
+      // Update state to trigger re-renders and analysis updates
       setGameOver(gameRef.current.gameOver)
-      setGameVersion(prev => prev + 1)
+      updateAnalysisGameState() // Update analysis state and trigger ToolUI updates
       
-      // Update analysis
-      updateAnalysis()
-      
-      if (gameRef.current.gameOver) {
-        console.log("🔧 TOOLS: Game ended")
-      }
+      console.log(`🔧 TOOLS: Move complete`)
     }
-  }, [updateAnalysis])
-  
-  // Handle moves submitted through the EnterMoves component
-  const handleSubmitMoves = useCallback((moves: number[]) => {
-    console.log("🔧 TOOLS: Submitting moves:", moves)
-    
-    // Convert 1-7 input to 0-6 columns
-    const columnMoves = moves.map(move => move - 1)
-    
-    for (let i = 0; i < columnMoves.length; i++) {
-      const move = columnMoves[i]
-      
-      if (move < 0 || move > 6) {
-        console.warn(`🔧 TOOLS: Invalid move ${moves[i]}, skipping`)
-        continue
-      }
-      
-      // Delay between moves for visual effect
-      setTimeout(() => {
-        if (!gameRef.current.gameOver) {
-          handleColumnAttempt(move)
-        }
-      }, i * 500)
-    }
-  }, [handleColumnAttempt])
-  
-  // Handle move history navigation
+  }, [])
+
+  // Simple move navigation
   const handleMoveClick = useCallback((moveIndex: number) => {
-    console.log("🔧 TOOLS: Navigating to move:", moveIndex)
-    try {
-      if (gameRef.current.setMoveIndex(moveIndex)) {
-        setGameVersion(prev => prev + 1)
-        updateAnalysis()
-        console.log(`🔧 TOOLS: Successfully navigated to move ${moveIndex}`)
-      }
-    } catch (error) {
-      console.error("Error navigating to move:", error)
+    console.log("🔧 TOOLS: Navigating to move", moveIndex)
+    if (gameRef.current.setMoveIndex(moveIndex - 1)) {
+      updateAnalysisGameState()
     }
-  }, [updateAnalysis])
-  
-  // Game control functions
+  }, [updateAnalysisGameState])
+
+  // Simple reset
   const handleResetGame = useCallback(() => {
     console.log("🔧 TOOLS: Resetting game")
     gameRef.current = new StandardGame()
     setGameOver(false)
-    setGameVersion(prev => prev + 1)
-    setAnalysis("Position evaluation loading...")
-    analysisDataRef.current = ["Position evaluation loading..."]
+    setBoardKey(prev => prev + 1) // Force board re-render
+    updateAnalysisGameState()
+    unifiedLayoutRef.current?.clearPremove()
+  }, [updateAnalysisGameState])
+
+  // Simple move submission - reset game first, then apply moves
+  const handleSubmitMoves = useCallback((moves: number[]) => {
+    console.log("🔧 TOOLS: Submitting moves:", moves)
     
-    // Reinitialize analysis with new game
-    if (analysisRef.current) {
-      const reinitAnalysis = async () => {
-        try {
-          analysisRef.current = await SelfAnalysis.load(gameRef.current)
-          updateAnalysis()
-        } catch (error) {
-          console.error("Failed to reinitialize analysis:", error)
-          setAnalysis("Analysis unavailable after reset")
-          analysisDataRef.current = ["Analysis unavailable after reset"]
-        }
-      }
-      reinitAnalysis()
+    // First reset the game to empty position
+    console.log("🔧 TOOLS: Resetting game for new position")
+    gameRef.current = new StandardGame()
+    setGameOver(false)
+    setBoardKey(prev => prev + 1) // Force board re-render for reset
+    updateAnalysisGameState()
+    unifiedLayoutRef.current?.clearPremove()
+    
+    // If no moves provided, just show empty board
+    if (!moves || moves.length === 0) {
+      console.log("🔧 TOOLS: No moves provided, showing empty board")
+      return
     }
     
-    // Clear board animations
-    unifiedLayoutRef.current?.clearPremove()
-  }, [updateAnalysis])
-  
-  const handleToggleAnalysis = useCallback((enabled: boolean) => {
-    console.log("🔧 TOOLS: Analysis toggled:", enabled)
-  }, [])
-
-  const handleSettingsClick = useCallback(() => {
-    console.log("🔧 TOOLS: Settings clicked")
-    // Could open a settings modal or trigger reset
-    handleResetGame()
-  }, [handleResetGame])
-
-  const handleCloseOpening = useCallback(() => {
-    setShowOpeningDescription(false)
-  }, [])
+    // Convert moves to 0-based indexing
+    const columnMoves = moves.map(move => move - 1)
+    
+    // Set all moves except the last one instantly (no animation)
+    const movesToSet = columnMoves.slice(0, -1)
+    const lastMove = columnMoves[columnMoves.length - 1]
+    
+    console.log("🔧 TOOLS: Setting", movesToSet.length, "moves instantly, then animating last move")
+    
+    // Apply all but last move instantly
+    movesToSet.forEach(move => {
+      if (!gameRef.current.gameOver) {
+        gameRef.current.makeMove(move)
+      }
+    })
+    
+    // Force board state update after setting all but last move
+    setGameOver(gameRef.current.gameOver)
+    setGameStateVersion(prev => prev + 1) // Notify ToolUI of changes
+    setBoardKey(prev => prev + 1) // Force board re-render
+    updateAnalysisGameState()
+    
+    // Then animate the final move after a short delay
+    setTimeout(() => {
+      if (!gameRef.current.gameOver) {
+        handleColumnAttempt(lastMove)
+      }
+    }, 100)
+  }, [handleColumnAttempt, updateAnalysisGameState])
 
   return (
     <UnifiedGameLayout
       ref={unifiedLayoutRef}
       board={{
-        interactive: !gameOver,
+        interactive: true,
         onColumnAttempt: handleColumnAttempt,
-        boardState: gameRef.current.getBoard(),
+        boardState: gameRef.current.getBoard(), // Direct like SingleplayerBoardHandler
         gameOver: gameOver,
         animate_init: false,
-        ariaLabel: "Connect 4 analysis board",
-        key: `board-${gameVersion}`, // Force re-render when game changes
+        key: `tools-board-${boardKey}`, // Dynamic key to force re-renders when board state changes
       }}
       layout={{
-        mode: "simple", // Use simple mode for board + content layout
-        contentRatio: "50%", // Equal space for better analysis visibility
+        contentRatio: "50%",
+        showScoreBar: false,
+        showTimers: false,
+        showPlayerInfo: false,
       }}
     >
-      {/* Tool UI Component */}
       <div className="flex-1 min-h-0">
         <ToolUI
-          key={`toolui-${gameVersion}`} // Force re-render when game changes
           game={gameRef.current}
-          currentMoveIndex={gameRef.current.currentMoveIndex}
+          gameStateVersion={gameStateVersion}
+          currentMoveIndex={analysisGameStateRef.current.currentMoveIndex}
           showAnalysisFeatures={true}
-          analysisData={analysisDataRef} // Pass the live analysis data ref
-          evaluation={currentEvaluation} // Pass current evaluation for color coding
-          columnEvaluations={columnEvaluationsRef} // Pass raw column evaluations
-          showOpeningDescription={showOpeningDescription}
+          showOpeningDescription={false}
           openingName="Position Analysis"
-          openingDescription={analysis}
-          showEnterMoves={!showOpeningDescription}
+          showEnterMoves={true}
           enterMovesDisabled={gameOver}
-          enterMovesPlaceholder="Enter moves: 1-7 separated by spaces (e.g., 4 3 5 2 6)"
+          enterMovesPlaceholder="Enter moves (1-7)"
           onSubmitMoves={handleSubmitMoves}
           onMoveClick={handleMoveClick}
-          onToggleAnalysis={handleToggleAnalysis}
-          onSettingsClick={handleSettingsClick}
-          onCloseOpening={handleCloseOpening}
-          onColumnClick={handleColumnAttempt} // Pass column click handler
+          onToggleAnalysis={() => {}}
+          onSettingsClick={handleResetGame}
+          onCloseOpening={() => {}}
+          onColumnClick={handleColumnAttempt}
         />
       </div>
     </UnifiedGameLayout>
+  )
+}
+
+export default function ToolsPage() {
+  return (
+    <WASMProvider>
+      <ToolsPageContent />
+    </WASMProvider>
   )
 }

@@ -604,7 +604,6 @@ export default function LiveGamePage() {
         player2DisconnectedRef: player1DisconnectedRef, // My disconnect status (though I shouldn't be disconnected)
       }}
       layout={{
-        mode: "full-game",
         showScoreBar: true,
         showTimers: true,
         showPlayerInfo: true,

@@ -14,7 +14,9 @@ export default function LiveGamePage() {
           animate_init: false,
         }}
         layout={{
-          mode: "simple", // Use simple mode for board + content layout
+          showScoreBar: false,
+          showTimers: false,
+          showPlayerInfo: false,
           contentRatio: "50%", // 50/50 split between board and content
         }}
       >

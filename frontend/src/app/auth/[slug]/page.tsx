@@ -5,7 +5,7 @@ import { RegisterForm } from '@/components/auth/forms/register';
 import { ResetPasswordForm } from '@/components/auth/forms/pwd-reset';
 import { VerifyEmailForm } from '@/components/auth/forms/verify-email';
 import { LogoutUser } from '@/components/auth/forms/logout';
-import { BoardSpaceLayout } from '@/components/layouts/board-space-layout';
+import { UnifiedGameLayout } from '@/components/layouts/game-layout';
 
 const forms: Record<string, JSX.Element> = {
   'login': <LoginForm />,
@@ -30,5 +30,22 @@ export default async function AuthSlugPage({ params }: { params: Promise<{ slug:
 
   if (!form) return notFound()
 
-  return <BoardSpaceLayout boardColumnRatio="50%">{form}</BoardSpaceLayout>
+  return (
+    <UnifiedGameLayout
+      layout={{
+        showScoreBar: false,
+        showTimers: false,
+        showPlayerInfo: false,
+        contentRatio: "50%"
+      }}
+      board={{
+        interactive: false,
+        boardState: Array(6).fill(null).map(() => Array(7).fill(null)),
+        gameOver: false,
+        animate_init: false,
+      }}
+    >
+      {form}
+    </UnifiedGameLayout>
+  )
 }

@@ -74,10 +74,30 @@ export class SelfAnalysis {
   }
 
 
-  getAverageAccuracy(aPlayer?: number) {
-
+  getLastMoveAcc(pos: string) {
+    
     const alpha = 0.8; // WEIGHTING
 
+
+    const p = pos ?? this.gameState.exportMoves();
+    if (p.length === 0) return -1;
+    const position = p.slice(0, -1); // Remove last move
+    const analysis = this.solver.analyzePosition(p);
+    const sortedAnal = this.sortedBestMoves(analysis);
+    const move = Number(p.at(-1)) - 1;
+    const n = sortedAnal.length;
+    const i = sortedAnal.findIndex(group => group.includes(move)); 
+    const gi = n === 1 ? 0 : (i) / (n - 1);
+    const xe = Math.max(...analysis);
+    const ne = Math.min(...analysis);
+    const ri = (xe - analysis[move]) / (xe - ne);
+    return 100 * (1 - ((gi * alpha) + (ri * (1 - alpha))));
+  }
+
+
+  getAverageAccuracy(aPlayer?: number) {
+
+    
     let Accuracy = [];
     const player = aPlayer ?? this.gameState.currentPlayer;
     // iterate through all the moves made
@@ -86,18 +106,7 @@ export class SelfAnalysis {
       // analyze each move for the specified player
       if (!iterator.hasNext()) continue;
       if (moves.length % 2 !== player) continue; // not the current players turn
-      const analysis = this.solver.analyzePosition(moves);
-      const sortedAnal = this.sortedBestMoves(analysis);
-      const move = Number(iterator.getNextAddition()) - 1;
-      const n = sortedAnal.length;
-      // get index of the array in sortedAnal that contains move
-      const i = sortedAnal.findIndex(group => group.includes(move)); 
-      const gi = n === 1 ? 0 : (i) / (n - 1);
-      const xe = Math.max(...analysis);
-      const ne = Math.min(...analysis);
-      const ri = (xe - analysis[move]) / (xe - ne);
-      const acc = 100 * (1 - ((gi * alpha) + (ri * (1 - alpha))));
-      console.log(move, sortedAnal, acc);
+      const acc = this.getLastMoveAcc(moves);
       Accuracy.push(acc);
     }
 

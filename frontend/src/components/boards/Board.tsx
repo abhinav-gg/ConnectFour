@@ -358,7 +358,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         // Animation duration proportional to distance fallen
         const baseDuration = 0.15 // seconds per row
         const duration = baseDuration * (row + 1)
-
+        console.log("ACTUALLY PLAYING ANIMATIONS")
         // Play drop sound when a piece falls (not during animate_init)
         DropSound.play()
 

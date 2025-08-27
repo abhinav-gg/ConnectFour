@@ -7,7 +7,6 @@ import { PlayerData } from "@shared/types/users"
 
 export default function TestLayoutPage() {
   const gameRef = useRef(new StandardGame())
-  const [layoutMode, setLayoutMode] = useState<"simple" | "full-game">("simple")
   const [showComponents, setShowComponents] = useState({
     board: true,
     scoreBar: false,
@@ -43,19 +42,6 @@ export default function TestLayoutPage() {
       <div className="fixed top-4 right-4 z-50 bg-gray-800 p-4 rounded-lg shadow-lg">
         <h3 className="text-white font-bold mb-3">Layout Controls</h3>
         
-        {/* Layout Mode */}
-        <div className="mb-3">
-          <label className="text-white text-sm block mb-1">Mode:</label>
-          <select 
-            value={layoutMode} 
-            onChange={(e) => setLayoutMode(e.target.value as "simple" | "full-game")}
-            className="bg-gray-700 text-white text-sm rounded px-2 py-1"
-          >
-            <option value="simple">Simple</option>
-            <option value="full-game">Full Game</option>
-          </select>
-        </div>
-
         {/* Content Ratio */}
         <div className="mb-3">
           <label className="text-white text-sm block mb-1">Content Ratio:</label>
@@ -145,7 +131,6 @@ export default function TestLayoutPage() {
           player1IsRed: false,
         }}
         layout={{
-          mode: layoutMode,
           showScoreBar: showComponents.scoreBar,
           showTimers: showComponents.timers,
           showPlayerInfo: showComponents.playerInfo,
@@ -167,9 +152,6 @@ export default function TestLayoutPage() {
             </h2>
             
             <div className="space-y-4 text-white">
-              <p>
-                <strong>Current Mode:</strong> {layoutMode}
-              </p>
               <p>
                 <strong>Content Ratio:</strong> {contentRatio}
               </p>
@@ -202,11 +184,12 @@ export default function TestLayoutPage() {
               <div className="mt-6 p-4 bg-gray-600/50 rounded">
                 <h3 className="font-semibold mb-2">Instructions:</h3>
                 <ul className="text-sm space-y-1">
-                  <li>• Use the control panel to toggle layout modes and features</li>
+                  <li>• Use the control panel to toggle layout features</li>
                   <li>• Click on the board to make moves (when enabled)</li>
-                  <li>• Switch between simple and full-game modes</li>
+                  <li>• Toggle timers and player info to see layout adapt</li>
                   <li>• Test responsivity by resizing the window</li>
                   <li>• Modify header text and content ratios</li>
+                  <li>• Simple mode = no timers/player info, Full mode = with timers/player info</li>
                 </ul>
               </div>
             </div>
