@@ -7,6 +7,7 @@ import { RecaptchaProvider } from '@/components/providers/RecaptchaProvider';
 import { ErrorProvider } from '@/components/providers/errorProvider';
 import { GameSessionProvider } from '@/components/providers/gameProvider';
 import { Suspense } from 'react';
+import Loading from '@/components/loading';
 
 export const metadata: Metadata = {
   title: 'Con4 - Play Four In A Row Online',
@@ -36,7 +37,7 @@ export default function RootLayout({
               <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
                 <UserProvider>
                   <GameSessionProvider>
-                    <Suspense fallback={<div>Loading... Nicer Loading Coming Soon...</div>}>
+                    <Suspense fallback={<Loading />}>
                       {children}
                     </Suspense>
                   </GameSessionProvider>

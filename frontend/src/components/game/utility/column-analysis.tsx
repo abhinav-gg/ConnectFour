@@ -32,7 +32,7 @@ export const ColumnAnalysis = forwardRef<ColumnAnalysisRef, ColumnAnalysisProps>
 
     const handleColumnClick = (column: number, evaluation: number) => {
       // Don't allow clicks if game is over or column is full
-      if (gameOver || evaluation === -1000) {
+      if (gameOver || evaluation === -1000 || isLoading) {
         return
       }
       

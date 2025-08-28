@@ -21,6 +21,7 @@ interface LocalUser extends UserProfile {
 interface UserContextValue {
   user: LocalUser | null;
   isAnonymous: boolean;
+  isMaintenanceMode: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -55,16 +56,68 @@ export const refreshUserExternally = async () => {
 
 export const UserProvider = ({ children }: UserProviderProps) => {
   const [user, setUser] = useState<LocalUser | null>(null);
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const fetchingRef = useRef(false);
   const { onMessage, onPrefixedMessage, onError } = useSocketContext();
-  const { showError } = useError();
+  const { showError, showWarning, showInfo } = useError();
 
+  // Listen for system maintenance events
   useEffect(() => {
+    // Register system event handlers
+    onPrefixedMessage('system', (event, data) => {
+      console.log(`[UserProvider] System event: ${event}`, data);
+      
+      switch (event) {
+        case 'maintenance':
+          setIsMaintenanceMode(true);
+          showError(
+            data.message || 'System is currently under maintenance. Please try again later.',
+            'warning',
+            0 // Don't auto-dismiss
+          );
+          break;
+          
+        case 'online':
+          setIsMaintenanceMode(false);
+          showInfo(
+            data.message || 'System is back online',
+            5 // Auto-dismiss after 5 seconds
+          );
+          break;
+          
+        case 'disconnecting':
+          showWarning(
+            data.message || 'Server is restarting. Please reconnect shortly.',
+            0 // Don't auto-dismiss
+          );
+          break;
+          
+        default:
+          console.log(`[UserProvider] Unknown system event: ${event}`, data);
+      }
+    });
+
     // Register error logging
     onError((error) => {
       console.error('Socket error:', error);
+      
+      // Check if the error is maintenance-related
+      const errorWithData = error as any; // Type assertion for socket.io errors that may have data
+      if (error.message?.includes('maintenance') || errorWithData.data?.code === 'MAINTENANCE_MODE') {
+        setIsMaintenanceMode(true);
+        showError(
+          errorWithData.data?.message || 'System is under maintenance. Please try again later.',
+          'warning',
+          0 // Don't auto-dismiss
+        );
+      }
     });
-  }, [onMessage, onPrefixedMessage, onError]);
+
+    return () => {
+      // Cleanup - unsubscribe from system events
+      // Note: The socket hook should handle cleanup automatically
+    };
+  }, [onMessage, onPrefixedMessage, onError, showError, showWarning, showInfo]);
     
 
   const fetchAndSetUser = useCallback(async () => {
@@ -136,7 +189,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
 
   return (
     <UserContext.Provider
-      value={{ user, isAnonymous, logout, refreshUser: fetchAndSetUser }}
+      value={{ user, isAnonymous, isMaintenanceMode, logout, refreshUser: fetchAndSetUser }}
     >
       {children}
     </UserContext.Provider>

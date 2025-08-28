@@ -102,9 +102,9 @@ export function LiveGameSelection() {
       icon: Rocket,
       iconColor: "text-brand-accent-green",
       timeControls: [
-        { id: "1 | 0 | 0", base: 1, bonus: 0, initial: 0, selected : true },
-        { id: "1 | 1 | 5", base: 1, bonus: 1, initial: 5 },
-        { id: "2 | 0 | 0", base: 2, bonus: 0, initial: 0 },
+        { id: "1|0|0", base: 1, bonus: 0, initial: 0, selected : true },
+        { id: "1|1|5", base: 1, bonus: 1, initial: 5 },
+        { id: "2|0|0", base: 2, bonus: 0, initial: 0 },
       ],
     },
     {
@@ -113,9 +113,9 @@ export function LiveGameSelection() {
       icon: Zap,
       iconColor: "text-brand-accent-yellow",
       timeControls: [
-        { id: "3 | 0 | 0", base: 3, bonus: 0, initial: 0 },
-        { id: "3 | 2 | 10", base: 3, bonus: 2, initial: 10 },
-        { id: "4 | 0 | 20", base: 4, bonus: 0, initial: 20 },
+        { id: "3|0|0", base: 3, bonus: 0, initial: 0 },
+        { id: "3|2|10", base: 3, bonus: 2, initial: 10 },
+        { id: "4|0|20", base: 4, bonus: 0, initial: 20 },
       ],
     },
     {
@@ -124,9 +124,9 @@ export function LiveGameSelection() {
       icon: TreePine,
       iconColor: "text-white",
       timeControls: [
-        { id: "10 | 0 | 30", base: 10, bonus: 0, initial: 30 },
-        { id: "15 | 0 | 0", base: 15, bonus: 0, initial: 0 },
-        { id: "10 | 30 | 60", base: 10, bonus: 30, initial: 60 },
+        { id: "10| 0|30", base: 10, bonus: 0, initial: 30 },
+        { id: "15| 0|0", base: 15, bonus: 0, initial: 0 },
+        { id: "10|30|60", base: 10, bonus: 30, initial: 60 },
       ],
     },
   ]

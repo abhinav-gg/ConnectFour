@@ -7,11 +7,45 @@ import { getIdentityFromSocket } from '@/lib/game.middleware';
 import { RoomSchema } from '../socketRoomSchema';
 import { liveGameService } from '@/services/livegame.service';
 import { GameContext } from '@/utils/gameContext';
+import { GameInfo, TimeControl } from '@shared/types/game';
+
+async function handleDisconnectSocket(socket: Socket) {
+  try {
+    const userId = getIdentityFromSocket(socket);
+    if (!userId) {
+        console.warn('User identity not found on disconnect');
+        return;
+    }
+
+    console.log(`[Socket] User ${userId} disconnected from socket ${socket.id}`);
+    // Create fresh GameContext at socket level
+    const gameContext = new GameContext(userId);
+    const metadata = await gameContext.getMetadata();
+    if (metadata && metadata.shortcode) {
+      socket.leave(RoomSchema.game.key(metadata.shortcode));
+      socket.leave(RoomSchema.spectating.key(metadata.shortcode));
+    }
+    
+    await liveGameService.handleDisconnect(gameContext);
+      
+
+  } catch (error) {
+      console.error('Error handling disconnect:', error);
+  }
+}
 
 // Register matchmaking handlers
 export function registerMatchmakingHandlers(soc: Socket) {
 
   const socket = withNamespace(soc, 'matchmaking');
+
+  // Handle disconnect and leave events using the same handler
+  const disconnectHandler = async () => {
+      await handleDisconnectSocket(socket);
+  };
+
+  soc.on('disconnect', disconnectHandler);
+  socket.on('leave', disconnectHandler);
 
   socket.on('join', async (data) => {
     try {
@@ -58,8 +92,8 @@ export function registerMatchmakingHandlers(soc: Socket) {
               base_time: metadata!.base_time,
               increment: metadata!.increment,
               disadvantage: metadata!.disadvantage,
-            }
-          }
+            } as TimeControl
+          } as GameInfo
         });
       }
 

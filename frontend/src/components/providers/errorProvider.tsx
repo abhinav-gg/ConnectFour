@@ -158,7 +158,8 @@ export function ErrorProvider({ children }: ErrorProviderProps) {
                         duration: 0.5, 
                         delay: 0.1,
                         type: "spring", 
-                        stiffness: 200 
+                        stiffness: 200, 
+                        repeat: Infinity
                       }}
                     >
                       <AlertCircle className={`w-6 h-6 sm:w-8 sm:h-8 lg:w-12 lg:h-12 ${styles.icon} flex-shrink-0 mt-0.5 sm:mt-1`} />

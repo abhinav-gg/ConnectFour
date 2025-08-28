@@ -49,7 +49,7 @@ const navigationItems = [
   {
     title: "Tools",
     icon: Wrench,
-    url: "#tools",
+    url: "/tools",
   },
   {
     title: "Events",
@@ -87,9 +87,9 @@ export function AppSidebar({ collapsed = false, isMobile = false, isOpen = false
   const { user, isAnonymous } = useUser();
 
   const handleLinkClick = () => {
-    if (isMobile && onClose) {
-      onClose()
-    }
+    // if (isMobile && onClose) {
+    //   onClose()
+    // }
   }
 
   const handleMouseEnter = (itemTitle: string, event: React.MouseEvent) => {

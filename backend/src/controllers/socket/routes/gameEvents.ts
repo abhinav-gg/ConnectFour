@@ -6,46 +6,10 @@ import { GameContext } from "@/utils/gameContext";
 import { RoomSchema } from "../socketRoomSchema";
 
 
-async function handleDisconnectSocket(socket: Socket) {
-    try {
-        const userId = getIdentityFromSocket(socket);
-        if (!userId) {
-            console.warn('User identity not found on disconnect');
-            return;
-        }
-
-        console.log(`[Socket] User ${userId} disconnected from socket ${socket.id}`);
-        // Create fresh GameContext at socket level
-        const gameContext = new GameContext(userId);
-        const metadata = await gameContext.getMetadata();
-        if (metadata && metadata.shortcode) {
-            socket.leave(RoomSchema.game.key(metadata.shortcode));
-            socket.leave(RoomSchema.spectating.key(metadata.shortcode));
-        }
-        
-        await liveGameService.handleDisconnect(gameContext);
-        
-        
-        // leave game rooms if in it and there was an error or invalid response...
-
-    } catch (error) {
-        console.error('Error handling disconnect:', error);
-    }
-}
-
-
 // Register game-related handlers
 export function registerGameHandlers(sock: Socket) {
 
     const socket = withNamespace(sock, 'game');
-
-    // Handle disconnect and leave events using the same handler
-    const disconnectHandler = async () => {
-        await handleDisconnectSocket(socket);
-    };
-
-    sock.on('disconnect', disconnectHandler);
-    socket.on('leave', disconnectHandler);
 
     // Game chat handling
     socket.on('chat', async (data) => {

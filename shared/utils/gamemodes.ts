@@ -1,6 +1,6 @@
-import { GameMode } from "@shared/constants/allgamemodes";
-import { AvgGameLength } from "@shared/constants/game";
-import { TimeControl, TimeCategory } from "@shared/types/game";
+import { GameMode } from "../constants/allgamemodes";
+import { AvgGameLength } from "../constants/game";
+import { TimeControl, TimeCategory, GameInfo } from "@shared/types/game";
 import { validateTimeControl } from "./validation";
 
 export const sRankedModes = new Set([
@@ -73,6 +73,25 @@ export function CategoriseTime(timeControl: TimeControl): TimeCategory {
     return 'rapid';
   }
 }
+
+export const printTimeControl = (timeControl: TimeControl) => 
+  `${timeControl.base_time}|${timeControl.increment}|${timeControl.disadvantage}`
+
+
+export const printGameMode = (gameinfo: GameInfo) => {
+  switch (gameinfo.gamemode) {
+    case GameMode.STANDARD_BULLET_RANKED:
+      return "Ranked Bullet";
+    case GameMode.STANDARD_BLITZ_RANKED:
+      return "Ranked Blitz";
+    case GameMode.STANDARD_RAPID_RANKED:
+      return "Ranked Rapid";
+    case GameMode.STANDARD_FRIENDLY:
+      return `Friendly ${CategoriseTime(gameinfo.time_control)}`;
+    default:
+      return "Custom";
+  }
+};
 
 export function getRankedGameModeByTimeControl(timeControl: TimeControl, base: string): number {
   if (!validateTimeControl(timeControl)) {

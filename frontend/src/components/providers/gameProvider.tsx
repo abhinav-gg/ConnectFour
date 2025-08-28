@@ -30,23 +30,12 @@ function ReturnToGamePopup({
   onReturn: () => void
   onDismiss: () => void
 }) {
-  const [secondsLeft, setSecondsLeft] = useState(10)
-  
-  // Countdown timer for auto-dismiss prevention
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => Math.max(0, prev - 1))
-    }, 1000)
-    
-    return () => clearInterval(timer)
-  }, [])
-
   return (
     <motion.div
-      className="fixed bottom-6 right-6 z-[99999] cursor-pointer select-none" // Doubled size with scale
-      initial={{ opacity: 0, y: 100, scale: 0.6 }}
-      animate={{ opacity: 1, y: 0, scale: 2 }} // 2x scale makes it twice as large
-      exit={{ opacity: 0, y: 100, scale: 0.6 }}
+      className="fixed bottom-4 right-4 z-[99999] cursor-pointer select-none w-80 max-w-[calc(100vw-2rem)]" // Fixed width with viewport constraint
+      initial={{ opacity: 0, y: 100, scale: 0.8 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }} // Removed scaling to prevent overflow
+      exit={{ opacity: 0, y: 100, scale: 0.8 }}
       transition={{
         type: "spring",
         stiffness: 300,
@@ -54,11 +43,11 @@ function ReturnToGamePopup({
         duration: 0.4,
       }}
       onClick={onReturn}
-      whileHover={{ scale: 2.05 }}
-      whileTap={{ scale: 1.95 }}
+      whileHover={{ scale: 1.02 }} // Subtle hover effect
+      whileTap={{ scale: 0.98 }}
     >
-      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl px-6 py-4 shadow-2xl border border-red-400/30 backdrop-blur-sm relative">
-        <div className="flex items-center gap-4">
+      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl px-8 py-6 shadow-2xl border border-red-400/30 backdrop-blur-sm relative">
+        <div className="flex items-center gap-6">
           {/* Animated Sword Icon */}
           <motion.div 
             className="flex-shrink-0"
@@ -72,14 +61,14 @@ function ReturnToGamePopup({
               repeatType: "reverse"
             }}
           >
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <Swords className="w-8 h-8 text-white" strokeWidth={2.5} />
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+              <Swords className="w-10 h-10 text-white" strokeWidth={2.5} />
             </div>
           </motion.div>
 
           {/* Animated Text Content */}
           <motion.div 
-            className="flex flex-col"
+            className="flex flex-col min-w-0 flex-1" // Added flex-1 and min-w-0 for proper text wrapping
             animate={{ 
               opacity: [1, 0.8, 1],
             }}
@@ -89,31 +78,26 @@ function ReturnToGamePopup({
               repeatType: "reverse"
             }}
           >
-            <div className="text-xl font-bold leading-tight">Active Battle!</div>
-            <div className="text-base opacity-90 leading-tight">Room: {shortcode} • Click to return</div>
-            {secondsLeft > 0 && (
-              <div className="text-sm opacity-75 mt-1">
-                Auto-dismiss in {secondsLeft}s
-              </div>
-            )}
+            <div className="text-xl font-bold leading-tight mb-1">Active Game!</div>
+            <div className="text-base opacity-90 leading-tight break-all">Room: {shortcode}</div>
+            <div className="text-sm opacity-75 mt-1">Click to return to game</div>
           </motion.div>
         </div>
 
-        {/* Only show dismiss after 10 seconds */}
-        {secondsLeft === 0 && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-gray-600 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors duration-200 shadow-lg"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDismiss()
-            }}
-            title="Dismiss notification"
-          >
-            ×
-          </motion.button>
-        )}
+        {/* Always show dismiss button - no timer */}
+        <motion.button
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5 }} // Small delay for entrance
+          className="absolute -top-3 -right-3 w-8 h-8 bg-gray-600 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors duration-200 shadow-lg text-lg font-bold"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDismiss()
+          }}
+          title="Dismiss notification"
+        >
+          ×
+        </motion.button>
       </div>
     </motion.div>
   )
@@ -140,7 +124,7 @@ export function GameSessionProvider({ children }: GameSessionProviderProps) {
   const leaveGame = useCallback(() => {
     if (currentShortcodeRef.current && !hasLeftRef.current && connected) {
       console.log("🔌 GAME SESSION: Leaving game:", currentShortcodeRef.current)
-      sendJson("game:leave", { shortcode: currentShortcodeRef.current })
+      sendJson("matchmaking:leave", { shortcode: currentShortcodeRef.current })
       unsubscribePrefixedMessage("matchmaking")
       unsubscribePrefixedMessage("game")
       hasLeftRef.current = true
@@ -196,30 +180,22 @@ export function GameSessionProvider({ children }: GameSessionProviderProps) {
 
   // Multiple cleanup strategies for maximum reliability
   useEffect(() => {
-    // Strategy 1: Browser events
+    // Strategy 1: Browser events (only on actual page unload)
     const handleBeforeUnload = () => {
       leaveGame()
     }
 
-    // Strategy 2: Visibility change (more reliable for mobile)
-    const handleVisibilityChange = () => {
-      if (document.hidden && isInGameRef.current) {
-        leaveGame()
-      }
-    }
-
-    // Strategy 3: Page hide (most reliable for mobile Safari)
+    // Strategy 2: Page hide (only for actual page navigation/close)
     const handlePageHide = () => {
       leaveGame()
     }
 
+    // Note: Removed visibility change handler to prevent disconnect on tab switch/minimize
     window.addEventListener("beforeunload", handleBeforeUnload)
-    document.addEventListener("visibilitychange", handleVisibilityChange)
     window.addEventListener("pagehide", handlePageHide)
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload)
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
       window.removeEventListener("pagehide", handlePageHide)
       leaveGame() // Final cleanup
     }
@@ -237,11 +213,7 @@ export function GameSessionProvider({ children }: GameSessionProviderProps) {
           console.log("🔌 GAME SESSION: Showing return popup for shortcode:", currentShortcodeRef.current)
           setReturnGameShortcode(currentShortcodeRef.current) // Use current shortcode from ref
           setShowReturnPopup(true)
-
-          // Auto-hide popup after 15 seconds
-          setTimeout(() => {
-            setShowReturnPopup(false)
-          }, 15000)
+          // Note: No auto-hide - user will manually dismiss
         }
         // Note: Don't call leaveGame() here - we want to keep the session active
       }

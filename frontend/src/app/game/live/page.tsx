@@ -37,8 +37,9 @@ import { PlayerData } from "@shared/types/users"
 import { GameState } from "@shared/constants/allgamestates"
 import { GameEndModal } from "@/components/game/game-end-popup"
 import { GameStartModal } from "@/components/game/game-start-popup"
-import { EloChange } from "@shared/types/game"
+import { EloChange, GameInfo } from "@shared/types/game"
 import { StandardGame } from "@shared/utils/Games/game"
+import { CategoriseTime, printGameMode, printTimeControl } from "@shared/utils/gamemodes"
 
 export default function LiveGamePage() {
   const router = useRouter()
@@ -77,6 +78,9 @@ export default function LiveGamePage() {
   const player2DisconnectedRef = useRef(false)
   const [animateInit, setAnimateInit] = useState(false)
   
+  // Dynamic header state for better flexibility
+  const [dynamicHeader, setDynamicHeader] = useState<string>("Loading...")
+  
   // Calculate dynamic title based on game state
   const getDynamicTitle = (): string => {
     if (!isGameRunningRef.current) return "Game Paused"
@@ -110,13 +114,18 @@ export default function LiveGamePage() {
   
   // Game Start / End state
   const [showStartPopup, setShowStartPopup] = useState(false)
-  const [gameMode, setGameMode] = useState("Standard")
-  const [timeControl, setTimeControl] = useState("5+3")
+  const [gameMode, setGameMode] = useState("Loading...")
+  const [timeControl, setTimeControl] = useState("...")
   const [gameUrl, setGameUrl] = useState("")
 
   const [showEndPopup, setShowEndPopup] = useState(false)
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [isSpectating, setIsSpectating] = useState(false)
+
+  // Update dynamic header when game state changes
+  useEffect(() => {
+    setDynamicHeader(getDynamicTitle())
+  }, [isGameRunningRef.current, isSpectating, currentTurnRef.current, isRedRef.current, gameVersion])
 
   const [startSFX] = [useSound("/sounds/start.mp3")]
 
@@ -146,11 +155,14 @@ export default function LiveGamePage() {
           break
         case "joined":
           console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
+          const { gameinfo } = data
+          const gi = gameinfo as GameInfo;
           if (data.shortcode && currentShortcode && currentShortcode !== data.shortcode) {
             console.error("Shortcode mismatch in matchmaking data", currentShortcode, data.shortcode)
             return
           }
-          setGameMode("TEST GAMEMODE")
+          setGameMode(printGameMode(gi) || "Custom")
+          setTimeControl(printTimeControl(gi.time_control))
           break
         default:
           console.warn(`📨 WEBSOCKET: Unhandled matchmaking event ${event} with data:`, data)
@@ -276,6 +288,7 @@ export default function LiveGamePage() {
           const { result } = data
           setGameState(result)
           setShowEndPopup(true)
+          setDynamicHeader("Game Over")
           console.log("🏁 GAME: Game has ended", { result })
           // Ensure timers stop and UI updates
           setGameVersion((v) => v + 1)
@@ -306,6 +319,54 @@ export default function LiveGamePage() {
             player2DisconnectedRef.current = false
           }
           
+          // Reset header if opponent reconnected
+          if (!isSpectating) {
+            const isOpponentReconnected = (
+              (isRedRef.current && player === 1) || // I'm red, yellow reconnected
+              (!isRedRef.current && player === 0)   // I'm yellow, red reconnected
+            )
+            
+            if (isOpponentReconnected) {
+              setDynamicHeader(getDynamicTitle()) // Reset to normal title
+              liveGameRef.current?.addSystemMessage("Opponent Reconnected!")
+            }
+          }
+          
+          setGameVersion((v) => v + 1)
+          break
+        }
+        case "disconnect": {
+          const { player } = data
+          
+          // Set disconnection state based on player position and spectator status
+          if (isSpectating) {
+            // For spectators: player 0 is top position (player1 in layout)
+            if (player === 0) {
+              player1DisconnectedRef.current = true
+            } else if (player === 1) {
+              player2DisconnectedRef.current = true
+            }
+          } else {
+            // For players: map game player indices to UI positions
+            // If I'm red (player 0), opponent is yellow (player 1) and vice versa
+            const isOpponentDisconnected = (
+              (isRedRef.current && player === 1) || // I'm red, yellow disconnected
+              (!isRedRef.current && player === 0)   // I'm yellow, red disconnected
+            )
+            
+            if (isOpponentDisconnected) {
+              // Opponent disconnected - they are in player1 position (top)
+              player1DisconnectedRef.current = true
+              
+              // Send chat alert and update header
+              liveGameRef.current?.addSystemMessage("Opponent Disconnected...")
+              setDynamicHeader("Opponent Disconnected...")
+            } else {
+              // This shouldn't happen - we got disconnect event for ourselves
+              console.error("❌ GAME: Received disconnect event for myself", { player, isRed: isRedRef.current })
+            }
+          }
+
           setGameVersion((v) => v + 1)
           break
         }
@@ -496,9 +557,11 @@ export default function LiveGamePage() {
   }
 
   const handleCancelMatchmaking = () => {
-    console.log("🎮 START POPUP: Cancelled matchmaking")
-    setShowStartPopup(false)
-    if (isGameRunningRef.current) return
+    console.log("🎮 START POPUP: Closing")
+    if (isGameRunningRef.current) {
+      setShowStartPopup(false)
+      return
+    }
     if (connected && currentShortcode) {
       sendJson("matchmaking:leave", { shortcode: currentShortcode })
       console.log("📤 WEBSOCKET: Sent leave matchmaking")
@@ -571,7 +634,7 @@ export default function LiveGamePage() {
         showScoreBar: true,
         showTimers: true,
         showPlayerInfo: true,
-        headerText: getDynamicTitle(), // Dynamic title based on game state
+        headerText: dynamicHeader, // Use dynamic header state
       }}
       onBoardReady={handleBoardReady}
       onTimeUp={handleTimeUp}

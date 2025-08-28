@@ -8,6 +8,7 @@ import { ScoreBar } from "../game/score-bar"
 import { PlayerInfo } from "../game/player-info"
 import { Timer } from "../game/timer"
 import { PlayerData } from "@shared/types/users"
+import Loading from "../loading"
 
 // Clean, focused interface for the unified layout
 export interface UnifiedGameLayoutProps {
@@ -384,9 +385,7 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
           
           {/* Loading state for SSR */}
           {!hasMounted && (
-            <div className="w-full h-[90vh] flex items-center justify-center">
-              <div className="animate-pulse text-white">Loading...</div>
-            </div>
+            <Loading />
           )}
         </div>
       </div>

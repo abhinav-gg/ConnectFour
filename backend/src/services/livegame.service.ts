@@ -60,6 +60,12 @@ export const liveGameService = {
             return;
         }
 
+        // send disconnect signal
+        const socket = getSocketIO();
+        socket.to(RoomSchema.game.key(gameContext.shortcode!)).emit('game:disconnect', {
+            player: gameContext.getPlayerIndex()
+        });
+
         const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
         // only add the job if it does not exist
         const existingJob = await JobSets.getGameDisconnectionQueue().getJob(jobId);
@@ -93,6 +99,13 @@ export const liveGameService = {
         if (job) {
             console.log(`❌ Canceled game disconnection job with ID: ${jobId}`);
             await job.remove();
+
+            // send reconnect signal
+            const socket = getSocketIO();
+            socket.to(RoomSchema.game.key(gameContext.shortcode!)).emit('game:reconnect', {
+                player: gameContext.getPlayerIndex()
+            });
+
         } else {
             console.log(`⚠️ Job ${jobId} not found - may have already completed or been removed`);
         }
