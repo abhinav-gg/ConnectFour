@@ -164,8 +164,14 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
   // Determine player colors and timer states
   const player1Color = player1IsRed ? "red" : "yellow"
   const player2Color = player1IsRed ? "yellow" : "red"
-  const isPlayer1TimerRunning = showTimers && isGameRunning && currentTurn === 0
-  const isPlayer2TimerRunning = showTimers && isGameRunning && currentTurn === 1
+  
+  // Fixed timer logic: Red player (turn 0) goes first, Yellow player (turn 1) goes second
+  // Determine which player position is red, then activate timer based on currentTurn
+  const redPlayerIsPlayer1 = player1IsRed
+  const isPlayer1TimerRunning = showTimers && isGameRunning && 
+    ((currentTurn === 0 && redPlayerIsPlayer1) || (currentTurn === 1 && !redPlayerIsPlayer1))
+  const isPlayer2TimerRunning = showTimers && isGameRunning && 
+    ((currentTurn === 0 && !redPlayerIsPlayer1) || (currentTurn === 1 && redPlayerIsPlayer1))
   
   // Responsive state - more granular breakpoints
   const [isDesktop, setIsDesktop] = useState(false)

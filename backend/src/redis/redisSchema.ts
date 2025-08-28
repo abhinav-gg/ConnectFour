@@ -19,7 +19,7 @@ export const GameTimedataSchema = z.object({
   mTimes: z.array(z.number()),
   rTimes: z.array(z.number()).nullable(),
   lMove: z.number().nullable(),
-  draws: z.array(z.boolean()).nullable(),
+  drawOffer: z.array(z.boolean()).nullable(),
 });
 
 export type GameTimedata = z.infer<typeof GameTimedataSchema>;

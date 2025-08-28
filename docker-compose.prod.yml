@@ -16,8 +16,13 @@ services:
     command: ["node", "/app/backend/config/aws.js"]
     restart: "no"
 
-  # Override redis to depend on secrets-fetcher
+  # Override redis to depend on secrets-fetcher and use production config
   redis:
+    volumes:
+      - redis-data:/data
+      - ./backend/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli -a $REDIS_PASSWORD ping"]
     depends_on:
       secrets-fetcher:
         condition: service_completed_successfully

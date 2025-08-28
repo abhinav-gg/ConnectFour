@@ -53,7 +53,7 @@ export async function createJobSet<T = any>({
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`[${queueName}] ❌ Job ${job?.id} failed:`, err);
+    console.error(`[${queueName}] ❌ Job ${job?.id} ${job?.name} failed:`, err);
   });
 
   return { queue, worker };

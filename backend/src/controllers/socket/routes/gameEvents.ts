@@ -67,6 +67,26 @@ export function registerGameHandlers(sock: Socket) {
         }
     });
     
+    // Game chat handling
+    socket.on('enquire', async (data) => {
+        try {
+            const { shortcode } = data;
+            const userId = getIdentityFromSocket(socket);
+            if (!userId) {
+                socket.emit('error', { message: 'User identity required' });
+                return;
+            }
+
+            // Create fresh GameContext at socket level
+            const gameContext = await GameContext.fromShortcode(userId, shortcode);
+            await liveGameService.checkGameHealth(gameContext);
+
+        } catch (error) {
+            console.error('Error handling game enquiry:', error);
+            socket.emit('error', { message: 'Failed to process ENQUIRY' });
+        }
+    });
+    
     
     // Game move handling
     socket.on('move', async (data) => {
@@ -130,34 +150,11 @@ export function registerGameHandlers(sock: Socket) {
 
             // Create fresh GameContext at socket level for draw offer
             const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            const response = await liveGameService.HandleDrawOffer(gameContext);
+            const response = await liveGameService.HandleDraw(gameContext);
             
-            if (response.status !== 200) {
-                socket.emit('error', { message: response.message });
-            }
         } catch (error) {
             console.error('Error handling draw offer:', error);
             socket.emit('error', { message: 'Failed to handle draw offer' });
-        }
-    });
-
-    // Draw accept
-    socket.on('draw_accept', async (data) => {
-        try {
-            const { shortcode } = data;
-            const userId = getIdentityFromSocket(socket);
-            if (!userId) {
-                socket.emit('error', { message: 'User identity required' });
-                return;
-            }
-
-            // Create fresh GameContext at socket level for draw acceptance
-            const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            await liveGameService.HandleDraw(gameContext);
-            
-        } catch (error) {
-            console.error('Error accepting draw:', error);
-            socket.emit('error', { message: 'Failed to accept draw' });
         }
     });
 

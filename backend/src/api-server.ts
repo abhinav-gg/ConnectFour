@@ -7,7 +7,7 @@ import authRouter from './controllers/api/routes/authRoutes';
 import gameRouter from './controllers/api/routes/gameRoutes';
 import { devTestRoutes } from './controllers/api/index';
 import { myConfig } from '@config/env';
-import { bootstrap } from './bootstrap';
+import { bootstrapAPI } from './bootstrap';
 
 const VERSION = "0.0.1"
 
@@ -52,7 +52,7 @@ app.get('/health', (req, res) => {
 
 async function startAPI() {
 
-  await bootstrap();
+  await bootstrapAPI();
 
   server.listen(Number(port), '0.0.0.0', () => {
     console.log(`(${VERSION}) API Server running on port ${port}`);

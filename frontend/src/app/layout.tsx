@@ -5,6 +5,7 @@ import { SocketProvider } from '@/components/providers/SocketProvider';
 import { UserProvider } from '@/components/providers/userProvider';
 import { RecaptchaProvider } from '@/components/providers/RecaptchaProvider';
 import { ErrorProvider } from '@/components/providers/errorProvider';
+import { GameSessionProvider } from '@/components/providers/gameProvider';
 import { Suspense } from 'react';
 
 export const metadata: Metadata = {
@@ -31,13 +32,17 @@ export default function RootLayout({
       <body>
         <ErrorProvider>
           <SocketProvider url={myConfig.WEBSOCKET_URL}>
-            <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
-              <UserProvider>
-                  <Suspense fallback={<div>Loading... Nicer Loading Coming Soon...</div>}>
-                    {children}
-                  </Suspense>
-              </UserProvider>
-            </RecaptchaProvider>
+            <GameSessionProvider>
+              <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
+                <UserProvider>
+                  <GameSessionProvider>
+                    <Suspense fallback={<div>Loading... Nicer Loading Coming Soon...</div>}>
+                      {children}
+                    </Suspense>
+                  </GameSessionProvider>
+                </UserProvider>
+              </RecaptchaProvider>
+            </GameSessionProvider>
           </SocketProvider>
         </ErrorProvider>
       </body>

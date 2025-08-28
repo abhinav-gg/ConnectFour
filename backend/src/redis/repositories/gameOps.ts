@@ -126,7 +126,7 @@ export function GameOperations(redis: Redis) {
 
 
     async cancelGameDrawOffer(gameId: string): Promise<void> {
-      const key = genRedisGameMeta(gameId);
+      const key = genRedisGameTime(gameId);
       await redisJson.set(key, '$.drawOffer', [false, false]);
     },
 
@@ -154,7 +154,7 @@ export function GameOperations(redis: Redis) {
         mTimes: [],
         rTimes: [],
         lMove: null,
-        draws: [],
+        drawOffer: [],
       } as GameTimedata));
     },
 

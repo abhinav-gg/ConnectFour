@@ -64,11 +64,16 @@ export const liveGameService = {
         // only add the job if it does not exist
         const existingJob = await JobSets.getGameDisconnectionQueue().getJob(jobId);
         if (!existingJob) {
+            console.log("------- CREATED DISCONNECTION JOB -------");
             await JobSets.getGameDisconnectionQueue().add(
-                jobId,
+                "game_disconnect", // Job name (can be generic)
                 {
                     gameId: gameContext.gameId,
                     playerId: gameContext.userId,
+                },
+                {
+                    jobId: jobId, // Explicitly set the job ID
+                    delay: 30000,
                 }
             );
         }
@@ -76,7 +81,6 @@ export const liveGameService = {
 
     async dropDisconnectJob(gameContext: GameContext): Promise<void> {
         // Reset the disconnect job for the game
-        // import jobset here and remove the job. (UUID is gameContext.gameId and gameContext.userId)
 
         await gameContext.validatePlayerInRoom();
         if (!gameContext.gameId || !gameContext.userId) {
@@ -87,10 +91,10 @@ export const liveGameService = {
         const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
         const job = await JobSets.getGameDisconnectionQueue().getJob(jobId);
         if (job) {
-            await job.remove();
             console.log(`❌ Canceled game disconnection job with ID: ${jobId}`);
+            await job.remove();
         } else {
-            console.log(`⚠️ Job ${jobId} not found or already processed`);
+            console.log(`⚠️ Job ${jobId} not found - may have already completed or been removed`);
         }
     },
 
@@ -110,7 +114,7 @@ export const liveGameService = {
         const timedata = await gameContext.getTimedata();
         if (!timedata) return;
 
-        const draws = timedata.draws!;
+        const draws = timedata.drawOffer!;
 
         draws[playerIndex] = true;
 
@@ -119,7 +123,7 @@ export const liveGameService = {
         } else {
             // update the draw offer in Redis
             const r = await redisOps();
-            await r.game.updateGameTimedata(gameContext.gameId!, { draws });
+            await r.game.updateGameTimedata(gameContext.gameId!, { drawOffer: draws });
 
             // notify the players about the draw offer
             const socket = getSocketIO();
@@ -334,32 +338,6 @@ export const liveGameService = {
 
         // end by storing the game to NOSQL
 
-    },
-
-
-    async HandleDrawOffer(gameContext: GameContext): Promise<ServiceResponse> {
-        // Validate player is in the game room with fresh data
-        gameContext.invalidatePlayerData();
-        await gameContext.validatePlayerInRoom();
-        
-        // Get fresh metadata to check game state
-        gameContext.invalidateMetadata();
-        const metadata = await gameContext.getMetadata();
-        if (!metadata || !gameContext.gameId) {
-            return { status: 404, message: 'Game metadata not found' };
-        }
-
-        // if game state is ended do nothing
-        // TODO: Add proper game state checks
-        
-        // TODO: Implement draw offer logic with Redis operations
-        // For now, return a placeholder response
-
-
-        // end by starting a job to store the game from gameService
-        // gameService.StoreGame(gameContext);
-
-        return { status: 200, message: 'Draw offer handled' };
     },
 
     async loadTimedGame(gameContext: GameContext): Promise<TimedStandardGame | null> {

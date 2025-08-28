@@ -135,11 +135,12 @@ export class TimedStandardGame {
     if (!this.game.gameOver) {
       return GameState.IN_PROGRESS;
     }
+    
+    if (this.timedOutPlayer != null) {
+      return this.timedOutPlayer === 0 ? GameState.RED_TIMEOUT : GameState.YELLOW_TIMEOUT;
+    }
 
     if (this.game.winner === null) {
-      if (this.timedOutPlayer !== null) {
-        return this.timedOutPlayer === 0 ? GameState.RED_TIMEOUT : GameState.YELLOW_TIMEOUT;
-      }
       return GameState.DRAW_FULL;
     }
 

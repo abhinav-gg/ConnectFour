@@ -24,13 +24,14 @@
  */
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter, useSearchParams, usePathname } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/LiveGameUI"
 import { ChatMessage, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
 import { useUser } from "@/components/providers/userProvider"
+import { useGameSession } from "@/components/providers/gameProvider"
 import { StandardGameMetadata } from "@shared/types/Websocket"
 import { PlayerData } from "@shared/types/users"
 import { GameState } from "@shared/constants/allgamestates"
@@ -43,10 +44,10 @@ export default function LiveGamePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  // Extract shortcode from URL parameter ?r=SHORTCODE
-  const [shortcode, setShortcode] = useState<string>("")
+  // 🆕 USE GAME SESSION PROVIDER
+  const { joinGame, leaveGame, isInGame, currentShortcode } = useGameSession()
   
-  // Use the existing SocketIO hook
+  // Use the existing SocketIO hook (ONLY for message handling now)
   const { sendJson, connected, onPrefixedMessage, unsubscribePrefixedMessage } = useSocketContext()
   
   // Get user context for fallback player data
@@ -75,9 +76,6 @@ export default function LiveGamePage() {
   const player1DisconnectedRef = useRef(false)
   const player2DisconnectedRef = useRef(false)
   const [animateInit, setAnimateInit] = useState(false)
-  const pathname = usePathname()
-  const prevPathRef = useRef(pathname)
-  const sentLeaveRef = useRef(false)
   
   // Calculate dynamic title based on game state
   const getDynamicTitle = (): string => {
@@ -148,8 +146,8 @@ export default function LiveGamePage() {
           break
         case "joined":
           console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
-          if (data.shortcode && shortcode && shortcode !== data.shortcode) {
-            console.error("Shortcode mismatch in matchmaking data", shortcode, data.shortcode)
+          if (data.shortcode && currentShortcode && currentShortcode !== data.shortcode) {
+            console.error("Shortcode mismatch in matchmaking data", currentShortcode, data.shortcode)
             return
           }
           setGameMode("TEST GAMEMODE")
@@ -160,7 +158,6 @@ export default function LiveGamePage() {
     })
 
     onPrefixedMessage("game", (event, data) => {
-      console.log("📨 WEBSOCKET: Received game event:", event, "with data:", data)
       switch (event) {
         case "setup": {
           const setupData = data as StandardGameMetadata
@@ -234,7 +231,6 @@ export default function LiveGamePage() {
               validatedMessage.type,
               validatedMessage.color,
             )
-            console.log("✅ CHAT: Added validated message via ref")
           } else {
             console.error("❌ CHAT: LiveGameRef not available to add message")
           }
@@ -320,7 +316,7 @@ export default function LiveGamePage() {
     })
   }, [])
 
-  // Step 2: Handle URL parameter and join matchmaking
+  // 🆕 SIMPLIFIED: Handle URL parameter and join game
   useEffect(() => {
     const roomParam = searchParams.get('r')
     
@@ -330,54 +326,16 @@ export default function LiveGamePage() {
       return
     }
     
-    setShortcode(roomParam)
+    // Use the provider to join the game
+    joinGame(roomParam)
     setGameUrl(`${window.location.origin}/game/live?r=${roomParam}`)
-    console.log("🔌 SHORTCODE: Extracted from URL parameter ?r=", roomParam)
-    
-    // Show start popup when page loads
     setShowStartPopup(true)
+    
+    console.log("🔌 GAME SESSION: Joined game via provider:", roomParam)
+  }, [searchParams, router, joinGame])
 
-    // Store the roomParam for when we connect
-    setShortcode(roomParam)
-  }, [searchParams, router, connected, sendJson])
-
-  // Join matchmaking when connected and we have a shortcode
-  useEffect(() => {
-    if (connected && shortcode) {
-      sendJson("matchmaking:join", { shortcode })
-      console.log("📤 WEBSOCKET: Sent join matchmaking with shortcode:", shortcode)
-    }
-  }, [connected, shortcode, sendJson])
-
-  useEffect(() => {
-    const cleanup = () => {
-      unsubscribePrefixedMessage("matchmaking")
-      unsubscribePrefixedMessage("game")
-      if (connected && !sentLeaveRef.current) {
-        sendJson("game:leave", {})
-        sentLeaveRef.current = true
-      }
-    }
-
-    // Trigger cleanup if navigating to a different path
-    if (prevPathRef.current !== pathname) {
-      cleanup()
-      prevPathRef.current = pathname
-    }
-
-    // Trigger cleanup on page unload
-    const handleCloseSocket = () => {
-      cleanup()
-    }
-
-    window.addEventListener('beforeunload', handleCloseSocket)
-    window.addEventListener('pagehide', handleCloseSocket)
-
-    return () => {
-      window.removeEventListener('beforeunload', handleCloseSocket)
-      window.removeEventListener('pagehide', handleCloseSocket)
-    }
-  }, [pathname, connected, sendJson])
+  // 🚫 REMOVED: Let provider handle navigation cleanup and show return popup
+  // Don't call leaveGame() on unmount - let the provider decide whether to show popup
 
   // Board animation control
   const handleResetGame = () => {
@@ -417,7 +375,7 @@ export default function LiveGamePage() {
     }
     if (connected) {
       sendJson("game:move", { 
-        shortcode, 
+        shortcode: currentShortcode, 
         move: col,
       })
       console.log("📤 WEBSOCKET: Sending move to server:", col)
@@ -433,7 +391,7 @@ export default function LiveGamePage() {
       return
     }
     if (connected) {
-      sendJson("game:chat", { shortcode, message: message.message })
+      sendJson("game:chat", { shortcode: currentShortcode, message: message.message })
     } else {
       console.log("📤 WEBSOCKET: Not connected, message not sent:", message.message)
     }
@@ -515,15 +473,21 @@ export default function LiveGamePage() {
   // Game Control Event Handlers
   const handleResign = () => {
     console.log("🏳️ RESIGN clicked")
-    sendJson("game:resign", { shortcode })
+    sendJson("game:resign", { shortcode: currentShortcode })
   }
 
   const handleOfferDraw = () => {
     console.log("🤝 OFFER DRAW clicked")
+    // check the draw status first
+    sendJson("game:draw_offer", { shortcode: currentShortcode })
   }
 
   // Analysis Event Handlers
   const handleToggleAnalysis = (enabled: boolean) => {
+    if (isGameRunningRef.current) {
+      console.error("no analysis during game")
+      return
+    }
     console.log(`🔬 ANALYSIS TOGGLED: ${enabled ? 'ON' : 'OFF'}`)
   }
 
@@ -535,8 +499,8 @@ export default function LiveGamePage() {
     console.log("🎮 START POPUP: Cancelled matchmaking")
     setShowStartPopup(false)
     if (isGameRunningRef.current) return
-    if (connected && shortcode) {
-      sendJson("matchmaking:leave", { shortcode })
+    if (connected && currentShortcode) {
+      sendJson("matchmaking:leave", { shortcode: currentShortcode })
       console.log("📤 WEBSOCKET: Sent leave matchmaking")
     }
     router.push("/play/setup")
@@ -569,8 +533,8 @@ export default function LiveGamePage() {
     if (connected) {
       // first add a 0.1s delay to ensure the UI updates
       setTimeout(() => {
-        sendJson("game:enquire", { shortcode })
-        console.log("📤 WEBSOCKET: Sent timeup event for shortcode:", shortcode)
+        sendJson("game:enquire", { shortcode: currentShortcode })
+        console.log("📤 WEBSOCKET: Sent timeup event for shortcode:", currentShortcode)
       }, 100)
     }
   }

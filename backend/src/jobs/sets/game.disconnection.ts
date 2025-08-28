@@ -17,6 +17,8 @@ export async function setupGameDisconnectJobSet(): Promise<Queue> {
     },
     defaultJobOptions: {
       delay: 30000,
+      removeOnComplete: 5, // Keep last 5 completed jobs instead of removing immediately
+      removeOnFail: 10,    // Keep last 10 failed jobs
     },
   });
 

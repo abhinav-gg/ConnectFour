@@ -5,7 +5,7 @@ import { myConfig } from '@config/env';
 import { verifySocket, sendSocketUserToGame } from '@/lib/game.middleware';
 import { initSocketIO } from '@/controllers/socket/index'
 import { registerSocketHandler } from '@/controllers/socket/handlers'
-import { bootstrap } from './bootstrap';
+import { bootstrapSocket } from './bootstrap';
 import { liveGameService } from './services/livegame.service';
 
 
@@ -78,7 +78,7 @@ io.on('disconnect', async (socket) => {
 
 async function startSocketio() {
 
-  await bootstrap()
+  await bootstrapSocket();
 
   server.listen(Number(port), '0.0.0.0', () => {
     console.log(`(${VERSION}) Socket server running on port ${port}`);
