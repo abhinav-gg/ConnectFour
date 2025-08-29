@@ -2,7 +2,7 @@
 import Redis from 'ioredis';
 import { RedisSchema } from '../redisSchema'; // Adjust the import path as necessary
 import { scanKeysPaginated, scanKeysWithTTL } from '../redisHelper';
-import { generateUUID } from '@/lib/auth/auth';
+import { generateUUID } from '@/utils/auth';
 
 export function UserOperations(redis: Redis) {
   const genRedisSessionKey = RedisSchema.session.key; // Adjust the key generation function as necessary

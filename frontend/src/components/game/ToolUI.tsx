@@ -7,9 +7,9 @@ import { ColumnAnalysis } from "@/components/game/utility/column-analysis"
 import { MoveHistory } from "@/components/game/utility/move-history"
 import { OpeningDescription } from "@/components/game/utility/opening"
 import { EnterMoves } from "@/components/game/utility/enter-moves"
-import { StandardGame } from "@shared/utils/Games/game"
 import { useWASM } from "@/components/providers/wasmProvider"
 import { getEvaluationText } from "@/utils/colors"
+import { HistoryStandardGame } from "@shared/utils/Games/history-game"
 
 export interface ToolUIRef {
   // Add any methods you want to expose to parent components
@@ -17,7 +17,7 @@ export interface ToolUIRef {
 
 interface ToolUIProps {
   // Game and Move History Props
-  game?: StandardGame
+  game?: HistoryStandardGame
   gameStateVersion?: number // Version number to detect game state changes
   currentMoveIndex?: number
   movesOverride?: number[]
@@ -33,7 +33,6 @@ interface ToolUIProps {
   
   // Enter Moves Props
   showEnterMoves?: boolean
-  enterMovesDisabled?: boolean
   enterMovesPlaceholder?: string
   
   // Event Handlers
@@ -56,7 +55,6 @@ const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
     openingDescription,
     showOpeningDescription = false,
     showEnterMoves = true,
-    enterMovesDisabled = false,
     enterMovesPlaceholder,
     onMoveClick,
     onToggleAnalysis,
@@ -313,7 +311,6 @@ const ToolUI = forwardRef<ToolUIRef, ToolUIProps>((props, ref) => {
             >
               <EnterMoves
                 onSubmitMoves={handleSubmitMoves}
-                disabled={enterMovesDisabled}
                 placeholder={enterMovesPlaceholder}
                 game={game} // Pass the game prop for export functionality
               />

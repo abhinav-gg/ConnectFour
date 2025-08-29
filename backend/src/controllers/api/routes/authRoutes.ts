@@ -1,18 +1,18 @@
 // src/routes/authRoutes.ts
 import { NextFunction, Router, Request, Response } from 'express';
-import { authenticateAdmin, authenticateSession, verifyRecaptcha, requireUnauthenticated, optionalAuth, AuthenticatedRequest, getReqPlayerUUID, requireReqUserUUID } from '@/lib/auth/middleware';
+import { authenticateAdmin, authenticateSession, verifyRecaptcha, requireUnauthenticated, optionalAuth, AuthenticatedRequest, getReqPlayerUUID, requireReqUserUUID } from '@/lib/middleware/auth.middleware';
 import { authService } from '@/services/auth.service';
 import { ServiceResponse, GoogleTokenResponse } from '@/types/custom';
 import { UserAccountProvider } from "@shared/types/users";
 import { myConfig } from '@config/env';
 import { RegUser, UserRegistration } from '@/db/models/User';
-import { generateSessionToken, hashPassword } from '@/lib/auth/auth';
+import { generateSessionToken, hashPassword } from '@/utils/auth';
 import { validateEmail, validatePassword, validateUsername } from '@shared/utils/validation';
 import { EmailDoesNotExist, EmailExists, UsernameExists } from '@/types/dbErrors';
 import { APIResponse } from '@shared/types/Responses';
 import { RedisSchema } from '@/redis/redisSchema';
 import { userService } from '../../../services/user.service';
-import { sendUserToGame } from '@/lib/game.middleware';
+import { sendUserToGame } from '@/lib/middleware/game.middleware';
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 

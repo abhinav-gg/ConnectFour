@@ -1,7 +1,7 @@
 import { Socket } from "socket.io";
 import { withNamespace } from "../handlers";
 import { liveGameService } from "@/services/livegame.service";
-import { getIdentityFromSocket } from "@/lib/game.middleware";
+import { getIdentityFromSocket } from "@/lib/middleware/game.middleware";
 import { GameContext } from "@/utils/gameContext";
 import { RoomSchema } from "../socketRoomSchema";
 
@@ -30,28 +30,7 @@ export function registerGameHandlers(sock: Socket) {
             socket.emit('error', { message: 'Failed to process CHAT' });
         }
     });
-    
-    // Game chat handling
-    socket.on('enquire', async (data) => {
-        try {
-            const { shortcode } = data;
-            const userId = getIdentityFromSocket(socket);
-            if (!userId) {
-                socket.emit('error', { message: 'User identity required' });
-                return;
-            }
 
-            // Create fresh GameContext at socket level
-            const gameContext = await GameContext.fromShortcode(userId, shortcode);
-            await liveGameService.checkGameHealth(gameContext);
-
-        } catch (error) {
-            console.error('Error handling game enquiry:', error);
-            socket.emit('error', { message: 'Failed to process ENQUIRY' });
-        }
-    });
-    
-    
     // Game move handling
     socket.on('move', async (data) => {
         try {

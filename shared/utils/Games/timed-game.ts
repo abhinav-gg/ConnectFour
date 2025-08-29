@@ -1,9 +1,11 @@
-import { StandardGame } from './game';
+import { HistoryStandardGame } from './history-game';
 import { GameInfo, Move, Player, TimedMoveResult } from '../../types/game';
 import { GameState } from '@shared/constants/allgamestates';
+import { GameMode } from '@shared/constants/allgamemodes';
+import { ArmageddonModes, sRankedArmageddonModes, StandardModes } from '../gamemodes';
 
 export class TimedStandardGame {
-  private game: StandardGame;
+  private game: HistoryStandardGame;
 
   private lastMoveTimestamp: number | null = null; // Track last move timestamp for timing
   private timeLeft: [number, number];
@@ -13,7 +15,7 @@ export class TimedStandardGame {
   constructor(
     gameInfo:GameInfo, // 5 min in ms
   ) {
-    this.game = new StandardGame();
+    this.game = new HistoryStandardGame();
     this.gameInfo = gameInfo;
     // consider verifying the gamemode is standard here in the future
     this.timeLeft = [1000 * (gameInfo.time_control.base_time),
@@ -27,7 +29,7 @@ export class TimedStandardGame {
     }
     this.timeLeft = pTimes as [number, number];
     this.lastMoveTimestamp = lMove;
-    this.game = new StandardGame(GameString);
+    this.game = new HistoryStandardGame(GameString);
 
     // once this is done, assert the current player provided is the game current player
     if (cTurn !== this.game.currentPlayer) {
@@ -45,6 +47,11 @@ export class TimedStandardGame {
       return {
         success: false,
       };
+    }
+
+    // Check if we're at the end of move history before making move
+    if (this.game.getCurrentMoveIndex() !== this.game.getMoves().length - 1) {
+      throw new Error('Cannot make a move when the current move index is not the last move.');
     }
 
     const result = this.game.makeMove(col);
@@ -86,20 +93,12 @@ export class TimedStandardGame {
   }
 
   // Proxy StandardGame methods
-  getMoves(): Move[] {
-    return this.game.getMoves();
+  exportMoves(): string {
+    return this.game.exportMoves();
   }
 
   getBoard() {
     return this.game.getBoard();
-  }
-
-  setMoveIndex(index: number): boolean {
-    return this.game.setMoveIndex(index);
-  }
-
-  adjMoveIndex(delta: number): boolean {
-    return this.game.adjMoveIndex(delta);
   }
 
   prettyPrintBoard(): string {
@@ -127,21 +126,27 @@ export class TimedStandardGame {
   }
 
   getCurrentMoveIndex(): number {
-    return this.game.currentMoveIndex;
+    return this.game.getCurrentMoveIndex();
   }
 
-  getGameState(): GameState {
+  getGameState(gamemode: GameMode): GameState {
    
     if (!this.game.gameOver) {
       return GameState.IN_PROGRESS;
     }
-    
+
     if (this.timedOutPlayer != null) {
       return this.timedOutPlayer === 0 ? GameState.RED_TIMEOUT : GameState.YELLOW_TIMEOUT;
     }
 
     if (this.game.winner === null) {
-      return GameState.DRAW_FULL;
+      if (ArmageddonModes.has(gamemode)) {
+        return GameState.YELLOW_WIN; // YELLOW WINS A DRAWN ARMAGEDDON GAME
+      } else if (StandardModes.has(gamemode)) {
+        return GameState.DRAW_FULL;
+      } else {
+        throw new Error("Unknown game mode");
+      }
     }
 
     return this.game.winner === 0 ? GameState.RED_WIN : GameState.YELLOW_WIN;
@@ -156,5 +161,13 @@ export class TimedStandardGame {
     return this.timedOutPlayer !== null;
   }
 
+  // Move navigation methods (delegated to HistoryStandardGame)
+  setMoveIndex(index: number): boolean {
+    return this.game.setMoveIndex(index);
+  }
+
+  adjMoveIndex(delta: number): boolean {
+    return this.game.adjMoveIndex(delta);
+  }
 
 }

@@ -5,17 +5,17 @@ import { EloChange, GameInfo, TimeControl } from "@shared/types/game";
 import { PlayerData } from "@shared/types/users";
 import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes } from "@shared/utils/gamemodes";
 import { packGameInfo, packGameInfoToString } from "@/utils/binary";
-import { GameState } from "@shared/constants/allgamestates";
+import { FinishedGameStates, GameState } from "@shared/constants/allgamestates";
 import { calculateEloChanges, genGameShortcode } from "@/utils/game";
-import { generateUUID } from "@/lib/auth/auth";
+import { generateUUID } from "@/utils/auth";
 import { GameMetadata, GameMetadataSchema, UserQueue } from "@/redis/redisSchema";
 import { isUserIdentity, makeUserIdentity, parseUser } from "@/utils/validation";
-import { UUID } from "crypto";
 import { getSocketIO } from "@/controllers/socket";
 import { userService } from "./user.service";
-import { AllGameModes } from "@shared/constants/allgamemodes";
+import { AllGameModes, GameMode } from "@shared/constants/allgamemodes";
 import { RoomSchema } from "@/controllers/socket/socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
+import { liveGameService } from "./livegame.service";
 
 export const gameService = {
   
@@ -29,7 +29,7 @@ export const gameService = {
         const r = await redisOps();
 
         // check if user is already in a game or in a queue
-        const gameId = await this.getGameIDOfPlayer(gameContext.userId);
+        const gameId = await gameContext.resolveGameId();
         console.log("User is in game with ID:", gameId);
         if (gameId) {
             try {
@@ -292,37 +292,60 @@ export const gameService = {
             throw new Error('Game ID is null');
         }
 
-        const r = await redisOps();
-
         // Get all game data using GameContext for consistency
-        const { metadata: gameMeta, timedata: gameTimes, moves: gameMoves } = await gameContext.getAllGameData();
-        if (!gameMeta || !gameTimes) {
+        const { metadata, timedata, moves } = await gameContext.getAllGameData();
+        if (!metadata || !timedata) {
             throw new Error('Game not found in redis');
         }
 
-        // process data here 
-
-        // Store the game shortcode map in the NOSQL database game shortcode table if there is one
-        const Game = {
-            p: gameId,
-            c: gameMeta.shortcode,
-            u: gameMeta.players,
-            d: null,
-            i: null,
-            r: gameMeta.state,
+        if (!FinishedGameStates.has(metadata.state)) {
+            throw new Error('Game is not finished');
         }
 
-        // For each player in the game, store in the playerdata table
 
-        // filter the players from the game metadata by isUserIdentity
-        const requiredPlayers = gameMeta.players.filter(playerId => isUserIdentity(playerId));
+        if (StandardModes.has(metadata.gamemode)) {
+            
+
+
+
+            const timedGame = liveGameService.loadTimedGame(gameContext);
+    
+            // Store the game shortcode map in the NOSQL database game shortcode table if there is one
+            const Game = {
+                p: gameId,
+                c: metadata.shortcode,
+                u: metadata.players,
+                d: null, // TODO
+                i: null, // TODO
+                r: metadata.state,
+            }
+    
+            const ReverseMap = {
+                p: metadata.shortcode,
+                g: gameId
+            };
+
+            // TODO: DDB setting here
+    
+            // For each player in the game, store in the playerdata table
+            // get elos from game queue
+            const eloChanges = await this.getGameEloChanges(gameContext);
+    
+            // filter the players from the game metadata by isUserIdentity
+            const requiredPlayers = metadata.players.filter(playerId => isUserIdentity(playerId));
+
+            for (const player of requiredPlayers) {
+                // recalculate the elo change with the result of the game (it is a pure function)
+                const eloChange = eloChanges.get(player);
+                const playerData = {}
+
+            }
+
+        } else {
+            throw new Error('Game is not in a valid state for storing');
+        }
         
-        // get elos from game queue
 
-        // recalculate the elo change with the result of the game (it is a pure function)
-
-        // TODO: Implement actual game storage logic
-        console.log('Game storage not yet implemented', Game, requiredPlayers);
     },
 
     async AssignPlayerToGame (gameContext: GameContext, elo?: number | null): Promise<void> {
@@ -452,15 +475,9 @@ export const gameService = {
         return false;
     },
 
-    async checkPlayerInRoom(gameContext: GameContext): Promise<void> {
-        // Always validate with fresh data for security
-        gameContext.invalidatePlayerData();
-        await gameContext.validatePlayerInRoom();
-    },
-
     async checkPlayerInGame(gameContext: GameContext): Promise<void> {
         // check that the player is not already in a game and exists in the redis players list
-        const myId = await this.getGameIDOfPlayer(gameContext.userId);
+        const myId = await gameContext.resolveGameId();
         if (myId && myId === gameContext.gameId) {
             return; // Player is in the game
         } 
@@ -476,56 +493,7 @@ export const gameService = {
 
         
     },
-
-    async GetGameIDByShortCode (shortCode: string): Promise<string | null> {
-        // check the game exists in redis
-
-        const r = await redisOps();
-        const gameId = await r.game.findGameByShortcode(shortCode);
-
-        if (gameId) {
-            return gameId;
-        }
-
-        // if not, check the game exists in the NOSQL database
-        const possibleId = await dynamoDBOps.game.GetGameByShortCode(shortCode)
-
-        if (possibleId) {
-            return possibleId;
-        }
-
-        // if not, the game does not exist
-        
-        return null; // Placeholder for actual logic to get game ID by short code
-    },
-
-
-    async getGameIDOfPlayer (userId: string): Promise<string | null> {
-        const r = await redisOps();
-        return await r.game.getUserQueueGameId(userId);
-    },
-
-    async getGameShortCodeOfPlayer (gameContext: GameContext): Promise<string | null> {
-        try {
-            // First try to get gameId from the current context
-            const gameId = await gameContext.resolveGameId();
-            if (!gameId) return null;
-
-            // Use the current context to get metadata
-            const metadata = await gameContext.getMetadata();
-            return metadata?.shortcode || null;
-        } catch (error) {
-            // Fallback to direct Redis call if GameContext fails
-            const r = await redisOps();
-            const gameId = await r.game.getUserQueueGameId(gameContext.userId);
-            if (!gameId) return null;
-            
-            const gameMeta = await r.game.getGameMetadata(gameId);
-            return gameMeta?.shortcode || null;
-        }
-    },
-
-    
+   
     async getGameEloChanges (gameContext: GameContext): Promise<Map<string, EloChange>> {
         // Get elo changes for all players in the game
         const eloChanges: Map<string, EloChange> = new Map();
@@ -544,8 +512,6 @@ export const gameService = {
                 // Casual games do not have elo changes
                 return eloChanges;
             }
-
-            // GET THE ELO CHANGES HERE
 
             const p1Id  = parseUser(gameMeta.players[0]);
             const p2Id  = parseUser(gameMeta.players[1]);

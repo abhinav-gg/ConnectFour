@@ -1,6 +1,7 @@
 import { Queue } from 'bullmq';
 import { setupEmailJobSet } from './sets/email';
 import { setupGameDisconnectJobSet } from './sets/game.disconnection';
+import { setupGameTimeoutJobSet } from './sets/game.timeout';
 import { JobKeys } from './jobKeys';
 
 // Process-wide singleton registry backed by globalThis to survive duplicate imports/HMR
@@ -34,6 +35,12 @@ export function getGameDisconnectionQueue(): Queue {
   return q;
 }
 
+export function getGameTimeoutQueue(): Queue {
+  const q = QueueStore.get(JobKeys.game_timeout.queueName);
+  if (!q) throw new Error('Game timeout queue not initialized. Call setupAllJobs() first.');
+  return q;
+}
+
 // Ensure (setup-once) helpers
 async function ensureQueue(name: string, setup: () => Promise<Queue>) {
   const existing = QueueStore.get(name);
@@ -52,6 +59,7 @@ export async function setupAllAPIJobs() {
 // Bootstrap API
 export async function setupAllSocketJobs() {
   await ensureQueue(JobKeys.game_disconnect.queueName, setupGameDisconnectJobSet);
+  await ensureQueue(JobKeys.game_timeout.queueName, setupGameTimeoutJobSet);
 
 }
 

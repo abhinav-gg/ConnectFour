@@ -13,7 +13,18 @@
  * Console Log Categories:
  * 🎮 Game Controls (start, pause, reset)
  * 🎯 Board Interactions (column attempts)
- * 💬 Chat Messages (send/receive)
+ * 💬 Cha      // Going backwards - undo moves from current to target
+      for (let i = fromIndex; i > toIndex; i--) {
+        const move = moves[i - 1] // Get previous move
+        const game = gameHistory.game
+        const row = game?.getAvailableRow(move) ?? 0 // Already points to the correct row to remove from
+        const player = (i - 1) % 2 // Player alternates each move
+        unifiedLayoutRef.current.undoMoveAnimation(row, move, player)
+      }
+    } else {
+      // Going forwards - replay moves from current to target
+      for (let i = Math.max(1, fromIndex + 1); i <= toIndex; i++) {
+        const game = gameHistory.gamesend/receive)
  * 📖 Move History (navigation, clicks)
  * 🏳️ Game Actions (resign, draw)
  * 🔬 Analysis Controls (toggle, settings)
@@ -63,6 +74,7 @@ export default function LiveGamePage() {
   const pTimesRef = useRef<[number, number]>([0, 0])
   const isGameRunningRef = useRef(false)
   const eloChangesRef = useRef<EloChange | null>(null)
+  
   const myGame = useRef(new StandardGame())
 
   // UI + rendering version signals (simplified)
@@ -79,15 +91,17 @@ export default function LiveGamePage() {
   const [animateInit, setAnimateInit] = useState(false)
   
   // Dynamic header state for better flexibility
-  const [dynamicHeader, setDynamicHeader] = useState<string>("Loading...")
+  const [dynamicHeader, setDynamicHeader] = useState<string>("Game Starting...")
   
   // Calculate dynamic title based on game state
-  const getDynamicTitle = (): string => {
-    if (!isGameRunningRef.current) return "Game Paused"
-    if (isSpectating) return "Spectating"
-    
+  const setStandardTitle = () => {
+    let head;
+    if (!isGameRunningRef.current) head = "Game Paused"
+    if (isSpectating) head = "Spectating"
+
     const isMyTurn = currentTurnRef.current === (isRedRef.current ? 0 : 1)
-    return isMyTurn ? "Your Turn!" : "Waiting..."
+    head = isMyTurn ? "Your Turn!" : "Waiting..."
+    setDynamicHeader(head);
   }
 
   // Mark board as ready 
@@ -124,7 +138,7 @@ export default function LiveGamePage() {
 
   // Update dynamic header when game state changes
   useEffect(() => {
-    setDynamicHeader(getDynamicTitle())
+    setStandardTitle()
   }, [isGameRunningRef.current, isSpectating, currentTurnRef.current, isRedRef.current, gameVersion])
 
   const [startSFX] = [useSound("/sounds/start.mp3")]
@@ -254,21 +268,13 @@ export default function LiveGamePage() {
 
           // Animate on board immediately
           if (unifiedLayoutRef.current) {
-            // If we're not at the last move, animate back to current first
-            const currentIndex = myGame.current.currentMoveIndex
-            const moves = myGame.current.getMoves()
-            if (currentIndex < moves.length - 1) {
-              // Animate from current position to latest before showing new move
-              animateMoveTransition(currentIndex + 1, moves.length)
-            }
             unifiedLayoutRef.current.triggerMoveAnimation(moveData.row, moveData.col, moveData.player)
           }
-
+          
           // Commit to model immediately and sync UI
           try { 
             myGame.current.makeMove(moveData.col)
             // Ensure we're viewing the latest move
-            myGame.current.setMoveIndex(myGame.current.getMoves().length - 1)
           } catch (e) { 
             console.error("❌ GAME: Failed to commit move", moveData.col, e) 
           }
@@ -278,7 +284,7 @@ export default function LiveGamePage() {
           pTimesRef.current = moveData.rTimes
           currentTurnRef.current = 1 - moveData.player
           isGameRunningRef.current = true
-
+          
           setGameVersion(v => v + 1)
           break
         }
@@ -327,7 +333,7 @@ export default function LiveGamePage() {
             )
             
             if (isOpponentReconnected) {
-              setDynamicHeader(getDynamicTitle()) // Reset to normal title
+              setStandardTitle() // Reset to normal title
               liveGameRef.current?.addSystemMessage("Opponent Reconnected!")
             }
           }
@@ -361,6 +367,41 @@ export default function LiveGamePage() {
               // Send chat alert and update header
               liveGameRef.current?.addSystemMessage("Opponent Disconnected...")
               setDynamicHeader("Opponent Disconnected...")
+            } else {
+              // This shouldn't happen - we got disconnect event for ourselves
+              console.error("❌ GAME: Received disconnect event for myself", { player, isRed: isRedRef.current })
+            }
+          }
+
+          setGameVersion((v) => v + 1)
+          break
+        }
+        case "reconnect": {
+          const { player } = data
+          
+          // Set disconnection state based on player position and spectator status
+          if (isSpectating) {
+            // For spectators: player 0 is top position (player1 in layout)
+            if (player === 0) {
+              player1DisconnectedRef.current = false
+            } else if (player === 1) {
+              player2DisconnectedRef.current = false
+            }
+          } else {
+            // For players: map game player indices to UI positions
+            // If I'm red (player 0), opponent is yellow (player 1) and vice versa
+            const isOpponentReconnected = (
+              (isRedRef.current && player === 1) || // I'm red, yellow reconnected
+              (!isRedRef.current && player === 0)   // I'm yellow, red reconnected
+            )
+            
+            if (isOpponentReconnected) {
+              // Opponent reconnected - they are in player1 position (top)
+              player1DisconnectedRef.current = false
+              
+              // Send chat alert and update header
+              liveGameRef.current?.addSystemMessage("Opponent Disconnected...")
+              setStandardTitle();
             } else {
               // This shouldn't happen - we got disconnect event for ourselves
               console.error("❌ GAME: Received disconnect event for myself", { player, isRed: isRedRef.current })
@@ -487,47 +528,27 @@ export default function LiveGamePage() {
 
   const handleMoveClick = (moveIndex: number) => {
     console.log(`📖 MOVE CLICKED: Move ${moveIndex}`)
-    const currentIndex = myGame.current.currentMoveIndex
-    animateMoveTransition(currentIndex + 1, moveIndex)
-    myGame.current.setMoveIndex(moveIndex - 1) // -1 because index is 0-based
     bumpGame()
   }
 
   const handleFirstMove = () => {
     console.log("⏮️ FIRST MOVE clicked")
-    const currentIndex = myGame.current.currentMoveIndex
-    animateMoveTransition(currentIndex + 1, 0)
-    myGame.current.setMoveIndex(-1)
     bumpGame()
   }
 
   const handlePreviousMove = () => {
     console.log("⏪ PREVIOUS MOVE clicked")
-    const currentIndex = myGame.current.currentMoveIndex
-    if (currentIndex >= 0) {
-      animateMoveTransition(currentIndex + 1, currentIndex)
-      myGame.current.adjMoveIndex(-1)
-      bumpGame()
-    }
+    bumpGame()
+    
   }
 
   const handleNextMove = () => {
     console.log("⏩ NEXT MOVE clicked")
-    const currentIndex = myGame.current.currentMoveIndex
-    const moves = myGame.current.getMoves()
-    if (currentIndex < moves.length - 1) {
-      animateMoveTransition(currentIndex + 1, currentIndex + 2)
-      myGame.current.adjMoveIndex(1)
-      bumpGame()
-    }
+    bumpGame()
   }
 
   const handleLastMove = () => {
     console.log("⏭️ LAST MOVE clicked")
-    const currentIndex = myGame.current.currentMoveIndex
-    const moves = myGame.current.getMoves()
-    animateMoveTransition(currentIndex + 1, moves.length)
-    myGame.current.setMoveIndex(moves.length - 1)
     bumpGame()
   }
 
@@ -645,7 +666,7 @@ export default function LiveGamePage() {
         initialChatMessages={chatMessages}
         game={myGame.current}
         meRef={meRef}
-        currentMoveIndex={myGame.current.currentMoveIndex}
+        currentMoveIndex={2}
         onMessageSent={handleMessageSent}
         onMoveClick={handleMoveClick}
         onFirstMove={handleFirstMove}

@@ -1,3 +1,4 @@
+
 // lib/jobs/sets/game.disconnection.ts
 import { createJobSet } from '../utils/createJobSet';
 import type { Queue } from 'bullmq';
@@ -5,18 +6,25 @@ import { liveGameService } from '@/services/livegame.service';
 import { GameContext } from '@/utils/gameContext';
 import { JobKeys } from '../jobKeys';
 
-export async function setupGameDisconnectJobSet(): Promise<Queue> {
+export async function setupGameTimeoutJobSet(): Promise<Queue> {
   const { queue } = await createJobSet({
-    queueName: JobKeys.game_disconnect.queueName,
+    queueName: JobKeys.game_timeout.queueName,
     processor: async (job) => {
-      const { gameId, playerId } = job.data;
-      // Logic to handle game disconnection
-      const gameContext = await GameContext.fromGameId(playerId, gameId);
-      await liveGameService.DisconnectPlayer(gameContext);
-      return { success: true };
+      
+      
+        const { userId, gameId } = job.data;
+        try {
+
+            // Create fresh GameContext at socket level
+            const gameContext = await GameContext.fromGameId(userId, gameId);
+            await liveGameService.checkGameHealth(gameContext);
+
+        } catch (error) {
+            console.error('Error handling game enquiry:', error);
+        }
+
     },
     defaultJobOptions: {
-      delay: 30000,
       removeOnComplete: 5, // Keep last 5 completed jobs instead of removing immediately
       removeOnFail: 10,    // Keep last 10 failed jobs
     },
@@ -26,4 +34,6 @@ export async function setupGameDisconnectJobSet(): Promise<Queue> {
 }
 
 // Note: Getters are centralized in jobs/index.ts
+
+
 

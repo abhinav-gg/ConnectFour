@@ -10,8 +10,24 @@ interface ToggleProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string
 }
 
+// Hook to detect screen size
+const useIsLargeScreen = () => {
+  const [isLarge, setIsLarge] = React.useState(false)
+  
+  React.useEffect(() => {
+    const checkSize = () => setIsLarge(window.innerWidth >= 1024)
+    checkSize()
+    window.addEventListener('resize', checkSize)
+    return () => window.removeEventListener('resize', checkSize)
+  }, [])
+  
+  return isLarge
+}
+
 const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
   ({ checked, onCheckedChange, className, ...props }, ref) => {
+    const isLargeScreen = useIsLargeScreen()
+    
     return (
       <button
         ref={ref}
@@ -27,8 +43,10 @@ const Toggle = React.forwardRef<HTMLButtonElement, ToggleProps>(
         {...props}
       >
         <motion.div
-          className="absolute top-0.5 w-5 h-5 lg:w-6 lg:h-6 bg-white rounded-full shadow-md"
-          animate={{ x: checked ? "calc(100% + 2px)" : "2px" }} // Adjust x based on size
+          className="absolute top-0.5 left-0.5 w-5 h-5 lg:w-6 lg:h-6 bg-white rounded-full shadow-md"
+          animate={{ 
+            x: checked ? (isLargeScreen ? 28 : 24) : 0 // 24px for base (w-12 - w-5 - padding), 28px for lg (w-14 - w-6 - padding)
+          }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
       </button>

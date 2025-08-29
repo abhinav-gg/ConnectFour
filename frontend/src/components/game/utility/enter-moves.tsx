@@ -8,14 +8,12 @@ import type { StandardGame } from "@shared/utils/Games/game"
 
 interface EnterMovesProps {
   onSubmitMoves?: (moves: number[]) => void
-  disabled?: boolean
   placeholder?: string
   game?: StandardGame // Add game prop for export functionality
 }
 
 export function EnterMoves({
   onSubmitMoves,
-  disabled = false,
   placeholder = "Enter moves",
   game, // Add game prop
 }: EnterMovesProps) {
@@ -124,7 +122,6 @@ export function EnterMoves({
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder={placeholder}
-              disabled={disabled}
               className={`
                 w-full min-h-[40px] max-h-[72px] resize-none overflow-y-auto
                 rounded-md border px-3 py-2 text-sm text-white 
@@ -142,7 +139,7 @@ export function EnterMoves({
           {/* Submit Button - Arrow Icon */}
           <Button
             onClick={handleSubmit}
-            disabled={disabled || !inputValue.trim()}
+            disabled={!inputValue.trim()}
             className="bg-brand-accent-green hover:bg-brand-accent-green/90 text-white px-3 h-[40px]"
             size="sm"
           >

@@ -60,7 +60,7 @@ export class SelfAnalysis {
   }
 
 
-  printAllEval() {
+  printAllEval() { // dev command
       const pos = this.gameState.exportMoves();
       let emptyPos = "";
 
@@ -75,14 +75,12 @@ export class SelfAnalysis {
 
 
   getLastMoveAcc(pos: string) {
-    
     const alpha = 0.8; // WEIGHTING
-
 
     const p = pos ?? this.gameState.exportMoves();
     if (p.length === 0) return -1;
     const position = p.slice(0, -1); // Remove last move
-    const analysis = this.solver.analyzePosition(p);
+    const analysis = this.solver.analyzePosition(position);
     const sortedAnal = this.sortedBestMoves(analysis);
     const move = Number(p.at(-1)) - 1;
     const n = sortedAnal.length;
@@ -97,7 +95,6 @@ export class SelfAnalysis {
 
   getAverageAccuracy(aPlayer?: number) {
 
-    
     let Accuracy = [];
     const player = aPlayer ?? this.gameState.currentPlayer;
     // iterate through all the moves made

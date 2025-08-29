@@ -2,7 +2,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { myConfig } from '@config/env';
-import { verifySocket, sendSocketUserToGame } from '@/lib/game.middleware';
+import { verifySocket, sendSocketUserToGame } from '@/lib/middleware/game.middleware';
 import { initSocketIO } from '@/controllers/socket/index'
 import { registerSocketHandler } from '@/controllers/socket/handlers'
 import { bootstrapSocket } from './bootstrap';

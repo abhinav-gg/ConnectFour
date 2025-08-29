@@ -11,8 +11,7 @@ interface TimerProps {
   color?: "red" | "yellow"
   lastMoveTimestamp?: number // Unix timestamp of the last move
   onTimeUp?: () => void
-  isDisconnected?: boolean // New: indicates if the player is disconnected
-  disconnectedRef?: React.MutableRefObject<boolean> // New: ref for disconnect state
+  disconnectedRef?: React.MutableRefObject<boolean> // Ref for disconnect state
 }
 
 export function Timer({
@@ -21,7 +20,6 @@ export function Timer({
   color = "yellow",
   lastMoveTimestamp,
   onTimeUp,
-  isDisconnected = false,
   disconnectedRef,
 }: TimerProps) {
   const [displayMilliseconds, setDisplayMilliseconds] = useState(millisecondsLeft)
@@ -34,8 +32,8 @@ export function Timer({
     return Math.min(millisecondsLeft, DISCONNECTION_TIMEOUT)
   }
   
-  // Check if player is currently disconnected (from ref or prop)
-  const isPlayerDisconnected = disconnectedRef?.current ?? isDisconnected
+  // Check if player is currently disconnected (from ref only)
+  const isPlayerDisconnected = disconnectedRef?.current ?? false
 
   // Calculate accurate remaining time based on last move timestamp
   const calculateRemainingTime = (): number => {
@@ -109,12 +107,12 @@ export function Timer({
   }
 
   const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000)
+    const totalSeconds = Math.ceil(ms / 1000) // Round UP to next second
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
 
     if (totalSeconds < 10) {
-      const centiseconds = Math.floor((ms % 1000) / 10) // Show centiseconds for urgency
+      const centiseconds = Math.ceil((ms % 1000) / 10) // Round UP centiseconds too
       return `${seconds}.${centiseconds.toString().padStart(2, "0")}`
     }
 

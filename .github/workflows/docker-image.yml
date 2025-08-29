@@ -43,7 +43,7 @@ jobs:
 
       - name: Build image locally without GHCR tag
         run: |
-          docker-compose build
+          docker-compose -f docker-compose.prod.yml build
 
       - name: Tag image for GHCR
         run: |

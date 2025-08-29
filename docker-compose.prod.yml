@@ -1,39 +1,45 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  # Secrets fetcher - only runs in production
-  secrets-fetcher:
-    build: 
-      context: .
-      dockerfile: backend.Dockerfile
-    container_name: secrets-fetcher
-    environment:
-      - NODE_ENV=production
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-      - SECRET_NAME=${SECRET_NAME:-connectfour/production}
-    volumes:
-      - ./backend:/app/backend
-    command: ["node", "/app/backend/config/aws.js"]
-    restart: "no"
-
-  # Override redis to depend on secrets-fetcher and use production config
   redis:
+    image: redis/redis-stack-server:latest
+    container_name: redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     volumes:
       - redis-data:/data
-      - ./backend/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    healthcheck:
-      test: ["CMD", "sh", "-c", "redis-cli -a $REDIS_PASSWORD ping"]
-    depends_on:
-      secrets-fetcher:
-        condition: service_completed_successfully
-  
-  # Override api to depend on secrets-fetcher
+      - ./backend/redis.prod.conf:/usr/local/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
   api:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: express-api
+    restart: always
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       redis:
         condition: service_healthy
-      secrets-fetcher:
-        condition: service_completed_successfully
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      NODE_ENV: production
+      # Add any other required vars
+      JWT_SECRET: ${JWT_SECRET}
 
 volumes:
   redis-data:

@@ -1,11 +1,11 @@
 "use client"
 
-import { StandardGame } from "@shared/utils/Games/game"
+import { HistoryStandardGame } from "@shared/utils/Games/history-game"
 import { motion } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
 
 interface MoveHistoryProps {
-  game: StandardGame
+  game: HistoryStandardGame
   onMoveClick?: (moveIndex: number) => void
   // Optional override to display a custom moves array (e.g., include pending animated move)
   moves?: number[]
@@ -50,7 +50,7 @@ export function MoveHistory({ game, onMoveClick, moves: movesOverride }: MoveHis
   const settings = getResponsiveSettings()
 
   // Prefer explicit moves if provided; fallback to game model
-  const moves = movesOverride ?? game.getMoves()
+  const ALLmoves = movesOverride ?? game.getAllMoves()
 
   return (
     <div className="h-full flex flex-col">
@@ -67,7 +67,7 @@ export function MoveHistory({ game, onMoveClick, moves: movesOverride }: MoveHis
             gridTemplateColumns: `repeat(${settings.cols}, minmax(0, 1fr))`,
           }}
         >
-          {moves.map((move: number, index: number) => (
+          {ALLmoves.map((move: number, index: number) => (
             <motion.div
               key={`${index + 1}-${index}`}
               className="flex items-center justify-start gap-0.5 sm:gap-1 min-w-0"

@@ -3,13 +3,33 @@
 import React, { useRef, useState, useEffect, useCallback } from "react"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import ToolUI from "@/components/game/ToolUI"
-import { StandardGame } from "@shared/utils/Games/game"
+import { HistoryStandardGame } from "@shared/utils/Games/history-game"
+import { useGameHistory } from "@/components/game/gameHistoryService"
 import { WASMProvider, useWASM } from "@/components/providers/wasmProvider"
 
 function ToolsPageContent() {
   // Simple state management like SingleplayerBoardHandler
-  const gameRef = useRef<StandardGame>(new StandardGame())
+  const gameRef = useRef<HistoryStandardGame>(new HistoryStandardGame())
   const unifiedLayoutRef = useRef<any>(null)
+  
+  // Game history service
+  const gameHistory = useGameHistory(gameRef, {
+    onBump: () => {
+      setBoardKey(prev => prev + 1)
+      // Update analysis state without causing full re-renders
+      analysisGameStateRef.current = {
+        boardState: gameRef.current.getBoard(),
+        moves: gameRef.current.exportMoves().split('').map(m => parseInt(m) - 1), // Convert back to 0-based for analysis
+        currentMoveIndex: gameRef.current.getCurrentMoveIndex(),
+        gameOver: gameRef.current.gameOver
+      }
+      // Only increment version to trigger ToolUI analysis updates
+      setGameStateVersion(prev => prev + 1)
+    },
+    onAnimate: (fromIndex, toIndex) => {
+      console.log(`🔧 TOOLS: Animation from ${fromIndex} to ${toIndex}`)
+    }
+  })
   
   // Separate ref for analysis/move history updates - doesn't trigger full re-renders
   const analysisGameStateRef = useRef<{
@@ -19,8 +39,8 @@ function ToolsPageContent() {
     gameOver: boolean
   }>({
     boardState: gameRef.current.getBoard(),
-    moves: gameRef.current.getMoves(),
-    currentMoveIndex: gameRef.current.currentMoveIndex,
+    moves: gameRef.current.exportMoves().split('').map(m => parseInt(m) - 1), // Convert back to 0-based for analysis
+    currentMoveIndex: gameRef.current.getCurrentMoveIndex(),
     gameOver: gameRef.current.gameOver
   })
   
@@ -32,14 +52,14 @@ function ToolsPageContent() {
   const [gameStateVersion, setGameStateVersion] = useState(0) // For ToolUI notifications only
   const [boardKey, setBoardKey] = useState(0) // Force board re-renders when needed
 
-  console.log("🔧 TOOLS: Rendering with", gameRef.current.getMoves().length, "moves, WASM ready:", wasmReady)
+  console.log("🔧 TOOLS: Rendering with", gameRef.current.exportMoves().length, "moves (up to current index), WASM ready:", wasmReady)
 
   // Helper function to update analysis state without causing full re-renders
   const updateAnalysisGameState = useCallback(() => {
     analysisGameStateRef.current = {
       boardState: gameRef.current.getBoard(),
-      moves: gameRef.current.getMoves(),
-      currentMoveIndex: gameRef.current.currentMoveIndex,
+      moves: gameRef.current.exportMoves().split('').map(m => parseInt(m) - 1), // Convert back to 0-based for analysis
+      currentMoveIndex: gameRef.current.getCurrentMoveIndex(),
       gameOver: gameRef.current.gameOver
     }
     // Only increment version to trigger ToolUI analysis updates
@@ -74,15 +94,13 @@ function ToolsPageContent() {
   // Simple move navigation
   const handleMoveClick = useCallback((moveIndex: number) => {
     console.log("🔧 TOOLS: Navigating to move", moveIndex)
-    if (gameRef.current.setMoveIndex(moveIndex - 1)) {
-      updateAnalysisGameState()
-    }
-  }, [updateAnalysisGameState])
+    gameHistory.handleMoveClick(moveIndex)
+  }, [])
 
   // Simple reset
   const handleResetGame = useCallback(() => {
     console.log("🔧 TOOLS: Resetting game")
-    gameRef.current = new StandardGame()
+    gameRef.current = new HistoryStandardGame()
     setGameOver(false)
     setBoardKey(prev => prev + 1) // Force board re-render
     updateAnalysisGameState()
@@ -95,7 +113,7 @@ function ToolsPageContent() {
     
     // First reset the game to empty position
     console.log("🔧 TOOLS: Resetting game for new position")
-    gameRef.current = new StandardGame()
+    gameRef.current = new HistoryStandardGame()
     setGameOver(false)
     setBoardKey(prev => prev + 1) // Force board re-render for reset
     updateAnalysisGameState()
@@ -164,7 +182,6 @@ function ToolsPageContent() {
           showOpeningDescription={false}
           openingName="Position Analysis"
           showEnterMoves={true}
-          enterMovesDisabled={gameOver}
           enterMovesPlaceholder="Enter moves (1-7)"
           onSubmitMoves={handleSubmitMoves}
           onMoveClick={handleMoveClick}

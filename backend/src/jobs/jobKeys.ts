@@ -9,4 +9,8 @@ export const JobKeys = {
     queueName: 'gameDisconnectQueue',
     stringId: (userId: string, gameId: string) => `${userId}:${gameId}`
   },
+  game_timeout: {
+    queueName: 'gameTimeoutQueue',
+    stringId: (userId: string, gameId: string) => `${gameId}`
+  },
 };

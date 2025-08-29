@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import useSocketIo from '@/utils/useSocketIo';
+import { useError } from './errorProvider';
 
 interface SocketContextType {
   onMessage: (callback: (data: any) => void) => void;
@@ -22,10 +23,29 @@ interface SocketProviderProps {
 }
 
 export function SocketProvider({ url, children }: SocketProviderProps) {
+  const { showError } = useError();
   const { onMessage, onPrefixedMessage, onError, sendJson, connected, unsubscribePrefixedMessage, close, getLastJson } = useSocketIo(url);
+  
+  const customErrorHandlers = React.useRef<((error: Error) => void)[]>([]);
+
+  // Enhanced onError that supports both announcement and custom handlers
+  const enhancedOnError = React.useCallback((callback: (error: Error) => void) => {
+    customErrorHandlers.current.push(callback);
+  }, []);
+
+  React.useEffect(() => {
+    onError((error) => {
+      // Always show the error announcement
+      console.error(`[Socket Error] ${error}`);
+      showError(error.message);
+      
+      // Also call custom handlers
+      customErrorHandlers.current.forEach(handler => handler(error));
+    });
+  }, [onError, showError]);
 
   return (
-    <SocketContext.Provider value={{ onMessage, onPrefixedMessage, onError, sendJson, connected, unsubscribePrefixedMessage, close, getLastJson }}>
+    <SocketContext.Provider value={{ onMessage, onPrefixedMessage, onError: enhancedOnError, sendJson, connected, unsubscribePrefixedMessage, close, getLastJson }}>
       {children}
     </SocketContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { AuthenticatedRequest, getReqPlayerUUID } from './auth/middleware';
+import { AuthenticatedRequest, getReqPlayerUUID } from './auth.middleware';
 import { redisOps } from '@/redis/ops';
 import { myConfig } from '@config/env';
 import { Socket } from 'socket.io';
@@ -8,6 +8,7 @@ import { gameService } from '@/services/game.service';
 import { getIdentity } from '@/utils/validation';
 import { RoomSchema } from '@/controllers/socket/socketRoomSchema';
 import { leaveUserRooms } from '@/controllers/socket/handlers';
+import { GameContext } from '@/utils/gameContext';
 
 export const sendUserToGame = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
@@ -91,7 +92,8 @@ export const sendSocketUserToGame = async (socket: Socket, next: (err?: any) => 
       return next(new Error('User not authenticated'));
     }
     const r = await redisOps();
-    const gameId = await gameService.getGameShortCodeOfPlayer(userId);
+    const gameContext = new GameContext(userId);
+    const gameId = await gameContext.resolveGameId();
     if (gameId) {
       // Redirect the user to the game
       socket.emit('redirect', { gameLink: `/game/${gameId}` });

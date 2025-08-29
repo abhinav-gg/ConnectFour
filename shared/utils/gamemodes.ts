@@ -42,6 +42,12 @@ export const StandardModes = new Set([
   ...CasualModes,
 ]);
 
+export const ArmageddonModes = new Set([
+  ...sRankedArmageddonModes,
+  GameMode.STANDARD_ARMAGEDDON_FRIENDLY,
+  GameMode.STANDARD_ARMAGEDDON_PUBLIC_CASUAL,
+]);
+
 
 // CategoriseTime takes a time control object and returns the game category
 // (TODO: define time control object, then function is done)

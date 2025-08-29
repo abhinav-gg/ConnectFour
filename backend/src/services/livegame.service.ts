@@ -13,7 +13,7 @@ import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
 import { GameMode } from "@shared/constants/allgamemodes";
 import { StandardModes } from "@shared/utils/gamemodes";
-import { JobSets } from "@/jobs";
+import { getGameTimeoutQueue, JobSets } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { Job } from "bullmq/dist/esm/classes/job";
 import { GameNotFound } from "@/types/miscErrors";
@@ -219,9 +219,9 @@ export const liveGameService = {
         
         // Get all fresh game data - invalidate cache first for critical move validation
         gameContext.invalidateAll();
-        const { metadata: gameMeta, timedata: gameTimes, moves } = await gameContext.getAllGameData();
+        const { metadata, timedata: gameTimes } = await gameContext.getAllGameData();
         
-        if (!gameTimes || !gameMeta || !gameContext.gameId) {
+        if (!gameTimes || !metadata || !gameContext.gameId) {
             return { status: 404, message: 'Game metadata not found' };
         }
 
@@ -265,23 +265,30 @@ export const liveGameService = {
 
             // cancel outstanding game draw offers
             await r.game.cancelGameDrawOffer(gameContext.gameId);
-            
+            const tl = Game.getTimeLeft();
+            const cp = Game.getCurrentPlayer();
             console.log("AFTER ADDING MOVES", gameContext.gameId,
                 deltaTime,
-                Game.getCurrentPlayer(),
-                Game.getTimeLeft() as [number, number],
+                cp,
+                tl as [number, number],
                 Game.getLastMoveTimestamp());
                 
             // update the game times
             await r.game.updateGameTimeAfterMove(
                 gameContext.gameId,
                 deltaTime,
-                Game.getCurrentPlayer(),
-                Game.getTimeLeft() as [number, number],
+                cp,
+                tl as [number, number],
                 Game.getLastMoveTimestamp(),
             );
-            
-            gameContext.invalidateTimedata();   
+
+            // set job for game timeout based on new current player time left
+            const delay = tl[cp] + 100
+            const jobId = JobKeys.game_timeout.stringId(gameContext.userId!, gameContext.gameId);
+            await getGameTimeoutQueue().add(
+                jobId, { userId: gameContext.userId, gameId: gameContext.gameId }, { delay });
+
+            gameContext.invalidateTimedata();
 
             // broadcast the move to the game room
             const socket = getSocketIO();
@@ -305,7 +312,7 @@ export const liveGameService = {
 
         if (Game.isGameOver()) {
             // handle game over logic
-            await this.HandleGameOver(gameContext, Game.getGameState());
+            await this.HandleGameOver(gameContext, Game.getGameState(metadata.gamemode));
             return { status: 200, message: 'Game over' };
         }
 
@@ -436,7 +443,7 @@ export const liveGameService = {
         // Check if the current player has timed out
         if (Game.checkPlayerTimeOut()) {
             // Handle game over due to timeout
-            await this.HandleGameOver(gameContext, Game.getGameState());
+            await this.HandleGameOver(gameContext, Game.getGameState(metadata.gamemode));
             return { status: 100, message: 'Player has timed out' };
         }
 
@@ -497,7 +504,17 @@ export const liveGameService = {
     },
 
 
+    async ManageBotMove(gameContext: GameContext): Promise<void> {
+        const botId = gameContext.userId;
+        const gameId = gameContext.gameId;
+        if (!botId || !gameId) {
+            console.error("Bot ID or Game ID is missing for managing bot move");
+            return;
+        }
 
+        // Implement bot move logic here
+        console.log(`Managing bot move for Bot ID: ${botId}, Game ID: ${gameId}`);
+    }
 
 
 

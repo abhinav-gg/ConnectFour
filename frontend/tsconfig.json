@@ -39,7 +39,7 @@
     ".next/types/**/*.ts",
     "next-env.d.ts",
     "next.config.ts",
-    "out/types/**/*.ts" ],
+    "out/types/**/*.ts", "../backend/src/utils/tools/botHandler.ts" ],
   "exclude": [
     "node_modules"
   ]

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
-import { maskEmail } from '@/utils/masks'
+import { maskEmail } from '@shared/utils/masks'
 import { myConfig } from "@/config/env"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 

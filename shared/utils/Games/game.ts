@@ -5,7 +5,6 @@ import { ROWS, COLS } from '../../constants/game';
 export class StandardGame {
 
   currentPlayer: Player
-  currentMoveIndex: number
   winner: Player | null
   gameOver: boolean
   protected board: Cell[][]
@@ -17,7 +16,6 @@ export class StandardGame {
     this.gameOver = false;
     this.winner = null;
     this.moves = [];
-    this.currentMoveIndex = -1;
     this.currentPlayer = 0; // Start with player 0 (Red)
 
     if (movesOrString) {
@@ -94,12 +92,8 @@ export class StandardGame {
    */
   makeMove(col: number): { row: number; success: boolean } {
 
-    if (this.currentMoveIndex != this.moves.length - 1) {
-      // If the current move index is not the last move, reset the moves array
-      throw new Error('Cannot make a move when the current move index is not the last move.');
-    } else if (this.gameOver) {
+    if (this.gameOver) {
       // If the game is already over, do not allow further moves
-      //throw new Error('Cannot make a move when the game is already over.');
       return { row: -1, success: false }; // Return failure silently
     }
     
@@ -108,7 +102,6 @@ export class StandardGame {
       this.board[targetRow][col] = this.currentPlayer
       this.moves.push(col)
       this.currentPlayer = this.currentPlayer === 1 ? 0 : 1
-      this.currentMoveIndex ++;
       this.checkGameOver(targetRow, col); // Check if the move results in a win or draw
      
       return { row: targetRow, success: true }
@@ -139,32 +132,6 @@ export class StandardGame {
     return hash;
   }
 
-  adjMoveIndex = (deltaIndex: number): boolean => {
-    return this.setMoveIndex(this.currentMoveIndex + deltaIndex);
-  }
-
-  setMoveIndex = (newMoveIndex: number): boolean => {
-    /**.
-      * Sets the current move index to the new move index and updates the board
-      * @param newMoveIndex - The new move index to check.
-      * @returns {boolean} - True if successful.
-    */
-
-    if (newMoveIndex < 0 || newMoveIndex >= this.moves.length) {
-      return false;
-    }
-
-    this.currentMoveIndex = newMoveIndex
-    this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-    this.moves.forEach((col, idx) => {
-      // Use index parity to determine player: 0 for even, 1 for odd
-      const player = idx % 2 as 0 | 1;
-      this.board[this.getAvailableRow(col)][col] = player;
-    });
-    
-    return true
-  }
-
   exportMoves(): string {
     return this.moves.map((col) => col+1).join('')
   }
@@ -172,7 +139,6 @@ export class StandardGame {
   reset(): void {
     this.board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
     this.currentPlayer = 0
-    this.currentMoveIndex = -1
     this.winner = null
     this.gameOver = false
     this.moves = []

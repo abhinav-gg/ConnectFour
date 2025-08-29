@@ -140,8 +140,11 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     const DropSound = useSound("/sounds/counter-fall-long.mp3")
 
     // Utility to detect if device is mobile
-    // MOBILE CALCULATION
-    const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 567px)").matches
+    // MOBILE CALCULATION - Enhanced detection for touch devices
+    const isMobile = typeof window !== "undefined" && (
+      window.matchMedia("(max-width: 567px)").matches || 
+      ('ontouchstart' in window && window.matchMedia("(max-width: 1024px)").matches)
+    )
     const getFallId = (row: number, col: number, player: number) => `${row}-${col}-${player}`
     // New: unique id generator for rising pieces
     const getRiseId = (row: number, col: number, player: number) => `undo-${row}-${col}-${player}`
@@ -617,6 +620,62 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       }
     }
 
+    // Touch event handlers for mobile - eliminates 300ms delay
+    const handleBoardTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+      if (!isInteractive || !isMobile) return
+      e.preventDefault() // Prevent scroll and other touch gestures
+      
+      const touch = e.touches[0]
+      const boardElement = e.currentTarget
+      const col = getColumnFromTouchPosition(touch, boardElement)
+      
+      if (col >= 0 && col < 7) {
+        setHeldColumn(col)
+        setMouseHeld(true)
+      }
+    }
+
+    const handleBoardTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+      if (!isInteractive || !isMobile) return
+      e.preventDefault()
+      
+      const boardElement = e.currentTarget
+      const touch = e.changedTouches[0]
+      const col = getColumnFromTouchPosition(touch, boardElement)
+      
+      // Only trigger click if touch ended in the same column it started
+      if (mouseHeld && heldColumn !== null && heldColumn !== -1 && col === heldColumn) {
+        handleColumnClick(col)
+      }
+      
+      setMouseHeld(false)
+      setHeldColumn(null)
+    }
+
+    const handleBoardTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+      if (!isInteractive || !isMobile) return
+      e.preventDefault() // Prevent scrolling while dragging on board
+      
+      // Update held column if touch moves to different column
+      const touch = e.touches[0]
+      const boardElement = e.currentTarget
+      const col = getColumnFromTouchPosition(touch, boardElement)
+      
+      if (mouseHeld && col !== heldColumn) {
+        // Touch moved to different column, cancel the click
+        setHeldColumn(-1)
+      }
+    }
+
+    // Helper function to get column from touch position
+    const getColumnFromTouchPosition = (touch: React.Touch, boardElement: HTMLDivElement) => {
+      const rect = boardElement.getBoundingClientRect()
+      const x = touch.clientX - rect.left
+      const colWidth = rect.width / 7
+      const col = Math.floor(x / colWidth)
+      return col >= 0 && col < 7 ? col : -1
+    }
+
     const handleCellRightClick = (e: React.MouseEvent, row: number, col: number) => {
       e.preventDefault() // Prevent context menu
       e.stopPropagation() // Stop event from bubbling
@@ -627,6 +686,28 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     const handleCellLeftClick = (e: React.MouseEvent, row: number, col: number) => {
       e.stopPropagation() // Stop event from bubbling
       if (e.button !== 0) return // Only allow left click
+      if (!interactive || fallingPieces.length > 0) return
+
+      const cellKey = getCellKey(row, col)
+      const newHighlightedCells = new Map(highlightedCells)
+
+      // Remove highlight if cell is highlighted
+      if (newHighlightedCells.has(cellKey)) {
+        newHighlightedCells.delete(cellKey)
+        setHighlightedCells(newHighlightedCells)
+        return // Don't proceed with column click
+      }
+
+      // If not highlighted, proceed with normal column click
+      handleColumnClick(col)
+    }
+
+    // Touch handlers for cells - faster mobile response
+    const handleCellTouchEnd = (e: React.TouchEvent, row: number, col: number) => {
+      if (!isMobile) return // Only use touch handlers on mobile
+      e.preventDefault()
+      e.stopPropagation()
+      
       if (!interactive || fallingPieces.length > 0) return
 
       const cellKey = getCellKey(row, col)
@@ -796,6 +877,9 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         onMouseDown={handleBoardMouseDown}
         onMouseUp={handleBoardMouseUp}
         onContextMenu={handleBoardRightClick}
+        onTouchStart={handleBoardTouchStart}
+        onTouchEnd={handleBoardTouchEnd}
+        onTouchMove={handleBoardTouchMove}
         draggable={false}
         onDragStart={(e) => e.preventDefault()}
       >
@@ -972,6 +1056,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
                       role="gridcell"
                       aria-label={getCellAriaLabel(rowIndex, colIndex, getColorName(cell))}
                       onClick={(e) => handleCellLeftClick(e, rowIndex, colIndex)}
+                      onTouchEnd={(e) => handleCellTouchEnd(e, rowIndex, colIndex)}
                       onContextMenu={(e) => handleCellRightClick(e, rowIndex, colIndex)}
                       onDragStart={(e) => e.preventDefault()}
                       draggable={false}

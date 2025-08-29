@@ -3,7 +3,7 @@ import { withNamespace } from '../handlers';
 import { redisOps } from '@/redis/ops';
 import { gameService } from '@/services/game.service';
 import { getIdentity } from '@/utils/validation';
-import { getIdentityFromSocket } from '@/lib/game.middleware';
+import { getIdentityFromSocket } from '@/lib/middleware/game.middleware';
 import { RoomSchema } from '../socketRoomSchema';
 import { liveGameService } from '@/services/livegame.service';
 import { GameContext } from '@/utils/gameContext';
