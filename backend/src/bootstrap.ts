@@ -3,7 +3,6 @@ import { checkDynamoHealth } from './db/dynamodb/dynamoClient';
 import { checkRedisHealth } from './redis/redisHelper';
 import { setupGameMetaIndex } from './redis/repositories/gameOps';
 import { getRedisClient } from './redis/redisClient';
-import { OpeningManager } from './utils/tools/opening-book';
 import { setupAllAPIJobs, setupAllSocketJobs } from './jobs';
 import { getConnect4Solver } from '@shared/WASM/con4Solver.node';
 
@@ -34,8 +33,6 @@ export async function bootstrapAPI() {
 export async function bootstrapSocket() {
 
     await bootstrap();
-    
-    await OpeningManager.initStore(); // load opening book into RAM
 
     await setupAllSocketJobs(); // creates all empty job sets
 

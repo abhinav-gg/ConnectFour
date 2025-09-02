@@ -2,22 +2,31 @@ services:
   redis:
     image: redis/redis-stack-server:latest
     container_name: redis
-    env_file:
-      - ./backend/.env
+    command: >
+      redis-server
+      --requirepass "defaultdevpassword"
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 100mb
+      --maxmemory-policy noeviction
+      --dir /data
+      --loadmodule /opt/redis-stack/lib/redisearch.so
+      --loadmodule /opt/redis-stack/lib/rejson.so
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "defaultdevpassword", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a defaultdevpassword ping"]
       interval: 5s
       timeout: 3s
       retries: 5
-    volumes:
-      - redis-data:/data
-      - ./backend/redis.dev.conf:/usr/local/etc/redis/redis.conf:ro
-    restart: unless-stopped
     ports:
       - "6379:6379"
       - "8001:8001"
-    command: ["redis-server",  "/usr/local/etc/redis/redis.conf"]
-  
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    
   api:
     build: 
       context: .
@@ -32,8 +41,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    # env_file:
-    #   - ./backend/.env
+    env_file:
+      - ./backend/.env
 
 volumes:
   redis-data:

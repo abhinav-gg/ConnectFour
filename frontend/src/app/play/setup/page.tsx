@@ -1,7 +1,7 @@
 "use client"
 
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
-import { LiveGameSelection } from "@/components/game/LiveGameSelector"
+import { LiveGameSelection } from "@/components/game/full-sides/LiveGameSelector"
 import { FallingCirclesBackground } from "@/components/bganimation"
 
 export default function LiveGamePage() {

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import useSocketIo from '@/utils/useSocketIo';
-import { useError } from './errorProvider';
+import { useError } from './ErrorProvider';
 
 interface SocketContextType {
   onMessage: (callback: (data: any) => void) => void;

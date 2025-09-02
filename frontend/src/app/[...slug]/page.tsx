@@ -6,16 +6,11 @@ const redirectMap: Record<string, string> = {
   community: 'https://linktr.ee/con4uk',
   home: '/',
   profile: '/',
+  game: '/play'
 }
 
 export async function generateStaticParams() {
-  return [
-    { slug: ['login'] },
-    { slug: ['register'] },
-    { slug: ['community'] },
-    { slug: ['home'] },
-    { slug: ['profile'] },
-  ]
+  return Object.keys(redirectMap).map(key => ({ slug: [key] }))
 }
 
 export const dynamic = 'force-static'

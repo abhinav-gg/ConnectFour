@@ -1,4 +1,4 @@
-import { GameInfo, TimeControl } from "@shared/types/game";
+import { GameInfo, TimeControl } from "@shared/types/game.types";
 import { UUID } from "crypto";
 
 // Helper to create binary keys

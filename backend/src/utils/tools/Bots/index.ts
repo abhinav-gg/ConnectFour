@@ -1,22 +1,23 @@
+import { GoatnusBot } from "./goatnus";
+import { RandomBot } from "./randomBot";
+import { BotNotFound } from "@/types/miscErrors";
+import { Bots } from "@shared/constants/botinfo";
+import { BotBase } from "./bot";
+import { Game } from "@shared/types/game.types";
 
-export abstract class BotBase<GameState, Move> {
-    protected game: GameState;
+const allBots = [
+  RandomBot,
+  GoatnusBot
+]
 
-    constructor(game: GameState) {
-        this.game = game;
-    }
+export const getBotById = (id: string, game: Game): BotBase => {
+  if (!id) throw new Error('Invalid bot ID');
 
-    /**
-     * Choose a move from a list of legal moves based on the game state.
-     * Must be implemented by subclasses.
-     */
-    abstract chooseMove(): Promise<Move>;
+  const hasBot = Bots.some(bot => bot.id === id);
+  if (!hasBot) throw new BotNotFound();
 
-    /**
-     * Optional: Reset the bot between games.
-     * Subclasses can override this to clear internal state.
-     */
-    reset(): void {
-        // Default: do nothing
-    }
+  const BotClass = allBots.find(bot => bot.id === id);
+  if (!BotClass) throw new BotNotFound();
+
+  return new BotClass(game);
 }

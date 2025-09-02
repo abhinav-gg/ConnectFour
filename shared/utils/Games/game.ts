@@ -1,8 +1,7 @@
-import { Player, Cell, Move } from '../../types/game';
-import { ROWS, COLS } from '../../constants/game';
+import { Player, Cell, Move, Game } from '../../types/game.types';
+import { ROWS, COLS } from '../../constants/game.constants';
 
-
-export class StandardGame {
+export class StandardGame implements Game {
 
   currentPlayer: Player
   winner: Player | null

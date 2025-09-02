@@ -5,17 +5,15 @@ import { gameService } from "./game.service";
 import { RoomSchema } from "@/controllers/socket/socketRoomSchema";
 import { ServiceResponse } from "@/types/custom";
 import { TimedStandardGame } from "@shared/utils/Games/timed-game";
-import { GameInfo } from "@shared/types/game";
+import { GameInfo } from "@shared/types/game.types";
 import { ChatMessage } from "@shared/types/Websocket";
 import { userService } from "./user.service";
 import { parseUser } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
-import { GameMode } from "@shared/constants/allgamemodes";
 import { StandardModes } from "@shared/utils/gamemodes";
 import { getGameTimeoutQueue, JobSets } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
-import { Job } from "bullmq/dist/esm/classes/job";
 import { GameNotFound } from "@/types/miscErrors";
 
 export const liveGameService = {
@@ -87,8 +85,14 @@ export const liveGameService = {
 
     async dropDisconnectJob(gameContext: GameContext): Promise<void> {
         // Reset the disconnect job for the game
-
-        await gameContext.validatePlayerInRoom();
+        try {
+            await gameContext.validatePlayerInRoom();
+        } catch (error) {
+            if (!(error instanceof GameNotFound)) {
+                console.error("Player is not in the game room, skipping disconnection logic", error);
+            }
+            return; // Player is not in the game room, skip disconnection logic
+        }
         if (!gameContext.gameId || !gameContext.userId) {
             console.error("Game ID or User ID is missing for resetting disconnect job");
             return;
@@ -504,16 +508,19 @@ export const liveGameService = {
     },
 
 
-    async ManageBotMove(gameContext: GameContext): Promise<void> {
-        const botId = gameContext.userId;
-        const gameId = gameContext.gameId;
-        if (!botId || !gameId) {
-            console.error("Bot ID or Game ID is missing for managing bot move");
-            return;
-        }
+    async ManageBotMove(gameId: string): Promise<void> {
 
-        // Implement bot move logic here
-        console.log(`Managing bot move for Bot ID: ${botId}, Game ID: ${gameId}`);
+        // use redis to get the game meta and time data from the gameId and get the current player ID and check its a bot.
+
+
+        // const botId = gameContext.userId;
+        // if (!botId || !gameId) {
+        //     console.error("Bot ID or Game ID is missing for managing bot move");
+        //     return;
+        // }
+
+        // // Implement bot move logic here
+        // console.log(`Managing bot move for Bot ID: ${botId}, Game ID: ${gameId}`);
     }
 
 

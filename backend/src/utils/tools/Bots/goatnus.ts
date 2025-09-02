@@ -1,12 +1,13 @@
-import { Move } from '@shared/types/game';
+import { Move } from '@shared/types/game.types';
 import { SelfAnalysis } from '@shared/utils/analysis';
-import { BotBase } from '@shared/utils/Bots';
-import { StandardGame } from '@shared/utils/Games/game';
+import { BotBase } from './bot';
+import { Game } from '@shared/types/game.types';
 
-export class PerfectBot extends BotBase<StandardGame, Move> {
+export class GoatnusBot extends BotBase {
+  public static id = "e92f1571-5196-48a4-b84f-0ed1c5840e03"; // Magnus Goatson
   private solver: SelfAnalysis | null = null;
 
-  constructor(game: StandardGame) {
+  constructor(game: Game) {
     super(game);
     this.solver = null;
   }
@@ -14,12 +15,12 @@ export class PerfectBot extends BotBase<StandardGame, Move> {
   async chooseMove(): Promise<Move> {
     // Only load the solver if it hasn't been loaded yet
     if (!this.solver) {
-      this.solver = await SelfAnalysis.load(this.game);
+      this.solver = await SelfAnalysis.load(this.game as any);
     }
 
     let moveAnal = this.solver.Analyze()
 
-    if (this.game.currentPlayer === 1){
+    if ((this.game as any).currentPlayer === 1){
       moveAnal = moveAnal.map(i => (-i));
     }
 

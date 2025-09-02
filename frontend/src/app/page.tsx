@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Gamepad2, Bot } from "lucide-react"
 import { Layout } from "@/components/layouts/mainlayout"
-import Board from "@/components/boards/Board"
+import Board from "@/components/game/Board"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { useInView } from "react-intersection-observer"
@@ -102,10 +102,10 @@ export default function Component() {
 
                 <div className="flex gap-8 text-sm md:text-base lg:text-lg text-brand-text-muted mb-8" role="group" aria-label="Game statistics">
                   <div>
-                    <span className="text-white font-semibold">+100,000</span> Games Today
+                    <span className="text-white font-semibold">several</span> Games Today
                   </div>
                   <div>
-                    <span className="text-white font-semibold">+100,000</span> Playing Now
+                    <span className="text-white font-semibold">people</span> Playing Now
                   </div>
                 </div>
               </div>

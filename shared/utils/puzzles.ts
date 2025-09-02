@@ -1,6 +1,6 @@
-import { Cell, Player } from "@shared/types/game";
+import { Cell, Player } from "@shared/types/game.types";
 import { StandardGame } from "./Games/game";
-import { COLS, ROWS } from "@shared/constants/game";
+import { COLS, ROWS } from "@shared/constants/game.constants";
 
 export const examplePuzzles = [
     "45342133|4243543",

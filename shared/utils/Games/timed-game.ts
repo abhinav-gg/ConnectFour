@@ -1,10 +1,11 @@
 import { HistoryStandardGame } from './history-game';
-import { GameInfo, Move, Player, TimedMoveResult } from '../../types/game';
+import { GameInfo, Move, Player, TimedMoveResult } from '../../types/game.types';
 import { GameState } from '@shared/constants/allgamestates';
 import { GameMode } from '@shared/constants/allgamemodes';
-import { ArmageddonModes, sRankedArmageddonModes, StandardModes } from '../gamemodes';
+import { ArmageddonModes, StandardModes } from '../gamemodes';
+import { NavigableGame } from '@shared/types/game.types';
 
-export class TimedStandardGame {
+export class TimedStandardGame implements NavigableGame {
   private game: HistoryStandardGame;
 
   private lastMoveTimestamp: number | null = null; // Track last move timestamp for timing
@@ -21,6 +22,21 @@ export class TimedStandardGame {
     this.timeLeft = [1000 * (gameInfo.time_control.base_time),
                      1000 * (gameInfo.time_control.base_time + gameInfo.time_control.disadvantage)];
   }
+  getLegalMoves(): Move[] {
+    // Delegate to the underlying HistoryStandardGame instance
+    return this.game.getLegalMoves();
+  }
+
+  get currentPlayer(): Player {
+    return this.game.currentPlayer;
+  }
+
+  getMoves(): number[] {
+    return this.game.getMoves();
+  }
+  getAllMoves(): number[] {
+    return this.game.getAllMoves();
+  }
 
   loadStandard(pTimes: number[], lMove: number, cTurn: number, GameString: number[]): void {
     // assert pTimes is an array of numbers with length 2
@@ -35,6 +51,13 @@ export class TimedStandardGame {
     if (cTurn !== this.game.currentPlayer) {
       throw new Error("Current turn does not match game state");
     }
+  }
+
+  /**
+   * Load moves into the game from setup data
+   */
+  loadMoves(moves: number[]): void {
+    this.game = new HistoryStandardGame(moves);
   }
 
   makeMove(col: number): TimedMoveResult {
@@ -101,6 +124,10 @@ export class TimedStandardGame {
     return this.game.getBoard();
   }
 
+  getAvailableRow(col: number): number {
+    return this.game.getAvailableRow(col);
+  }
+
   prettyPrintBoard(): string {
     return this.game.prettyPrintBoard();
   }
@@ -154,6 +181,10 @@ export class TimedStandardGame {
   }
 
   isGameOver(): boolean {
+    return this.game.gameOver;
+  }
+
+  get gameOver(): boolean {
     return this.game.gameOver;
   }
 

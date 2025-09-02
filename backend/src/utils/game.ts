@@ -1,7 +1,7 @@
 
 import { UUID } from "crypto";
-import { TimeControl, TimeCategory } from "@shared/types/game";
-import { EloChange } from "@shared/types/game";
+import { TimeControl, TimeCategory } from "@shared/types/game.types";
+import { EloChange } from "@shared/types/game.types";
 // Convert UUID string to Buffer (16 bytes)
 
 

@@ -1,4 +1,4 @@
-import { EloChange } from "./game";
+import { EloChange } from "./game.types";
 import { PlayerData } from "./users";
 
 export interface ChatMessage {

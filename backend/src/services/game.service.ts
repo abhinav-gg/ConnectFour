@@ -1,11 +1,12 @@
 import { dynamoDBOps } from "@/db/dynamodb/ops";
 import { redisOps } from "@/redis/ops";
 import { ServiceResponse } from "@/types/custom";
-import { EloChange, GameInfo, TimeControl } from "@shared/types/game";
+import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types";
 import { PlayerData } from "@shared/types/users";
 import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes } from "@shared/utils/gamemodes";
 import { packGameInfo, packGameInfoToString } from "@/utils/binary";
-import { FinishedGameStates, GameState } from "@shared/constants/allgamestates";
+import { GameState } from "@shared/constants/allgamestates";
+import { FinishedGameStates } from "@shared/utils/gamestates";
 import { calculateEloChanges, genGameShortcode } from "@/utils/game";
 import { generateUUID } from "@/utils/auth";
 import { GameMetadata, GameMetadataSchema, UserQueue } from "@/redis/redisSchema";
@@ -398,8 +399,7 @@ export const gameService = {
             
             if (!metadata || !gameContext.gameId) {
 
-
-                // NO SQL HERE
+                // CALL NO SQL HERE
 
                 return { status: 404, message: 'Game not found' };
             }

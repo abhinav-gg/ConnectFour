@@ -73,7 +73,11 @@ export interface BoardHandle {
   setPremoveCell: (row: number, col: number, player: number) => void
   clearPremove: () => void
   // New: undo animation
-  undoMoveAnimation: (row: number, col: number, player: number) => void
+  undoMoveAnimation: (row: number, col: number, player: number, lastMoveHighlight?: {row: number, col: number} | null) => void
+  // New: directly set board state for animations
+  setBoard: (newBoard: (number | null)[][]) => void
+  // New: create arrows for analysis
+  makeArrow: (startRow: number, startCol: number, endRow: number, endCol: number, id?: string) => string
 }
 
 const Board = forwardRef<BoardHandle, Connect4BoardProps>(
@@ -422,13 +426,25 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       },
 
       // New: reverse/lift animation for undo
-      undoMoveAnimation(row, col, player) {
+      undoMoveAnimation(row, col, player, lastMoveHighlight = null) {
+        console.log(`🎮 BOARD: undoMoveAnimation called with row=${row}, col=${col}, player=${player}, lastMoveHighlight=`, lastMoveHighlight)
+        
         // Basic bounds validation
-        if (row < 0 || row > 5 || col < 0 || col > 6) return
-        // Validate the expected piece is present
-        if (internalBoard[row][col] !== player) return
-        // Avoid overlapping with another animation in the same cell
-        if (fallingPieces.length > 0) return
+        if (row < 0 || row > 5 || col < 0 || col > 6) {
+          console.warn(`🎮 BOARD: Invalid bounds for undo animation: row=${row}, col=${col}`)
+          return
+        }
+        
+        // Use interim method: check if there's a piece in the current internal board at this position
+        const currentPiece = internalBoard[row][col]
+        console.log(`🎮 BOARD: Current piece at (${row}, ${col}):`, currentPiece)
+        
+        if (currentPiece === null) {
+          console.warn(`🎮 BOARD: No piece found at (${row}, ${col}) for undo animation`)
+          return
+        }
+        
+        console.log(`🎮 BOARD: Starting undo animation at (${row}, ${col}) for player ${player}`)
 
         // Compute duration to mirror drop timing
         const baseDuration = 0.15
@@ -440,8 +456,8 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
           prev.map((r, ri) => r.map((c, ci) => (ri === row && ci === col ? null : c))),
         )
 
-        // Clear last move highlight if it matches the undone cell
-        setLastMoveHighlightState((prev) => (prev && prev.row === row && prev.col === col ? null : prev))
+        // Set the last move highlight if provided, otherwise clear it
+        setLastMoveHighlightState(lastMoveHighlight)
 
         // Start the rising animation
         setRisingPieces((prev) => [
@@ -455,10 +471,43 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
           },
         ])
 
+        console.log(`🎮 BOARD: Rising piece animation started with id=${riseId}, duration=${duration}`)
+
         // After animation completes, set current player back to the undone player
         setTimeout(() => {
           setCurrentPlayer(player)
+          console.log(`🎮 BOARD: Undo animation completed, current player set to ${player}`)
         }, duration * 1000)
+      },
+
+      // New: directly set the board state for animations without affecting game logic
+      setBoard(newBoard: (number | null)[][]) {
+        console.log(`🎮 BOARD: setBoard called, canceling all animations`)
+        
+        // Cancel all ongoing animations
+        setFallingPieces([])
+        setRisingPieces([])
+        
+        // Set the new board state
+        setInternalBoard(newBoard)
+        
+        // Clear last move highlight since board state changed
+        setLastMoveHighlightState(null)
+        
+        console.log(`🎮 BOARD: Board state updated, all animations canceled`)
+      },
+
+      // New: create an arrow for analysis/hints
+      makeArrow(startRow: number, startCol: number, endRow: number, endCol: number, id: string = `arrow-${Date.now()}`) {
+        const newArrow = {
+          id,
+          startRow,
+          startCol,
+          endRow,
+          endCol,
+        }
+        setArrows(prev => [...prev, newArrow])
+        return id
       },
     }))
 
@@ -962,7 +1011,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
               }
             }
             const startCy = holes.length > 0 ? holes[holes.length - 1].cy : 0 // start at target cell
-            const endCy = holes.length > 0 ? holes[0].cy : 0 // end at top hole
+            const endCy = (holes.length > 0 ? holes[0].cy : 0) - (holes[0].radius * 2)
             const cx = holes.length > 0 ? holes[0].cx : 0
 
             return (

@@ -1,8 +1,9 @@
 import { StandardGame } from './game';
-import { Move, Player, Cell } from '../../types/game';
-import { ROWS, COLS } from '@shared/constants/game';
+import { NavigableGame } from '@shared/types/game.types';
+import { Move, Player, Cell } from '../../types/game.types';
+import { ROWS, COLS } from '@shared/constants/game.constants';
 
-export class HistoryStandardGame extends StandardGame {
+export class HistoryStandardGame extends StandardGame implements NavigableGame {
   protected currentMoveIndex: number = -1;
 
   constructor(movesOrString?: Move[] | string) {
@@ -71,7 +72,6 @@ export class HistoryStandardGame extends StandardGame {
       }
     }
     
-    console.log("BOARD MADE BY HISTORY", boardCopy)
     return boardCopy;
   }
 

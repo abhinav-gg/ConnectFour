@@ -1,6 +1,6 @@
 import { GameMode } from "../constants/allgamemodes";
-import { AvgGameLength } from "../constants/game";
-import { TimeControl, TimeCategory, GameInfo } from "@shared/types/game";
+import { AvgGameLength } from "../constants/game.constants";
+import { TimeControl, TimeCategory, GameInfo } from "@shared/types/game.types";
 import { validateTimeControl } from "./validation";
 
 export const sRankedModes = new Set([

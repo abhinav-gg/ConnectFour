@@ -1,7 +1,7 @@
 // src/routes/authRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/middleware/auth.middleware';
-import { GameInfo, TimeControl } from '@shared/types/game';
+import { GameInfo, TimeControl } from '@shared/types/game.types';
 import { GameMode } from '@shared/constants/allgamemodes';
 import { getRankedGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes } from '@shared/utils/gamemodes';
 import { validateTimeControl } from '@shared/utils/validation';

@@ -50,11 +50,63 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const messageIdCounter = useRef(0)
+  const [quickMessageCooldowns, setQuickMessageCooldowns] = useState<Record<string, number>>({})
+  const cooldownRefs = useRef<Record<string, NodeJS.Timeout>>({})
 
   // Generate unique message ID
   const generateMessageId = useCallback(() => {
     messageIdCounter.current += 1
     return `msg_${Date.now()}_${messageIdCounter.current}`
+  }, [])
+
+  // Handle quick message cooldown
+  const handleQuickMessage = useCallback((msg: string) => {
+    if (quickMessageCooldowns[msg] > 0) return // Already on cooldown
+
+    const newMessage: ChatMessage = {
+      id: generateMessageId(),
+      username: currentUser,
+      message: expandShortMessage(msg),
+      type: "user",
+      timestamp: new Date(),
+    }
+
+    // Send the message
+    onMessageSent?.(newMessage)
+
+    // Start cooldown
+    setQuickMessageCooldowns(prev => ({ ...prev, [msg]: 3000 }))
+
+    // Clear any existing timeout for this message
+    if (cooldownRefs.current[msg]) {
+      clearTimeout(cooldownRefs.current[msg])
+    }
+
+    // Start countdown
+    const startTime = Date.now()
+    const updateCooldown = () => {
+      const elapsed = Date.now() - startTime
+      const remaining = Math.max(0, 3000 - elapsed)
+      
+      if (remaining > 0) {
+        setQuickMessageCooldowns(prev => ({ ...prev, [msg]: remaining }))
+        cooldownRefs.current[msg] = setTimeout(updateCooldown, 16) // ~60fps
+      } else {
+        setQuickMessageCooldowns(prev => ({ ...prev, [msg]: 0 }))
+        delete cooldownRefs.current[msg]
+      }
+    }
+    
+    cooldownRefs.current[msg] = setTimeout(updateCooldown, 16)
+  }, [quickMessageCooldowns, generateMessageId, currentUser, onMessageSent])
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(cooldownRefs.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout)
+      })
+    }
   }, [])
 
   // Memoized message list to optimize rendering with hundreds of messages
@@ -325,28 +377,47 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
 
       {/* Quick Messages - Fixed height */}
       <div className="grid grid-cols-4 gap-1 flex-shrink-0">
-        {quickMessages.map((msg) => (
-          <Button
-            key={msg}
-            onClick={() => {
-              const newMessage: ChatMessage = {
-                id: generateMessageId(),
-                username: currentUser,
-                message: expandShortMessage(msg),
-                type: "user",
-                timestamp: new Date(),
-              }
+        {quickMessages.map((msg) => {
+          const cooldownTime = quickMessageCooldowns[msg] || 0
+          const isOnCooldown = cooldownTime > 0
+          const cooldownProgress = isOnCooldown ? (3000 - cooldownTime) / 3000 : 1
 
-              // ONLY notify parent for validation/server sending - DON'T add to state here
-              onMessageSent?.(newMessage)
-            }}
-            variant="secondary"
-            size="sm"
-            className="bg-brand-primary/60 hover:bg-brand-primary/80 text-white text-xs h-6"
-          >
-            {msg}
-          </Button>
-        ))}
+          return (
+            <div key={msg} className="relative">
+              <Button
+                onClick={() => handleQuickMessage(msg)}
+                disabled={isOnCooldown}
+                variant="secondary"
+                size="sm"
+                className={`
+                  relative overflow-hidden w-full h-6 text-xs transition-all duration-150
+                  ${isOnCooldown 
+                    ? 'bg-brand-primary/30 text-gray-400 cursor-not-allowed' 
+                    : 'bg-brand-primary/60 hover:bg-brand-primary/80 text-white'
+                  }
+                `}
+              >
+                <span className="relative z-10">{msg}</span>
+                
+                {/* Cooldown overlay animation */}
+                {isOnCooldown && (
+                  <motion.div
+                    className="absolute inset-0 bg-gray-600/70 z-5"
+                    initial={{ x: "0%" }}
+                    animate={{ x: "100%" }}
+                    transition={{
+                      duration: 3,
+                      ease: "linear"
+                    }}
+                    style={{
+                      transformOrigin: "left"
+                    }}
+                  />
+                )}
+              </Button>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

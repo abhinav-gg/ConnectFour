@@ -15,6 +15,10 @@ export class GameNotFound extends Error {
   }
 }
 
-
-
-
+export class BotNotFound extends Error {
+  constructor() {
+    super('Bot not found');
+    this.name = "BotNotFound";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}

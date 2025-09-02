@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { Puzzle } from "@shared/utils/puzzles"
-import { BoardHandle } from "@/components/boards/Board"
+import { BoardHandle } from "@/components/game/Board"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import { PuzzleUI } from "@/components/puzzles/puzzle-ui"
 import { PuzzleProgress } from "@/components/puzzles/puzzle-progress"

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Trophy, HelpCircle, AlertCircle, X, ArrowUp, ArrowDown, Minus, Award } from "lucide-react"
 import { motion } from "framer-motion"
 import { useEffect, useState, MutableRefObject } from "react"
-import { GameState, RedWinStates, YellowWinStates, DrawStates } from "@shared/constants/allgamestates"
-import { EloChange } from "@shared/types/game"
+import { GameState } from "@shared/constants/allgamestates"
+import { RedWinStates, YellowWinStates, DrawStates } from "@shared/utils/gamestates"
+import { EloChange } from "@shared/types/game.types"
 
 interface GameEndModalProps {
   isOpen: boolean

@@ -37,19 +37,18 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
-import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/LiveGameUI"
+import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/full-sides/LiveGameUI"
 import { ChatMessage, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
-import { useUser } from "@/components/providers/userProvider"
-import { useGameSession } from "@/components/providers/gameProvider"
+import { useGameSession, useUser } from "@/components/providers/BackendProvider"
 import { StandardGameMetadata } from "@shared/types/Websocket"
 import { PlayerData } from "@shared/types/users"
 import { GameState } from "@shared/constants/allgamestates"
 import { GameEndModal } from "@/components/game/game-end-popup"
 import { GameStartModal } from "@/components/game/game-start-popup"
-import { EloChange, GameInfo } from "@shared/types/game"
-import { StandardGame } from "@shared/utils/Games/game"
+import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types"
+import { TimedStandardGame } from "@shared/utils/Games/timed-game"
 import { CategoriseTime, printGameMode, printTimeControl } from "@shared/utils/gamemodes"
 
 export default function LiveGamePage() {
@@ -74,8 +73,9 @@ export default function LiveGamePage() {
   const pTimesRef = useRef<[number, number]>([0, 0])
   const isGameRunningRef = useRef(false)
   const eloChangesRef = useRef<EloChange | null>(null)
-  
-  const myGame = useRef(new StandardGame())
+
+  const myGame = useRef<TimedStandardGame | null>(null)
+  const gameInfoRef = useRef<GameInfo | null>(null)
 
   // UI + rendering version signals (simplified)
   const [gameVersion, setGameVersion] = useState(0)
@@ -171,6 +171,7 @@ export default function LiveGamePage() {
           console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
           const { gameinfo } = data
           const gi = gameinfo as GameInfo;
+          gameInfoRef.current = gi; // Store GameInfo for later use
           if (data.shortcode && currentShortcode && currentShortcode !== data.shortcode) {
             console.error("Shortcode mismatch in matchmaking data", currentShortcode, data.shortcode)
             return
@@ -213,7 +214,14 @@ export default function LiveGamePage() {
           eloChangesRef.current = setupData.eloChanges
 
           // Create/replace game model
-          myGame.current = new StandardGame(setupData.moves || [])
+          if (!gameInfoRef.current) {
+            console.error("No GameInfo available for TimedStandardGame creation");
+            return;
+          }
+          myGame.current = new TimedStandardGame(gameInfoRef.current)
+          if (setupData.moves && setupData.moves.length > 0) {
+            myGame.current.loadMoves(setupData.moves)
+          }
 
           // Enable initial replay when entering from setup
           setAnimateInit(true)
@@ -233,7 +241,17 @@ export default function LiveGamePage() {
           isGameRunningRef.current = true
 
           if (setupData.moves) {
-            myGame.current = new StandardGame(setupData.moves)
+            // For spectating, create a basic GameInfo with reasonable defaults
+            const spectateGameInfo: GameInfo = {
+              gamemode: setupData.gamemode,
+              time_control: {
+                base_time: 300, // 5 minutes default
+                increment: 0,
+                disadvantage: 0
+              }
+            };
+            myGame.current = new TimedStandardGame(spectateGameInfo)
+            myGame.current.loadMoves(setupData.moves)
             console.log(`🎮 SPECTATE: Set up game with ${setupData.moves.length} existing moves`)
             // Replay for spectators on initial mount
             setAnimateInit(setupData.moves.length > 0)
@@ -273,7 +291,9 @@ export default function LiveGamePage() {
           
           // Commit to model immediately and sync UI
           try { 
-            myGame.current.makeMove(moveData.col)
+            if (myGame.current) {
+              myGame.current.makeMove(moveData.col)
+            }
             // Ensure we're viewing the latest move
           } catch (e) { 
             console.error("❌ GAME: Failed to commit move", moveData.col, e) 
@@ -446,8 +466,10 @@ export default function LiveGamePage() {
     isGameRunningRef.current = false
     
     // Reset the game instance
-    myGame.current.reset()
-    console.log("🎮 GAME: Reset game instance")
+    if (myGame.current) {
+      myGame.current.reset()
+      console.log("🎮 GAME: Reset game instance")
+    }
 
     // Reset meRef to fallback user context data
     if (user) {
@@ -504,8 +526,9 @@ export default function LiveGamePage() {
 
   // Helper to calculate which moves need undo/redo animations
   const animateMoveTransition = (fromIndex: number, toIndex: number) => {
+    if (!myGame.current || !unifiedLayoutRef.current) return
+    
     const moves = myGame.current.getMoves()
-    if (!unifiedLayoutRef.current) return
 
     if (fromIndex > toIndex) {
       // Going backwards - undo moves from current to target
@@ -633,8 +656,8 @@ export default function LiveGamePage() {
         animate_init: animateInit,
         onColumnAttempt: handleColumnAttempt,
         ariaLabel: "Live Connect 4 game board",
-        boardState: myGame.current.getBoard(),
-        gameOver: myGame.current.gameOver,
+        boardState: myGame.current?.getBoard() || Array(6).fill(null).map(() => Array(7).fill(null)),
+        gameOver: myGame.current?.gameOver || false,
         key: boardKey,
       }}
       gameState={{
@@ -664,7 +687,7 @@ export default function LiveGamePage() {
         key="unique-livegame-instance"
         ref={liveGameRef}
         initialChatMessages={chatMessages}
-        game={myGame.current}
+        game={myGame.current || undefined}
         meRef={meRef}
         currentMoveIndex={2}
         onMessageSent={handleMessageSent}

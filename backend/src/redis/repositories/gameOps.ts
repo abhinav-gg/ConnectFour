@@ -2,7 +2,7 @@
 import Redis from 'ioredis';
 import { GameMetadata, GameTimedata, RedisSchema, UserQueue } from '../redisSchema'; // Adjust the import path as necessary
 import { createRedisJson, scanKeysPaginated } from '../redisHelper';
-import { Move } from '@shared/types/game';
+import { Move } from '@shared/types/game.types';
 import { getQueuePriority } from '@/utils/game';
 
 export async function setupGameMetaIndex(redis: Redis): Promise<void> {

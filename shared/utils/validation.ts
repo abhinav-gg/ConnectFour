@@ -1,5 +1,5 @@
-import { MaxBaseTime, MaxDisadvantage, MaxIncrement } from "../constants/game";
-import { TimeControl } from "../types/game";
+import { MaxBaseTime, MaxDisadvantage, MaxIncrement } from "../constants/game.constants";
+import { TimeControl } from "../types/game.types";
 
 /**
  * Validates username format

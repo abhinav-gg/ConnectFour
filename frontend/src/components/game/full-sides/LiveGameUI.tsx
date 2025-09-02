@@ -10,7 +10,7 @@ import { ChatMessage } from "@shared/types/Websocket"
 import { GameControls } from "@/components/game/utility/game-controls"
 import { GameActions } from "@/components/game/utility/game-actions"
 import { PlayerData } from "@shared/types/users"
-import { StandardGame } from "@shared/utils/Games/game"
+import { TimedStandardGame } from "@shared/utils/Games/timed-game"
 
 export interface LiveGameRef {
   addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
@@ -32,7 +32,7 @@ interface LiveGameWithAnalysisProps {
   
   // Chat and Move History Props
   initialChatMessages?: ChatMessage[]
-  game?: StandardGame // Direct game integration
+  game?: TimedStandardGame // Direct game integration
   meRef?: React.MutableRefObject<PlayerData | undefined>
   currentUser?: string
   currentMoveIndex?: number

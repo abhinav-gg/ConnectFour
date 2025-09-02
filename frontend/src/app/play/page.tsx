@@ -1,8 +1,8 @@
 "use client"
 
 import { FallingCirclesBackground } from "@/components/bganimation"
-import { UnifiedGameLayout } from "../../components/layouts/game-layout"
-import { GameSelect } from "@/components/game/pick-game"
+import { UnifiedGameLayout } from "@/components/layouts/game-layout"
+import { GameSelect } from "@/components/game/full-sides/pick-game"
 
 export default function GameSetupPage() {
   return (

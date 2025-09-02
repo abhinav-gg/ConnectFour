@@ -3,7 +3,7 @@ import { myConfig } from "../config/env";
 import { calculateEloChanges, calculatePredictedScore, calculateUpdatedElo, getQueuePriority } from "@/utils/game";
 import { SelfAnalysis } from "@shared/utils/analysis";
 import { PUBLIC_BOTS } from "@/utils/tools/botHandler";
-import { Move } from "@shared/types/game";
+import { Move } from "@shared/types/game.types";
 import { OpeningManager } from "@/utils/tools/opening-book";
 import { getIdentity } from "@/utils/validation";
 import { packGameInfo, unpackGameInfo } from "@/utils/binary";

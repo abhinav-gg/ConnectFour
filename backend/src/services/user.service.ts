@@ -5,7 +5,7 @@ import { UserProfile } from '@shared/types/users';
 import { UUID } from 'crypto';
 import { GameMode } from '@shared/constants/allgamemodes';
 import { EloNotFound } from '@/types/dbErrors';
-import { StandardStartingElo } from '@shared/constants/game';
+import { StandardStartingElo } from '@shared/constants/game.constants';
 
 const userDbOps = rdsDBOps.user;
 

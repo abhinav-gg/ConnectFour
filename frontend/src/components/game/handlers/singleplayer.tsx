@@ -1,1 +1,0 @@
-// file for standard singleplayer game integration with board handlers.

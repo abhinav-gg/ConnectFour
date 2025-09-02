@@ -1,7 +1,7 @@
 import { redisOps } from "@/redis/ops";
 import { GameMetadata, GameTimedata } from "@/redis/redisSchema";
 import { GameNotFound } from "@/types/miscErrors";
-import { Move } from "@shared/types/game";
+import { Move } from "@shared/types/game.types";
 
 // A context object to store the game state and reduce Redis calls
 export class GameContext {

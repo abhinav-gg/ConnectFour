@@ -7,7 +7,7 @@ import { getIdentityFromSocket } from '@/lib/middleware/game.middleware';
 import { RoomSchema } from '../socketRoomSchema';
 import { liveGameService } from '@/services/livegame.service';
 import { GameContext } from '@/utils/gameContext';
-import { GameInfo, TimeControl } from '@shared/types/game';
+import { GameInfo, TimeControl } from '@shared/types/game.types';
 
 async function handleDisconnectSocket(socket: Socket) {
   try {
@@ -72,30 +72,29 @@ export function registerMatchmakingHandlers(soc: Socket) {
 
       socket.join(RoomSchema.game.key(shortCode));
       await liveGameService.dropDisconnectJob(gameContext);
+      let isSpectating = false;
 
-      if (response.status == 100) {
-        socket.emit('joined', {
-          message: 'You caused the game to start',
-        });
-      } else if (response.status == 101) {
+      if (response.status == 101) {
         // Spectating logic
         socket.join(RoomSchema.spectating.key(shortCode));
-      } else {
-        const metadata = await gameContext.getMetadata();
-        if (!metadata) {
-          soc.emit('error', { message: 'Game metadata not found' });
-        }
-        socket.emit('joined', { shortcode: shortCode, 
-          gameinfo: {
-            gamemode: metadata!.gamemode,
-            time_control: {
-              base_time: metadata!.base_time,
-              increment: metadata!.increment,
-              disadvantage: metadata!.disadvantage,
-            } as TimeControl
-          } as GameInfo
-        });
+        isSpectating = true;
+
       }
+      const metadata = await gameContext.getMetadata();
+      if (!metadata) {
+        soc.emit('error', { message: 'Game metadata not found' });
+      }
+      socket.emit('joined', { shortcode: shortCode, 
+        gameinfo: {
+          gamemode: metadata!.gamemode,
+          time_control: {
+            base_time: metadata!.base_time,
+            increment: metadata!.increment,
+            disadvantage: metadata!.disadvantage,
+          } as TimeControl
+        } as GameInfo,
+        isSpectating
+      });
 
     } catch (error) {
       console.error('Error joining matchmaking:', error);

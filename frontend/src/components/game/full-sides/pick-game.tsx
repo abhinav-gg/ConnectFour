@@ -28,7 +28,7 @@ export function GameSelect() {
       icon: Bot,
       extraIcon: Sparkles, // For the stars next to the bot
       extraIconColor: "text-brand-accent-orange",
-      href: "/game/bot",
+      href: "/play/bots",
       soon: false,
     },
     {

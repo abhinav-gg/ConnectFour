@@ -31,6 +31,15 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
   
   let messageId = 0
   const generateId = () => `msg_${++messageId}`
+  
+  // Persistent worker and request tracking
+  const workerRef = useRef<Worker | null>(null)
+  const currentRequestRef = useRef<{
+    id: string
+    moves: number[]
+    resolve: (result: AnalysisResult) => void
+    reject: (error: Error) => void
+  } | null>(null)
 
   // Initialize WASM on mount - load from shared connect4_solver script
   useEffect(() => {
@@ -82,17 +91,17 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
           
           // Initialize the WASM module
           console.log("🔧 WASM Provider: Calling Connect4SolverModule() to initialize WASM...")
-          const module = await (window as any).Connect4SolverModule({
+          const wasmModule = await (window as any).Connect4SolverModule({
             locateFile: (file: string) => `/wasm/${file}`,
           })
-          wasmModuleRef.current = module
+          wasmModuleRef.current = wasmModule
           
           // Test that the module has the expected Connect4Solver class
-          if (module && module.Connect4Solver) {
+          if (wasmModule && wasmModule.Connect4Solver) {
             console.log("✅ WASM Provider: Module ready with Connect4Solver class")
             
             // Test creating a solver instance
-            const testSolver = new module.Connect4Solver()
+            const testSolver = new wasmModule.Connect4Solver()
             if (testSolver && typeof testSolver.solvePosition === 'function') {
               console.log("✅ WASM Provider: Connect4Solver instance created successfully")
             } else {
@@ -105,6 +114,9 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
           setIsReady(true)
           setIsLoading(false)
           console.log("✅ WASM Provider: Module ready for analysis")
+          
+          // Initialize persistent worker for analysis
+          initializePersistentWorker()
         }
         
       } catch (err) {
@@ -112,6 +124,177 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
         setError(err instanceof Error ? err.message : 'Unknown WASM loading error')
         setIsLoading(false)
         setIsReady(false)
+      }
+    }
+
+    // Initialize persistent worker for prioritized analysis
+    const initializePersistentWorker = () => {
+      console.log("🔧 WASM Provider: Initializing persistent worker...")
+      
+      // Get absolute URL for the worker script
+      const scriptUrl = new URL('/wasm/connect4_solver.js', window.location.origin).href
+      
+      // Create persistent worker
+      const workerCode = `
+        // Load WASM in worker with absolute URL
+        importScripts('${scriptUrl}');
+        
+        let wasmModule = null;
+        let solver = null;
+        let isReady = false;
+        
+        // Initialize WASM module once
+        async function initializeWASM() {
+          try {
+            console.log('🔧 WASM Worker: Initializing Connect4SolverModule...');
+            wasmModule = await Connect4SolverModule({
+              locateFile: (file) => '${new URL('/wasm/', window.location.origin).href}' + file,
+            });
+            solver = new wasmModule.Connect4Solver();
+            isReady = true;
+            console.log('🔧 WASM Worker: Ready for analysis');
+            
+            // Signal ready
+            self.postMessage({ type: 'ready' });
+          } catch (error) {
+            console.error('🔧 WASM Worker: Initialization failed:', error);
+            self.postMessage({ type: 'error', error: error.message });
+            // Retry initialization after a delay
+            setTimeout(() => {
+              console.log('🔧 WASM Worker: Retrying initialization...');
+              initializeWASM();
+            }, 1000);
+          }
+        }
+        
+        // Initialize immediately
+        initializeWASM();
+        
+        self.addEventListener('message', function(e) {
+          const { type, id, moves } = e.data;
+          
+          if (type === 'analyze') {
+            if (!isReady || !solver) {
+              self.postMessage({ type: 'result', id, error: 'Solver not ready' });
+              return;
+            }
+            
+            try {
+              // Convert moves array to position string (1-indexed columns)
+              const position = moves.map(move => (move + 1).toString()).join('');
+              
+              // Analyze the position
+              const evaluation = solver.solvePosition(position);
+              
+              // Analyze all columns for best moves
+              const analysisVector = solver.analyzePosition(position);
+              const columnResults = [];
+              for (let i = 0; i < analysisVector.size(); i++) {
+                columnResults.push(analysisVector.get(i));
+              }
+              
+              self.postMessage({
+                type: 'result',
+                id,
+                evaluation,
+                columnResults
+              });
+              
+            } catch (error) {
+              console.error('🔧 WASM Worker: Analysis error:', error);
+              self.postMessage({
+                type: 'result',
+                id,
+                error: error.message
+              });
+            }
+          }
+        });
+      `;
+
+      const blob = new Blob([workerCode], { type: 'application/javascript' })
+      workerRef.current = new Worker(URL.createObjectURL(blob))
+
+      // Handle worker messages
+      workerRef.current.onmessage = (e) => {
+        const { type, id, evaluation, columnResults, error } = e.data
+        
+        if (type === 'ready') {
+          console.log("✅ WASM Provider: Persistent worker ready")
+          
+          // Analyze empty position immediately on ready to prevent empty state
+          // Create a special request for the empty position
+          const emptyPositionId = generateId()
+          console.log('🔧 WASM Provider: Analyzing empty position on initialization:', emptyPositionId)
+          
+          // Store this as the current request so it gets processed properly
+          currentRequestRef.current = { 
+            id: emptyPositionId,
+            moves: [],
+            resolve: (result) => {
+              console.log('✅ WASM Provider: Empty position analyzed successfully:', result)
+              // Don't need to do anything with the result here, it will be available for the ToolUI
+            }, 
+            reject: (error) => {
+              console.warn('⚠️ WASM Provider: Empty position analysis failed:', error)
+            }
+          }
+          
+          setIsAnalyzing(true)
+          workerRef.current?.postMessage({
+            type: 'analyze',
+            id: emptyPositionId,
+            moves: []
+          })
+          return
+        }
+        
+        if (type === 'result') {
+          const request = currentRequestRef.current
+          if (request && request.id === id) {
+            currentRequestRef.current = null
+            
+            if (error) {
+              console.warn('🔧 WASM Provider: Analysis failed:', error)
+              // If it's a "Solver not ready" error, retry the request
+              if (error.includes('Solver not ready')) {
+                console.log('🔧 WASM Provider: Retrying analysis due to solver not ready...')
+                setTimeout(() => {
+                  if (workerRef.current) {
+                    workerRef.current.postMessage({
+                      type: 'analyze',
+                      id: request.id,
+                      moves: request.moves
+                    })
+                    // Restore the request
+                    currentRequestRef.current = request
+                  }
+                }, 500) // Wait 500ms before retry
+                return
+              }
+              request.reject(new Error(error))
+            } else {
+              request.resolve({ evaluation, columnResults })
+            }
+          }
+          // If no matching request, it means the request was cancelled and already resolved with fake data
+          
+          // Update analyzing state
+          setIsAnalyzing(currentRequestRef.current !== null)
+        }
+      }
+
+      workerRef.current.onerror = (error) => {
+        console.error("❌ WASM Provider: Worker error:", error)
+        if (currentRequestRef.current) {
+          // Resolve with fake data instead of rejecting to avoid error state
+          currentRequestRef.current.resolve({
+            evaluation: 0,
+            columnResults: [0, 0, 0, 0, 0, 0, 0]
+          })
+          currentRequestRef.current = null
+        }
+        setIsAnalyzing(false)
       }
     }
 
@@ -123,118 +306,86 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
       if (wasmModuleRef.current) {
         wasmModuleRef.current = null
       }
+      if (workerRef.current) {
+        workerRef.current.terminate()
+        workerRef.current = null
+      }
+      // Reject all pending requests
+      if (currentRequestRef.current) {
+        // Resolve with fake data instead of rejecting to avoid error state
+        currentRequestRef.current.resolve({
+          evaluation: 0,
+          columnResults: [0, 0, 0, 0, 0, 0, 0]
+        })
+        currentRequestRef.current = null
+      }
       setIsReady(false)
     }
   }, [])
 
-  // Asynchronous analysis function using Web Worker
+  // Latest-only analysis function - cancels previous requests
   const analyzePosition = useCallback(async (moves: number[]): Promise<AnalysisResult> => {
-    if (!isReady || !wasmModuleRef.current) {
+    if (!isReady || !workerRef.current) {
       throw new Error('WASM not ready')
     }
 
+    const requestId = generateId()
+    console.log('🔧 WASM Provider: Sending latest analysis request (cancelling previous):', requestId, 'moves:', moves)
+    
+    // Cancel previous request if exists
+    if (currentRequestRef.current) {
+      console.log('🔧 WASM Provider: Cancelling previous request:', currentRequestRef.current.id)
+      // Resolve cancelled requests with fake data to avoid error state in UI
+      currentRequestRef.current.resolve({
+        evaluation: 0,
+        columnResults: [0, 0, 0, 0, 0, 0, 0]
+      })
+      currentRequestRef.current = null
+    }
+    
     setIsAnalyzing(true)
     
-    return new Promise((resolve, reject) => {
-      try {
-        console.log('🔧 WASM Provider: Starting async analysis for moves:', moves)
-        
-        // Get absolute URL for the worker script
-        const scriptUrl = new URL('/wasm/connect4_solver.js', window.location.origin).href
-        
-        // Create Web Worker for this analysis
-        const workerCode = `
-          // Load WASM in worker with absolute URL
-          importScripts('${scriptUrl}');
-          
-          self.addEventListener('message', async function(e) {
-            const { moves } = e.data;
-            
-            try {
-              console.log('🔧 WASM Worker: Initializing Connect4SolverModule...');
-              // Initialize WASM module in worker
-              const wasmModule = await Connect4SolverModule({
-                locateFile: (file) => '${new URL('/wasm/', window.location.origin).href}' + file,
-              });
-              console.log('🔧 WASM Worker: Module initialized successfully');
-              
-              // Create solver instance
-              const solver = new wasmModule.Connect4Solver();
-              console.log('🔧 WASM Worker: Solver instance created');
-              
-              // Convert moves array to position string (1-indexed columns)
-              const position = moves.map(move => (move + 1).toString()).join('');
-              console.log('🔧 WASM Worker: Position string:', position);
-              
-              console.log('🔧 WASM Worker: Running analysis...');
-              
-              // Analyze the position
-              const evaluation = solver.solvePosition(position);
-              console.log('🔧 WASM Worker: Got evaluation:', evaluation);
-              
-              // Analyze all columns for best moves
-              const analysisVector = solver.analyzePosition(position);
-              const columnResults = [];
-              for (let i = 0; i < analysisVector.size(); i++) {
-                columnResults.push(analysisVector.get(i));
-              }
-              
-              console.log('🔧 WASM Worker: Got column results:', columnResults);
-              console.log('🔧 WASM Worker: Analysis complete, sending results...');
-              
-              self.postMessage({
-                evaluation,
-                columnResults
-              });
-              
-            } catch (error) {
-              console.error('🔧 WASM Worker: Error during analysis:', error);
-              self.postMessage({
-                error: error.message
-              });
-            }
-          });
-        `;
-        
-        const blob = new Blob([workerCode], { type: 'application/javascript' });
-        const worker = new Worker(URL.createObjectURL(blob));
-        
-        const timeoutId = setTimeout(() => {
-          worker.terminate()
+    return new Promise<AnalysisResult>((resolve, reject) => {
+      // Store current request
+      currentRequestRef.current = { id: requestId, moves, resolve, reject }
+      
+      // Add timeout to prevent hanging requests
+      const timeoutId = setTimeout(() => {
+        if (currentRequestRef.current && currentRequestRef.current.id === requestId) {
+          console.warn('🔧 WASM Provider: Request timeout:', requestId)
+          // Resolve with fake data instead of rejecting to avoid error state
+          currentRequestRef.current.resolve({
+            evaluation: 0,
+            columnResults: [0, 0, 0, 0, 0, 0, 0]
+          })
+          currentRequestRef.current = null
           setIsAnalyzing(false)
-          reject(new Error('Analysis timeout'))
-        }, 30000)
-        
-        worker.onmessage = (e) => {
-          clearTimeout(timeoutId)
-          worker.terminate()
-          setIsAnalyzing(false)
-          
-          if (e.data.error) {
-            console.error('🔧 WASM Provider: Analysis failed:', e.data.error)
-            reject(new Error(e.data.error))
-          } else {
-            console.log('🔧 WASM Provider: Analysis complete:', e.data)
-            resolve(e.data)
-          }
         }
-        
-        worker.onerror = (error) => {
-          clearTimeout(timeoutId)
-          worker.terminate()
-          setIsAnalyzing(false)
-          console.error('🔧 WASM Provider: Worker error:', error)
-          reject(new Error('Worker error'))
-        }
-        
-        // Start analysis
-        worker.postMessage({ moves })
-        
-      } catch (error) {
-        setIsAnalyzing(false)
-        console.error('🔧 WASM Provider: Failed to start analysis:', error)
-        reject(error)
+      }, 10000) // 10 second timeout
+      
+      // Override reject to clear timeout
+      const originalReject = reject
+      const wrappedReject = (error: Error) => {
+        clearTimeout(timeoutId)
+        originalReject(error)
       }
+      
+      // Override resolve to clear timeout  
+      const originalResolve = resolve
+      const wrappedResolve = (result: AnalysisResult) => {
+        clearTimeout(timeoutId)
+        originalResolve(result)
+      }
+      
+      // Update stored request with wrapped functions
+      currentRequestRef.current = { id: requestId, moves, resolve: wrappedResolve, reject: wrappedReject }
+      
+      // Send to worker
+      workerRef.current!.postMessage({
+        type: 'analyze',
+        id: requestId,
+        moves
+      })
     })
   }, [isReady])
 

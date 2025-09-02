@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { motion } from "framer-motion"
 import { Layout } from "./mainlayout"
-import Board, { BoardHandle } from "../boards/Board"
+import Board, { BoardHandle } from "../game/Board"
 import { ScoreBar } from "../game/score-bar"
 import { PlayerInfo } from "../game/player-info"
 import { Timer } from "../game/timer"
@@ -69,7 +69,7 @@ export interface UnifiedGameLayoutProps {
 }
 
 // Ref interface for board control
-export interface UnifiedGameLayoutRef extends BoardHandle {}
+export type UnifiedGameLayoutRef = BoardHandle
 
 // Helper function to extract value from either direct value or ref
 function useValueOrRef<T>(valueOrRef: T | React.MutableRefObject<T> | undefined, fallback: T): T {
@@ -127,8 +127,15 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
     clearPremove: () => {
       boardRef.current?.clearPremove()
     },
-    undoMoveAnimation: (row: number, col: number, player: number) => {
-      boardRef.current?.undoMoveAnimation(row, col, player)
+    undoMoveAnimation: (row: number, col: number, player: number, lastMoveHighlight?: {row: number, col: number} | null) => {
+      console.log("🎮 UnifiedGameLayout: Triggering undomove animation:", { row, col, player })
+      boardRef.current?.undoMoveAnimation(row, col, player, lastMoveHighlight)
+    },
+    setBoard: (newBoard: (number | null)[][]) => {
+      boardRef.current?.setBoard(newBoard)
+    },
+    makeArrow: (startRow: number, startCol: number, endRow: number, endCol: number, id?: string) => {
+      return boardRef.current?.makeArrow(startRow, startCol, endRow, endCol, id) || ''
     }
   }), [])
   

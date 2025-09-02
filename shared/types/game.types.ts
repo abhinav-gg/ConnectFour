@@ -1,6 +1,3 @@
-
-
-
 export type Player = 0 | 1;
 export type Cell = Player | null
 export type Move = number
@@ -35,6 +32,24 @@ export type TimeCategory = "hyper-bullet" | "bullet" | "blitz" | "rapid";
 export type GameInfo = {
     gamemode: number; // GameMode
     time_control: TimeControl;
+}
+// Base interface for standard game operations
+
+export interface Game {
+  getMoves(): number[];
+  getBoard(): (number | null)[][];
+  exportMoves(): string;
+  getLegalMoves(): Move[];
+  gameOver: boolean;
+  currentPlayer: Player;
+}
+// Extended interface for games that support move navigation
+
+export interface NavigableGame extends Game {
+  getAllMoves(): number[];
+  getCurrentMoveIndex(): number;
+  setMoveIndex(index: number): boolean;
+  adjMoveIndex(delta: number): boolean;
 }
 
 

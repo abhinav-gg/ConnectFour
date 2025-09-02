@@ -47,7 +47,7 @@ export function registerGameHandlers(sock: Socket) {
             const attemptedMove = await liveGameService.HandleGameMove(gameContext, move);
 
             if (attemptedMove.status !== 200) {
-                socket.emit('error', { message: attemptedMove.message });
+                // socket.emit('error', { message: attemptedMove.message });
                 return;
             }
 

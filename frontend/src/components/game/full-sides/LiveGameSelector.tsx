@@ -25,7 +25,7 @@ import { GameMode } from "@shared/constants/allgamemodes"
 import { validateTimeControl } from "@shared/utils/validation"
 import { getRankedGameModeByTimeControl } from "@shared/utils/gamemodes"
 import { myConfig } from "@/config/env"
-import { useRecaptcha } from "../providers/RecaptchaProvider"
+import { useRecaptcha } from "../../providers/RecaptchaProvider"
 
 type CommonModes = "standard" | "armageddon" | "friendly" | "casual"
 
