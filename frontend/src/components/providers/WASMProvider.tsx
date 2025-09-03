@@ -16,17 +16,27 @@ interface WASMContextType {
   clearCache: () => void
   analyzePosition: (moves: number[]) => Promise<AnalysisResult>
   isAnalyzing: boolean
+  isActive: boolean
+  activateWASM: () => void
+  deactivateWASM: () => void
 }
 
 // Create context
 const WASMContext = createContext<WASMContextType | null>(null)
 
 // Provider component
-export function WASMProvider({ children }: { children: React.ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true)
+export function WASMProvider({ 
+  children, 
+  active: initialActive = false 
+}: { 
+  children: React.ReactNode
+  active?: boolean 
+}) {
+  const [isLoading, setIsLoading] = useState(false)
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isActive, setIsActive] = useState(initialActive)
   const wasmModuleRef = useRef<any>(null)
   
   let messageId = 0
@@ -43,6 +53,14 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize WASM on mount - load from shared connect4_solver script
   useEffect(() => {
+    // Only initialize WASM when active
+    if (!isActive) {
+      console.log("🔧 WASM Provider: Inactive, skipping WASM initialization")
+      setIsLoading(false)
+      setIsReady(false)
+      return
+    }
+
     const initializeWASM = async () => {
       try {
         console.log("🔧 WASM Provider: Loading WASM module from shared script...")
@@ -221,31 +239,6 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
         
         if (type === 'ready') {
           console.log("✅ WASM Provider: Persistent worker ready")
-          
-          // Analyze empty position immediately on ready to prevent empty state
-          // Create a special request for the empty position
-          const emptyPositionId = generateId()
-          console.log('🔧 WASM Provider: Analyzing empty position on initialization:', emptyPositionId)
-          
-          // Store this as the current request so it gets processed properly
-          currentRequestRef.current = { 
-            id: emptyPositionId,
-            moves: [],
-            resolve: (result) => {
-              console.log('✅ WASM Provider: Empty position analyzed successfully:', result)
-              // Don't need to do anything with the result here, it will be available for the ToolUI
-            }, 
-            reject: (error) => {
-              console.warn('⚠️ WASM Provider: Empty position analysis failed:', error)
-            }
-          }
-          
-          setIsAnalyzing(true)
-          workerRef.current?.postMessage({
-            type: 'analyze',
-            id: emptyPositionId,
-            moves: []
-          })
           return
         }
         
@@ -321,7 +314,7 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
       }
       setIsReady(false)
     }
-  }, [])
+  }, [isActive])
 
   // Latest-only analysis function - cancels previous requests
   const analyzePosition = useCallback(async (moves: number[]): Promise<AnalysisResult> => {
@@ -396,13 +389,50 @@ export function WASMProvider({ children }: { children: React.ReactNode }) {
     setIsReady(false)
   }, [])
 
+  // WASM activation control
+  const activateWASM = useCallback(() => {
+    if (!isActive) {
+      console.log("🔬 WASM Provider: Activating WASM")
+      setIsActive(true)
+    }
+  }, [isActive])
+
+  const deactivateWASM = useCallback(() => {
+    if (isActive) {
+      console.log("🔬 WASM Provider: Deactivating WASM")
+      setIsActive(false)
+      setIsReady(false)
+      setIsLoading(false)
+      setIsAnalyzing(false)
+      
+      // Clean up worker and module
+      if (workerRef.current) {
+        workerRef.current.terminate()
+        workerRef.current = null
+      }
+      if (wasmModuleRef.current) {
+        wasmModuleRef.current = null
+      }
+      if (currentRequestRef.current) {
+        currentRequestRef.current.resolve({
+          evaluation: 0,
+          columnResults: [0, 0, 0, 0, 0, 0, 0]
+        })
+        currentRequestRef.current = null
+      }
+    }
+  }, [isActive])
+
   const contextValue: WASMContextType = {
     isLoading,
     isReady,
     error,
     clearCache,
     analyzePosition,
-    isAnalyzing
+    isAnalyzing,
+    isActive,
+    activateWASM,
+    deactivateWASM
   }
 
   return (

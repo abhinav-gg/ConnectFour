@@ -8,6 +8,7 @@ import { Suspense } from 'react';
 import Loading from '@/components/loading';
 import { AppHooksProvider } from '@/components/providers/AppHooksProvider';
 import { BackendProvider } from '@/components/providers/BackendProvider';
+import { WASMProvider } from '@/components/providers/WASMProvider';
 
 export const metadata: Metadata = {
   title: 'Con4 - Play Four In A Row Online',
@@ -38,11 +39,13 @@ export default function RootLayout({
           <ErrorProvider>
             <SocketProvider url={myConfig.WEBSOCKET_URL}>
               <BackendProvider>
-                <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
-                        <Suspense fallback={<Loading />}>
-                          {children}
-                        </Suspense>
-                </RecaptchaProvider>
+                <WASMProvider active={false}>
+                  <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
+                          <Suspense fallback={<Loading />}>
+                            {children}
+                          </Suspense>
+                  </RecaptchaProvider>
+                </WASMProvider>
               </BackendProvider>
             </SocketProvider>
           </ErrorProvider>

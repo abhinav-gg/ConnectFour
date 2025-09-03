@@ -270,7 +270,7 @@ export const liveGameService = {
             // cancel outstanding game draw offers
             await r.game.cancelGameDrawOffer(gameContext.gameId);
             const tl = Game.getTimeLeft();
-            const cp = Game.getCurrentPlayer();
+            const cp = Game.currentPlayer;
             console.log("AFTER ADDING MOVES", gameContext.gameId,
                 deltaTime,
                 cp,
@@ -309,14 +309,14 @@ export const liveGameService = {
                 gameContext.gameId,
                 {
                     rTimes: Game.getTimeLeft(),
-                    cTurn: Game.getCurrentPlayer(),
+                    cTurn: Game.currentPlayer,
                 }
             );
         }
 
         if (Game.isGameOver()) {
             // handle game over logic
-            await this.HandleGameOver(gameContext, Game.getGameState(metadata.gamemode));
+            await this.HandleGameOver(gameContext, Game.getGameState());
             return { status: 200, message: 'Game over' };
         }
 
@@ -447,7 +447,7 @@ export const liveGameService = {
         // Check if the current player has timed out
         if (Game.checkPlayerTimeOut()) {
             // Handle game over due to timeout
-            await this.HandleGameOver(gameContext, Game.getGameState(metadata.gamemode));
+            await this.HandleGameOver(gameContext, Game.getGameState());
             return { status: 100, message: 'Player has timed out' };
         }
 

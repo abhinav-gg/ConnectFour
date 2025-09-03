@@ -140,6 +140,45 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
     const [lastMoveHighlight, setLastMoveHighlightState] = useState<{ row: number; col: number } | null>(null)
     const [premoveColumn, setPremoveColumn] = useState<number | null>(null)
 
+    // Timeout tracking to prevent conflicts during rapid navigation
+    const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const lastMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const moveBufferTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    // Cleanup function for ALL timeouts and animations (aggressive)
+    const clearAllTimeouts = () => {
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current)
+        moveTimeoutRef.current = null
+      }
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current)
+        undoTimeoutRef.current = null
+      }
+      if (lastMoveTimeoutRef.current) {
+        clearTimeout(lastMoveTimeoutRef.current)
+        lastMoveTimeoutRef.current = null
+      }
+      if (moveBufferTimeoutRef.current) {
+        clearTimeout(moveBufferTimeoutRef.current)
+        moveBufferTimeoutRef.current = null
+      }
+    }
+
+    // Clear only backward animations and timeouts
+    const clearBackwardAnimations = () => {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current)
+        undoTimeoutRef.current = null
+      }
+      if (lastMoveTimeoutRef.current) {
+        clearTimeout(lastMoveTimeoutRef.current)
+        lastMoveTimeoutRef.current = null
+      }
+      setRisingPieces([])
+    }
+
     // Sound effect for piece drop
     const DropSound = useSound("/sounds/counter-fall-long.mp3")
 
@@ -149,9 +188,14 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       window.matchMedia("(max-width: 567px)").matches || 
       ('ontouchstart' in window && window.matchMedia("(max-width: 1024px)").matches)
     )
-    const getFallId = (row: number, col: number, player: number) => `${row}-${col}-${player}`
+    
+    // Animation ID counter to ensure unique keys
+    const animationIdRef = useRef(0)
+    const getNextAnimationId = () => ++animationIdRef.current
+    
+    const getFallId = (row: number, col: number, player: number) => `fall-${row}-${col}-${player}-${getNextAnimationId()}`
     // New: unique id generator for rising pieces
-    const getRiseId = (row: number, col: number, player: number) => `undo-${row}-${col}-${player}`
+    const getRiseId = (row: number, col: number, player: number) => `rise-${row}-${col}-${player}-${getNextAnimationId()}`
 
     // Create a unique key for each cell position
     const getCellKey = (row: number, col: number) => `${row}-${col}`
@@ -285,6 +329,13 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       }
     }, [animate_init, showLastMoveHighlight])
 
+    // Cleanup effect to clear all timeouts on unmount
+    useEffect(() => {
+      return () => {
+        clearAllTimeouts()
+      }
+    }, [])
+
     // Calculate column from mouse position
     const getColumnFromMousePosition = (e: React.MouseEvent, boardElement: HTMLElement) => {
       const rect = boardElement.getBoundingClientRect()
@@ -393,9 +444,12 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         ])
         setHoveredColumn(null)
 
+        // Clear only backward animations and timeouts
+        clearBackwardAnimations()
+
         // Update the board immediately
         // Delay updating the internal board by the duration of the falling animation
-        setTimeout(() => {
+        moveTimeoutRef.current = setTimeout(() => {
           setInternalBoard((prevBoard) => {
             const newBoard = prevBoard.map((boardRow, rowIndex) =>
               boardRow.map((cell, colIndex) => {
@@ -412,6 +466,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
           if (showLastMoveHighlight) {
             setLastMoveHighlightState({ row, col })
           }
+          moveTimeoutRef.current = null
         }, duration * 1000)
         setCurrentPlayer(player === 0 ? 1 : 0)
       },
@@ -427,7 +482,12 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
       // New: reverse/lift animation for undo
       undoMoveAnimation(row, col, player, lastMoveHighlight = null) {
-        console.log(`🎮 BOARD: undoMoveAnimation called with row=${row}, col=${col}, player=${player}, lastMoveHighlight=`, lastMoveHighlight)
+        console.log(`🎮 BOARD: undoMoveAnimation called - AGGRESSIVE clearing`)
+        
+        // AGGRESSIVE: Clear ALL timeouts and animations
+        clearAllTimeouts()
+        setFallingPieces([])
+        setRisingPieces([])
         
         // Basic bounds validation
         if (row < 0 || row > 5 || col < 0 || col > 6) {
@@ -473,28 +533,33 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
         console.log(`🎮 BOARD: Rising piece animation started with id=${riseId}, duration=${duration}`)
 
+        // Clear any existing undo timeout before setting a new one
+        if (undoTimeoutRef.current) {
+          clearTimeout(undoTimeoutRef.current)
+        }
+        
         // After animation completes, set current player back to the undone player
-        setTimeout(() => {
+        undoTimeoutRef.current = setTimeout(() => {
           setCurrentPlayer(player)
           console.log(`🎮 BOARD: Undo animation completed, current player set to ${player}`)
+          undoTimeoutRef.current = null
         }, duration * 1000)
       },
 
       // New: directly set the board state for animations without affecting game logic
       setBoard(newBoard: (number | null)[][]) {
-        console.log(`🎮 BOARD: setBoard called, canceling all animations`)
+        console.log(`🎮 BOARD: setBoard called - AGGRESSIVE clearing`)
         
-        // Cancel all ongoing animations
+        // AGGRESSIVE: Clear ALL timeouts and animations
+        clearAllTimeouts()
         setFallingPieces([])
         setRisingPieces([])
         
         // Set the new board state
         setInternalBoard(newBoard)
-        
-        // Clear last move highlight since board state changed
         setLastMoveHighlightState(null)
         
-        console.log(`🎮 BOARD: Board state updated, all animations canceled`)
+        console.log(`🎮 BOARD: Board state updated aggressively`)
       },
 
       // New: create an arrow for analysis/hints
@@ -515,7 +580,15 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
       if (!isInteractive || col === -1 || moveBufferActive) return
 
       setMoveBufferActive(true)
-      setTimeout(() => setMoveBufferActive(false), 50)
+      
+      // Clear existing timeout and set new one
+      if (moveBufferTimeoutRef.current) {
+        clearTimeout(moveBufferTimeoutRef.current)
+      }
+      moveBufferTimeoutRef.current = setTimeout(() => {
+        setMoveBufferActive(false)
+        moveBufferTimeoutRef.current = null
+      }, 50)
 
       if (onColumnAttempt) onColumnAttempt(col)
     }

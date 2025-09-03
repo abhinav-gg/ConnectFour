@@ -12,6 +12,7 @@ export class TimedStandardGame implements NavigableGame {
   private timeLeft: [number, number];
   private gameInfo: GameInfo;
   private timedOutPlayer: Player | null = null; // Track if a player has timed out
+  private deltaTimes: number[] = [];
 
   constructor(
     gameInfo:GameInfo, // 5 min in ms
@@ -22,21 +23,16 @@ export class TimedStandardGame implements NavigableGame {
     this.timeLeft = [1000 * (gameInfo.time_control.base_time),
                      1000 * (gameInfo.time_control.base_time + gameInfo.time_control.disadvantage)];
   }
-  getLegalMoves(): Move[] {
-    // Delegate to the underlying HistoryStandardGame instance
-    return this.game.getLegalMoves();
+
+  /**
+   * Returns the current timers for both players in milliseconds.
+   * This reflects the time left for each player at the current game state.
+   */
+  getCurrentTimers(): [number, number] {
+    // if we are up to date then we need to perform a calculation here....
+    return [...this.timeLeft];
   }
 
-  get currentPlayer(): Player {
-    return this.game.currentPlayer;
-  }
-
-  getMoves(): number[] {
-    return this.game.getMoves();
-  }
-  getAllMoves(): number[] {
-    return this.game.getAllMoves();
-  }
 
   loadStandard(pTimes: number[], lMove: number, cTurn: number, GameString: number[]): void {
     // assert pTimes is an array of numbers with length 2
@@ -56,14 +52,18 @@ export class TimedStandardGame implements NavigableGame {
   /**
    * Load moves into the game from setup data
    */
-  loadMoves(moves: number[]): void {
+  loadMoves(moves: number[], deltas: number[]): void {
+    if (moves.length !== deltas.length - 1) {
+      throw new Error("Incorrect move history");
+    }
     this.game = new HistoryStandardGame(moves);
+    this.deltaTimes = deltas;
   }
 
   makeMove(col: number): TimedMoveResult {
 
     const now = Date.now();
-    const currentPlayer = this.getCurrentPlayer();
+    const currentPlayer = this.currentPlayer;
     const moveDuration = now - (this.lastMoveTimestamp ?? now); // the first move will have a duration of 0
 
     if (this.checkPlayerTimeOut()) {
@@ -108,16 +108,43 @@ export class TimedStandardGame implements NavigableGame {
     return false;
   }
 
-
   reset(): void {
     this.game.reset();
     this.lastMoveTimestamp = Date.now();
     this.timeLeft = [this.gameInfo.time_control.base_time, this.gameInfo.time_control.base_time];
   }
 
-  // Proxy StandardGame methods
+  getGameState(): GameState {
+   
+    if (!this.game.gameOver) {
+      return GameState.IN_PROGRESS;
+    }
+
+    if (this.timedOutPlayer != null) {
+      return this.timedOutPlayer === 0 ? GameState.RED_TIMEOUT : GameState.YELLOW_TIMEOUT;
+    }
+
+    if (this.game.winner === null) {
+      if (ArmageddonModes.has(this.gameInfo.gamemode)) {
+        return GameState.YELLOW_WIN; // YELLOW WINS A DRAWN ARMAGEDDON GAME
+      } else if (StandardModes.has(this.gameInfo.gamemode)) {
+        return GameState.DRAW_FULL;
+      } else {
+        throw new Error("Unknown game mode");
+      }
+    }
+
+    return this.game.winner === 0 ? GameState.RED_WIN : GameState.YELLOW_WIN;
+
+  }
+
+    // Proxy StandardGame methods
   exportMoves(): string {
     return this.game.exportMoves();
+  }
+
+  getGameInfo(): GameInfo {
+    return this.gameInfo;
   }
 
   getBoard() {
@@ -130,54 +157,6 @@ export class TimedStandardGame implements NavigableGame {
 
   prettyPrintBoard(): string {
     return this.game.prettyPrintBoard();
-  }
-
-  get hashCode(): bigint {
-    return this.game.hashCode;
-  }
-
-  getGameInfo(): GameInfo {
-    return this.gameInfo;
-  }
-
-  getLastMoveTimestamp(): number {
-    return this.lastMoveTimestamp ?? -1;
-  }
-
-  getTimeLeft(): [number, number] {
-    return this.timeLeft;
-  }
-
-  getCurrentPlayer(): 0 | 1 {
-    return this.game.currentPlayer;
-  }
-
-  getCurrentMoveIndex(): number {
-    return this.game.getCurrentMoveIndex();
-  }
-
-  getGameState(gamemode: GameMode): GameState {
-   
-    if (!this.game.gameOver) {
-      return GameState.IN_PROGRESS;
-    }
-
-    if (this.timedOutPlayer != null) {
-      return this.timedOutPlayer === 0 ? GameState.RED_TIMEOUT : GameState.YELLOW_TIMEOUT;
-    }
-
-    if (this.game.winner === null) {
-      if (ArmageddonModes.has(gamemode)) {
-        return GameState.YELLOW_WIN; // YELLOW WINS A DRAWN ARMAGEDDON GAME
-      } else if (StandardModes.has(gamemode)) {
-        return GameState.DRAW_FULL;
-      } else {
-        throw new Error("Unknown game mode");
-      }
-    }
-
-    return this.game.winner === 0 ? GameState.RED_WIN : GameState.YELLOW_WIN;
-
   }
 
   isGameOver(): boolean {
@@ -200,5 +179,38 @@ export class TimedStandardGame implements NavigableGame {
   adjMoveIndex(delta: number): boolean {
     return this.game.adjMoveIndex(delta);
   }
+
+  get hashCode(): bigint {
+    return this.game.hashCode;
+  }
+
+  getLastMoveTimestamp(): number {
+    return this.lastMoveTimestamp ?? -1;
+  }
+
+  getTimeLeft(): [number, number] {
+    return this.timeLeft;
+  }
+
+  getCurrentMoveIndex(): number {
+    return this.game.getCurrentMoveIndex();
+  }
+
+  getLegalMoves(): Move[] {
+    // Delegate to the underlying HistoryStandardGame instance
+    return this.game.getLegalMoves();
+  }
+
+  get currentPlayer(): Player {
+    return this.game.currentPlayer;
+  }
+
+  getMoves(): number[] {
+    return this.game.getMoves();
+  }
+  getAllMoves(): number[] {
+    return this.game.getAllMoves();
+  }
+
 
 }

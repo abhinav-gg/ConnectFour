@@ -88,7 +88,7 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
     try {
         const gameContext = new GameContext(userId);
         const response = await gameService.joinGameQueue(gameContext, { gamemode, time_control });
-        res.status(response.status).json({ gameLink: `/game/live?r=${response.message}` });
+        res.status(response.status).json({ gameLink: `/game?r=${response.message}` });
     }
     catch (error) {
         console.log('Failed to request game:', error);

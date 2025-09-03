@@ -6,6 +6,7 @@ import { AnalysisHeader } from "@/components/game/utility/analysis-header"
 import { ColumnAnalysis } from "@/components/game/utility/column-analysis"
 import { MoveHistory } from "@/components/game/utility//move-history"
 import GameChat, { ChatRef } from "@/components/game/utility/chat"
+import { BotPlay } from "@/components/game/utility/bot-play"
 import { ChatMessage } from "@shared/types/Websocket"
 import { GameControls } from "@/components/game/utility/game-controls"
 import { GameActions } from "@/components/game/utility/game-actions"
@@ -17,6 +18,8 @@ export interface LiveGameRef {
   addSystemMessage: (message: string, username?: string) => void
   addReceivedMessage: (message: string, username: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
   clearChat: () => void
+  // Bot-specific methods
+  sendBotMessage?: (message: string) => void
 }
 
 interface LiveGameWithAnalysisProps {
@@ -34,6 +37,7 @@ interface LiveGameWithAnalysisProps {
   initialChatMessages?: ChatMessage[]
   game?: TimedStandardGame // Direct game integration
   meRef?: React.MutableRefObject<PlayerData | undefined>
+  opponentRef?: React.MutableRefObject<PlayerData | undefined> // Added for bot mode
   currentUser?: string
   currentMoveIndex?: number
   // Optional override for the move list to display (e.g., include pending animation)
@@ -48,11 +52,15 @@ interface LiveGameWithAnalysisProps {
   onLastMove?: () => void
   onResign?: () => void
   onOfferDraw?: () => void
+  onHint?: () => void // Bot-specific hint handler
   onToggleAnalysis?: (enabled: boolean) => void
   onSettingsClick?: () => void
   
   // Analysis Control
   showAnalysisFeatures?: boolean // New prop to control analysis visibility
+  
+  // Bot Mode Control
+  isBotMode?: boolean // New prop to determine if we should show bot UI
 }
 
 const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>((props, ref) => {
@@ -60,6 +68,7 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
     initialChatMessages = [], // Default to empty array here instead of in JSX
     game,
     meRef,
+    opponentRef,
     currentUser = "You",
     currentMoveIndex: propCurrentMoveIndex = 0,
     movesOverride,
@@ -71,9 +80,11 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
     onLastMove,
     onResign,
     onOfferDraw,
+    onHint,
     onToggleAnalysis,
     onSettingsClick,
     showAnalysisFeatures = true, // Default to true for backward compatibility
+    isBotMode = false, // Default to false for backward compatibility
   } = props
 
   const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
@@ -82,6 +93,10 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
   // Use refs for dynamic data or fallback to props
   const actualCurrentUser = meRef?.current?.username || currentUser
   const actualTotalMoveCount = game ? game.getMoves().length : 0
+  
+  // Get bot info if in bot mode
+  const botName = opponentRef?.current?.username || "Bot"
+  const botAvatar = opponentRef?.current?.pfp
   
   const handleMessageSent = (message: ChatMessage) => {
     console.log("Message sent via chat component:", message)
@@ -96,18 +111,38 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
   // Expose chat functions to parent component
   useImperativeHandle(ref, () => ({
     addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => {
+      if (isBotMode) {
+        console.log("🤖 BOT: Chat message ignored in bot mode:", message)
+        return
+      }
       chatRef.current?.sendMessage(message, username, type, color)
     },
     addSystemMessage: (message: string, username?: string) => {
+      if (isBotMode) {
+        console.log("🤖 BOT: System message ignored in bot mode:", message)
+        return
+      }
       chatRef.current?.addSystemMessage(message, username)
     },
     addReceivedMessage: (message: string, username: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => {
+      if (isBotMode) {
+        console.log("🤖 BOT: Received message ignored in bot mode:", message)
+        return
+      }
       chatRef.current?.addReceivedMessage(message, username, type, color)
     },
     clearChat: () => {
+      if (isBotMode) {
+        console.log("🤖 BOT: Clear chat ignored in bot mode")
+        return
+      }
       chatRef.current?.clearMessages()
+    },
+    sendBotMessage: (message: string) => {
+      console.log("🤖 BOT: Sending bot message:", message)
+      // This could be extended to manage bot messages if needed
     }
-  }), [])
+  }), [isBotMode])
 
   const handleResign = () => {
     console.log("Player resigned")
@@ -117,6 +152,11 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
   const handleOfferDraw = () => {
     console.log("Draw offered")
     onOfferDraw?.()
+  }
+
+  const handleHint = () => {
+    console.log("🤖 BOT: Hint requested")
+    onHint?.()
   }
 
   const handleToggleAnalysis = (enabled: boolean) => {
@@ -176,22 +216,34 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
         )}
       </div>
 
-      {/* Chat Section - Takes remaining space with fixed height */}
+      {/* Chat or Bot Play Section - Takes remaining space with fixed height */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <GameChat 
-          ref={chatRef}
-          initialMessages={initialChatMessages}
-          onMessageSent={handleMessageSent}
-          currentUser={actualCurrentUser} 
-        />
+        {isBotMode ? (
+          <BotPlay 
+            botName={botName}
+            botAvatar={botAvatar}
+            onHint={handleHint}
+            onResign={handleResign}
+            className="h-full"
+          />
+        ) : (
+          <GameChat 
+            ref={chatRef}
+            initialMessages={initialChatMessages}
+            onMessageSent={handleMessageSent}
+            currentUser={actualCurrentUser} 
+          />
+        )}
       </div>
 
       {/* Game Controls - Fixed Height */}
       <div className="flex-shrink-0 mt-4 space-y-4">
-        <GameActions
-          onResign={handleResign}
-          onOfferDraw={handleOfferDraw}
-        />
+        {!isBotMode && (
+          <GameActions
+            onResign={handleResign}
+            onOfferDraw={handleOfferDraw}
+          />
+        )}
         <GameControls
           onFirstMove={onFirstMove}
           onPreviousMove={onPreviousMove}

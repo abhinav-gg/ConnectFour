@@ -1,4 +1,4 @@
-import { EloChange } from "./game.types";
+import { EloChange, GameInfo } from "./game.types";
 import { PlayerData } from "./users";
 
 export interface ChatMessage {
@@ -11,8 +11,8 @@ export interface ChatMessage {
 }
 
 export interface StandardGameMetadata {
-  moves: number[];
   shortcode: string;
+  moves: number[];
   gamemode: number;
   rTimes: [number, number];
   lTime: number;
@@ -45,5 +45,10 @@ export interface PlayerDisconnection {
   playerNumber: number; // 0 for red, 1 for yellow
 }
 
-
+export interface JoinMetadata {
+  shortcode: string;
+  gameinfo: GameInfo;
+  isSpectating: boolean;
+  isP2Bot: boolean;
+}
 

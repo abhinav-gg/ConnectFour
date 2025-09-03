@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { SkipBack, ChevronLeft, ChevronRight, SkipForward } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 
 interface GameControlsProps {
   onFirstMove?: () => void
@@ -30,6 +30,24 @@ export function GameControls({
   const actualCanGoBack = canGoBack ?? currentMoveIndex > 0
   const actualCanGoForward = canGoForward ?? currentMoveIndex < totalMoveCount
 
+  // Refs for button animations
+  const firstButtonRef = useRef<HTMLButtonElement>(null)
+  const prevButtonRef = useRef<HTMLButtonElement>(null)
+  const nextButtonRef = useRef<HTMLButtonElement>(null)
+  const lastButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Trigger button animation
+  const animateButton = (buttonRef: React.RefObject<HTMLButtonElement>) => {
+    if (buttonRef.current) {
+      buttonRef.current.style.transform = 'scale(0.95)'
+      setTimeout(() => {
+        if (buttonRef.current) {
+          buttonRef.current.style.transform = 'scale(1)'
+        }
+      }, 100)
+    }
+  }
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -40,18 +58,22 @@ export function GameControls({
       switch (event.key) {
         case 'ArrowUp':
           event.preventDefault()
+          animateButton(lastButtonRef)
           onLastMove?.()
           break
         case 'ArrowDown':
           event.preventDefault()
+          animateButton(firstButtonRef)
           onFirstMove?.()
           break
         case 'ArrowLeft':
           event.preventDefault()
+          animateButton(prevButtonRef)
           onPreviousMove?.()
           break
         case 'ArrowRight':
           event.preventDefault()
+          animateButton(nextButtonRef)
           onNextMove?.()
           break
       }
@@ -62,21 +84,22 @@ export function GameControls({
   }, [onFirstMove, onPreviousMove, onNextMove, onLastMove])
 
   const navigationButtons = [
-    { icon: SkipBack, onClick: onFirstMove, disabled: !actualCanGoBack },
-    { icon: ChevronLeft, onClick: onPreviousMove, disabled: !actualCanGoBack },
-    { icon: ChevronRight, onClick: onNextMove, disabled: !actualCanGoForward },
-    { icon: SkipForward, onClick: onLastMove, disabled: !actualCanGoForward },
+    { icon: SkipBack, onClick: onFirstMove, disabled: !actualCanGoBack, ref: firstButtonRef },
+    { icon: ChevronLeft, onClick: onPreviousMove, disabled: !actualCanGoBack, ref: prevButtonRef },
+    { icon: ChevronRight, onClick: onNextMove, disabled: !actualCanGoForward, ref: nextButtonRef },
+    { icon: SkipForward, onClick: onLastMove, disabled: !actualCanGoForward, ref: lastButtonRef },
   ]
 
   return (
-    <div className="flex gap-2 justify-center">
+    <div className="flex gap-4 justify-center">
       {navigationButtons.map((button, index) => (
         <motion.button
           key={index}
+          ref={button.ref}
           onClick={button.onClick}
           disabled={button.disabled}
           className={`
-          p-3 rounded-full transition-all duration-200
+          p-2 rounded-full transition-all duration-200
           ${
             button.disabled
               ? "bg-brand-primary/30 text-brand-text-muted cursor-not-allowed"
@@ -86,7 +109,7 @@ export function GameControls({
           whileHover={button.disabled ? {} : { scale: 1.05 }}
           whileTap={button.disabled ? {} : { scale: 0.95 }}
         >
-          <button.icon className="w-6 h-6" />
+          <button.icon className="w-5 h-5" />
         </motion.button>
       ))}
     </div>

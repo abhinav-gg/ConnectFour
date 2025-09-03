@@ -14,8 +14,8 @@ interface OpeningDescriptionProps {
 }
 
 export function OpeningDescription({
-  openingName = "1.4 - Main Line",
-  description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+  openingName = "Loading...",
+  description = "Loading...",
   onClose,
   showCloseButton = true,
 }: OpeningDescriptionProps) {

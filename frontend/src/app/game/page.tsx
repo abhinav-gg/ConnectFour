@@ -38,7 +38,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/full-sides/LiveGameUI"
-import { ChatMessage, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
+import { ChatMessage, JoinMetadata, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
 import { useGameSession, useUser } from "@/components/providers/BackendProvider"
@@ -47,6 +47,7 @@ import { PlayerData } from "@shared/types/users"
 import { GameState } from "@shared/constants/allgamestates"
 import { GameEndModal } from "@/components/game/game-end-popup"
 import { GameStartModal } from "@/components/game/game-start-popup"
+import { useWASM } from "@/components/providers/WASMProvider"
 import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types"
 import { TimedStandardGame } from "@shared/utils/Games/timed-game"
 import { CategoriseTime, printGameMode, printTimeControl } from "@shared/utils/gamemodes"
@@ -63,6 +64,9 @@ export default function LiveGamePage() {
   
   // Get user context for fallback player data
   const { user } = useUser()
+
+  // WASM control for analysis
+  const { isActive: isWASMActive, activateWASM, deactivateWASM } = useWASM()
 
   // Refs for server-driven data (do not cause renders on their own)
   const meRef = useRef<PlayerData>()
@@ -131,15 +135,34 @@ export default function LiveGamePage() {
   const [gameMode, setGameMode] = useState("Loading...")
   const [timeControl, setTimeControl] = useState("...")
   const [gameUrl, setGameUrl] = useState("")
+  const [isP2Bot, setIsP2Bot] = useState(false) // Track if opponent is a bot
 
   const [showEndPopup, setShowEndPopup] = useState(false)
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [isSpectating, setIsSpectating] = useState(false)
 
+  // Determine when WASM should be active for analysis
+  // Only when: game is over OR not running, AND (bot mode OR spectating), AND we have game data
+  const shouldActivateWASM = 
+    (!isGameRunningRef.current || myGame.current?.gameOver) && 
+    (isP2Bot || isSpectating) &&
+    gameInfoRef.current !== null
+
   // Update dynamic header when game state changes
   useEffect(() => {
     setStandardTitle()
   }, [isGameRunningRef.current, isSpectating, currentTurnRef.current, isRedRef.current, gameVersion])
+
+  // Handle WASM activation based on conditions
+  useEffect(() => {
+    if (shouldActivateWASM && !isWASMActive) {
+      activateWASM()
+      console.log("🔬 WASM: Auto-activated for analysis")
+    } else if (!shouldActivateWASM && isWASMActive) {
+      deactivateWASM()
+      console.log("🔬 WASM: Auto-deactivated")
+    }
+  }, [shouldActivateWASM, isWASMActive, activateWASM, deactivateWASM])
 
   const [startSFX] = [useSound("/sounds/start.mp3")]
 
@@ -169,15 +192,19 @@ export default function LiveGamePage() {
           break
         case "joined":
           console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
-          const { gameinfo } = data
+          const { shortcode, gameinfo, isSpectating, isP2Bot } = data as JoinMetadata
           const gi = gameinfo as GameInfo;
           gameInfoRef.current = gi; // Store GameInfo for later use
-          if (data.shortcode && currentShortcode && currentShortcode !== data.shortcode) {
-            console.error("Shortcode mismatch in matchmaking data", currentShortcode, data.shortcode)
+          if (shortcode && currentShortcode && currentShortcode !== shortcode) {
+            console.error("Shortcode mismatch in matchmaking data", currentShortcode, shortcode)
             return
           }
           setGameMode(printGameMode(gi) || "Custom")
+          setIsSpectating(isSpectating)
+          setIsP2Bot(isP2Bot) // Enable bot state tracking
+          console.log("🤖 BOT MODE:", isP2Bot ? "ENABLED" : "DISABLED")
           setTimeControl(printTimeControl(gi.time_control))
+          console.log("🔬 WASM: Analysis conditions updated")
           break
         default:
           console.warn(`📨 WEBSOCKET: Unhandled matchmaking event ${event} with data:`, data)
@@ -220,7 +247,7 @@ export default function LiveGamePage() {
           }
           myGame.current = new TimedStandardGame(gameInfoRef.current)
           if (setupData.moves && setupData.moves.length > 0) {
-            myGame.current.loadMoves(setupData.moves)
+            myGame.current.loadMoves(setupData.moves, [])
           }
 
           // Enable initial replay when entering from setup
@@ -251,7 +278,7 @@ export default function LiveGamePage() {
               }
             };
             myGame.current = new TimedStandardGame(spectateGameInfo)
-            myGame.current.loadMoves(setupData.moves)
+            myGame.current.loadMoves(setupData.moves, [])
             console.log(`🎮 SPECTATE: Set up game with ${setupData.moves.length} existing moves`)
             // Replay for spectators on initial mount
             setAnimateInit(setupData.moves.length > 0)
@@ -450,7 +477,7 @@ export default function LiveGamePage() {
     
     // Use the provider to join the game
     joinGame(roomParam)
-    setGameUrl(`${window.location.origin}/game/live?r=${roomParam}`)
+    setGameUrl(`${window.location.origin}/game?r=${roomParam}`)
     setShowStartPopup(true)
     
     console.log("🔌 GAME SESSION: Joined game via provider:", roomParam)
@@ -464,6 +491,12 @@ export default function LiveGamePage() {
     console.log("🔄 RESET GAME clicked")
     setScoreRatio(0.5)
     isGameRunningRef.current = false
+    
+    // Reset bot state
+    setIsP2Bot(false)
+    
+    // Reset WASM state
+    deactivateWASM()
     
     // Reset the game instance
     if (myGame.current) {
@@ -587,6 +620,13 @@ export default function LiveGamePage() {
     sendJson("game:draw_offer", { shortcode: currentShortcode })
   }
 
+  // Bot-specific Event Handlers
+  const handleHint = () => {
+    console.log("🤖 HINT requested")
+    // TODO: Implement bot hint logic
+    // For now, just log the request
+  }
+
   // Analysis Event Handlers
   const handleToggleAnalysis = (enabled: boolean) => {
     if (isGameRunningRef.current) {
@@ -683,12 +723,14 @@ export default function LiveGamePage() {
       onBoardReady={handleBoardReady}
       onTimeUp={handleTimeUp}
     >
+      {/* Unified UI that conditionally shows bot or chat based on isP2Bot */}
       <LiveGameWithAnalysis 
-        key="unique-livegame-instance"
+        key={isP2Bot ? "unique-botgame-instance" : "unique-livegame-instance"}
         ref={liveGameRef}
         initialChatMessages={chatMessages}
         game={myGame.current || undefined}
         meRef={meRef}
+        opponentRef={opponentRef}
         currentMoveIndex={2}
         onMessageSent={handleMessageSent}
         onMoveClick={handleMoveClick}
@@ -698,9 +740,11 @@ export default function LiveGamePage() {
         onLastMove={handleLastMove}
         onResign={handleResign}
         onOfferDraw={handleOfferDraw}
+        onHint={handleHint}
         onToggleAnalysis={handleToggleAnalysis}
         onSettingsClick={handleSettingsClick}
         showAnalysisFeatures={showAnalysis}
+        isBotMode={isP2Bot}
       />
     </UnifiedGameLayout>
 

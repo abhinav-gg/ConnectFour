@@ -11,6 +11,10 @@ export class HistoryStandardGame extends StandardGame implements NavigableGame {
     this.currentMoveIndex = this.moves.length - 1;
   }
 
+  getCurrentTimers(): [number, number] {
+    return [0, 0]; // this gamemode does not display timer data
+  }
+
   /**
    * Makes a move in the specified column for the current player.
    * @param col - The column index to place the piece (0 to COLS-1).

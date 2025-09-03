@@ -24,6 +24,11 @@ export function useGameHistory<T extends NavigableGame>(
     const board = Array.from({ length: 6 }, () => Array(7).fill(null))
     const moves = gameRef.current.getAllMoves() // Use getAllMoves to get the full move history
     
+    // If index is -1, return empty board
+    if (index < 0) {
+      return board
+    }
+    
     for (let i = 0; i <= index; i++) {
       if (i < moves.length) {
         const col = moves[i]
@@ -134,14 +139,14 @@ export function useGameHistory<T extends NavigableGame>(
 
   // Navigation handlers for GameControls component
   const handleFirstMove = useCallback((): void => {
-    navigateToMove(0)
+    navigateToMove(-1) // -1 is the empty board in HistoryStandardGame
   }, [navigateToMove])
 
   const handlePreviousMove = useCallback((): void => {
     if (!gameRef.current) return
     
     const currentIndex = gameRef.current.getCurrentMoveIndex()
-    if (currentIndex > 0) {
+    if (currentIndex > -1) { // Can go back from any position to empty board
       navigateToMove(currentIndex - 1)
     }
   }, [gameRef, navigateToMove])
@@ -150,8 +155,8 @@ export function useGameHistory<T extends NavigableGame>(
     if (!gameRef.current) return
     
     const currentIndex = gameRef.current.getCurrentMoveIndex()
-    const totalMoves = gameRef.current.getMoves().length
-    if (currentIndex < totalMoves) {
+    const totalMoves = gameRef.current.getAllMoves().length
+    if (currentIndex < totalMoves - 1) { // Last valid index is totalMoves - 1
       navigateToMove(currentIndex + 1)
     }
   }, [gameRef, navigateToMove])
@@ -159,8 +164,10 @@ export function useGameHistory<T extends NavigableGame>(
   const handleLastMove = useCallback((): void => {
     if (!gameRef.current) return
     
-    const totalMoves = gameRef.current.getMoves().length
-    navigateToMove(totalMoves)
+    const totalMoves = gameRef.current.getAllMoves().length
+    if (totalMoves > 0) {
+      navigateToMove(totalMoves - 1) // Last move is at index totalMoves - 1
+    }
   }, [gameRef, navigateToMove])
 
   // Quick navigation utilities
@@ -171,22 +178,22 @@ export function useGameHistory<T extends NavigableGame>(
 
   // State checkers (memoized for performance)
   const canGoBack = useCallback((): boolean => {
-    const currentIndex = gameRef.current?.getCurrentMoveIndex() ?? 0
-    return currentIndex > 0
+    const currentIndex = gameRef.current?.getCurrentMoveIndex() ?? -1
+    return currentIndex > -1 // Can go back from any position except the empty board
   }, [gameRef])
 
   const canGoForward = useCallback((): boolean => {
     if (!gameRef.current) return false
     const currentIndex = gameRef.current.getCurrentMoveIndex()
-    const totalMoves = gameRef.current.getMoves().length
-    return currentIndex < totalMoves
+    const totalMoves = gameRef.current.getAllMoves().length
+    return currentIndex < totalMoves - 1 // Can go forward if not at the last move
   }, [gameRef])
 
   const isUpToDate = useCallback((): boolean => {
     if (!gameRef.current) return true
     const currentIndex = gameRef.current.getCurrentMoveIndex()
-    const totalMoves = gameRef.current.getMoves().length
-    return currentIndex === totalMoves
+    const totalMoves = gameRef.current.getAllMoves().length
+    return totalMoves === 0 || currentIndex === totalMoves - 1 // Up to date if at last move or no moves
   }, [gameRef])
 
   return {

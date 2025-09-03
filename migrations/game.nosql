@@ -3,18 +3,18 @@ GAME:
 {
   "p": "<gameUUID>",                                // Game UUID as PK
   "c": "ABC123",                                    // Sort Key: Shortcode (nullable)
-  "u": ["user1", "user2"],                          // Ordered list of player IDs
+  "u": ["user:1", "user:2"],                          // Ordered list of player IDENTITIES
   "d": Buffer,                                      // Game data (binary/base64)
-  "i": number,                                      // GameInfo 8 bytes INCLUDES THE TIME CONTROL AS WELL
+  "i": number,                                      // GameInfo ID (integer)
   "r": 3                                            // Result (4-bit number)
 }
 
 GAMEPLAYERS
 {
-  "p": "<userUUID>",       // Partition Key: player ID
+  "p": "<userUUID>",       // Partition Key: player UUIDS ( all assumed to be users here )
   "s": "<gameUUID>",       // Sort Key: game ID
   "t": 1699852800,         // Local Sort Key: Timestamp (unix time)
-  "m": 3,                  // Local Sort Key: Gamemode ID (integer)
+  "m": 3,                  // Local Sort Key: GameInfo ID (integer)
   "e": 1090,               // Starting ELO
   "d": 5                   // Delta ELO (optional)
 }
@@ -25,3 +25,13 @@ SHORTCODEMAP
   "p": "ABC123",              // Shortcode as PK with prefix 's#'
   "g": "<gameUUID>"           // Game ID this shortcode maps to
 }
+
+GRAPHCACHE
+{
+  "p": "<userUUID>"
+  "d": "day"
+  "g": 2 //GameInfo ID (integer)
+  "e": 90 // elo at the end of the day (updated at the end of each game played that day...)
+}
+
+

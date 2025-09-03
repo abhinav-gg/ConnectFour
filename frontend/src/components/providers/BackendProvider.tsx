@@ -12,6 +12,7 @@ import React, {
   ReactNode,
   useCallback,
   useRef,
+  useMemo,
 } from 'react';
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -274,7 +275,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     fetchAndSetUser();
   }, [fetchAndSetUser]);
 
-  // Game session management (from gameProvider)
+  // Game session management (existing logic preserved)
   const leaveGame = useCallback(() => {
     if (currentShortcodeRef.current && !hasLeftRef.current && connected) {
       console.log("🔌 BACKEND: Leaving game:", currentShortcodeRef.current);
@@ -285,6 +286,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     }
     currentShortcodeRef.current = null;
     isInGameRef.current = false;
+    
     forceUpdate({});
   }, [sendJson, connected, unsubscribePrefixedMessage]);
 
@@ -300,6 +302,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     
     console.log("🔌 BACKEND: Joining game:", shortcode);
     sendJson("matchmaking:join", { shortcode });
+    
     forceUpdate({});
   }, [sendJson, leaveGame]);
 
@@ -312,7 +315,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
 
   const handleReturnToGame = useCallback(() => {
     if (returnGameShortcode) {
-      router.push(`/game/live?r=${returnGameShortcode}`);
+      router.push(`/game?r=${returnGameShortcode}`);
       setShowReturnPopup(false);
     }
   }, [returnGameShortcode, router]);
@@ -344,7 +347,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     if (prevPathnameRef.current !== pathname) {
       console.log("🔌 BACKEND: Route change detected:", prevPathnameRef.current, "->", pathname);
 
-      if (prevPathnameRef.current?.includes("/game/live") && !pathname.includes("/game/live")) {
+      if (prevPathnameRef.current?.includes("/game") && !pathname.includes("/game")) {
         if (currentShortcodeRef.current && isInGameRef.current) {
           console.log("🔌 BACKEND: Showing return popup for shortcode:", currentShortcodeRef.current);
           setReturnGameShortcode(currentShortcodeRef.current);
@@ -352,7 +355,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
         }
       }
 
-      if (pathname.includes("/game/live")) {
+      if (pathname.includes("/game")) {
         setShowReturnPopup(false);
         setReturnGameShortcode(null);
       }
@@ -388,7 +391,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
       {children}
 
       <AnimatePresence>
-        {showReturnPopup && returnGameShortcode && !pathname.includes("/game/live") && (
+        {showReturnPopup && returnGameShortcode && !pathname.includes("/game") && (
           <ReturnToGamePopup
             shortcode={returnGameShortcode}
             onReturn={handleReturnToGame}

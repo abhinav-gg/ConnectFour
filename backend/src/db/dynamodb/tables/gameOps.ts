@@ -1,21 +1,89 @@
 import { ddb } from "../dynamoClient";
 import { PutCommand, ScanCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { GameTable, PlayerDataTable, ShortcodeGameTable } from "../dynamoTables";
-import { GAME } from "@/db/models/Game";
+import { GAME_SCHEMA, GAMEPLAYERS_SCHEMA } from "@/db/models/Game";
 import { uuidToBuffer } from "@/utils/binary";
 import { DeleteItemCommand, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { TimedStandardGame } from "@shared/utils/Games/timed-game";
+import { GameState } from "@shared/constants/allgamestates";
 
 export const GameOperations = {
 
-  async addGame(newGameItem: GAME)  {
+  async checkShortcodeUniqueness(shortcode: string): Promise<boolean> {
+    const params = {
+      TableName: ShortcodeGameTable,
+      Key: { p: { S: shortcode } },
+    };
+    try {
+      const result = await ddb.send(new GetItemCommand(params));
+      return !result.Item; // If no item found, shortcode is unique
+    } catch (err) {
+      console.error("Error checking shortcode uniqueness:", err);
+      throw err;
+    }
+  },
+
+  async assignShortcode(shortcode: string, gameId: Buffer) {
+    
+    await ddb.send(new PutCommand({
+      TableName: ShortcodeGameTable,
+      Item: { p: {S: shortcode}, g: {B: gameId} },
+      ConditionExpression: 'attribute_not_exists(p)'
+    }));
+  
+  },
+
+  async storeGame(gameId: Buffer, players: string[], data: Buffer, gameInfo: number, result: GameState, shortcode?: string)  {
+
+    // make the game
+    const newGameItem = {
+      p: gameId,
+      c: shortcode || null,
+      u: players,
+      d: data,
+      i: gameInfo,
+      r: result,
+    }
+
+    const success = GAME_SCHEMA.safeParse(newGameItem);
+    if (!success.success) {
+      console.error("Invalid game item:", success.error);
+      throw new Error("Invalid game item");
+    }
+
     const params = {
       TableName: GameTable,
-      Item: newGameItem
+      Item: success.data,
     };
 
     await ddb.send(new PutCommand(params));
     console.log('✅ Game item with short field names added.');
 
+  },
+
+
+  async registerPlayerGame(user: string, gameId: Buffer, startTime: number, gameInfo: number, startElo?: number, deltaElo?: number) {
+
+    const newPlayerData = {
+      p: user,
+      s: gameId,
+      t: startTime,
+      m: gameInfo,
+      e: startElo || null,
+      d: deltaElo || null,
+    };
+
+    const success = GAMEPLAYERS_SCHEMA.safeParse(newPlayerData);
+    if (!success.success) {
+      console.error("Invalid player data:", success.error);
+      throw new Error("Invalid player data");
+    }
+
+    const params = {
+      TableName: PlayerDataTable,
+      Item: success.data,
+    };
+    await ddb.send(new PutCommand(params));
   },
 
   // Read all game items (scan entire table)
@@ -57,22 +125,6 @@ export const GameOperations = {
       ProjectionExpression: "g"
     }));
     return resp.Item?.g?.S || null;
-  },
-
-  async assignShortcode(shortcode: string, gameId: string) {
-    try {
-      await ddb.send(new PutCommand({
-        TableName: ShortcodeGameTable,
-        Item: { p: {S: shortcode}, g: {S: gameId} },
-        ConditionExpression: 'attribute_not_exists(p)'
-      }));
-      return true; // unique assignment succeeded
-    } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'ConditionalCheckFailedException') {
-        return false; // collision -- generate again
-      }
-      throw err;
-    }
   },
   
   // On abort/backout

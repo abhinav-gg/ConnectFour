@@ -129,20 +129,13 @@ export function useGameAnalysis<T extends Game>(
     setColumnAnalysisTexts(Array(7).fill("..."))
   }, [gameRef, wasmReady, wasmError])
 
-  // Initialize analysis when game is available AND WASM is ready
-  useEffect(() => {
-    initializeAnalysisState()
-    
-    // Start analysis if everything is ready
-    if (gameRef.current && wasmReady && !wasmError) {
-      updateAnalysis()
-    }
-  }, [gameRef.current, wasmReady, wasmError])
-
   // Core analysis update function
   const updateAnalysis = useCallback(async () => {
     const game = gameRef.current
+    console.log('🔬 ANALYSIS: updateAnalysis called - game:', !!game, 'wasmReady:', wasmReady)
+    
     if (!game || !wasmReady) {
+      console.log('🔬 ANALYSIS: Skipping analysis - missing prerequisites')
       return
     }
 
@@ -150,6 +143,7 @@ export function useGameAnalysis<T extends Game>(
       setIsAnalysisLoading(true)
       
       const moves = game.getMoves()
+      console.log('🔬 ANALYSIS: Analyzing moves:', moves)
       
       // Use analysis request ID to prevent race conditions
       const analysisId = ++currentAnalysisIdRef.current
@@ -203,14 +197,42 @@ export function useGameAnalysis<T extends Game>(
     }
   }, [gameRef, wasmReady, analyzePosition])
 
+  // Initialize analysis when game is available AND WASM is ready
+  useEffect(() => {
+    console.log('🔬 ANALYSIS: Initialize check - game:', !!gameRef.current, 'wasmReady:', wasmReady, 'wasmError:', wasmError)
+    
+    initializeAnalysisState()
+    
+    // Start analysis if everything is ready
+    if (gameRef.current && wasmReady && !wasmError) {
+      console.log('🔬 ANALYSIS: Starting initial analysis with 100ms delay')
+      // Use a small delay to ensure everything is ready
+      setTimeout(() => {
+        updateAnalysis()
+      }, 100)
+    }
+  }, [gameRef.current, wasmReady, wasmError, initializeAnalysisState, updateAnalysis])
+
   // Update analysis when game state changes (moves, navigation)
   useEffect(() => {
     const game = gameRef.current
-    if (game && gameStateVersion > 0 && wasmReady) {
+    console.log('🔬 ANALYSIS: Game state version changed:', gameStateVersion, 'game:', !!game, 'wasmReady:', wasmReady)
+    
+    if (game && wasmReady) {
+      console.log('🔬 ANALYSIS: Triggering analysis due to game state change')
       // Update analysis asynchronously without blocking
       updateAnalysis()
     }
   }, [gameStateVersion, updateAnalysis, wasmReady])
+
+  // Also trigger analysis when WASM becomes ready (separate from game state)
+  useEffect(() => {
+    const game = gameRef.current
+    if (game && wasmReady && !wasmError) {
+      console.log('🔬 ANALYSIS: WASM became ready, triggering analysis')
+      updateAnalysis()
+    }
+  }, [wasmReady, wasmError, updateAnalysis])
 
   // Manual refresh controls
   const refreshAnalysis = useCallback(() => {

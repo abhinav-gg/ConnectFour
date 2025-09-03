@@ -50,6 +50,7 @@ export interface NavigableGame extends Game {
   getCurrentMoveIndex(): number;
   setMoveIndex(index: number): boolean;
   adjMoveIndex(delta: number): boolean;
+  getCurrentTimers(): [number, number];
 }
 
 
