@@ -2,7 +2,7 @@ name: Backend CI & Docker Build
 
 on:
   push:
-    branches: [ "main", "staging" ]
+    branches: [ "main", "staging", "backend" ]
     paths:
       - 'backend/**'
       - 'shared/**'

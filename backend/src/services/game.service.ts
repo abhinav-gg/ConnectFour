@@ -137,24 +137,17 @@ export const gameService = {
         const r = await redisOps();
         const gameId = await gameContext.resolveGameId();
         if (gameId) {
-            try {
-                const metadata = await gameContext.getMetadata();
-                
-                if (metadata) {
-                    if (metadata.state === GameState.SCHEDULED) {
-                        await r.game.leaveUserQueue(gameContext.userId);
-                        return;
-                    } else if (metadata.state === GameState.IN_PROGRESS) {
-                        throw new Error('User is already in a game');
-                    }
-                } else {
-                    await r.game.leaveUserQueue(gameContext.userId);
-                    return;
+            
+            const metadata = await gameContext.getMetadata();
+            
+            if (metadata) {
+                if (metadata.state === GameState.IN_PROGRESS) {
+                    throw new Error('User is already in a live and un-ended game');
                 }
-            } catch (error) {
-                await r.game.leaveUserQueue(gameContext.userId);
-                return;
             }
+            
+            await r.game.leaveUserQueue(gameContext.userId);
+            return;
         } else {
             return;
         }

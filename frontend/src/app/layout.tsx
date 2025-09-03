@@ -18,10 +18,6 @@ export const metadata: Metadata = {
   },
 };
 
-export const version = "1.0.beta"
-
-// Websocket Provider Wrapper!
-
 export default function RootLayout({
   children,
 }: {
@@ -41,9 +37,9 @@ export default function RootLayout({
               <BackendProvider>
                 <WASMProvider active={false}>
                   <RecaptchaProvider siteKey={myConfig.RECAPTCHA_SITE_KEY}>
-                          <Suspense fallback={<Loading />}>
-                            {children}
-                          </Suspense>
+                    <Suspense fallback={<Loading />}>
+                      {children}
+                    </Suspense>
                   </RecaptchaProvider>
                 </WASMProvider>
               </BackendProvider>

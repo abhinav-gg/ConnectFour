@@ -8,8 +8,7 @@ import gameRouter from './controllers/api/routes/gameRoutes';
 import { devTestRoutes } from './controllers/api/index';
 import { myConfig } from '@config/env';
 import { bootstrapAPI } from './bootstrap';
-
-const VERSION = "0.0.1"
+import { API_VERSION } from './versions';
 
 const port = myConfig.API_PORT || 3001;
 const app = express();
@@ -55,7 +54,7 @@ async function startAPI() {
   await bootstrapAPI();
 
   server.listen(Number(port), '0.0.0.0', () => {
-    console.log(`(${VERSION}) API Server running on port ${port}`);
+    console.log(`(${API_VERSION}) API Server running on port ${port}`);
   });
 }
 

@@ -59,7 +59,12 @@ export function packGameInfo(
     buf.writeUInt32BE(gamemode, 4); // append gamemode at end
     return buf;
 }
-  
+
+export function packGameInfoToString(gameinfo: GameInfo): string {
+    const buf = packGameInfo(gameinfo);
+    return buf.toString('base64');
+}
+
 export function unpackGameInfo(buf: Buffer): GameInfo {
     if (buf.length !== 8) throw new Error("Invalid buffer length");
 

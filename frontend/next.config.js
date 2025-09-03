@@ -22,6 +22,17 @@ const nextConfig = {
     config.resolve.alias['@shared'] = sharedPath;
     return config;
   },
+
+  async redirects() {
+    return [
+      { source: '/login', destination: '/auth/login', permanent: false },
+      { source: '/register', destination: '/auth/register', permanent: false },
+      { source: '/community', destination: 'https://linktr.ee/con4uk', permanent: false },
+      { source: '/home', destination: '/', permanent: false },
+      { source: '/profile', destination: '/', permanent: false },
+    ]
+  },
+
 };
 
 module.exports = nextConfig;

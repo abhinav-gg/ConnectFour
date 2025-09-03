@@ -6,10 +6,7 @@ import { verifySocket, sendSocketUserToGame } from '@/lib/middleware/game.middle
 import { initSocketIO } from '@/controllers/socket/index'
 import { registerSocketHandler } from '@/controllers/socket/handlers'
 import { bootstrapSocket } from './bootstrap';
-import { liveGameService } from './services/livegame.service';
-
-
-const VERSION = "0.0.1"
+import { SOCKET_VERSION } from './versions';
 
 const port = myConfig.SOCKET_PORT;
 const server = createServer(express());
@@ -81,7 +78,7 @@ async function startSocketio() {
   await bootstrapSocket();
 
   server.listen(Number(port), '0.0.0.0', () => {
-    console.log(`(${VERSION}) Socket server running on port ${port}`);
+    console.log(`(${SOCKET_VERSION}) Socket server running on port ${port}`);
   });
 
 }

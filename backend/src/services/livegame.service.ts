@@ -408,8 +408,8 @@ export const liveGameService = {
         const metadata = await gameContext.getMetadata();
         if (!metadata || !gameId) return;
 
-        // if the game state is not scheduled then do nothing
-        if (metadata.state !== GameState.SCHEDULED) return;
+        // if the game state is in progress then we can not free players
+        if (metadata.state === GameState.IN_PROGRESS) return;
 
         // free up the players of the game
         metadata.players.forEach(async (player) => {
