@@ -148,6 +148,9 @@ export default function LiveGamePage() {
     (isP2Bot || isSpectating) &&
     gameInfoRef.current !== null
 
+  // Draw offer state tracking
+  const [drawOfferedBy, setDrawOfferedBy] = useState<number | null>(null) // null, 0, or 1 for which player offered draw
+
   // Update dynamic header when game state changes
   useEffect(() => {
     setStandardTitle()
@@ -311,6 +314,12 @@ export default function LiveGamePage() {
           const moveData = data as StandardGameMove
           console.log("📨 WEBSOCKET: Received move data:", JSON.stringify(moveData))
 
+          // Clear draw offers when a move is made (backend cancels them)
+          if (drawOfferedBy !== null) {
+            setDrawOfferedBy(null)
+            liveGameRef.current?.addSystemMessage("Draw offer cancelled by move")
+          }
+
           // Animate on board immediately
           if (unifiedLayoutRef.current) {
             unifiedLayoutRef.current.triggerMoveAnimation(moveData.row, moveData.col, moveData.player)
@@ -342,6 +351,15 @@ export default function LiveGamePage() {
           setGameState(result)
           setShowEndPopup(true)
           setDynamicHeader("Game Over")
+          
+          // Clear draw offers when game ends
+          setDrawOfferedBy(null)
+          
+          // Add appropriate chat message for draw
+          if (result === GameState.AGREED_DRAW) {
+            liveGameRef.current?.addSystemMessage("Draw agreed!")
+          }
+          
           console.log("🏁 GAME: Game has ended", { result })
           // Ensure timers stop and UI updates
           setGameVersion((v) => v + 1)
@@ -456,6 +474,20 @@ export default function LiveGamePage() {
           }
 
           setGameVersion((v) => v + 1)
+          break
+        }
+        case "draw": {
+          const { player } = data
+          console.log("🤝 GAME: Draw offered by player", player)
+          
+          // Track who offered the draw
+          setDrawOfferedBy(player)
+          
+          // Add chat message about draw offer
+          const isMyOffer = player === (isRedRef.current ? 0 : 1)
+          const playerName = isMyOffer ? "You" : (opponentRef.current?.username || "Opponent")
+          liveGameRef.current?.addSystemMessage(`${playerName} offered a draw`)
+          
           break
         }
         default:
@@ -745,6 +777,9 @@ export default function LiveGamePage() {
         onSettingsClick={handleSettingsClick}
         showAnalysisFeatures={showAnalysis}
         isBotMode={isP2Bot}
+        drawOfferedBy={drawOfferedBy}
+        isRedPlayer={isRedRef.current}
+        highlightOfferDraw={false}
       />
     </UnifiedGameLayout>
 

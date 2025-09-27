@@ -1,7 +1,8 @@
 
 import { UUID } from "crypto";
-import { TimeControl, TimeCategory } from "@shared/types/game.types";
+import { TimeControl, TimeCategory, GameInfo } from "@shared/types/game.types";
 import { EloChange } from "@shared/types/game.types";
+import { GameMetadata } from "@/redis/redisSchema";
 // Convert UUID string to Buffer (16 bytes)
 
 
@@ -76,4 +77,13 @@ export function getQueuePriority(timeSinceQueued: number, deltaElo: number): num
     return timePriority * eloPriority;
 }
 
-
+export function gameinfoFromMeta(metadata: GameMetadata): GameInfo {
+    return {
+        gamemode: metadata.gamemode,
+        time_control: {
+            base_time: metadata.base_time,
+            increment: metadata.increment,
+            disadvantage: metadata.disadvantage,
+        },
+    } as GameInfo;
+}

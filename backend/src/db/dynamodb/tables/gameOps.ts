@@ -6,6 +6,7 @@ import { uuidToBuffer } from "@/utils/binary";
 import { DeleteItemCommand, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { TimedStandardGame } from "@shared/utils/Games/timed-game";
 import { GameState } from "@shared/constants/allgamestates";
+import { genGameShortcode } from "@/utils/game";
 
 export const GameOperations = {
 
@@ -61,6 +62,13 @@ export const GameOperations = {
 
   },
 
+  async getUniqueShortcode(): Promise<string> {
+    let shortcode: string;
+    do {
+      shortcode = genGameShortcode();
+    } while (!(await this.checkShortcodeUniqueness(shortcode)));
+    return shortcode;
+  },
 
   async registerPlayerGame(user: string, gameId: Buffer, startTime: number, gameInfo: number, startElo?: number, deltaElo?: number) {
 

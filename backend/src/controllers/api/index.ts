@@ -11,6 +11,7 @@ import { redisOps } from '@/redis/ops';
 import { createRedisJson, scanKeysPaginated } from '@/redis/redisHelper';
 import { JobSets } from '@/jobs';
 import { JobKeys } from '@/jobs/jobKeys';
+import { enterMaintenanceMode, exitMaintenanceMode } from '@/lib/maintenance';
 
 const app = Router();
 
@@ -160,6 +161,29 @@ app.get('/suicide', async (req: Request, res: Response) => {
   }
 }
 );
-  
+
+
+app.get('/maintenance/on', async (req: Request, res: Response) => {
+  try {
+    // Enable maintenance mode
+    await enterMaintenanceMode();
+    res.json({ message: 'Maintenance mode enabled' });
+  } catch (error) {
+    console.error('Error enabling maintenance mode:', error);
+    res.status(500).json({ error: 'Failed to enable maintenance mode' });
+  }
+});
+
+app.get('/maintenance/off', async (req: Request, res: Response) => {
+  try {
+    // Disable maintenance mode
+    await exitMaintenanceMode();
+    res.json({ message: 'Maintenance mode disabled' });
+  } catch (error) {
+    console.error('Error disabling maintenance mode:', error);
+    res.status(500).json({ error: 'Failed to disable maintenance mode' });
+  }
+});
+
 export { app as devTestRoutes };
 

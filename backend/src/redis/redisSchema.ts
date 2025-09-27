@@ -26,7 +26,7 @@ export type GameTimedata = z.infer<typeof GameTimedataSchema>;
 
 
 export const UserQueueSchema = z.object({
-  gameinfo: z.string(),
+  gameinfo: z.number(),
   timeAdded: z.number(),
   elo: z.number().nullable().optional(),
   gameId: z.string().nullable().optional(),

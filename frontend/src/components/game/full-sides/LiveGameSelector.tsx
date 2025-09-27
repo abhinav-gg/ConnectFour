@@ -23,7 +23,7 @@ import {
 import { cn } from "@/utils/cn"
 import { GameMode } from "@shared/constants/allgamemodes"
 import { validateTimeControl } from "@shared/utils/validation"
-import { getRankedGameModeByTimeControl } from "@shared/utils/gamemodes"
+import { getGameModeByTimeControl } from "@shared/utils/gamemodes"
 import { myConfig } from "@/config/env"
 import { useRecaptcha } from "../../providers/RecaptchaProvider"
 
@@ -210,7 +210,7 @@ export function LiveGameSelection() {
 
     let gamemode;
     if (selectedGameMode === "standard" || selectedGameMode === "armageddon") {
-      gamemode = getRankedGameModeByTimeControl(tc, selectedGameMode as CommonModes);
+      gamemode = getGameModeByTimeControl(tc, selectedGameMode);
     } else if (selectedGameMode === "friendly") {
       gamemode = GameMode.STANDARD_FRIENDLY;
     } else if (selectedGameMode === "casual") {

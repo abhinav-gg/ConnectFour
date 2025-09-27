@@ -14,6 +14,7 @@ export default function PuzzlePage() {
   const [puzzleFinished, setPuzzleFinished] = useState(false);
   const [puzzleResults, setPuzzleResults] = useState<Array<"success" | "failure">>([]);
   const [showScoreChange, setShowScoreChange] = useState<{change: number, type: "positive" | "negative"} | null>(null);
+  const [currentScore, setCurrentScore] = useState(1082);
   const unifiedLayoutRef = useRef<BoardHandle>(null);
   const initialBoardRef = useRef(puzzle.getBoard().map(row => [...row]));
 
@@ -24,6 +25,10 @@ export default function PuzzlePage() {
         setPuzzleResults(prev => [...prev, "failure"]);
         setPuzzleFinished(true);
         setShowScoreChange({ change: -25, type: "negative" });
+        // Update the score after a brief delay to allow the score change to be shown first
+        setTimeout(() => {
+          setCurrentScore(prev => prev - 25);
+        }, 300);
         setTimeout(() => {
           setShowScoreChange(null);
           console.log("loading next puzzle");
@@ -41,6 +46,10 @@ export default function PuzzlePage() {
             setPuzzleResults(prev => [...prev, "success"]);
             setPuzzleFinished(true);
             setShowScoreChange({ change: 50, type: "positive" });
+            // Update the score after a brief delay to allow the score change to be shown first
+            setTimeout(() => {
+              setCurrentScore(prev => prev + 50);
+            }, 300);
             setTimeout(() => {
               setShowScoreChange(null);
               console.log("loading next puzzle");
@@ -52,6 +61,10 @@ export default function PuzzlePage() {
       setPuzzleResults(prev => [...prev, "failure"]);
       setPuzzleFinished(true);
       setShowScoreChange({ change: -25, type: "negative" });
+      // Update the score after a brief delay to allow the score change to be shown first
+      setTimeout(() => {
+        setCurrentScore(prev => prev - 25);
+      }, 300);
       setTimeout(() => {
         setShowScoreChange(null);
         console.log("loading next puzzle");
@@ -70,6 +83,10 @@ export default function PuzzlePage() {
     setPuzzleResults(prev => [...prev, "failure"]);
     setPuzzleFinished(true);
     setShowScoreChange({ change: -25, type: "negative" });
+    // Update the score after a brief delay to allow the score change to be shown first
+    setTimeout(() => {
+      setCurrentScore(prev => prev - 25);
+    }, 300);
     setTimeout(() => {
       setShowScoreChange(null);
       console.log("loading next puzzle");
@@ -105,7 +122,7 @@ export default function PuzzlePage() {
       <div className="space-y-4">
         <PuzzleProgress puzzleResults={puzzleResults} />
         <PuzzleUI
-          score={1082}
+          score={currentScore}
           playedTimes={247}
           onScoreChange={handleScoreChange}
           onVote={handleVote}

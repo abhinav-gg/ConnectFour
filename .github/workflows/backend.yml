@@ -4,12 +4,16 @@ on:
   push:
     branches: [ "main", "staging", "backend" ]
     paths:
+      - '.dockerignore'
+      - 'backend.Dockerfile'
       - 'backend/**'
       - 'shared/**'
       - '.github/workflows/backend.yml'
   pull_request:
     branches: [ "main", "staging" ]
     paths:
+      - '.dockerignore'
+      - 'backend.Dockerfile'
       - 'backend/**'
       - 'shared/**'
       - '.github/workflows/backend.yml'

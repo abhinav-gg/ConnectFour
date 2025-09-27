@@ -1,4 +1,5 @@
 // OpeningService.ts
+import { VERSION } from "@/version";
 import { StandardGame } from "@shared/utils/Games/game";
 
 export interface Opening {
@@ -16,7 +17,7 @@ export const unknownOpening: Opening = {
 export async function fetchOpening(key: string): Promise<Opening> {
   const gameFromKey = new StandardGame(key);
   const id = gameFromKey.hashCode;
-  const res = await fetch(`/openings/${id}.json`);
+  const res = await fetch(`/openings/${id}.json?v=${VERSION}`);
   if (!res.ok) {
     return unknownOpening;
   }

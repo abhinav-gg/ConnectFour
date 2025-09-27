@@ -61,6 +61,11 @@ interface LiveGameWithAnalysisProps {
   
   // Bot Mode Control
   isBotMode?: boolean // New prop to determine if we should show bot UI
+  
+  // Draw offer state
+  drawOfferedBy?: number | null // null, 0, or 1 for which player offered draw
+  isRedPlayer?: boolean // Whether the current user is the red player (player 0)
+  highlightOfferDraw?: boolean // Whether to highlight the offer draw button
 }
 
 const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>((props, ref) => {
@@ -84,7 +89,10 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
     onToggleAnalysis,
     onSettingsClick,
     showAnalysisFeatures = true, // Default to true for backward compatibility
-    isBotMode = false, // Default to false for backward compatibility
+    isBotMode = false, // Default to false
+    drawOfferedBy = null,
+    isRedPlayer = false,
+    highlightOfferDraw = false,
   } = props
 
   const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
@@ -242,6 +250,10 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
           <GameActions
             onResign={handleResign}
             onOfferDraw={handleOfferDraw}
+            highlightOfferDraw={highlightOfferDraw}
+            isDrawOffered={drawOfferedBy !== null}
+            canResign={true}
+            canOfferDraw={drawOfferedBy === null}
           />
         )}
         <GameControls

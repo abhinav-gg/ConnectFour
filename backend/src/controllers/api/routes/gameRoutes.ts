@@ -2,8 +2,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/middleware/auth.middleware';
 import { GameInfo, TimeControl } from '@shared/types/game.types';
-import { GameMode } from '@shared/constants/allgamemodes';
-import { getRankedGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes } from '@shared/utils/gamemodes';
+import { t_GameMode } from '@shared/constants/allgamemodes';
+import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes } from '@shared/utils/gamemodes';
 import { validateTimeControl } from '@shared/utils/validation';
 import { gameService } from '@/services/game.service';
 import { rdsDBOps } from '@/db/rds/ops';
@@ -11,10 +11,11 @@ import { userService } from '@/services/user.service';
 import { sendUserToGame } from '@/lib/middleware/game.middleware';
 import { getIdentityString } from '@/utils/validation';
 import { GameContext } from '@/utils/gameContext';
-
+import { maintenanceMiddleware } from '@/lib/middleware/maintenance.middleware';
 
 const gameRouter = Router();
 
+gameRouter.use(maintenanceMiddleware);
 
 gameRouter.post('/player', async (req: Request, res: Response) => {
     // get username from payload
@@ -50,7 +51,7 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
         return;
     }
 
-    let gamemode: GameMode;
+    let gamemode: t_GameMode;
     let time_control: TimeControl;
     try {
         gamemode = (req.body as GameInfo).gamemode;
@@ -63,11 +64,11 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
             throw new Error('Invalid time control settings');
         }
 
-        let modeFromTC: GameMode | undefined;
+        let modeFromTC: t_GameMode | undefined;
         if (gamemode in sRankedArmageddonModes) {
-            modeFromTC = getRankedGameModeByTimeControl(time_control, 'armageddon');
+            modeFromTC = getGameModeByTimeControl(time_control, 'armageddon');
         } else if (gamemode in sRankedModes) {
-            modeFromTC = getRankedGameModeByTimeControl(time_control, 'standard');
+            modeFromTC = getGameModeByTimeControl(time_control, 'standard');
         }
 
         if (modeFromTC) {

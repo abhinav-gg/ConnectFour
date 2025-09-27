@@ -4,10 +4,10 @@ import { ServiceResponse } from "@/types/custom";
 import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types";
 import { PlayerData } from "@shared/types/users";
 import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes } from "@shared/utils/gamemodes";
-import { packGameInfo, packGameInfoToString } from "@/utils/binary";
+import { packGameInfo, packStandardGameData, uuidToBuffer } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
 import { FinishedGameStates } from "@shared/utils/gamestates";
-import { calculateEloChanges, genGameShortcode } from "@/utils/game";
+import { calculateEloChanges, gameinfoFromMeta } from "@/utils/game";
 import { generateUUID } from "@/utils/auth";
 import { GameMetadata, GameMetadataSchema, UserQueue } from "@/redis/redisSchema";
 import { isUserIdentity, makeUserIdentity, parseUser } from "@/utils/validation";
@@ -86,7 +86,7 @@ export const gameService = {
         const r = await redisOps();
 
         await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
-            gameinfo: packGameInfoToString(gameInfo),
+            gameinfo: packGameInfo(gameInfo),
             timeAdded: Date.now(),            
         } as UserQueue);
         console.log(`User ${gameContext.userId} added to casual queue for game mode ${gamemode}`);
@@ -113,7 +113,7 @@ export const gameService = {
         
         // Add user to the competitive queue
         await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
-            gameinfo: packGameInfoToString(gameInfo),
+            gameinfo: packGameInfo(gameInfo),
             timeAdded: Date.now(),
             elo: userElo,
         } as UserQueue);
@@ -164,7 +164,8 @@ export const gameService = {
         // create a new game with the given gamemode and time control
         const r = await redisOps();
 
-        const shortcode = genGameShortcode();
+        const shortcode = await dynamoDBOps.game.getUniqueShortcode();
+
         const gameId = generateUUID();
         const gameMeta = GameMetadataSchema.parse({
             state: GameState.SCHEDULED,
@@ -296,31 +297,23 @@ export const gameService = {
             throw new Error('Game is not finished');
         }
 
+        const gameinfo = gameinfoFromMeta(metadata);
 
         if (StandardModes.has(metadata.gamemode)) {
-            
-
-
-
-            const timedGame = liveGameService.loadTimedGame(gameContext);
-    
-            // Store the game shortcode map in the NOSQL database game shortcode table if there is one
-            const Game = {
-                p: gameId,
-                c: metadata.shortcode,
-                u: metadata.players,
-                d: null, // TODO
-                i: null, // TODO
-                r: metadata.state,
-            }
-    
-            const ReverseMap = {
-                p: metadata.shortcode,
-                g: gameId
-            };
-
+          
             // TODO: DDB setting here
-    
+            const ddb = dynamoDBOps.game;
+
+            
+            await ddb.storeGame(
+                uuidToBuffer(gameId),
+                metadata.players,
+                packStandardGameData(moves, timedata.mTimes),
+                packGameInfo(gameinfo),
+                metadata.state,
+                metadata.shortcode ?? undefined
+            );
+            
             // For each player in the game, store in the playerdata table
             // get elos from game queue
             const eloChanges = await this.getGameEloChanges(gameContext);
@@ -366,14 +359,7 @@ export const gameService = {
             }
 
             await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
-                gameinfo: packGameInfoToString({
-                    gamemode: gameMetadata.gamemode,
-                    time_control: {
-                        base_time: gameMetadata.base_time,
-                        increment: gameMetadata.increment,
-                        disadvantage: gameMetadata.disadvantage,
-                    },
-                } as GameInfo),
+                gameinfo: packGameInfo(gameinfoFromMeta(gameMetadata)),
                 timeAdded: Date.now(),
                 elo,
                 gameId: gameContext.gameId,

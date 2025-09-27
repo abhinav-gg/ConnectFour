@@ -1,14 +1,4 @@
 import { StandardGame } from "@shared/utils/Games/game";
-import { myConfig } from "../config/env";
-import { calculateEloChanges, calculatePredictedScore, calculateUpdatedElo, getQueuePriority } from "@/utils/game";
-import { SelfAnalysis } from "@shared/utils/analysis";
-import { Move } from "@shared/types/game.types";
-import { getIdentity } from "@/utils/validation";
-import { packGameInfo, unpackGameInfo } from "@/utils/binary";
-import { TimedStandardGame } from "@shared/utils/Games/timed-game";
-import { CategoriseTime } from "@shared/utils/gamemodes";
-import { redisOps } from "@/redis/ops";
-import { GameReview } from "@/utils/tools/gameReview";
 
 console.log("This is an adhoc test file for backend tests.");
 
@@ -30,10 +20,18 @@ console.log(boardTest.prettyPrintBoard(), boardTest.hashCode);
 
 // console.log(getIdentity("user:yesnt-noyes"));
 
+let positions = [3, 4, 5, 34, 44, 45];
 
 (async () => {
 
-console.log(boardTest.getAllWinningTrajectories());
+// console.log(boardTest.getAllWinningTrajectories());
+
+
+positions.forEach(pos => {
+  let board = new StandardGame(pos.toString());
+  console.log(board.prettyPrintBoard(), board.hashCode);
+});
+
 
 // const review = await GameReview.load(boardTest);
 
@@ -76,10 +74,8 @@ console.log(boardTest.getAllWinningTrajectories());
 
 // Test for Timed Game Logic
 (async () => {
+
   console.log("Timed Game Tests Starting...");
-
-
-    
 
 
 

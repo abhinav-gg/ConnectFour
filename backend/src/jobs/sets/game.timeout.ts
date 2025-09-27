@@ -17,7 +17,7 @@ export async function setupGameTimeoutJobSet(): Promise<Queue> {
 
             // Create fresh GameContext at socket level
             const gameContext = await GameContext.fromGameId(userId, gameId);
-            await liveGameService.checkGameHealth(gameContext);
+            await liveGameService.checkTimeOuts(gameContext);
 
         } catch (error) {
             console.error('Error handling game enquiry:', error);

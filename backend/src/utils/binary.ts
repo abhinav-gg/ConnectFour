@@ -43,35 +43,38 @@ export function bufferToTimeControl(buffer: Buffer): TimeControl {
     };
 }
 
-export function packGameInfo(
-        gameinfo: GameInfo
-    ): Buffer {
-
+export function packGameInfo(gameinfo: GameInfo): number {
     const { time_control, gamemode } = gameinfo;
 
+    // time_control: base_time (2 bytes), increment (1 byte), disadvantage (1 byte)
+    // gamemode: 4 bytes
     if (gamemode < 0 || gamemode > 0xFFFFFFFF) throw new Error("Invalid gamemode");
 
-    const timeControlBuf = timeControlToBuffer(time_control);
-    const buf = Buffer.alloc(8); // 5 bytes time control + 4 bytes modeId
-  
-    timeControlBuf.copy(buf, 0);
+    // Pack time_control into 4 bytes
+    let packed =
+        ((time_control.base_time & 0xFFFF) << 40) | // bits 40-55
+        ((time_control.increment & 0xFF) << 32) |   // bits 32-39
+        ((time_control.disadvantage & 0xFF) << 24) |// bits 24-31
+        (gamemode & 0xFFFFFF);                      // bits 0-23
 
-    buf.writeUInt32BE(gamemode, 4); // append gamemode at end
-    return buf;
-}
-
-export function packGameInfoToString(gameinfo: GameInfo): string {
-    const buf = packGameInfo(gameinfo);
-    return buf.toString('base64');
+    // Return as a number (up to 56 bits used)
+    return packed;
 }
 
 export function unpackGameInfo(buf: Buffer): GameInfo {
-    if (buf.length !== 8) throw new Error("Invalid buffer length");
+    if (buf.length !== 7) throw new Error("Invalid buffer length");
 
-    const time_control = bufferToTimeControl(buf.subarray(0, 4));
-    const gamemode = buf.readUInt32BE(4);
+    const packedNum = buf.readUIntBE(0, 7);
 
-    return { time_control, gamemode } as GameInfo;
+    const base_time = (packedNum >> 40) & 0xFFFF;
+    const increment = (packedNum >> 32) & 0xFF;
+    const disadvantage = (packedNum >> 24) & 0xFF;
+    const gamemode = packedNum & 0xFFFFFF;
+
+    return {
+        time_control: { base_time, increment, disadvantage },
+        gamemode
+    } as GameInfo;
 }
 
 export function packStandardGameData(moves: number[], deltaTimes: number[]) {

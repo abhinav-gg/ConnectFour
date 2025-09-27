@@ -1,7 +1,7 @@
-import { GameMode } from "../constants/allgamemodes";
 import { AvgGameLength } from "../constants/game.constants";
 import { TimeControl, TimeCategory, GameInfo } from "@shared/types/game.types";
 import { validateTimeControl } from "./validation";
+import { AllGameModes, GameMode } from "../constants/allgamemodes";
 
 export const sRankedModes = new Set([
   GameMode.STANDARD_BULLET_RANKED,
@@ -99,7 +99,7 @@ export const printGameMode = (gameinfo: GameInfo) => {
   }
 };
 
-export function getRankedGameModeByTimeControl(timeControl: TimeControl, base: string): number {
+export function getGameModeByTimeControl(timeControl: TimeControl, base: 'standard' | 'armageddon'): number {
   if (!validateTimeControl(timeControl)) {
     throw new Error("Invalid time control settings");
   }
@@ -134,5 +134,28 @@ export function getRankedGameModeByTimeControl(timeControl: TimeControl, base: s
   }
 }
 
+export type EloGameMode = 
+    (typeof AllGameModes)['STANDARD_BULLET_RANKED']
+  | (typeof AllGameModes)['STANDARD_BLITZ_RANKED']
+  | (typeof AllGameModes)['STANDARD_RAPID_RANKED']
+  | null;
 
+export function getEloGameMode(gamemode: number): EloGameMode {
+  switch (gamemode) {
+  case GameMode.STANDARD_BULLET_RANKED:
+  case GameMode.STANDARD_ARMAGEDDON_BULLET_RANKED:
+    return GameMode.STANDARD_BULLET_RANKED;
+
+  case GameMode.STANDARD_BLITZ_RANKED:
+  case GameMode.STANDARD_ARMAGEDDON_BLITZ_RANKED:
+    return GameMode.STANDARD_BLITZ_RANKED;
+
+  case GameMode.STANDARD_RAPID_RANKED:  
+  case GameMode.STANDARD_ARMAGEDDON_RAPID_RANKED:
+    return GameMode.STANDARD_RAPID_RANKED;
+
+  default:
+    return null; // everything else isn't elo based yet
+  }
+}
 

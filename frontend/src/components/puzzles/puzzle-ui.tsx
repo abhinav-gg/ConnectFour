@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion"
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ThumbsUp, ThumbsDown, HelpCircle, ChevronRight, ArrowUp, ArrowDown } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -43,7 +43,13 @@ export function PuzzleUI({
   const roundedScore = useTransform(animatedScore, Math.round)
 
   useEffect(() => {
-    animatedScore.set(score)
+    // Animate to the new score value smoothly
+    const controls = animate(animatedScore, score, {
+      duration: 0.8,
+      ease: "easeOut"
+    })
+    
+    return controls.stop
   }, [score, animatedScore])
 
   // If scoreChange is provided, override the scoreChanges state

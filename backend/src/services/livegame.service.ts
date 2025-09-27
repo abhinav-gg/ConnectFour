@@ -165,7 +165,7 @@ export const liveGameService = {
         if (metadata.state !== GameState.IN_PROGRESS) return;
 
         // check for timeouts first
-        const response = await this.checkGameHealth(gameContext);
+        const response = await this.checkTimeOuts(gameContext);
         if (response.status !== 200) {
             console.log("Game ended by resign or something else.", response.message);
             return; // if the game is already over, do nothing
@@ -422,7 +422,7 @@ export const liveGameService = {
 
 
 
-    async checkGameHealth(gameContext: GameContext): Promise<ServiceResponse> {
+    async checkTimeOuts(gameContext: GameContext): Promise<ServiceResponse> {
         // Validate player is in the game room with fresh data
         gameContext.invalidatePlayerData();
         await gameContext.validatePlayerInRoom();

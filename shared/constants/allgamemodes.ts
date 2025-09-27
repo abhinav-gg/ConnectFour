@@ -14,11 +14,11 @@ export const AllGameModes = {
   STANDARD_PUZZLE: 11,
 
   EVENT_GAMEMODES_ERROR: 0xFFFF,
-} satisfies Record<string, number>;
+};
 
 
 export const GameMode = {
   ...AllGameModes,
 } satisfies Record<string, number>;
 
-export type GameMode = number;
+export type t_GameMode = number;

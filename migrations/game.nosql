@@ -34,4 +34,12 @@ GRAPHCACHE
   "e": 90 // elo at the end of the day (updated at the end of each game played that day...)
 }
 
+PUZZLES
+{
+  "p": "STANDARD_PUZZLE" // default key
+  "r": 1001.1 // ELO rating of the puzzle
+  "m": BUFFER // binary data of the puzzle 
+  
+}
+
 
