@@ -6,6 +6,7 @@ import { ArrowLeft, ThumbsUp, ThumbsDown, HelpCircle, ChevronRight, ArrowUp, Arr
 import { useRouter } from "next/navigation"
 import { Toggle } from "@/components/ui/toggle" // Import the new Toggle component
 
+
 interface PuzzleUIProps {
   score?: number
   playedTimes?: number
@@ -48,7 +49,6 @@ export function PuzzleUI({
       duration: 0.8,
       ease: "easeOut"
     })
-    
     return controls.stop
   }, [score, animatedScore])
 

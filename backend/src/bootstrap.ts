@@ -2,7 +2,7 @@ import { checkRDSHealth } from './db/rds/rdsClient';
 import { checkDynamoHealth } from './db/dynamodb/dynamoClient';
 import { checkRedisHealth } from './redis/redisHelper';
 import { setupGameMetaIndex } from './redis/repositories/gameOps';
-import { getRedisClient } from './redis/redisClient';
+import { getRedisClient } from './redis/redisClient' ;
 import { setupAllAPIJobs, setupAllSocketJobs } from './jobs';
 import { getConnect4Solver } from '@shared/WASM/con4Solver.node';
 

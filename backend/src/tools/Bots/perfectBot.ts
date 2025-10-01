@@ -4,7 +4,7 @@ import { Game } from '@shared/types/game.types';
 import { SelfAnalysis } from '@shared/utils/analysis';
 
 export class PerfectBot extends BotBase {
-  public static id = "e92f1571-5196-48a4-b84f-0ed1c5840e03"; // Magnus Goatson
+  public static id = "f8a2c4d6-1234-4567-8901-123456789abc"; // Perfect Solver
   private solver: SelfAnalysis | null = null;
 
   constructor(game: Game) {

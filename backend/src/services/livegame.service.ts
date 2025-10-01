@@ -8,13 +8,14 @@ import { TimedStandardGame } from "@shared/utils/Games/timed-game";
 import { GameInfo } from "@shared/types/game.types";
 import { ChatMessage } from "@shared/types/Websocket";
 import { userService } from "./user.service";
-import { parseUser } from "@/utils/validation";
+import { parseUser, isBotIdentity, getIdentity } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
 import { StandardModes } from "@shared/utils/gamemodes";
-import { getGameTimeoutQueue, JobSets } from "@/jobs";
+import { getGameTimeoutQueue, getGameDisconnectionQueue } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { GameNotFound } from "@/types/miscErrors";
+import { getBotById } from "@/tools/Bots";
 
 export const liveGameService = {
     
@@ -66,10 +67,10 @@ export const liveGameService = {
 
         const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
         // only add the job if it does not exist
-        const existingJob = await JobSets.getGameDisconnectionQueue().getJob(jobId);
+        const existingJob = await getGameDisconnectionQueue().getJob(jobId);
         if (!existingJob) {
             console.log("------- CREATED DISCONNECTION JOB -------");
-            await JobSets.getGameDisconnectionQueue().add(
+            await getGameDisconnectionQueue().add(
                 "game_disconnect", // Job name (can be generic)
                 {
                     gameId: gameContext.gameId,
@@ -99,7 +100,7 @@ export const liveGameService = {
         }
 
         const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
-        const job = await JobSets.getGameDisconnectionQueue().getJob(jobId);
+        const job = await getGameDisconnectionQueue().getJob(jobId);
         if (job) {
             console.log(`❌ Canceled game disconnection job with ID: ${jobId}`);
             await job.remove();
@@ -320,6 +321,21 @@ export const liveGameService = {
             return { status: 200, message: 'Game over' };
         }
 
+        // After successful move, check if next player is a bot and trigger bot move
+        // We need to check the opponent after the current move
+        const opponentUserId = await gameContext.get2PlayerOpponentUserId();
+        if (opponentUserId && isBotIdentity(opponentUserId)) {
+            console.log("Next player is a bot, triggering bot move");
+            // Trigger bot move asynchronously with a small delay to ensure state is consistent
+            setTimeout(async () => {
+                try {
+                    await this.ManageBotMove(gameContext.gameId!);
+                } catch (error) {
+                    console.error("Error triggering bot move:", error);
+                }
+            }, 100);
+        }
+
         return { status: 200, message: 'Move made successfully' };
     
     },
@@ -509,18 +525,101 @@ export const liveGameService = {
 
 
     async ManageBotMove(gameId: string): Promise<void> {
+        try {
+            const r = await redisOps();
+            
+            // Get game metadata and timedata
+            const metadata = await r.game.getGameMetadata(gameId);
+            const timedata = await r.game.getGameTimes(gameId);
+            
+            if (!metadata || !timedata) {
+                console.error("Game metadata or timedata not found for bot move", gameId);
+                return;
+            }
 
-        // use redis to get the game meta and time data from the gameId and get the current player ID and check its a bot.
+            // Check if game is in progress
+            if (metadata.state !== GameState.IN_PROGRESS) {
+                console.log("Game not in progress, skipping bot move", gameId, metadata.state);
+                return;
+            }
 
+            // Get current player's userId
+            const currentPlayerIndex = timedata.cTurn;
+            const currentPlayerId = metadata.players[currentPlayerIndex];
+            
+            if (!currentPlayerId) {
+                console.error("Current player ID not found", gameId, currentPlayerIndex);
+                return;
+            }
 
-        // const botId = gameContext.userId;
-        // if (!botId || !gameId) {
-        //     console.error("Bot ID or Game ID is missing for managing bot move");
-        //     return;
-        // }
+            // Check if current player is a bot
+            if (!isBotIdentity(currentPlayerId)) {
+                console.log("Current player is not a bot, skipping", currentPlayerId);
+                return;
+            }
 
-        // // Implement bot move logic here
-        // console.log(`Managing bot move for Bot ID: ${botId}, Game ID: ${gameId}`);
+            // Extract bot ID from identity
+            const identity = getIdentity(currentPlayerId);
+            const botId = identity.bot;
+            if (!botId) {
+                console.error("Bot ID could not be extracted", currentPlayerId);
+                return;
+            }
+
+            console.log(`Managing bot move for Bot ID: ${botId}, Game ID: ${gameId}`);
+
+            // Load the timed game to get current state
+            const gameContext = await GameContext.fromGameId(currentPlayerId, gameId);
+            const Game = await this.loadTimedGame(gameContext);
+            if (!Game) {
+                console.error("Failed to load timed game for bot", gameId);
+                return;
+            }
+
+            // Check if game is already over
+            if (Game.isGameOver()) {
+                console.log("Game is already over, skipping bot move", gameId);
+                return; 
+            }
+
+            // Get the bot implementation and make a move
+            try {
+                const bot = getBotById(botId, Game);
+                const botMove = await bot.chooseMove();
+                
+                console.log(`Bot ${botId} chose move: ${botMove}`);
+
+                // Validate the move is legal
+                const legalMoves = Game.getLegalMoves();
+                if (!legalMoves.includes(botMove)) {
+                    console.error(`Bot ${botId} chose illegal move ${botMove}, legal moves:`, legalMoves);
+                    // Fallback to first legal move
+                    const fallbackMove = legalMoves[0];
+                    if (fallbackMove !== undefined) {
+                        console.log(`Using fallback move: ${fallbackMove}`);
+                        await this.HandleGameMove(gameContext, fallbackMove);
+                    }
+                    return;
+                }
+
+                // Execute the bot's move
+                await this.HandleGameMove(gameContext, botMove);
+                
+            } catch (botError) {
+                console.error(`Error getting bot or making move for ${botId}:`, botError);
+                
+                // Fallback: make a random legal move
+                const legalMoves = Game.getLegalMoves();
+                if (legalMoves.length > 0) {
+                    const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                    console.log(`Bot fallback: making random move ${randomMove}`);
+                    await this.HandleGameMove(gameContext, randomMove);
+                }
+            }
+
+        } catch (error) {
+            console.error("Error in ManageBotMove:", error);
+        }
     }
 
 

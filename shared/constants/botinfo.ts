@@ -8,6 +8,14 @@ export interface BotType {
   avatar: string
 }
 
+/**
+ * Get bot avatar with fallback to default
+ */
+export function getBotAvatar(botId: string): string {
+  const bot = Bots.find(b => b.id === botId);
+  return bot?.avatar || "/icons/bots/_.png";
+}
+
 export const Bots: BotType[] = [
     {
         id: "random",
@@ -16,7 +24,7 @@ export const Bots: BotType[] = [
         detailedDescription:
         "This bot makes completely random moves. Great for beginners who want to practice without pressure.",
         rating: 400,
-        avatar: "🤖",
+        avatar: "/icons/bots/random-bot.png",
     },
     {
         id: "adaptive",
@@ -25,7 +33,7 @@ export const Bots: BotType[] = [
         detailedDescription:
         "This is the adaptive bot that is capable of responding to your moves at a similar skill level. Best used for training.",
         rating: 1000,
-        avatar: "🤖",
+        avatar: "/icons/bots/adaptive-bot.png",
     },
     {
         id: "expert",
@@ -34,7 +42,7 @@ export const Bots: BotType[] = [
         detailedDescription:
         "A highly advanced AI that uses sophisticated algorithms to provide a challenging experience for experienced players.",
         rating: 1800,
-        avatar: "🤖",
+        avatar: "/icons/bots/expert-bot.png",
         isPro: true,
     },
     {
@@ -44,7 +52,7 @@ export const Bots: BotType[] = [
         detailedDescription:
         "Victor is a competitive AI designed to play at tournament level. Expect no mercy from this opponent.",
         rating: 1650,
-        avatar: "🤖",
+        avatar: "/icons/bots/victor-bot.png",
     },
     {
         id: "beginner",
@@ -53,7 +61,7 @@ export const Bots: BotType[] = [
         detailedDescription:
         "Perfect for players just starting out. Makes simple moves and occasional mistakes to help you learn.",
         rating: 600,
-        avatar: "🤖",
+        avatar: "/icons/bots/beginner-bot.png",
     },
     {
         id: "intermediate",
@@ -62,7 +70,7 @@ export const Bots: BotType[] = [
         detailedDescription:
         "A well-balanced opponent that provides moderate challenge while still being approachable for most players.",
         rating: 1200,
-        avatar: "🤖",
+        avatar: "/icons/bots/intermediate-bot.png",
     },
     {
         id: "e92f1571-5196-48a4-b84f-0ed1c5840e03",
@@ -71,7 +79,7 @@ export const Bots: BotType[] = [
         detailedDescription:
         "The ultimate Connect 4 AI. Only attempt if you're ready for the most challenging opponent available.",
         rating: 2000,
-        avatar: "🤖",
+        avatar: "/icons/bots/magnus-bot.png",
         isPro: true,
     },
 ]

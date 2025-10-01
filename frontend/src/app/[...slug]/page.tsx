@@ -5,7 +5,6 @@ const redirectMap: Record<string, string> = {
   register: '/auth/register',
   community: 'https://linktr.ee/con4uk',
   home: '/',
-  profile: '/',
 }
 
 export async function generateStaticParams() {

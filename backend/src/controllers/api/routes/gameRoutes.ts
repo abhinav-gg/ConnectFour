@@ -12,6 +12,7 @@ import { sendUserToGame } from '@/lib/middleware/game.middleware';
 import { getIdentityString } from '@/utils/validation';
 import { GameContext } from '@/utils/gameContext';
 import { maintenanceMiddleware } from '@/lib/middleware/maintenance.middleware';
+import { isValidBotId } from '@/tools/Bots';
 
 const gameRouter = Router();
 
@@ -53,9 +54,16 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
 
     let gamemode: t_GameMode;
     let time_control: TimeControl;
+    let botId: string | undefined;
+    let playerColor: 'red' | 'yellow' | 'random' | undefined;
+    
     try {
-        gamemode = (req.body as GameInfo).gamemode;
-        time_control = (req.body as GameInfo).time_control;
+        const body = req.body;
+        gamemode = body.gamemode;
+        time_control = body.time_control;
+        botId = body.botId; // Optional - indicates bot game
+        playerColor = body.playerColor; // Optional - player color for bot games
+        
         if (!gamemode || !time_control || !userId) {
             throw new Error('Invalid Data');
         }
@@ -64,31 +72,56 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
             throw new Error('Invalid time control settings');
         }
 
-        let modeFromTC: t_GameMode | undefined;
-        if (gamemode in sRankedArmageddonModes) {
-            modeFromTC = getGameModeByTimeControl(time_control, 'armageddon');
-        } else if (gamemode in sRankedModes) {
-            modeFromTC = getGameModeByTimeControl(time_control, 'standard');
-        }
+        // If botId is provided, validate bot game parameters
+        if (botId) {
+            if (!isValidBotId(botId)) {
+                throw new Error('Invalid bot ID');
+            }
+            
+            if (!playerColor || !['red', 'yellow', 'random'].includes(playerColor)) {
+                throw new Error('Invalid or missing player color for bot game');
+            }
+        } else {
+            // Regular game validation
+            let modeFromTC: t_GameMode | undefined;
+            if (gamemode in sRankedArmageddonModes) {
+                modeFromTC = getGameModeByTimeControl(time_control, 'armageddon');
+            } else if (gamemode in sRankedModes) {
+                modeFromTC = getGameModeByTimeControl(time_control, 'standard');
+            }
 
-        if (modeFromTC) {
-            if (modeFromTC !== gamemode) {
-                throw new Error('Game mode does not match time control');
+            if (modeFromTC) {
+                if (modeFromTC !== gamemode) {
+                    throw new Error('Game mode does not match time control');
+                }
             }
         }
     }
     catch (error) {
         console.log('Failed to extract or validate data:', error);
-        res.status(500).json({ error: 'Invalid Data' });
+        res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid Data' });
         return;
     }
 
-    
-    console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
-    
     try {
         const gameContext = new GameContext(userId);
-        const response = await gameService.joinGameQueue(gameContext, { gamemode, time_control });
+        let response;
+        
+        if (botId && playerColor) {
+            // Bot game request
+            console.log(`Bot Game Request: User ${userId} requested game vs bot ${botId} as ${playerColor} player`);
+            response = await gameService.createBotGame(gameContext, {
+                gamemode,
+                time_control,
+                botId,
+                playerColor
+            });
+        } else {
+            // Regular multiplayer game request
+            console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
+            response = await gameService.joinGameQueue(gameContext, { gamemode, time_control });
+        }
+        
         res.status(response.status).json({ gameLink: `/game?r=${response.message}` });
     }
     catch (error) {

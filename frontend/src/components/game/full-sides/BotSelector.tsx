@@ -4,7 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Bot, Star, Lock, Check } from "lucide-react"
-import { Bots, BotType } from "@shared/constants/botinfo"
+import { Bots, BotType, getBotAvatar } from "@shared/constants/botinfo"
 
 type PlayerColor = "red" | "random" | "yellow"
 
@@ -49,22 +49,33 @@ export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionU
     )
   }
 
-  const getBotAvatar = (bot: BotType) => {
-    const baseClasses = "w-12 h-12 rounded-xl flex items-center justify-center text-lg relative"
+  const renderBotAvatar = (bot: BotType) => {
+    const avatarSrc = getBotAvatar(bot.id)
     
-    // Get color based on rating
-    let colorClass = "bg-green-500"
-    if (bot.rating >= 1800) colorClass = "bg-orange-500"
-    else if (bot.rating >= 1400) colorClass = "bg-red-500"
-    else if (bot.rating >= 1000) colorClass = "bg-blue-500"
-    else if (bot.rating >= 800) colorClass = "bg-purple-500"
-    else if (bot.rating >= 600) colorClass = "bg-teal-500"
-
     return (
-      <div className={`${baseClasses} ${colorClass}`}>
-        <div className="text-white">
-          <Bot className="w-6 h-6" />
-        </div>
+      <div className="w-12 h-12 rounded-xl relative overflow-hidden">
+        <img
+          src={avatarSrc}
+          alt={`${bot.name} avatar`}
+          className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-xl"
+          onError={(e) => {
+            const target = e.currentTarget
+            target.style.display = 'none'
+            const parent = target.parentElement
+            if (parent) {
+              // Get color based on rating for fallback
+              let colorClass = "bg-green-500"
+              if (bot.rating >= 1800) colorClass = "bg-orange-500"
+              else if (bot.rating >= 1400) colorClass = "bg-red-500"
+              else if (bot.rating >= 1000) colorClass = "bg-blue-500"
+              else if (bot.rating >= 800) colorClass = "bg-purple-500"
+              else if (bot.rating >= 600) colorClass = "bg-teal-500"
+              
+              parent.className = `w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center ${colorClass} relative`
+              parent.innerHTML = `<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
+            }
+          }}
+        />
         {bot.isPro && (
           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center">
             <Lock className="w-2.5 h-2.5 text-white" />
@@ -102,7 +113,7 @@ export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionU
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                {getBotAvatar(selectedBotData)}
+                {renderBotAvatar(selectedBotData)}
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h2 className="text-xl font-bold">{selectedBotData.name}</h2>
@@ -169,24 +180,36 @@ export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionU
                     <motion.div
                       animate={selectedBot === bot.id && !bot.isPro ? { scale: 1.05 } : { scale: 1 }}
                       transition={{ duration: 0.2 }}
-                      className={`w-full h-full rounded-xl flex items-center justify-center relative ${bot.isPro ? "grayscale" : ""}`}
-                      style={{
-                        background: (() => {
-                          if (bot.rating >= 1800) return "#f97316" // orange-500
-                          if (bot.rating >= 1400) return "#ef4444" // red-500
-                          if (bot.rating >= 1000) return "#3b82f6" // blue-500
-                          if (bot.rating >= 800) return "#8b5cf6" // purple-500
-                          if (bot.rating >= 600) return "#14b8a6" // teal-500
-                          return "#22c55e" // green-500
-                        })()
-                      }}
+                      className={`w-full h-full rounded-xl flex items-center justify-center relative overflow-hidden ${bot.isPro ? "grayscale" : ""}`}
                     >
-                      <Bot className="w-6 h-6 text-white" />
+                      <img
+                        src={getBotAvatar(bot.id)}
+                        alt={`${bot.name} avatar`}
+                        className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 object-cover rounded-lg"
+                        onError={(e) => {
+                          const target = e.currentTarget
+                          target.style.display = 'none'
+                          const parent = target.parentElement
+                          if (parent) {
+                            // Get color based on rating for fallback
+                            let colorClass = "#22c55e" // green-500
+                            if (bot.rating >= 1800) colorClass = "#f97316" // orange-500
+                            else if (bot.rating >= 1400) colorClass = "#ef4444" // red-500
+                            else if (bot.rating >= 1000) colorClass = "#3b82f6" // blue-500
+                            else if (bot.rating >= 800) colorClass = "#8b5cf6" // purple-500
+                            else if (bot.rating >= 600) colorClass = "#14b8a6" // teal-500
+                            
+                            parent.style.backgroundColor = colorClass
+                            parent.className = "w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-lg flex items-center justify-center mx-auto my-auto"
+                            parent.innerHTML = `<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
+                          }
+                        }}
+                      />
                       
                       {/* Lock overlay for pro bots */}
                       {bot.isPro && (
                         <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center backdrop-blur-[1px]">
-                          <Lock className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white/90 drop-shadow-sm" strokeWidth={1.5} />
+                          <Lock className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white/90 drop-shadow-sm" strokeWidth={1.5} />
                         </div>
                       )}
                     </motion.div>

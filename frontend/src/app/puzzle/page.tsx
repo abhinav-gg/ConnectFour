@@ -1,22 +1,29 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { Puzzle } from "@shared/utils/puzzles"
 import { BoardHandle } from "@/components/game/Board"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import { PuzzleUI } from "@/components/puzzles/puzzle-ui"
 import { PuzzleProgress } from "@/components/puzzles/puzzle-progress"
+import { useError } from "@/components/providers/ErrorProvider"
 
 // Example fixed puzzle string
 const puzzle = new Puzzle("45342133|4243543")
 
 export default function PuzzlePage() {
+  const { showWarning } = useError()
   const [puzzleFinished, setPuzzleFinished] = useState(false);
   const [puzzleResults, setPuzzleResults] = useState<Array<"success" | "failure">>([]);
   const [showScoreChange, setShowScoreChange] = useState<{change: number, type: "positive" | "negative"} | null>(null);
   const [currentScore, setCurrentScore] = useState(1082);
   const unifiedLayoutRef = useRef<BoardHandle>(null);
   const initialBoardRef = useRef(puzzle.getBoard().map(row => [...row]));
+
+  // Show warning only once when component mounts
+  useEffect(() => {
+    showWarning("Puzzles are coming soon!", 5)
+  }, [showWarning])
 
   const handleColumnAttempt = (col: number) => {
     try {

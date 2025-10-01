@@ -10,10 +10,10 @@ import { FinishedGameStates } from "@shared/utils/gamestates";
 import { calculateEloChanges, gameinfoFromMeta } from "@/utils/game";
 import { generateUUID } from "@/utils/auth";
 import { GameMetadata, GameMetadataSchema, UserQueue } from "@/redis/redisSchema";
-import { isUserIdentity, makeUserIdentity, parseUser } from "@/utils/validation";
+import { isUserIdentity, makeUserIdentity, parseUser, makeBotIdentity } from "@/utils/validation";
 import { getSocketIO } from "@/controllers/socket";
 import { userService } from "./user.service";
-import { AllGameModes, GameMode } from "@shared/constants/allgamemodes";
+import { AllGameModes, GameMode, t_GameMode } from "@shared/constants/allgamemodes";
 import { RoomSchema } from "@/controllers/socket/socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
 import { liveGameService } from "./livegame.service";
@@ -508,6 +508,71 @@ export const gameService = {
 
 
         return eloChanges;
+    },
+
+    async createBotGame(gameContext: GameContext, botGameInfo: {
+        gamemode: t_GameMode,
+        time_control: TimeControl,
+        botId: string,
+        playerColor: 'red' | 'yellow' | 'random'
+    }): Promise<ServiceResponse> {
+        const { gamemode, time_control, botId, playerColor } = botGameInfo;
+        
+        // Validate that this is a bot game mode
+        if (gamemode !== AllGameModes.STANDARD_BOT_MATCH) {
+            return { status: 400, message: 'Invalid game mode for bot match' };
+        }
+
+        const r = await redisOps();
+        
+        // Check if user is already in a game
+        const existingGameId = await gameContext.resolveGameId();
+        if (existingGameId) {
+            const metadata = await gameContext.getMetadata();
+            if (metadata?.state === GameState.IN_PROGRESS) {
+                return { status: 409, message: 'Already in a game' };
+            }
+        }
+
+        try {
+            // Create the game
+            const gameMeta = await this.CreateGame({ gamemode, time_control });
+            const gameId = gameMeta.id;
+            
+            // Create bot identity
+            const botIdentity = makeBotIdentity(botId);
+            
+            // Determine player order based on color choice
+            let players: string[];
+            let actualPlayerColor = playerColor;
+            
+            if (playerColor === 'random') {
+                actualPlayerColor = Math.random() < 0.5 ? 'red' : 'yellow';
+            }
+            
+            if (actualPlayerColor === 'red') {
+                // Human is red (player 0, goes first)
+                players = [gameContext.userId, botIdentity];
+            } else {
+                // Human is yellow (player 1, goes second)  
+                players = [botIdentity, gameContext.userId];
+            }
+            
+            // Update game metadata with players
+            await r.game.updateGameMetadata(gameId, { players });
+            
+            // Assign human player to the game
+            const newGameContext = await GameContext.fromGameId(gameContext.userId, gameId);
+            await this.AssignPlayerToGame(newGameContext);
+            
+            console.log(`Created bot game ${gameId}: Human (${gameContext.userId}) vs Bot (${botId}), Human plays as ${actualPlayerColor}`);
+            
+            return { status: 200, message: gameMeta.shortcode || gameId };
+            
+        } catch (error) {
+            console.error('Error creating bot game:', error);
+            return { status: 500, message: 'Failed to create bot game' };
+        }
     }
 
 

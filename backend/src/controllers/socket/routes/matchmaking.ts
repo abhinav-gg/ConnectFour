@@ -2,12 +2,13 @@ import { Socket } from 'socket.io';
 import { withNamespace } from '../handlers';
 import { redisOps } from '@/redis/ops';
 import { gameService } from '@/services/game.service';
-import { getIdentity } from '@/utils/validation';
+import { getIdentity, isBotIdentity } from '@/utils/validation';
 import { getIdentityFromSocket } from '@/lib/middleware/game.middleware';
 import { RoomSchema } from '../socketRoomSchema';
 import { liveGameService } from '@/services/livegame.service';
 import { GameContext } from '@/utils/gameContext';
 import { GameInfo, TimeControl } from '@shared/types/game.types';
+import { GameState } from '@shared/constants/allgamestates';
 
 async function handleDisconnectSocket(socket: Socket) {
   try {
@@ -84,6 +85,9 @@ export function registerMatchmakingHandlers(soc: Socket) {
       if (!metadata) {
         soc.emit('error', { message: 'Game metadata not found' });
       }
+      // Check if this is a bot game
+      const isP2Bot = metadata && metadata.players.some(playerId => playerId && isBotIdentity(playerId));
+
       socket.emit('joined', { shortcode: shortCode, 
         gameinfo: {
           gamemode: metadata!.gamemode,
@@ -93,8 +97,31 @@ export function registerMatchmakingHandlers(soc: Socket) {
             disadvantage: metadata!.disadvantage,
           } as TimeControl
         } as GameInfo,
-        isSpectating
+        isSpectating,
+        isP2Bot: isP2Bot || false
       });
+
+      // After player joins, check if this is a bot game and trigger bot move if needed
+      if (!isSpectating && metadata && metadata.state === GameState.IN_PROGRESS) {
+        // Check if any player is a bot and if it's their turn
+        const timedata = await gameContext.getTimedata();
+        if (timedata && metadata.players.length === 2) {
+          const currentPlayerIndex = timedata.cTurn;
+          const currentPlayerId = metadata.players[currentPlayerIndex];
+          
+          if (currentPlayerId && isBotIdentity(currentPlayerId)) {
+            console.log("Bot's turn detected on player join, triggering bot move");
+            // Trigger bot move with a small delay to ensure socket connection is stable
+            setTimeout(async () => {
+              try {
+                await liveGameService.ManageBotMove(gameContext.gameId!);
+              } catch (error) {
+                console.error("Error triggering bot move on join:", error);
+              }
+            }, 500);
+          }
+        }
+      }
 
     } catch (error) {
       console.error('Error joining matchmaking:', error);

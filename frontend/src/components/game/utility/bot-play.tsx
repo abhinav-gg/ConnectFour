@@ -165,23 +165,9 @@ export function BotPlay({ botName = "Victor Bot", botAvatar, onHint, onResign, c
   }
 
   const getBotAvatar = () => {
-    if (botAvatar) {
-      return (
-        <img
-          src={botAvatar || "/placeholder.svg"}
-          alt={`${botName} avatar`}
-          className="w-full h-full object-cover rounded-lg"
-        />
-      )
-    }
-
     return (
-      <div className="w-full h-full bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-red-400/20 to-transparent rounded-lg" />
-        <Bot className="w-8 h-8 lg:w-10 lg:h-10 text-purple-300" />
-        <div className="absolute bottom-1 right-1">
-          <Star className="w-3 h-3 lg:w-4 lg:h-4 text-yellow-400 fill-yellow-400" />
-        </div>
+      <div className="w-full h-full border-2 border-blue-400 rounded-lg flex items-center justify-center bg-slate-700/50">
+        <Bot className="w-6 h-6 lg:w-8 lg:h-8 text-blue-400" />
       </div>
     )
   }
