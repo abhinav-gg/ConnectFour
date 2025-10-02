@@ -108,25 +108,36 @@ Manages game creation, validation, matchmaking, and game lifecycle operations.
   7. Returns game creation result
 - **Validation**: Player ratings, game mode restrictions, concurrent games
 
-#### `createBotGame(playerUUID: UUID, gameInfo: GameInfo, botId: string, playerIsRed: boolean)`
-- **Purpose**: Create game with AI opponent
+#### **[BOT LOGIC]** `createBotGame(gameContext: GameContext, botGameInfo: BotGameInfo)`
+- **Purpose**: Create game with AI opponent using zero time control
 - **Process**:
-  1. Validates bot ID and availability
-  2. Creates bot player identity
-  3. Determines player colors and turn order
-  4. Initializes game with bot configuration
-  5. Sets up bot move triggers
-- **Bot Integration**: Seamless bot opponent creation
+  1. Validates bot ID and game mode (STANDARD_BOT_MATCH or STANDARD_ARMAGEDDON_BOT_MATCH)
+  2. **Forces time control to 0|0|0** regardless of input (no timers in bot games)
+  3. Creates bot player identity using makeBotIdentity()
+  4. Determines player colors (red/yellow/random)
+  5. Sets up game metadata with human and bot players
+  6. Assigns human player to game queue
+- **Bot Behavior**: All bot games use zero time control, no timer functionality
 
-#### `joinGame(shortcode: string, playerIdentity: PlayerIdentity)`
-- **Purpose**: Add player to existing game as participant or spectator
+#### **[BOT LOGIC]** `tryJoinGame(gameContext: GameContext)`
+- **Purpose**: Join existing game with bot game rejection
 - **Process**:
-  1. Validates game exists and is joinable
-  2. Checks player permissions and eligibility
-  3. Adds player to appropriate role (player/spectator)
-  4. Updates game metadata
-  5. Notifies existing participants
-- **Access Control**: Game privacy, player limits, spectator permissions
+  1. Gets fresh game metadata
+  2. **Bot Game Check**: Returns 404 "Bot game is no longer available" for bot games
+  3. For regular games: Validates player can join
+  4. Handles reconnection or new player assignment
+  5. Starts game if conditions are met
+- **Bot Behavior**: Completely blocks joining any bot games (they end on disconnect)
+
+#### **[BOT LOGIC]** `ReconnectPlayer(gameContext: GameContext, meOnly: boolean)`
+- **Purpose**: Reconnect player to game with bot game prevention
+- **Process**:
+  1. Gets fresh game data and player information
+  2. **Bot Game Prevention**: Throws error for bot games (no reconnection allowed)
+  3. For regular games: Sends game setup data to reconnecting player
+  4. Handles ELO changes for competitive games
+  5. Emits setup events to appropriate players
+- **Bot Behavior**: Bot games cannot use reconnection functionality
 
 #### `validateMove(shortcode: string, column: number, playerIdentity: PlayerIdentity)`
 - **Purpose**: Validate move legality before processing
@@ -221,6 +232,26 @@ Handles real-time game state management, move processing, and live game events.
   4. Broadcasts to appropriate audience
   5. Logs for moderation purposes
 - **Moderation**: Content filtering, rate limiting, admin tools
+
+#### **[BOT LOGIC]** `handleDisconnect(gameContext: GameContext)`
+- **Purpose**: Handle player disconnections with special bot game logic
+- **Process**:
+  1. Validates player is in game room
+  2. **Bot Game Check**: If bot game mode, immediately force resignation
+  3. For regular games: Creates 30-second reconnection timer
+  4. Emits disconnect signal to other players
+  5. Schedules disconnection job for timeout handling
+- **Bot Behavior**: Bot games end immediately on disconnect, no reconnection allowed
+
+#### **[BOT LOGIC]** `dropDisconnectJob(gameContext: GameContext)`
+- **Purpose**: Cancel disconnection job when player reconnects
+- **Process**:
+  1. Validates player in game room
+  2. **Bot Game Rejection**: Throws error for bot games (no reconnection)
+  3. For regular games: Cancels pending disconnection job
+  4. Emits reconnect signal to other players
+  5. Restores normal game flow
+- **Bot Behavior**: Bot games cannot use this function
 
 ### Real-time Features
 - **Live State Updates**: Instant game state synchronization

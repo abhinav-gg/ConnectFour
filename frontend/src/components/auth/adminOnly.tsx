@@ -2,9 +2,9 @@
 
 import { useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { myConfig } from '@/config/env';
 import NotFound from '@/app/not-found'; // Import the NotFound component
 import Loading from '../loading';
+import { authApi } from '@/utils/apiClient';
 
 interface CheckAdminProps {
   children: ReactNode; // Define children prop
@@ -18,18 +18,17 @@ export default function CheckAdmin({ children }: CheckAdminProps) { // Accept ch
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        const response = await fetch(`${myConfig.BACKEND_URL}/api/auth/isadmin`, {
-          method: 'GET',
-          credentials: 'include',
-        });
+        console.log('🔐 Checking admin status...');
+        const response = await authApi.isAdmin();
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch admin status');
+        if (!response.success) {
+          throw new Error(response.error || 'Failed to fetch admin status');
         }
 
-        const data = await response.json();
-        setIsAdmin(data.isAdmin); // Set admin status
+        console.log('🔐 Admin check response:', response.data);
+        setIsAdmin(response.data?.isAdmin || false);
       } catch (err: any) {
+        console.error('🔐 Admin check failed:', err);
         setIsAdmin(false);
         setError(err.message);
       }

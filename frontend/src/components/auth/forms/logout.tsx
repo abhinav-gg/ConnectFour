@@ -1,8 +1,8 @@
 "use client"
 
-import { myConfig } from "@/config/env";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { authApi } from "@/utils/apiClient";
 
 export function LogoutUser() {
   const router = useRouter();
@@ -10,16 +10,16 @@ export function LogoutUser() {
   useEffect(() => {
     const logout = async () => {
       try {
-        const response = await fetch(`${myConfig.BACKEND_URL}/auth/logout`, {
-          method: "POST",
-          credentials: "include",
-        });
-        if (!response.ok) {
-          const errorJson = await response.json();
-          console.error(errorJson);
+        console.log('🔐 Logging out user...');
+        const response = await authApi.logout();
+        
+        if (!response.success) {
+          console.error('🔐 Logout error:', response.error);
+        } else {
+          console.log('🔐 Logout successful');
         }
       } catch (e) {
-        console.error(e);
+        console.error('🔐 Logout failed:', e);
       } finally {
         router.replace("/");
       }

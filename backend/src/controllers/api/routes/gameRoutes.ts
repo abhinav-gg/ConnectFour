@@ -3,7 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/middleware/auth.middleware';
 import { GameInfo, TimeControl } from '@shared/types/game.types';
 import { t_GameMode } from '@shared/constants/allgamemodes';
-import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes } from '@shared/utils/gamemodes';
+import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode } from '@shared/utils/gamemodes';
 import { validateTimeControl } from '@shared/utils/validation';
 import { gameService } from '@/services/game.service';
 import { rdsDBOps } from '@/db/rds/ops';
@@ -31,6 +31,10 @@ gameRouter.post('/player', async (req: Request, res: Response) => {
     let elo;
 
     if (mode) {
+        let cGameMode: t_GameMode | null = getEloGameMode(mode);
+        if (!cGameMode) {
+            throw new Error("Invalid gamemode for elo fetch");
+        }
         elo = await userService.getOrSetPlayerElo(user.id, mode);
     }
     const response = {

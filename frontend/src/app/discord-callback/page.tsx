@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { myConfig } from '@/config/env';
 import Loading from '@/components/loading';
+import { eventsApi } from '@/utils/apiClient';
 
 export default function DiscordCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -16,48 +16,36 @@ export default function DiscordCallback() {
       return;
     }
 
-    fetch(`${myConfig.BACKEND_URL}/api/events/ichack25/discord`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code }),
-    })
-      .then(async (res) => {
-        const responseText = await res.text();
-
-        if (res.status === 400 || res.status === 401) {
-          setStatus('error');
-          setError('Authentication Failed, Ensure you are not logged into an Anonymous account...');
-          setTimeout(() => { window.location.href = '/login'; }, 2000);
-          return;
-        }
-
-        if (res.status === 403) {
-          setStatus('error');
-          setError('Not registered for ICHack 25');
-          setTimeout(() => {
-            window.location.href = '/events/ichack25?error=not-ichack';
-          }, 2000);
-          return;
-        }
-
-        if (res.status >= 200 && res.status < 300) {
+    eventsApi.discordCallback(code)
+      .then((response) => {
+        console.log('📱 Discord callback response:', response);
+        
+        if (response.success) {
           setStatus('success');
           setTimeout(() => {
             window.location.href = '/events/ichack25/leaderboard';
           }, 2000);
-          return;
+        } else {
+          setStatus('error');
+          
+          // Handle specific error status codes
+          if (response.status === 400 || response.status === 401) {
+            setError('Authentication Failed, Ensure you are not logged into an Anonymous account...');
+            setTimeout(() => { window.location.href = '/login'; }, 2000);
+          } else if (response.status === 403) {
+            setError('Not registered for ICHack 25');
+            setTimeout(() => {
+              window.location.href = '/events/ichack25?error=not-ichack';
+            }, 2000);
+          } else {
+            setError(response.error || 'Discord callback failed');
+          }
         }
-
-        // For any other error status
-        setStatus('error');
-        setError(responseText || 'An unexpected error occurred');
       })
-      .catch((err) => {
+      .catch((err: any) => {
+        console.error('📱 Discord callback error:', err);
         setStatus('error');
-        setError(err.message);
+        setError(err.message || 'Unknown error occurred');
       });
   }, []);
 

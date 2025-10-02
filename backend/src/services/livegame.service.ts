@@ -11,7 +11,7 @@ import { userService } from "./user.service";
 import { parseUser, isBotIdentity, getIdentity } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
-import { StandardModes } from "@shared/utils/gamemodes";
+import { StandardModes, BotModes } from "@shared/utils/gamemodes";
 import { getGameTimeoutQueue, getGameDisconnectionQueue } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { GameNotFound } from "@/types/miscErrors";
@@ -44,12 +44,16 @@ export const liveGameService = {
     },
 
     async handleDisconnect(gameContext: GameContext): Promise<void> {
+        console.log(`[🤖 BOT DEBUG] handleDisconnect called for user ${gameContext.userId}`);
 
         try {
             await gameContext.validatePlayerInRoom();
+            console.log(`[🤖 BOT DEBUG] User ${gameContext.userId} validated in room`);
         } catch (error) {
             if (!(error instanceof GameNotFound)) {
                 console.error("Player is not in the game room, skipping disconnection logic", error);
+            } else {
+                console.log(`[🤖 BOT DEBUG] User ${gameContext.userId} not in any game room, returning`);
             }
             return; // Player is not in the game room, skip disconnection logic
         }
@@ -57,6 +61,27 @@ export const liveGameService = {
         if (!gameContext.gameId || !gameContext.userId) {
             console.error("Game ID or User ID is missing for resetting disconnect job");
             return;
+        }
+
+        // BOT LOGIC: Check if this game has any bot players - if so, immediately resign instead of allowing reconnection
+        const metadata = await gameContext.getMetadata();
+        console.log(`[🤖 BOT DEBUG] Game metadata:`, { gameId: gameContext.gameId, gamemode: metadata?.gamemode, players: metadata?.players });
+
+        if (metadata && this.hasAnyBotPlayers(metadata.players)) {
+            console.log(`[🤖 BOT GAME] Player disconnected from game with bot players ${gameContext.gameId}, forcing resignation`);
+            console.log(`[🤖 BOT GAME] Players in game:`, metadata.players.map(p => ({ id: p, isBot: isBotIdentity(p) })));
+            
+            // Get player index for resignation
+            const playerIndex = await gameContext.getPlayerIndex();
+            if (playerIndex !== null) {
+                console.log(`[🤖 BOT GAME] Executing resignation for player ${playerIndex} in game ${gameContext.gameId}`);
+                // Immediately end the game with player resignation
+                await this.HandleGameOver(gameContext, 
+                    playerIndex === 0 ? GameState.RED_RESIGNED : GameState.YELLOW_RESIGNED
+                );
+                console.log(`[🤖 BOT GAME] Resignation completed for game ${gameContext.gameId}`);
+            }
+            return; // No reconnection allowed in games with bots
         }
 
         // send disconnect signal
@@ -321,19 +346,29 @@ export const liveGameService = {
             return { status: 200, message: 'Game over' };
         }
 
-        // After successful move, check if next player is a bot and trigger bot move
+        // After successful move, check if next player is a bot and trigger bot move (reusable across all game modes)
         // We need to check the opponent after the current move
         const opponentUserId = await gameContext.get2PlayerOpponentUserId();
+        
+        console.log(`[🤖 BOT DEBUG] Checking if next player is bot:`, {
+            opponentUserId,
+            isBot: opponentUserId ? isBotIdentity(opponentUserId) : false,
+            gameId: gameContext.gameId
+        });
+        
         if (opponentUserId && isBotIdentity(opponentUserId)) {
-            console.log("Next player is a bot, triggering bot move");
+            console.log(`[🤖 BOT TRIGGER] Next player ${opponentUserId} is a bot, triggering bot move`);
             // Trigger bot move asynchronously with a small delay to ensure state is consistent
             setTimeout(async () => {
                 try {
+                    console.log(`[🤖 BOT TRIGGER] Executing delayed bot move for ${opponentUserId}`);
                     await this.ManageBotMove(gameContext.gameId!);
                 } catch (error) {
-                    console.error("Error triggering bot move:", error);
+                    console.error(`[🤖 BOT ERROR] Error triggering bot move for ${opponentUserId}:`, error);
                 }
             }, 100);
+        } else {
+            console.log(`[🤖 BOT DEBUG] Next player is not a bot, no bot move needed`);
         }
 
         return { status: 200, message: 'Move made successfully' };
@@ -341,41 +376,62 @@ export const liveGameService = {
     },
 
     async HandleGameOver (gameContext: GameContext, state: number): Promise<void> {
-        // check that the game exists in redis
-        // Invalidate any cached GameContext data since game state changed
-        // Note: In a real implementation, you might want to notify specific users
-        // For now, we'll just update the state and let future GameContext calls refresh
-
+        console.log(`[🏁 GAME END] === HandleGameOver started ===`);
+        console.log(`[🏁 GAME END] Game ID: ${gameContext.gameId}, State: ${state}`);
+        
         const r = await redisOps();
-        console.log("HANDLING GAME OVER", gameContext.gameId, state);
 
         if (!gameContext.gameId) {
+            console.error(`[🏁 GAME END ERROR] Game ID is null`);
             throw new Error('Game ID is null');
         }
         
         const metadata = await gameContext.getMetadata();
         const timedata = await gameContext.getTimedata();
+        
+        console.log(`[🏁 GAME END] Game data retrieved:`, {
+            gameId: gameContext.gameId,
+            hasMetadata: !!metadata,
+            hasTimedata: !!timedata,
+            currentState: metadata?.state,
+            players: metadata?.players,
+            shortcode: gameContext.shortcode
+        });
+        
         if (!metadata || !timedata) {
+            console.error(`[🏁 GAME END ERROR] Game metadata or timedata not found`);
             throw new Error('Game metadata not found');
         }
+        
         await gameContext.validatePlayerInRoom();
+        console.log(`[🏁 GAME END] Player validated in room`);
         
-        if (metadata.state !== GameState.IN_PROGRESS)
+        if (metadata.state !== GameState.IN_PROGRESS) {
+            console.log(`[🏁 GAME END] Game not in progress (state: ${metadata.state}), skipping`);
             return; // if game state is not in progress, do nothing
+        }
         
-        
+        console.log(`[🏁 GAME END] Updating game state from ${metadata.state} to ${state}`);
         await r.game.updateGameMetadataState(gameContext.gameId, state);
+        console.log(`[🏁 GAME END] Game state updated successfully`);
     
         // Notify all players about the game over
         const socket = getSocketIO();
-        socket.to(RoomSchema.game.key(gameContext.shortcode!)).emit('game:over', {
+        const roomKey = RoomSchema.game.key(gameContext.shortcode!);
+        console.log(`[🏁 GAME END] Emitting game:over to room ${roomKey}`);
+        
+        socket.to(roomKey).emit('game:over', {
             result: state,
             finalTimes: timedata.rTimes,
         });
+        console.log(`[🏁 GAME END] Game over event emitted successfully`);
 
         // Free the players of the game
+        console.log(`[🏁 GAME END] Starting player cleanup`);
         await this.FreeGamePlayers(gameContext);
+        console.log(`[🏁 GAME END] Player cleanup completed`);
 
+        console.log(`[🏁 GAME END] === HandleGameOver completed ===`);
         // end by storing the game to NOSQL
 
     },
@@ -417,22 +473,54 @@ export const liveGameService = {
 
 
     async FreeGamePlayers(gameContext: GameContext): Promise<void> {
+        console.log(`[🔓 PLAYER CLEANUP] === FreeGamePlayers started ===`);
         
         // Get fresh metadata to check game state
         gameContext.invalidateMetadata();
         const gameId = await gameContext.resolveGameId();
         const metadata = await gameContext.getMetadata();
-        if (!metadata || !gameId) return;
+        
+        console.log(`[🔓 PLAYER CLEANUP] Game data:`, {
+            gameId,
+            hasMetadata: !!metadata,
+            state: metadata?.state,
+            players: metadata?.players,
+            playerCount: metadata?.players?.length
+        });
+        
+        if (!metadata || !gameId) {
+            console.log(`[🔓 PLAYER CLEANUP] Missing metadata or gameId, skipping cleanup`);
+            return;
+        }
 
         // if the game state is in progress then we can not free players
-        if (metadata.state === GameState.IN_PROGRESS) return;
+        if (metadata.state === GameState.IN_PROGRESS) {
+            console.log(`[🔓 PLAYER CLEANUP] Game still in progress, skipping player cleanup`);
+            return;
+        }
 
-        // free up the players of the game
-        metadata.players.forEach(async (player) => {
-            console.log("FREEING PLAYER", player, gameId);
-            const playerContext = await GameContext.fromGameId(player, gameId);
-            await gameService.QuitPlayerQueue(playerContext);
+        console.log(`[🔓 PLAYER CLEANUP] Starting cleanup for ${metadata.players.length} players`);
+        
+        // free up the players of the game - use Promise.all to handle async operations properly
+        const cleanupPromises = metadata.players.map(async (player, index) => {
+            try {
+                console.log(`[🔓 PLAYER CLEANUP] Freeing player ${index + 1}/${metadata.players.length}: ${player}`);
+                console.log(`[🔓 PLAYER CLEANUP] Player ${player} details:`, {
+                    isBot: isBotIdentity(player),
+                    gameId
+                });
+                
+                const playerContext = await GameContext.fromGameId(player, gameId);
+                await gameService.QuitPlayerQueue(playerContext);
+                
+                console.log(`[🔓 PLAYER CLEANUP] ✅ Successfully freed player ${player}`);
+            } catch (error) {
+                console.error(`[🔓 PLAYER CLEANUP ERROR] Failed to free player ${player}:`, error);
+            }
         });
+        
+        await Promise.all(cleanupPromises);
+        console.log(`[🔓 PLAYER CLEANUP] === FreeGamePlayers completed ===`);
 
     },
 
@@ -524,22 +612,42 @@ export const liveGameService = {
     },
 
 
+    /**
+     * Check if any players in the game are bots (reusable across all game modes)
+     */
+    hasAnyBotPlayers(players: string[]): boolean {
+        const result = players.some(player => isBotIdentity(player));
+        console.log(`[🤖 BOT DEBUG] Checking for bot players:`, players.map(p => ({ id: p, isBot: isBotIdentity(p) })), `Result: ${result}`);
+        return result;
+    },
+
     async ManageBotMove(gameId: string): Promise<void> {
+        console.log(`[🤖 BOT DEBUG] === ManageBotMove started for game ${gameId} ===`);
         try {
             const r = await redisOps();
             
             // Get game metadata and timedata
+            console.log(`[🤖 BOT DEBUG] Fetching game data for ${gameId}`);
             const metadata = await r.game.getGameMetadata(gameId);
             const timedata = await r.game.getGameTimes(gameId);
             
             if (!metadata || !timedata) {
-                console.error("Game metadata or timedata not found for bot move", gameId);
+                console.error(`[🤖 BOT ERROR] Game metadata or timedata not found for bot move ${gameId}`);
+                console.error(`[🤖 BOT ERROR] Metadata:`, metadata, `Timedata:`, timedata);
                 return;
             }
 
+            console.log(`[🤖 BOT DEBUG] Game data retrieved:`, { 
+                gameId, 
+                state: metadata.state, 
+                gamemode: metadata.gamemode,
+                players: metadata.players,
+                currentTurn: timedata.cTurn 
+            });
+
             // Check if game is in progress
             if (metadata.state !== GameState.IN_PROGRESS) {
-                console.log("Game not in progress, skipping bot move", gameId, metadata.state);
+                console.log(`[🤖 BOT DEBUG] Game not in progress, skipping bot move. Game ${gameId} state: ${metadata.state}`);
                 return;
             }
 
@@ -547,79 +655,135 @@ export const liveGameService = {
             const currentPlayerIndex = timedata.cTurn;
             const currentPlayerId = metadata.players[currentPlayerIndex];
             
+            console.log(`[🤖 BOT DEBUG] Current turn analysis:`, {
+                currentPlayerIndex,
+                currentPlayerId,
+                allPlayers: metadata.players,
+                playerIsBot: currentPlayerId ? isBotIdentity(currentPlayerId) : 'unknown'
+            });
+            
             if (!currentPlayerId) {
-                console.error("Current player ID not found", gameId, currentPlayerIndex);
+                console.error(`[🤖 BOT ERROR] Current player ID not found. Game ${gameId}, turn index ${currentPlayerIndex}`);
+                console.error(`[🤖 BOT ERROR] Available players:`, metadata.players);
                 return;
             }
 
             // Check if current player is a bot
             if (!isBotIdentity(currentPlayerId)) {
-                console.log("Current player is not a bot, skipping", currentPlayerId);
+                console.log(`[🤖 BOT DEBUG] Current player ${currentPlayerId} is not a bot, skipping bot move`);
                 return;
             }
 
             // Extract bot ID from identity
             const identity = getIdentity(currentPlayerId);
             const botId = identity.bot;
+            console.log(`[🤖 BOT DEBUG] Bot identity extracted:`, {
+                currentPlayerId,
+                identity,
+                botId
+            });
+            
             if (!botId) {
-                console.error("Bot ID could not be extracted", currentPlayerId);
+                console.error(`[🤖 BOT ERROR] Bot ID could not be extracted from ${currentPlayerId}`);
+                console.error(`[🤖 BOT ERROR] Identity object:`, identity);
                 return;
             }
 
-            console.log(`Managing bot move for Bot ID: ${botId}, Game ID: ${gameId}`);
+            console.log(`[🤖 BOT MOVE] === Managing bot move for Bot ID: ${botId}, Game ID: ${gameId} ===`);
 
             // Load the timed game to get current state
+            console.log(`[🤖 BOT DEBUG] Creating game context for bot ${botId}`);
             const gameContext = await GameContext.fromGameId(currentPlayerId, gameId);
             const Game = await this.loadTimedGame(gameContext);
             if (!Game) {
-                console.error("Failed to load timed game for bot", gameId);
+                console.error(`[🤖 BOT ERROR] Failed to load timed game for bot ${botId} in game ${gameId}`);
                 return;
             }
 
+            console.log(`[🤖 BOT DEBUG] Game state loaded:`, {
+                gameId,
+                botId,
+                isGameOver: Game.isGameOver(),
+                gameState: Game.getGameState(),
+                legalMoves: Game.getLegalMoves()
+            });
+
             // Check if game is already over
             if (Game.isGameOver()) {
-                console.log("Game is already over, skipping bot move", gameId);
+                console.log(`[🤖 BOT DEBUG] Game ${gameId} is already over, skipping bot move for ${botId}`);
                 return; 
             }
 
             // Get the bot implementation and make a move
+            console.log(`[🤖 BOT MOVE] Getting bot implementation for ${botId}`);
             try {
                 const bot = getBotById(botId, Game);
-                const botMove = await bot.chooseMove();
+                console.log(`[🤖 BOT DEBUG] Bot ${botId} implementation loaded successfully`);
                 
-                console.log(`Bot ${botId} chose move: ${botMove}`);
+                const startTime = Date.now();
+                const botMove = await bot.chooseMove();
+                const moveTime = Date.now() - startTime;
+                
+                console.log(`[🤖 BOT MOVE] Bot ${botId} chose move ${botMove} in ${moveTime}ms`);
 
                 // Validate the move is legal
                 const legalMoves = Game.getLegalMoves();
+                console.log(`[🤖 BOT DEBUG] Legal moves available:`, legalMoves);
+                
                 if (!legalMoves.includes(botMove)) {
-                    console.error(`Bot ${botId} chose illegal move ${botMove}, legal moves:`, legalMoves);
+                    console.error(`[🤖 BOT ERROR] Bot ${botId} chose ILLEGAL move ${botMove}`);
+                    console.error(`[🤖 BOT ERROR] Legal moves were:`, legalMoves);
+                    console.error(`[🤖 BOT ERROR] Game state:`, Game.getGameState());
+                    
                     // Fallback to first legal move
                     const fallbackMove = legalMoves[0];
                     if (fallbackMove !== undefined) {
-                        console.log(`Using fallback move: ${fallbackMove}`);
+                        console.log(`[🤖 BOT FALLBACK] Using first legal move: ${fallbackMove}`);
                         await this.HandleGameMove(gameContext, fallbackMove);
+                        console.log(`[🤖 BOT FALLBACK] Fallback move ${fallbackMove} executed successfully`);
+                    } else {
+                        console.error(`[🤖 BOT ERROR] No legal moves available! Game might be over.`);
                     }
                     return;
                 }
 
                 // Execute the bot's move
+                console.log(`[🤖 BOT MOVE] Executing bot move ${botMove} for ${botId}`);
                 await this.HandleGameMove(gameContext, botMove);
+                console.log(`[🤖 BOT MOVE] ✅ Bot move ${botMove} executed successfully for ${botId}`);
                 
             } catch (botError) {
-                console.error(`Error getting bot or making move for ${botId}:`, botError);
+                console.error(`[🤖 BOT ERROR] Error getting bot or making move for ${botId}:`, botError);
+                if (botError instanceof Error) {
+                    console.error(`[🤖 BOT ERROR] Error stack:`, botError.stack);
+                }
                 
                 // Fallback: make a random legal move
                 const legalMoves = Game.getLegalMoves();
+                console.log(`[🤖 BOT FALLBACK] Attempting random fallback move. Legal moves:`, legalMoves);
+                
                 if (legalMoves.length > 0) {
                     const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-                    console.log(`Bot fallback: making random move ${randomMove}`);
-                    await this.HandleGameMove(gameContext, randomMove);
+                    console.log(`[🤖 BOT FALLBACK] Making random move ${randomMove} for ${botId}`);
+                    try {
+                        await this.HandleGameMove(gameContext, randomMove);
+                        console.log(`[🤖 BOT FALLBACK] ✅ Random move ${randomMove} executed successfully`);
+                    } catch (fallbackError) {
+                        console.error(`[🤖 BOT ERROR] Even fallback move failed:`, fallbackError);
+                    }
+                } else {
+                    console.error(`[🤖 BOT ERROR] No legal moves available for fallback!`);
                 }
             }
 
         } catch (error) {
-            console.error("Error in ManageBotMove:", error);
+            console.error(`[🤖 BOT ERROR] Critical error in ManageBotMove for game ${gameId}:`, error);
+            if (error instanceof Error) {
+                console.error(`[🤖 BOT ERROR] Error stack:`, error.stack);
+            }
         }
+        
+        console.log(`[🤖 BOT DEBUG] === ManageBotMove completed for game ${gameId} ===`);
     }
 
 

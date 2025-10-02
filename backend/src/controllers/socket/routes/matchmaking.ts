@@ -9,6 +9,7 @@ import { liveGameService } from '@/services/livegame.service';
 import { GameContext } from '@/utils/gameContext';
 import { GameInfo, TimeControl } from '@shared/types/game.types';
 import { GameState } from '@shared/constants/allgamestates';
+import { ErrorCode } from '@shared/constants/errorCodes';
 
 async function handleDisconnectSocket(socket: Socket) {
   try {
@@ -67,7 +68,25 @@ export function registerMatchmakingHandlers(soc: Socket) {
       
       console.log('Matchmaking response:', response);
       if (response.status === 404) {
-        socket.emit('failed');
+        socket.emit('failed', { 
+          code: response.message,
+          redirect: response.redirect
+        });
+        return;
+      }
+      
+      if (response.status === 410) {
+        socket.emit('failed', { 
+          code: response.message
+        });
+        return;
+      }
+      
+      if (response.status === 409) {
+        socket.emit('failed', { 
+          code: response.message,
+          redirect: response.redirect
+        });
         return;
       }
 

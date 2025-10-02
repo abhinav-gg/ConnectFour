@@ -1,9 +1,9 @@
 'use client';
 
-import { myConfig } from '@/config/env';
 import { UserProfile } from '@shared/types/users';
 import { useSocketContext } from './SocketProvider';
 import { useError } from './ErrorProvider';
+import { authApi } from '@/utils/apiClient';
 import React, {
   createContext,
   useContext,
@@ -216,20 +216,14 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     fetchingRef.current = true;
     console.log('Fetching user data...');
     try {
-      const res = await fetch(`${myConfig.BACKEND_URL}/auth/me`, {
-        credentials: 'include',
-      });
+      const response = await authApi.me();
       
-      if (!res.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-
-      const data = await res.json();
-
-      if (data?.username) {
+      console.log('🔐 User data response:', response);
+      
+      if (response.success && response.data?.user?.username) {
         const userData: LocalUser = {
-          username: data.username,
-          pfp: data.pfp || '/icons/user.svg',
+          username: response.data.user.username,
+          pfp: response.data.user.pfp || '/icons/user.svg',
           cachedAt: Date.now(),
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(userData));

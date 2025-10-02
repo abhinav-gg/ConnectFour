@@ -49,41 +49,7 @@ export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionU
     )
   }
 
-  const renderBotAvatar = (bot: BotType) => {
-    const avatarSrc = getBotAvatar(bot.id)
-    
-    return (
-      <div className="w-12 h-12 rounded-xl relative overflow-hidden">
-        <img
-          src={avatarSrc}
-          alt={`${bot.name} avatar`}
-          className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-xl"
-          onError={(e) => {
-            const target = e.currentTarget
-            target.style.display = 'none'
-            const parent = target.parentElement
-            if (parent) {
-              // Get color based on rating for fallback
-              let colorClass = "bg-green-500"
-              if (bot.rating >= 1800) colorClass = "bg-orange-500"
-              else if (bot.rating >= 1400) colorClass = "bg-red-500"
-              else if (bot.rating >= 1000) colorClass = "bg-blue-500"
-              else if (bot.rating >= 800) colorClass = "bg-purple-500"
-              else if (bot.rating >= 600) colorClass = "bg-teal-500"
-              
-              parent.className = `w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center ${colorClass} relative`
-              parent.innerHTML = `<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
-            }
-          }}
-        />
-        {bot.isPro && (
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center">
-            <Lock className="w-2.5 h-2.5 text-white" />
-          </div>
-        )}
-      </div>
-    )
-  }
+
 
   return (
     <motion.div
@@ -113,7 +79,35 @@ export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionU
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                {renderBotAvatar(selectedBotData)}
+                <div key={`selected-bot-${selectedBot}`} className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl relative overflow-hidden">
+                  <img
+                    src={getBotAvatar(selectedBotData.id)}
+                    alt={`${selectedBotData.name} avatar`}
+                    className="w-full h-full object-cover rounded-xl"
+                    onError={(e) => {
+                      const target = e.currentTarget
+                      target.style.display = 'none'
+                      const parent = target.parentElement
+                      if (parent) {
+                        // Get color based on rating for fallback
+                        let colorClass = "bg-green-500"
+                        if (selectedBotData.rating >= 1800) colorClass = "bg-orange-500"
+                        else if (selectedBotData.rating >= 1400) colorClass = "bg-red-500"
+                        else if (selectedBotData.rating >= 1000) colorClass = "bg-blue-500"
+                        else if (selectedBotData.rating >= 800) colorClass = "bg-purple-500"
+                        else if (selectedBotData.rating >= 600) colorClass = "bg-teal-500"
+                        
+                        parent.className = `w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center ${colorClass} relative`
+                        parent.innerHTML = `<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`
+                      }
+                    }}
+                  />
+                  {selectedBotData.isPro && (
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center">
+                      <Lock className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h2 className="text-xl font-bold">{selectedBotData.name}</h2>

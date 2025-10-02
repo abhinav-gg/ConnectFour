@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox" // Import Checkbox
 import { Eye, EyeOff, ArrowLeft, Router } from "lucide-react"
 import { validateEmail, validateUsername, validatePassword } from "@shared/utils/validation"
-import { myConfig } from "@/config/env"
 import { jwtDecode } from "jwt-decode";
 import { UserAccountProvider } from "@shared/types/users"
 import { maskEmail } from "@shared/utils/masks"
 import { handleGoogleLogin } from "@/utils/googleSignin"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 import { useRouter } from "next/navigation"
+import { authApi } from "@/utils/apiClient"
+import { myConfig } from "@/config/env"
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)

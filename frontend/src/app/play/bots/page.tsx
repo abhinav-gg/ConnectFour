@@ -6,6 +6,7 @@ import { BotSelectionUI } from "@/components/game/full-sides/BotSelector"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { AllGameModes } from "@shared/constants/allgamemodes"
+import { gameApi } from "@/utils/apiClient"
 
 type PlayerColor = "red" | "random" | "yellow"
 
@@ -17,34 +18,30 @@ export default function LiveGamePage() {
     setIsLoading(true)
     
     try {
-      const response = await fetch('/api/game/request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      console.log('🤖 Creating bot game:', { selectedBot, playerColor });
+      
+      const response = await gameApi.createGame({
+        gamemode: AllGameModes.STANDARD_BOT_MATCH,
+        time_control: {
+          base_time: 300000, // 5 minutes
+          increment: 0,
+          disadvantage: 0
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          gamemode: AllGameModes.STANDARD_BOT_MATCH,
-          time_control: {
-            base_time: 300000, // 5 minutes
-            increment: 0,
-            disadvantage: 0
-          },
-          botId: selectedBot,
-          playerColor: playerColor
-        }),
-      })
+        botId: selectedBot,
+        playerColor: playerColor
+      });
 
-      if (response.ok) {
-        const data = await response.json()
-        router.push(data.gameLink)
+      if (response.success && response.data) {
+        console.log('🤖 Bot game created successfully:', response.data);
+        router.push(response.data.gameLink)
       } else {
-        console.error('Failed to create bot game:', response.statusText)
-        // Handle error - could show a toast or error message
+        console.error('🤖 Failed to create bot game:', response.error)
+        // TODO: Show user-friendly error message using toast or modal
+        alert(`Failed to create bot game: ${response.error}`)
       }
     } catch (error) {
-      console.error('Error creating bot game:', error)
-      // Handle error
+      console.error('🤖 Error creating bot game:', error)
+      alert('An unexpected error occurred while creating the bot game.')
     } finally {
       setIsLoading(false)
     }

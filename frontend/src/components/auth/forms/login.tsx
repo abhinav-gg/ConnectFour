@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff } from "lucide-react"
 import { validateEmail, validateUsername } from "@shared/utils/validation"
-import { myConfig } from "@/config/env"
 import { APIResponse } from "@shared/types/Responses"
 import { handleGoogleLogin } from "@/utils/googleSignin"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
+import { authApi } from "@/utils/apiClient"
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -93,22 +93,28 @@ export function LoginForm() {
     }
 
     setIsLoading(true)
-    // Simulate API call
-    const response = await fetch(`${myConfig.BACKEND_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usernameEmail: email, password, recaptchaToken }),
-    });
-    const resp = (await response.json())as APIResponse
-    console.log(resp)
-    setIsLoading(false)
-    // Mock login success/failure
-    if (resp.success) {
-      console.log("Login successful!")
-      // redirect to /profile
-      window.location.href = "/profile"
-    } else {
-      setLoginError(resp.message)
+    
+    try {
+      const response = await authApi.login({ 
+        usernameEmail: email,
+        password,
+        recaptchaToken: recaptchaToken || undefined
+      });
+      
+      console.log('🔐 Login response:', response);
+      setIsLoading(false)
+      
+      if (response.success) {
+        console.log("Login successful!")
+        // redirect to /profile
+        window.location.href = "/profile"
+      } else {
+        setLoginError(response.error || 'Login failed')
+      }
+    } catch (error) {
+      console.error('🔐 Login error:', error);
+      setIsLoading(false)
+      setLoginError('An unexpected error occurred during login')
     }
   }
 

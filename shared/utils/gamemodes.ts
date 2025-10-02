@@ -1,7 +1,7 @@
 import { AvgGameLength } from "../constants/game.constants";
 import { TimeControl, TimeCategory, GameInfo } from "@shared/types/game.types";
 import { validateTimeControl } from "./validation";
-import { AllGameModes, GameMode } from "../constants/allgamemodes";
+import { AllGameModes, GameMode, t_GameMode } from "../constants/allgamemodes";
 
 export const sRankedModes = new Set([
   GameMode.STANDARD_BULLET_RANKED,
@@ -37,15 +37,23 @@ export const CasualModes = new Set([
   ...PublicStandardModes,
 ]);
 
+// BOT LOGIC: Define bot game modes for special handling
+export const BotModes = new Set([
+  GameMode.STANDARD_BOT_MATCH,
+  GameMode.STANDARD_ARMAGEDDON_BOT_MATCH,
+]);
+
 export const StandardModes = new Set([
   ...CompetitiveModes,
   ...CasualModes,
+  ...BotModes,
 ]);
 
 export const ArmageddonModes = new Set([
   ...sRankedArmageddonModes,
   GameMode.STANDARD_ARMAGEDDON_FRIENDLY,
   GameMode.STANDARD_ARMAGEDDON_PUBLIC_CASUAL,
+  GameMode.STANDARD_ARMAGEDDON_BOT_MATCH,
 ]);
 
 
@@ -134,13 +142,14 @@ export function getGameModeByTimeControl(timeControl: TimeControl, base: 'standa
   }
 }
 
-export type EloGameMode = 
-    (typeof AllGameModes)['STANDARD_BULLET_RANKED']
-  | (typeof AllGameModes)['STANDARD_BLITZ_RANKED']
-  | (typeof AllGameModes)['STANDARD_RAPID_RANKED']
-  | null;
+export const isEloGameMode = (gamemode: t_GameMode): boolean =>
+  gamemode === GameMode.STANDARD_BULLET_RANKED ||
+  gamemode === GameMode.STANDARD_ARMAGEDDON_BULLET_RANKED ||
+  gamemode === GameMode.STANDARD_BLITZ_RANKED ||
+  gamemode === GameMode.STANDARD_PUZZLE;
 
-export function getEloGameMode(gamemode: number): EloGameMode {
+
+export function getEloGameMode(gamemode: t_GameMode): t_GameMode | null {
   switch (gamemode) {
   case GameMode.STANDARD_BULLET_RANKED:
   case GameMode.STANDARD_ARMAGEDDON_BULLET_RANKED:
@@ -153,6 +162,8 @@ export function getEloGameMode(gamemode: number): EloGameMode {
   case GameMode.STANDARD_RAPID_RANKED:  
   case GameMode.STANDARD_ARMAGEDDON_RAPID_RANKED:
     return GameMode.STANDARD_RAPID_RANKED;
+
+    // add more elo based modes here as needed
 
   default:
     return null; // everything else isn't elo based yet

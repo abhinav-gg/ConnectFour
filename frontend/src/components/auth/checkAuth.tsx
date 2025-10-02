@@ -1,6 +1,6 @@
 import React, { ReactNode, useEffect, useState } from 'react';
-import { myConfig } from '@/config/env';
 import Loading from '../loading';
+import { authApi } from '@/utils/apiClient';
 
 interface CheckAuthProps {
   children: ReactNode; // Define children prop
@@ -19,16 +19,15 @@ export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckA
 
     setLoading(true);
 
-    const response = await fetch(`${myConfig.BACKEND_URL}/api/auth/protected-route`, {
-      method: 'GET',
-      credentials: 'include',
-    });
+    const response = await authApi.protectedRoute();
 
-    if (!response.ok) {
+    if (!response.success) {
+      console.log('🔐 Auth check failed:', response.error);
       if (onAuthFail) {
         onAuthFail();
       }
     } else {
+      console.log('🔐 Auth check successful');
       setVerified(true);
       if (onAuthSuccess) {
         onAuthSuccess();

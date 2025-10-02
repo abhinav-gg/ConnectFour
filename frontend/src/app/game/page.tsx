@@ -39,9 +39,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/full-sides/LiveGameUI"
 import { ChatMessage, JoinMetadata, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
+import { ErrorCode, getErrorMessage } from "@shared/constants/errorCodes"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
-import { useGameSession, useUser } from "@/components/providers/BackendProvider"
+import { useGameSession, useUser, useBackend } from "@/components/providers/BackendProvider"
 import { StandardGameMetadata } from "@shared/types/Websocket"
 import { PlayerData } from "@shared/types/users"
 import { GameState } from "@shared/constants/allgamestates"
@@ -50,7 +51,7 @@ import { GameStartModal } from "@/components/game/game-start-popup"
 import { useWASM } from "@/components/providers/WASMProvider"
 import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types"
 import { TimedStandardGame } from "@shared/utils/Games/timed-game"
-import { CategoriseTime, printGameMode, printTimeControl } from "@shared/utils/gamemodes"
+import { CategoriseTime, printGameMode, printTimeControl, BotModes } from "@shared/utils/gamemodes"
 
 export default function LiveGamePage() {
   const router = useRouter()
@@ -136,6 +137,7 @@ export default function LiveGamePage() {
   const [timeControl, setTimeControl] = useState("...")
   const [gameUrl, setGameUrl] = useState("")
   const [isP2Bot, setIsP2Bot] = useState(false) // Track if opponent is a bot
+  const [currentGamemode, setCurrentGamemode] = useState<number | null>(null) // BOT LOGIC: Track gamemode for timer control
 
   const [showEndPopup, setShowEndPopup] = useState(false)
   const [gameState, setGameState] = useState<GameState | null>(null)
@@ -189,9 +191,45 @@ export default function LiveGamePage() {
       console.log("📨 WEBSOCKET: Received matchmaking event:", event, "with data:", data)
       switch (event) {
         case "failed":
-          console.warn("📨 WEBSOCKET: Failed to join matchmaking")
+          console.warn("📨 WEBSOCKET: Failed to join matchmaking:", data)
           setShowStartPopup(false)
-          router.push("/play/setup")
+          
+          // Handle different failure reasons
+          if (data && typeof data === 'object') {
+            const failureData = data as { code?: ErrorCode, redirect?: string }
+            
+            switch (failureData.code) {
+              case ErrorCode.GAME_NOT_FOUND:
+                console.log("🔄 MATCHMAKING: Game not found, redirecting to setup")
+                console.log("🔌 FRONTEND: Matchmaking failed - game not found, calling leaveGame")
+                leaveGame()
+                router.push(`/play/setup?error=${ErrorCode.GAME_NOT_FOUND}`)
+                break
+              case ErrorCode.GAME_FINISHED:
+              case ErrorCode.BOT_GAME_ENDED:
+                console.log("🏁 MATCHMAKING: Game finished, redirecting to setup")
+                console.log("🔌 FRONTEND: Matchmaking failed - game finished, calling leaveGame")
+                leaveGame()
+                router.push(`/play/setup?error=${failureData.code}`)
+                break
+              case ErrorCode.ALREADY_IN_GAME:
+              case ErrorCode.ALREADY_IN_QUEUE:
+                console.log("🎮 MATCHMAKING: Already in game/queue, redirecting")
+                if (failureData.redirect) {
+                  router.push(`/game?r=${failureData.redirect}`)
+                } else {
+                  router.push(`/play/setup?error=${failureData.code}`)
+                }
+                break
+              default:
+                console.log("❌ MATCHMAKING: Unknown failure, redirecting to setup")
+                router.push(`/play/setup?error=${ErrorCode.UNKNOWN_ERROR}`)
+                break
+            }
+          } else {
+            // Legacy handling for simple failed events
+            router.push("/play/setup")
+          }
           break
         case "joined":
           console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
@@ -208,6 +246,26 @@ export default function LiveGamePage() {
           console.log("🤖 BOT MODE:", isP2Bot ? "ENABLED" : "DISABLED")
           setTimeControl(printTimeControl(gi.time_control))
           console.log("🔬 WASM: Analysis conditions updated")
+          break
+        case "error":
+          console.error("📨 WEBSOCKET: Matchmaking error:", data)
+          setShowStartPopup(false)
+          
+          if (data && typeof data === 'object') {
+            const errorData = data as { code?: ErrorCode, redirect?: string }
+            
+            if (errorData.code === ErrorCode.CANNOT_LEAVE_ACTIVE_GAME) {
+              // User tried to leave queue while in active game
+              console.log("⚠️ ERROR: Cannot leave active game")
+              // Stay on current page but show error
+            } else if (errorData.redirect) {
+              router.push(errorData.redirect)
+            } else {
+              router.push(`/play/setup?error=${ErrorCode.CONNECTION_ERROR}`)
+            }
+          } else {
+            router.push(`/play/setup?error=${ErrorCode.CONNECTION_ERROR}`)
+          }
           break
         default:
           console.warn(`📨 WEBSOCKET: Unhandled matchmaking event ${event} with data:`, data)
@@ -242,6 +300,9 @@ export default function LiveGamePage() {
           currentTurnRef.current = setupData.turn
           isGameRunningRef.current = true
           eloChangesRef.current = setupData.eloChanges
+          
+          // BOT LOGIC: Set gamemode for timer control
+          setCurrentGamemode(setupData.gamemode)
 
           // Create/replace game model
           if (!gameInfoRef.current) {
@@ -269,6 +330,9 @@ export default function LiveGamePage() {
           pTimesRef.current = setupData.rTimes
           currentTurnRef.current = setupData.turn
           isGameRunningRef.current = true
+          
+          // BOT LOGIC: Set gamemode for timer control in spectate mode
+          setCurrentGamemode(setupData.gamemode)
 
           if (setupData.moves) {
             // For spectating, create a basic GameInfo with reasonable defaults
@@ -361,6 +425,11 @@ export default function LiveGamePage() {
           }
           
           console.log("🏁 GAME: Game has ended", { result })
+          
+          // 🔌 FRONTEND BUSINESS FLOW: Notify BackendProvider that game has ended
+          console.log("🔌 FRONTEND: Game ended, calling leaveGame to update game session state")
+          leaveGame()
+          
           // Ensure timers stop and UI updates
           setGameVersion((v) => v + 1)
           break
@@ -490,6 +559,58 @@ export default function LiveGamePage() {
           
           break
         }
+        case "error":
+          console.error("📨 WEBSOCKET: Game error:", data)
+          
+          if (data && typeof data === 'object') {
+            const errorData = data as { code?: ErrorCode, message?: string, redirect?: string }
+            
+            // Handle by error code if available, fallback to message checking
+            const errorCode = errorData.code || 
+              (errorData.message?.includes('GAME_NOT_FOUND') || errorData.message?.includes('Game not found') ? ErrorCode.GAME_NOT_FOUND :
+               errorData.message?.includes('GAME_FINISHED') || errorData.message?.includes('Game Ended') ? ErrorCode.GAME_FINISHED :
+               errorData.message?.includes('Player in another game') ? ErrorCode.ALREADY_IN_GAME :
+               ErrorCode.UNKNOWN_ERROR)
+            
+            switch (errorCode) {
+              case ErrorCode.GAME_NOT_FOUND:
+                console.log("🔄 GAME ERROR: Game not found, redirecting to setup")
+                console.log("🔌 FRONTEND: Game not found, calling leaveGame to update session state")
+                leaveGame()
+                router.push(`/play/setup?error=${ErrorCode.GAME_NOT_FOUND}`)
+                break
+              case ErrorCode.GAME_FINISHED:
+              case ErrorCode.GAME_ENDED:
+                console.log("🏁 GAME ERROR: Game finished, redirecting to setup")
+                console.log("🔌 FRONTEND: Game finished, calling leaveGame to update session state")
+                leaveGame()
+                router.push(`/play/setup?error=${errorCode}`)
+                break
+              case ErrorCode.ALREADY_IN_GAME:
+                console.log("🎮 GAME ERROR: Player in another game")
+                if (errorData.redirect) {
+                  const redirectMatch = errorData.redirect.match(/\/game\?r=(.+)$/) || errorData.redirect.match(/\/game\?room=(.+)$/)
+                  if (redirectMatch) {
+                    router.push(`/game?r=${redirectMatch[1]}`)
+                  } else {
+                    router.push(errorData.redirect)
+                  }
+                } else {
+                  router.push(`/play/setup?error=${ErrorCode.ALREADY_IN_GAME}`)
+                }
+                break
+              default:
+                if (errorData.redirect) {
+                  router.push(errorData.redirect)
+                } else {
+                  router.push(`/play/setup?error=${ErrorCode.UNKNOWN_ERROR}`)
+                }
+                break
+            }
+          } else {
+            router.push(`/play/setup?error=${ErrorCode.UNKNOWN_ERROR}`)
+          }
+          break
         default:
           console.warn(`📨 WEBSOCKET: Unhandled event ${event} with data:`, data)
           break
@@ -748,7 +869,7 @@ export default function LiveGamePage() {
       }}
       layout={{
         showScoreBar: true,
-        showTimers: true,
+        showTimers: currentGamemode !== null ? !BotModes.has(currentGamemode) : true, // BOT LOGIC: Hide timers for bot games
         showPlayerInfo: true,
         headerText: dynamicHeader, // Use dynamic header state
       }}

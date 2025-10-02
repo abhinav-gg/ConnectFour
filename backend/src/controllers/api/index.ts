@@ -9,7 +9,7 @@ import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 import { createRedisJson, scanKeysPaginated } from '@/redis/redisHelper';
-import { JobSets } from '@/jobs';
+import { getEmailQueue } from '@/jobs';
 import { JobKeys } from '@/jobs/jobKeys';
 import { enterMaintenanceMode, exitMaintenanceMode } from '@/lib/maintenance';
 
@@ -121,7 +121,7 @@ catch (error) {
 app.get('/test/email', async (req: Request, res: Response) => {
 try {
     console.log("attempt to send")
-    await JobSets.getEmailQueue().add(
+    await getEmailQueue().add(
       JobKeys.email.stringId("123543", Date.now().toString()),
       { subject: "hi", to: "agupta.cam7@gmail.com", html: "<h1>Test Email</h1>" }
     );

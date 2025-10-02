@@ -9,6 +9,7 @@ import { getIdentity } from '@/utils/validation';
 import { RoomSchema } from '@/controllers/socket/socketRoomSchema';
 import { leaveUserRooms } from '@/controllers/socket/handlers';
 import { GameContext } from '@/utils/gameContext';
+import { GameState } from '@shared/constants/allgamestates';
 
 export const sendUserToGame = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
@@ -16,16 +17,37 @@ export const sendUserToGame = async (req: AuthenticatedRequest, res: Response, n
         const userId = getReqPlayerUUID(req);
         const r = await redisOps();
         const gameId = await r.game.getUserQueueGameId(userId);
+        
         if (gameId) {
-          console.log(`[Middleware] User ${userId} is in game ${gameId}, redirecting...`);
-            // Redirect the user to the game
-          res.status(302).json({ gameLink: `/game?r=${gameId}` });
-          return;
+            // Check if the game is actually active (not finished/aborted)
+            const metadata = await r.game.getGameMetadata(gameId);
+            
+            console.log(`[🎮 MIDDLEWARE] User ${userId} has gameId ${gameId}, checking game state:`, {
+                gameId,
+                state: metadata?.state,
+                hasMetadata: !!metadata
+            });
+            
+            if (metadata && (metadata.state === GameState.IN_PROGRESS || metadata.state === GameState.SCHEDULED)) {
+                console.log(`[🎮 MIDDLEWARE] User ${userId} is in active game ${gameId} (${metadata.state}), redirecting...`);
+                // Redirect the user to the game
+                res.status(302).json({ gameLink: `/game?r=${gameId}` });
+                return;
+            } else {
+                // Game exists but is not active (finished/aborted) - clean up the user's game reference
+                console.log(`[🎮 MIDDLEWARE] Game ${gameId} is not active (state: ${metadata?.state}), removing user's game reference`);
+                await r.game.leaveUserQueue(userId);
+                console.log(`[🎮 MIDDLEWARE] Cleaned up inactive game reference for user ${userId}`);
+                // Continue to next middleware
+                return next();
+            }
         } else {
+          console.log(`[🎮 MIDDLEWARE] User ${userId} has no active game, continuing to next middleware`);
           // No game found, continue to the next middleware
           return next();
         }
     } catch (error) {
+        console.error(`[🎮 MIDDLEWARE ERROR] Error checking user game state:`, error);
         // No authentication or error getting user info, continue to next middleware
         return next();
     }
@@ -92,17 +114,38 @@ export const sendSocketUserToGame = async (socket: Socket, next: (err?: any) => 
       return next(new Error('User not authenticated'));
     }
     const r = await redisOps();
-    const gameContext = new GameContext(userId);
-    const gameId = await gameContext.resolveGameId();
+    const gameId = await r.game.getUserQueueGameId(userId);
+    
     if (gameId) {
-      // Redirect the user to the game
-      socket.emit('redirect', { gameLink: `/game/${gameId}` });
-      return;
+      // Check if the game is actually active (not finished/aborted)
+      const metadata = await r.game.getGameMetadata(gameId);
+      
+      console.log(`[🎮 SOCKET] User ${userId} has gameId ${gameId}, checking game state:`, {
+        gameId,
+        state: metadata?.state,
+        hasMetadata: !!metadata
+      });
+      
+      if (metadata && (metadata.state === GameState.IN_PROGRESS || metadata.state === GameState.SCHEDULED)) {
+        console.log(`[🎮 SOCKET] User ${userId} is in active game ${gameId} (${metadata.state}), redirecting...`);
+        // Redirect the user to the game
+        socket.emit('redirect', { gameLink: `/game/${gameId}` });
+        return;
+      } else {
+        // Game exists but is not active (finished/aborted) - clean up the user's game reference
+        console.log(`[🎮 SOCKET] Game ${gameId} is not active (state: ${metadata?.state}), removing user's game reference`);
+        await r.game.leaveUserQueue(userId);
+        console.log(`[🎮 SOCKET] Cleaned up inactive game reference for user ${userId}`);
+        // Continue to next middleware
+        return next();
+      }
     } else {
+      console.log(`[🎮 SOCKET] User ${userId} has no active game, continuing to next middleware`);
       // No game found, continue to the next middleware
       return next();
     }
   } catch (error) {
+    console.error(`[🎮 SOCKET ERROR] Error checking user game state:`, error);
     // No authentication or error getting user info, continue to next middleware
     return next();
   }

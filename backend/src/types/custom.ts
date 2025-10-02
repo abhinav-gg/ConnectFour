@@ -4,6 +4,7 @@ import type express from "express";
 export interface ServiceResponse {
   status: number;
   message: string;
+  redirect?: string;
 }
 
 export interface DiscordUser {

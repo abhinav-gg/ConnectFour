@@ -3,7 +3,7 @@ import { redisOps } from "@/redis/ops";
 import { ServiceResponse } from "@/types/custom";
 import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types";
 import { PlayerData } from "@shared/types/users";
-import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes } from "@shared/utils/gamemodes";
+import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes, BotModes } from "@shared/utils/gamemodes";
 import { packGameInfo, packStandardGameData, uuidToBuffer } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
 import { FinishedGameStates } from "@shared/utils/gamestates";
@@ -14,6 +14,7 @@ import { isUserIdentity, makeUserIdentity, parseUser, makeBotIdentity } from "@/
 import { getSocketIO } from "@/controllers/socket";
 import { userService } from "./user.service";
 import { AllGameModes, GameMode, t_GameMode } from "@shared/constants/allgamemodes";
+import { ErrorCode, createErrorResponse } from "@shared/constants/errorCodes";
 import { RoomSchema } from "@/controllers/socket/socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
 import { liveGameService } from "./livegame.service";
@@ -43,9 +44,9 @@ export const gameService = {
                 }
 
                 if (metadata.state === GameState.IN_PROGRESS) {
-                    return { status: 403, message: metadata.shortcode || gameId };
+                                        return { status: 409, message: ErrorCode.ALREADY_IN_GAME, redirect: metadata.shortcode || gameId };
                 } else if (metadata.state === GameState.SCHEDULED) {
-                    return { status: 403, message: metadata.shortcode || gameId };
+                                        return { status: 409, message: ErrorCode.ALREADY_IN_QUEUE, redirect: metadata.shortcode || gameId };
                 }
             } catch (error) {
                 console.error('Error getting game metadata:', error);
@@ -142,7 +143,7 @@ export const gameService = {
             
             if (metadata) {
                 if (metadata.state === GameState.IN_PROGRESS) {
-                    throw new Error('User is already in a live and un-ended game');
+                    throw new Error(ErrorCode.CANNOT_LEAVE_ACTIVE_GAME);
                 }
             }
             
@@ -225,6 +226,11 @@ export const gameService = {
         const gTimes = await gameContext.getTimedata();
         if (!gameMeta || !gTimes) {
             throw new Error('Game not found');
+        }
+
+        // BOT LOGIC: Prevent reconnection to bot games - they should have already ended on disconnect
+        if (BotModes.has(gameMeta.gamemode)) {
+            throw new Error('Reconnection not allowed in bot games');
         }
 
         const p1Id = parseUser(gameMeta.players[0]);
@@ -380,9 +386,15 @@ export const gameService = {
 
                 // CALL NO SQL HERE
 
-                return { status: 404, message: 'Game not found' };
+                return { status: 404, message: ErrorCode.GAME_NOT_FOUND };
             }
             console.log("Trying to join game with ID:", gameContext.gameId, "and metadata:", metadata);
+            
+            // BOT LOGIC: Prevent joining bot games if they exist - bot games should end immediately on disconnect
+            if (BotModes.has(metadata.gamemode)) {
+                return { status: 404, message: ErrorCode.BOT_GAME_ENDED };
+            }
+            
             // Check if user is already in this game with fresh data
             gameContext.invalidatePlayerData();
             const isAlreadyPlayer = await gameContext.isPlayerInGame();
@@ -398,7 +410,7 @@ export const gameService = {
                 } else {
                     console.log("Game is in an unexpected state:", metadata.state);
                     // TODO LOAD GAME from REDIS
-                    return { status: 404, message: 'Game is not ongoing' };
+                    return { status: 410, message: ErrorCode.GAME_FINISHED };
                 }
             }
             
@@ -516,10 +528,10 @@ export const gameService = {
         botId: string,
         playerColor: 'red' | 'yellow' | 'random'
     }): Promise<ServiceResponse> {
-        const { gamemode, time_control, botId, playerColor } = botGameInfo;
+        const { gamemode, botId, playerColor } = botGameInfo;
         
         // Validate that this is a bot game mode
-        if (gamemode !== AllGameModes.STANDARD_BOT_MATCH) {
+        if (gamemode !== AllGameModes.STANDARD_BOT_MATCH && gamemode !== AllGameModes.STANDARD_ARMAGEDDON_BOT_MATCH) {
             return { status: 400, message: 'Invalid game mode for bot match' };
         }
 
@@ -535,8 +547,15 @@ export const gameService = {
         }
 
         try {
-            // Create the game
-            const gameMeta = await this.CreateGame({ gamemode, time_control });
+            // BOT LOGIC: Force time control to zero for bot games - no timers allowed
+            const botTimeControl: TimeControl = {
+                base_time: 0,
+                increment: 0,
+                disadvantage: 0
+            };
+            
+            // Create the game with zero time control
+            const gameMeta = await this.CreateGame({ gamemode, time_control: botTimeControl });
             const gameId = gameMeta.id;
             
             // Create bot identity
@@ -565,7 +584,7 @@ export const gameService = {
             const newGameContext = await GameContext.fromGameId(gameContext.userId, gameId);
             await this.AssignPlayerToGame(newGameContext);
             
-            console.log(`Created bot game ${gameId}: Human (${gameContext.userId}) vs Bot (${botId}), Human plays as ${actualPlayerColor}`);
+            console.log(`[BOT GAME] Created bot game ${gameId}: Human (${gameContext.userId}) vs Bot (${botId}), Human plays as ${actualPlayerColor}, timers disabled`);
             
             return { status: 200, message: gameMeta.shortcode || gameId };
             

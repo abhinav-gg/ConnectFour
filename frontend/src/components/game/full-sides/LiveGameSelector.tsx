@@ -24,8 +24,12 @@ import { cn } from "@/utils/cn"
 import { GameMode } from "@shared/constants/allgamemodes"
 import { validateTimeControl } from "@shared/utils/validation"
 import { getGameModeByTimeControl } from "@shared/utils/gamemodes"
+import { ErrorCode, getErrorMessage } from "@shared/constants/errorCodes"
+import { parseApiError, handleApiError } from "@/utils/errorHandling"
 import { myConfig } from "@/config/env"
 import { useRecaptcha } from "../../providers/RecaptchaProvider"
+import { useError } from "../../providers/ErrorProvider"
+import { gameApi } from "@/utils/apiClient"
 
 type CommonModes = "standard" | "armageddon" | "friendly" | "casual"
 
@@ -82,12 +86,28 @@ export function LiveGameSelection() {
   const [isStartingGame, setIsStartingGame] = useState(false) // Cooldown state
   const [cooldownSeconds, setCooldownSeconds] = useState(0) // Cooldown timer
   const { getRecaptchaToken, isRecaptchaActive, activateRecaptcha } = useRecaptcha()
+  const { showWarning, showError } = useError()
   const router = useRouter()
 
   useEffect(() => {
     // Activate reCAPTCHA when the component mounts
     activateRecaptcha()
   }, []);
+
+  // Handle error messages from URL parameters using error codes
+  useEffect(() => {
+    const errorParam = searchParams.get('error') as ErrorCode;
+    
+    if (errorParam && Object.values(ErrorCode).includes(errorParam)) {
+      showWarning(getErrorMessage(errorParam), 10000);
+      
+      // Clear the error parameter from URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (errorParam) {
+      // Fallback for any unknown error codes
+      showWarning(getErrorMessage(ErrorCode.UNKNOWN_ERROR), 10000);
+    }
+  }, [searchParams, showWarning]);
 
   const tabs = [
     { id: "new-game" as TabType, label: "New Game", icon: Zap, iconColor: "text-brand-accent-yellow" },
@@ -226,29 +246,40 @@ export function LiveGameSelection() {
     }
 
     try {
-      const response = await fetch(`${myConfig.BACKEND_URL}/game/request`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          gamemode,
-          time_control: tc,
-          recaptchaToken: await getRecaptchaToken(),
-        }),
-        credentials: "include",
+      console.log('🎮 Creating game:', { gamemode, time_control: tc });
+      
+      const response = await gameApi.createGame({
+        gamemode,
+        time_control: tc,
+        recaptchaToken: (await getRecaptchaToken()) ?? undefined,
       });
 
-      if (!response.ok) {
-        console.error("Failed to start game:", await response.json());
+      if (!response.success) {
+        console.error("Failed to start game:", response.error, response.data);
+        
+        const parsedError = parseApiError(response.data || { message: response.error });
+        
+        // Handle specific errors that need immediate redirect
+        if (parsedError.code === ErrorCode.ALREADY_IN_GAME || parsedError.code === ErrorCode.ALREADY_IN_QUEUE) {
+          handleApiError(parsedError, router);
+        } else {
+          // Show error message in UI for other errors
+          showError(parsedError.message);
+        }
         return;
       }
 
-      const gameLink = await response.json() as { gameLink: string };
-      router.replace(gameLink.gameLink);
+      if (response.data?.gameLink) {
+        console.log('🎮 Game created successfully:', response.data.gameLink);
+        router.replace(response.data.gameLink);
+      } else {
+        console.error('🎮 Game creation response missing gameLink:', response.data);
+        showError('Game was created but no game link was provided');
+      }
 
     } catch (error) {
       console.error("Error starting game:", error);
+      showError(getErrorMessage(ErrorCode.CONNECTION_ERROR));
     }
   }
 

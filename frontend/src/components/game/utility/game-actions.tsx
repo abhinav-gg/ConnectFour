@@ -22,13 +22,26 @@ export function GameActions({
   canOfferDraw = true,
 }: GameActionsProps) {
   const [resignConfirmPending, setResignConfirmPending] = useState(false)
+  const [resignCountdown, setResignCountdown] = useState(0)
   const [drawOfferConfirmPending, setDrawOfferConfirmPending] = useState(false)
 
-  // Reset confirmation states after a delay
+  // Reset resignation confirmation with countdown
   useEffect(() => {
     if (resignConfirmPending) {
-      const timer = setTimeout(() => setResignConfirmPending(false), 3000)
-      return () => clearTimeout(timer)
+      setResignCountdown(2)
+      
+      const interval = setInterval(() => {
+        setResignCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval)
+            setResignConfirmPending(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+      
+      return () => clearInterval(interval)
     }
   }, [resignConfirmPending])
 
@@ -72,7 +85,7 @@ export function GameActions({
     { 
       icon: Flag, 
       onClick: handleResignClick, 
-      label: resignConfirmPending ? "Confirm Resign?" : "Resign",
+      label: resignConfirmPending ? `Confirm (${resignCountdown})` : "Resign",
       confirmPending: resignConfirmPending,
       disabled: !canResign,
       className: resignConfirmPending 
@@ -110,7 +123,7 @@ export function GameActions({
           onClick={action.onClick}
           disabled={action.disabled}
           className={`
-            px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border
+            px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 border min-w-[120px]
             ${action.disabled 
               ? "bg-gray-600/30 text-gray-400 cursor-not-allowed border-gray-600/30" 
               : `${action.className} ${action.textColor}`
@@ -134,7 +147,7 @@ export function GameActions({
           } : {}}
         >
           <action.icon className="w-4 h-4" />
-          <span className="text-sm font-medium">{action.label}</span>
+          <span className="text-sm font-medium text-center flex-1">{action.label}</span>
         </motion.button>
       ))}
     </div>

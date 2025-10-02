@@ -6,6 +6,7 @@ import { UUID } from 'crypto';
 import { t_GameMode } from '@shared/constants/allgamemodes';
 import { EloNotFound } from '@/types/dbErrors';
 import { StandardStartingElo } from '@shared/constants/game.constants';
+import { getEloGameMode, isEloGameMode } from '@shared/utils/gamemodes';
 
 const userDbOps = rdsDBOps.user;
 
@@ -36,18 +37,21 @@ export const userService = {
   getOrSetPlayerElo: async (userId: string, gamemode: t_GameMode): Promise<number> => {
     // This function should retrieve the player's Elo rating for the specified game mode.
     // check redis cache first (future improvement)
-
+    let gm = getEloGameMode(gamemode);
+    if (!gm) {
+      throw new Error("Elo not tracked for this gamemode");
+    }
     // if not found, check the database
 
     try {
-      return await rdsDBOps.user.getUserEloByID(userId, gamemode);
+      return await rdsDBOps.user.getUserEloByID(userId, gm);
     } catch (error: any) {
       if (error instanceof EloNotFound) {
         // If the Elo rating is not found, initialize it to a default value
 
         const elo = StandardStartingElo; // Default Elo value (change as needed)
 
-        await rdsDBOps.user.initEloForUser(userId, gamemode, elo);
+        await rdsDBOps.user.initEloForUser(userId, gm, elo);
         return elo;
       }
       throw error; // Re-throw other errors

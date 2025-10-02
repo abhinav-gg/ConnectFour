@@ -17,7 +17,8 @@ export type EvaluationColor = "red" | "yellow" | "gray"
  * @returns Color type for the evaluation
  */
 export function getEvaluationColor(evaluation: number): EvaluationColor {
-  if (evaluation === -1000) {
+  console.log("Evaluation:", evaluation);
+  if (evaluation === -1000 || Math.abs(evaluation) === 9999) {
     return "gray" // Full column or invalid
   } else if (evaluation === 0) {
     return "gray" // Draw
@@ -52,7 +53,7 @@ export function getEvaluationText(evaluation: number): string {
  * @returns Tailwind CSS classes for badge styling
  */
 export function getEvaluationBadgeClasses(evaluation: number): string {
-  if (evaluation === -1000 || evaluation === 0) {
+  if (evaluation === -1000 || evaluation === 0  || Math.abs(evaluation) === 9999) {
     return "bg-gray-600 text-white"
   } else if (evaluation > 0) {
     return "bg-brand-accent-red text-white" // Changed to white text

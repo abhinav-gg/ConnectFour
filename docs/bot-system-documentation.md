@@ -4,6 +4,14 @@
 
 The ConnectFour bot system is a comprehensive AI opponent system that allows users to play against computer-controlled players of varying difficulty levels. The system is designed with a clean architecture that separates concerns between shared constants, backend bot implementations, and frontend UI components.
 
+## **[BOT LOGIC]** Key Bot Game Rules
+
+### Critical Bot Game Behavior
+- **No Timers**: Bot games use zero time control (0|0|0) and show no timer UI elements
+- **No Reconnection**: Disconnection from bot games results in immediate resignation
+- **Instant Termination**: Games end immediately when human player disconnects
+- **Isolated Games**: Bot games are treated separately from human vs human games
+
 ## Architecture
 
 ```
@@ -369,6 +377,146 @@ The bot system includes comprehensive error handling:
 - Implement bot move caching for repeated positions
 - Add comprehensive logging for bot decision analysis
 
+## **[BOT LOGIC]** Disconnection and Timer Handling
+
+### Game State Management
+
+#### Bot Game Creation
+```typescript
+// Backend: game.service.ts - createBotGame()
+async createBotGame(gameContext: GameContext, botGameInfo: {
+    gamemode: t_GameMode,
+    time_control: TimeControl,
+    botId: string,
+    playerColor: 'red' | 'yellow' | 'random'
+}): Promise<ServiceResponse> {
+    // BOT LOGIC: Force time control to zero for bot games - no timers allowed
+    const botTimeControl: TimeControl = {
+        base_time: 0,
+        increment: 0,
+        disadvantage: 0
+    };
+    
+    // Create the game with zero time control
+    const gameMeta = await this.CreateGame({ gamemode, time_control: botTimeControl });
+    // ... rest of implementation
+}
+```
+
+#### Disconnection Handling
+```typescript
+// Backend: livegame.service.ts - handleDisconnect()
+async handleDisconnect(gameContext: GameContext): Promise<void> {
+    // BOT LOGIC: Check if this is a bot game - if so, immediately resign instead of allowing reconnection
+    const metadata = await gameContext.getMetadata();
+    if (metadata && BotModes.has(metadata.gamemode)) {
+        console.log(`[BOT GAME] Player disconnected from bot game ${gameContext.gameId}, forcing resignation`);
+        
+        // Get player index for resignation
+        const playerIndex = await gameContext.getPlayerIndex();
+        if (playerIndex !== null) {
+            // Immediately end the game with player resignation
+            await this.HandleGameOver(gameContext, 
+                playerIndex === 0 ? GameState.RED_RESIGNED : GameState.YELLOW_RESIGNED
+            );
+        }
+        return; // No reconnection allowed in bot games
+    }
+    // ... normal disconnection logic for human games
+}
+```
+
+#### Reconnection Prevention
+```typescript
+// Backend: game.service.ts - ReconnectPlayer()
+async ReconnectPlayer(gameContext: GameContext, meOnly: boolean = false): Promise<void> {
+    const gameMeta = await gameContext.getMetadata();
+    
+    // BOT LOGIC: Prevent reconnection to bot games - they should have already ended on disconnect
+    if (BotModes.has(gameMeta.gamemode)) {
+        throw new Error('Reconnection not allowed in bot games');
+    }
+    // ... normal reconnection logic
+}
+
+// Backend: game.service.ts - tryJoinGame()
+async tryJoinGame(gameContext: GameContext): Promise<ServiceResponse> {
+    const metadata = await gameContext.getMetadata();
+    
+    // BOT LOGIC: Prevent joining bot games if they exist - bot games should end immediately on disconnect
+    if (BotModes.has(metadata.gamemode)) {
+        return { status: 404, message: 'Bot game is no longer available' };
+    }
+    // ... normal join logic
+}
+```
+
+### Frontend Timer Control
+
+#### Timer Display Logic
+```typescript
+// Frontend: game/page.tsx
+import { BotModes } from "@shared/utils/gamemodes";
+
+// BOT LOGIC: Track gamemode for timer control
+const [currentGamemode, setCurrentGamemode] = useState<number | null>(null);
+
+// Set gamemode when setup data is received
+case "setup": {
+    // BOT LOGIC: Set gamemode for timer control
+    setCurrentGamemode(setupData.gamemode);
+    // ... rest of setup
+}
+
+// Conditionally show timers based on gamemode
+layout={{
+    showScoreBar: true,
+    showTimers: currentGamemode !== null ? !BotModes.has(currentGamemode) : true, // BOT LOGIC: Hide timers for bot games
+    showPlayerInfo: true,
+    headerText: dynamicHeader,
+}}
+```
+
+### Game Mode Detection
+
+#### Shared Utilities
+```typescript
+// Shared: utils/gamemodes.ts
+// BOT LOGIC: Define bot game modes for special handling
+export const BotModes = new Set([
+  GameMode.STANDARD_BOT_MATCH,
+  GameMode.STANDARD_ARMAGEDDON_BOT_MATCH,
+]);
+
+export const StandardModes = new Set([
+  ...CompetitiveModes,
+  ...CasualModes,
+  ...BotModes, // Include bot modes in standard modes for game processing
+]);
+```
+
+### Key Implementation Points
+
+1. **Zero Time Control**: All bot games force time control to 0|0|0 regardless of user input
+2. **Immediate Resignation**: Disconnection triggers immediate game over with resignation state
+3. **No Disconnect Jobs**: Bot games skip the normal 30-second reconnection timer system
+4. **UI Timer Hiding**: Frontend conditionally hides all timer elements for bot games
+5. **Rejection of Reconnection**: All attempts to rejoin bot games are blocked with 404 responses
+
+### Error Handling
+
+#### Expected Error Messages
+- `"Bot game is no longer available"` - When trying to rejoin terminated bot game
+- `"Reconnection not allowed in bot games"` - Internal error for reconnection attempts
+- `"Already in a game"` - When trying to create multiple bot games
+
+#### Debug Logging
+All bot-specific functionality includes `[BOT GAME]` prefixed logging:
+```
+[BOT GAME] Player disconnected from bot game abc-123, forcing resignation
+[BOT GAME] Created bot game def-456: Human (user123) vs Bot (expert-bot), Human plays as red, timers disabled
+```
+
 ## Configuration
 
 ### Environment Variables
@@ -383,4 +531,4 @@ The bot system includes comprehensive error handling:
 
 ---
 
-*This documentation covers the complete bot system implementation as of October 2025. For updates or questions, refer to the development team.*
+*This documentation covers the complete bot system implementation including **[BOT LOGIC]** disconnection and timer handling as of October 2025. All sections marked with **[BOT LOGIC]** contain new functionality for debugging purposes.*
