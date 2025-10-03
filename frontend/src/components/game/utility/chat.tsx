@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { AnimatePresence, motion } from "framer-motion"
 import { Send, ChevronDown } from "lucide-react"
 import { ChatMessage } from "@shared/types/Websocket"
+import { logger } from "@/utils/logger"
 
 const quickMessages = ["HI", "GL", "GG", "GTG"]
 
@@ -161,7 +162,7 @@ const GameChat = forwardRef<ChatRef, GameChatProps>(({
       timestamp: new Date(),
     };
 
-    console.log("📨 WEBSOCKET: Received message with UID ----------------------->:", uid, newMessage);
+    logger.socket('WEBSOCKET: Received message with UID:', uid, newMessage);
 
     setChatMessages(prev => {
       const newMessages = [...prev, newMessage];

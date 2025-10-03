@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { logger, printl } from '@/utils/logger'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { validateEmail } from "@/../../shared/utils/validation"
@@ -85,7 +86,7 @@ export function ResetPasswordForm() {
       await new Promise((resolve) => setTimeout(resolve, 1500))
       setIsLoading(false)
       // Placeholder: API call with resetToken and password
-      console.log("Reset password with token:", resetToken, "new password:", password)
+      logger.auth("Reset password with token:", resetToken, "new password:", password)
       // Optionally show a success message here
       return
     }
@@ -99,7 +100,7 @@ export function ResetPasswordForm() {
     await new Promise((resolve) => setTimeout(resolve, 1500))
     setIsLoading(false)
     // In a real app, you'd handle success/failure here
-    console.log("Password reset email sent to:", email)
+    logger.auth("Password reset email sent to:", email)
   }
 
   return (

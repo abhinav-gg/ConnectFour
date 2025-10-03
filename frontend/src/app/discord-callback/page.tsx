@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Loading from '@/components/loading';
 import { eventsApi } from '@/utils/apiClient';
+import { logger, printl } from '@/utils/logger';
 
 export default function DiscordCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -16,9 +17,9 @@ export default function DiscordCallback() {
       return;
     }
 
-    eventsApi.discordCallback(code)
+    eventsApi.post<{ message: string }>('/ichack25/discord', { code })
       .then((response) => {
-        console.log('📱 Discord callback response:', response);
+        logger.auth('Discord callback response:', response);
         
         if (response.success) {
           setStatus('success');

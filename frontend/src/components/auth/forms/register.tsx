@@ -13,11 +13,12 @@ import { validateEmail, validateUsername, validatePassword } from "@shared/utils
 import { jwtDecode } from "jwt-decode";
 import { UserAccountProvider } from "@shared/types/users"
 import { maskEmail } from "@shared/utils/masks"
+import { logger, printl } from '@/utils/logger'
 import { handleGoogleLogin } from "@/utils/googleSignin"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 import { useRouter } from "next/navigation"
 import { authApi } from "@/utils/apiClient"
-import { myConfig } from "@/config/env"
+
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false)
@@ -57,7 +58,7 @@ export function RegisterForm() {
         setJwtToken(jwt);
         try {
           const decoded: any = jwtDecode(jwt);
-          console.log(decoded)
+          logger.auth('JWT decoded:', decoded)
           if (decoded && decoded.email) {
             setJwtEmail(decoded.email);
             setJwtProvider(decoded.provider)
@@ -140,18 +141,19 @@ export function RegisterForm() {
     setIsLoading(true)
 
 
-    const response = await fetch(`${myConfig.BACKEND_URL}/auth/register/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, recaptchaToken: await getRecaptchaToken(), mail_provider: UserAccountProvider.Local }),
+    const response = await authApi.post<{ message: string }>('/register/start', { 
+      email, 
+      recaptchaToken: await getRecaptchaToken(), 
+      mail_provider: UserAccountProvider.Local 
     });
     setIsLoading(false);
-    if (!response.ok) {
-      const data = await response.json();
-      setEmailError(data.error || "Registration failed");
+    
+    if (!response.success) {
+      logger.auth('Registration start failed:', response.error);
+      setEmailError(response.error || "Registration failed");
       return;
-    }
-    else {
+    } else {
+      logger.auth('Registration start successful');
       setTransitionDirection(1)
       setStage(2)
     }
@@ -180,40 +182,40 @@ export function RegisterForm() {
     }
     setIsLoading(true);
     if (jwtToken && jwtEmail && jwtProvider === UserAccountProvider.Google) {
-      console.log("GOOGLE REGISTRATION")
+      logger.auth("Google registration initiated")
       // Google registration
-      const response = await fetch(`${myConfig.BACKEND_URL}/auth/google/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, token: jwtToken, recaptchaToken: await getRecaptchaToken() }),
+      const response = await authApi.post<{ user: any; sessionToken: string }>('/google/register', { 
+        username, 
+        token: jwtToken, 
+        recaptchaToken: await getRecaptchaToken() 
       });
       setIsLoading(false);
-      // In a real app, you'd handle success/failure here
-      if (!response.ok) {
-        const data = await response.json();
-        setUsernameError(data.error || "Registration failed");
+      
+      if (!response.success) {
+        logger.auth('Google registration failed:', response.error);
+        setUsernameError(response.error || "Registration failed");
       } else {
-        // route the current client to /profile using next router
-
-        console.log("Google registration successful", await response.json());
+        logger.auth("Google registration successful", response.data);
         router.push("/profile");
       }
     } else {
-
-      const response = await fetch(`${myConfig.BACKEND_URL}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, recaptchaToken: await getRecaptchaToken(), mail_provider: UserAccountProvider.Local  }),
+      // Regular registration
+      const response = await authApi.post<{ jwt: string }>('/register', { 
+        username, 
+        email, 
+        password, 
+        recaptchaToken: await getRecaptchaToken(), 
+        mail_provider: UserAccountProvider.Local 
       });
 
       setIsLoading(false);
 
-      if (!response.ok) {
-        const data = await response.json();
-        setUsernameError(data.error || "Registration failed");
+      if (!response.success) {
+        logger.auth('Registration failed:', response.error);
+        setUsernameError(response.error || "Registration failed");
       } else {
-        const jwt = await response.json() as { jwt: string };
-        router.push(`/auth/verify-email?jwt=${jwt.jwt}`);
+        logger.auth('Registration successful:', response.data);
+        router.push(`/auth/verify-email?jwt=${response.data?.jwt}`);
       }
       
     }

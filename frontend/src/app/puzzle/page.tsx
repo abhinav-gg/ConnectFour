@@ -7,6 +7,7 @@ import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import { PuzzleUI } from "@/components/puzzles/puzzle-ui"
 import { PuzzleProgress } from "@/components/puzzles/puzzle-progress"
 import { useError } from "@/components/providers/ErrorProvider"
+import { logger, printl } from '@/utils/logger'
 
 // Example fixed puzzle string
 const puzzle = new Puzzle("45342133|4243543")
@@ -38,12 +39,12 @@ export default function PuzzlePage() {
         }, 300);
         setTimeout(() => {
           setShowScoreChange(null);
-          console.log("loading next puzzle");
+          logger.debug("loading next puzzle");
         }, 2000);
         return;
       } else {
         // Animate the board for the correct move
-        console.log(result.row1!, result.col1!, puzzle.getMyCol)
+        logger.debug(result.row1!, result.col1!, puzzle.getMyCol)
         unifiedLayoutRef.current?.triggerMoveAnimation(result.row1!, result.col1!, puzzle.getMyCol);
         if (typeof result.col2 !== "undefined" && result.col2 !== null) {
           const opponent = puzzle.getMyCol === 0 ? 1 : 0;
@@ -59,7 +60,7 @@ export default function PuzzlePage() {
             }, 300);
             setTimeout(() => {
               setShowScoreChange(null);
-              console.log("loading next puzzle");
+              logger.debug("loading next puzzle");
             }, 2000);
           }, 150 * (result.row1! + 1)); // 150ms per row
         }
@@ -74,7 +75,7 @@ export default function PuzzlePage() {
       }, 300);
       setTimeout(() => {
         setShowScoreChange(null);
-        console.log("loading next puzzle");
+        logger.debug("loading next puzzle");
       }, 2000);
     }
   };
@@ -96,17 +97,17 @@ export default function PuzzlePage() {
     }, 300);
     setTimeout(() => {
       setShowScoreChange(null);
-      console.log("loading next puzzle");
+      logger.debug("loading next puzzle");
     }, 2000);
   };
 
   // Optionally, you can define these handlers for score, hint, etc.
   const handleScoreChange = (change: number, type: "positive" | "negative") => {
     if (showScoreChange) return; // override with our own
-    console.log(`Score changed: ${type === "positive" ? "+" : ""}${change}`)
+    logger.debug(`Score changed: ${type === "positive" ? "+" : ""}${change}`)
   }
   const handleHint = () => {
-    console.log("Hint requested")
+    logger.debug("Hint requested")
   }
 
   return (

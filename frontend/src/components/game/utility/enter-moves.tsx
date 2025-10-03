@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Download, Check } from "lucide-react"
 import type { StandardGame } from "@shared/utils/Games/game"
+import { logger } from "@/utils/logger"
 
 interface EnterMovesProps {
   onSubmitMoves?: (moves: number[]) => void
@@ -82,7 +83,7 @@ export function EnterMoves({
       const movesString = game.exportMoves()
       await navigator.clipboard.writeText(movesString)
       
-      console.log("Moves copied to clipboard:", movesString)
+      logger.ui('Moves copied to clipboard:', movesString)
       
       // Show tick animation for 2 seconds
       setShowExportTick(true)

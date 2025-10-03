@@ -6,6 +6,7 @@ import ToolUI from "@/components/game/full-sides/ToolUI"
 import { HistoryStandardGame } from "@shared/utils/Games/history-game"
 import { useGameHistory } from "@/components/game/gameHistoryService"
 import { useWASM } from "@/components/providers/WASMProvider"
+import { logger, printl } from '@/utils/logger'
 
 export default function ToolsPage() {
   // Simple state management like SingleplayerBoardHandler
@@ -33,13 +34,13 @@ export default function ToolsPage() {
   
   // Activate WASM immediately when component mounts
   useEffect(() => {
-    console.log("🔬 TOOLS: Activating WASM...")
+    logger.debug("TOOLS: Activating WASM...")
     activateWASM()
   }, [activateWASM])
 
   // Log WASM state changes
   useEffect(() => {
-    console.log("🔬 TOOLS: WASM state - isActive:", isActive, "isReady:", wasmReady)
+    logger.debug("TOOLS: WASM state - isActive:", isActive, "isReady:", wasmReady)
   }, [isActive, wasmReady])
   
   // Simple state - only what's needed for board rendering (stable)
@@ -62,7 +63,7 @@ export default function ToolsPage() {
   // Initialize analysis only when WASM is ready - one time only
   useEffect(() => {
     if (wasmReady && !hasInitializedRef.current) {
-      console.log("🔬 TOOLS: WASM ready, triggering initial analysis");
+      logger.debug("TOOLS: WASM ready, triggering initial analysis");
       hasInitializedRef.current = true
       // Trigger analysis by updating the game state version
       updateAnalysisGameState()
@@ -73,7 +74,7 @@ export default function ToolsPage() {
 
   // Also trigger analysis immediately regardless of WASM state for ToolUI
   useEffect(() => {
-    console.log("🔬 TOOLS: Triggering analysis state update - version:", gameStateVersion);
+    logger.debug("TOOLS: Triggering analysis state update - version:", gameStateVersion);
   }, [gameStateVersion])
 
   const gameHistoryAnimations = {

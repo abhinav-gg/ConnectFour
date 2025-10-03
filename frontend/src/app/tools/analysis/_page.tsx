@@ -18,7 +18,7 @@
 //         return;
 //       }
 //       const moveList = moves.split('');
-//       //console.log(moveList);
+//       //printl(moveList);
 //       gameBoardRef.current.setMoves(moveList.map(move => parseInt(move)-1));
 //     }
 
@@ -30,7 +30,7 @@
 //     };
 
 //     const handleImport = () => {
-//         // console.log(moveString);
+//         // printl(moveString);
 //         setMoves(moveString);
 //     };
 

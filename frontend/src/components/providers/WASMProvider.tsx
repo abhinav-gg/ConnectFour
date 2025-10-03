@@ -1,6 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useRef, useCallback, useEffect, useState } from 'react'
+import { logger, printl } from '@/utils/logger'
 
 // Analysis result interface
 interface AnalysisResult {
@@ -55,7 +56,7 @@ export function WASMProvider({
   useEffect(() => {
     // Only initialize WASM when active
     if (!isActive) {
-      console.log("🔧 WASM Provider: Inactive, skipping WASM initialization")
+      logger.performance('WASM Provider: Inactive, skipping WASM initialization')
       setIsLoading(false)
       setIsReady(false)
       return
@@ -63,7 +64,7 @@ export function WASMProvider({
 
     const initializeWASM = async () => {
       try {
-        console.log("🔧 WASM Provider: Loading WASM module from shared script...")
+        logger.performance('WASM Provider: Loading WASM module from shared script...')
         setIsLoading(true)
         setError(null)
         
@@ -71,14 +72,14 @@ export function WASMProvider({
         if (typeof window !== 'undefined') {
           // Check if Connect4SolverModule is already available
           if (!(window as any).Connect4SolverModule) {
-            console.log("🔧 WASM Provider: Loading connect4_solver.js script...")
+            logger.performance('WASM Provider: Loading connect4_solver.js script...')
             const script = document.createElement('script')
             script.src = '/wasm/connect4_solver.js'
             document.head.appendChild(script)
             
             await new Promise((resolve, reject) => {
               script.onload = () => {
-                console.log("🔧 WASM Provider: Script loaded")
+            logger.performance('WASM Provider: Script loaded')
                 resolve(undefined)
               }
               script.onerror = (error) => {
@@ -94,11 +95,11 @@ export function WASMProvider({
           
           while (attempts < maxAttempts) {
             if ((window as any).Connect4SolverModule && typeof (window as any).Connect4SolverModule === 'function') {
-              console.log("🔧 WASM Provider: Connect4SolverModule function found, initializing...")
+              logger.performance('WASM Provider: Connect4SolverModule function found, initializing...')
               break
             }
             
-            console.log(`🔧 WASM Provider: Waiting for Connect4SolverModule function... (attempt ${attempts + 1})`)
+            logger.performance(`WASM Provider: Waiting for Connect4SolverModule function... (attempt ${attempts + 1})`)
             await new Promise(resolve => setTimeout(resolve, 100))
             attempts++
           }
@@ -108,7 +109,7 @@ export function WASMProvider({
           }
           
           // Initialize the WASM module
-          console.log("🔧 WASM Provider: Calling Connect4SolverModule() to initialize WASM...")
+          logger.performance('WASM Provider: Calling Connect4SolverModule() to initialize WASM...')
           const wasmModule = await (window as any).Connect4SolverModule({
             locateFile: (file: string) => `/wasm/${file}`,
           })
@@ -116,12 +117,12 @@ export function WASMProvider({
           
           // Test that the module has the expected Connect4Solver class
           if (wasmModule && wasmModule.Connect4Solver) {
-            console.log("✅ WASM Provider: Module ready with Connect4Solver class")
+            logger.performance('WASM Provider: Module ready with Connect4Solver class')
             
             // Test creating a solver instance
             const testSolver = new wasmModule.Connect4Solver()
             if (testSolver && typeof testSolver.solvePosition === 'function') {
-              console.log("✅ WASM Provider: Connect4Solver instance created successfully")
+              logger.performance('WASM Provider: Connect4Solver instance created successfully')
             } else {
               console.warn("⚠️ WASM Provider: Connect4Solver instance created but methods not found")
             }
@@ -131,7 +132,7 @@ export function WASMProvider({
           
           setIsReady(true)
           setIsLoading(false)
-          console.log("✅ WASM Provider: Module ready for analysis")
+          logger.performance('WASM Provider: Module ready for analysis')
           
           // Initialize persistent worker for analysis
           initializePersistentWorker()
@@ -147,7 +148,7 @@ export function WASMProvider({
 
     // Initialize persistent worker for prioritized analysis
     const initializePersistentWorker = () => {
-      console.log("🔧 WASM Provider: Initializing persistent worker...")
+      logger.performance('WASM Provider: Initializing persistent worker...')
       
       // Get absolute URL for the worker script
       const scriptUrl = new URL('/wasm/connect4_solver.js', window.location.origin).href
@@ -164,13 +165,13 @@ export function WASMProvider({
         // Initialize WASM module once
         async function initializeWASM() {
           try {
-            console.log('🔧 WASM Worker: Initializing Connect4SolverModule...');
+            logger.performance('WASM Worker: Initializing Connect4SolverModule...');
             wasmModule = await Connect4SolverModule({
               locateFile: (file) => '${new URL('/wasm/', window.location.origin).href}' + file,
             });
             solver = new wasmModule.Connect4Solver();
             isReady = true;
-            console.log('🔧 WASM Worker: Ready for analysis');
+            logger.performance('WASM Worker: Ready for analysis');
             
             // Signal ready
             self.postMessage({ type: 'ready' });
@@ -179,7 +180,7 @@ export function WASMProvider({
             self.postMessage({ type: 'error', error: error.message });
             // Retry initialization after a delay
             setTimeout(() => {
-              console.log('🔧 WASM Worker: Retrying initialization...');
+              logger.performance('WASM Worker: Retrying initialization...');
               initializeWASM();
             }, 1000);
           }
@@ -238,7 +239,7 @@ export function WASMProvider({
         const { type, id, evaluation, columnResults, error } = e.data
         
         if (type === 'ready') {
-          console.log("✅ WASM Provider: Persistent worker ready")
+          logger.performance('WASM Provider: Persistent worker ready')
           return
         }
         
@@ -251,7 +252,7 @@ export function WASMProvider({
               console.warn('🔧 WASM Provider: Analysis failed:', error)
               // If it's a "Solver not ready" error, retry the request
               if (error.includes('Solver not ready')) {
-                console.log('🔧 WASM Provider: Retrying analysis due to solver not ready...')
+                logger.performance('WASM Provider: Retrying analysis due to solver not ready...')
                 setTimeout(() => {
                   if (workerRef.current) {
                     workerRef.current.postMessage({
@@ -278,7 +279,7 @@ export function WASMProvider({
       }
 
       workerRef.current.onerror = (error) => {
-        console.error("❌ WASM Provider: Worker error:", error)
+        logger.error("❌ WASM Provider: Worker error:", error)
         if (currentRequestRef.current) {
           // Resolve with fake data instead of rejecting to avoid error state
           currentRequestRef.current.resolve({
@@ -295,7 +296,7 @@ export function WASMProvider({
 
     // Cleanup on unmount
     return () => {
-      console.log("🧹 WASM Provider: Cleaning up...")
+      logger.performance('WASM Provider: Cleaning up...')
       if (wasmModuleRef.current) {
         wasmModuleRef.current = null
       }
@@ -323,11 +324,11 @@ export function WASMProvider({
     }
 
     const requestId = generateId()
-    console.log('🔧 WASM Provider: Sending latest analysis request (cancelling previous):', requestId, 'moves:', moves)
+    logger.performance('WASM Provider: Sending latest analysis request (cancelling previous):', requestId, 'moves:', moves)
     
     // Cancel previous request if exists
     if (currentRequestRef.current) {
-      console.log('🔧 WASM Provider: Cancelling previous request:', currentRequestRef.current.id)
+      logger.performance('WASM Provider: Cancelling previous request:', currentRequestRef.current.id)
       // Resolve cancelled requests with fake data to avoid error state in UI
       currentRequestRef.current.resolve({
         evaluation: 0,
@@ -384,7 +385,7 @@ export function WASMProvider({
 
   // Clear cache (for manual cleanup)
   const clearCache = useCallback(() => {
-    console.log("🧹 WASM Provider: Manually clearing cache")
+    logger.performance('WASM Provider: Manually clearing cache')
     wasmModuleRef.current = null
     setIsReady(false)
   }, [])
@@ -392,14 +393,14 @@ export function WASMProvider({
   // WASM activation control
   const activateWASM = useCallback(() => {
     if (!isActive) {
-      console.log("🔬 WASM Provider: Activating WASM")
+      logger.performance('WASM Provider: Activating WASM')
       setIsActive(true)
     }
   }, [isActive])
 
   const deactivateWASM = useCallback(() => {
     if (isActive) {
-      console.log("🔬 WASM Provider: Deactivating WASM")
+      logger.performance('WASM Provider: Deactivating WASM')
       setIsActive(false)
       setIsReady(false)
       setIsLoading(false)

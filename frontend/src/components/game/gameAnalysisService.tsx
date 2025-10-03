@@ -3,6 +3,7 @@ import { useWASM } from "@/components/providers/WASMProvider"
 import { getEvaluationText } from "@/utils/colors"
 import { fetchOpening, Opening, unknownOpening } from "@/utils/openingService"
 import { Game } from '@shared/types/game.types'
+import { logger, printl } from '@/utils/logger'
 
 /**
  * Analysis state interface for components
@@ -132,10 +133,10 @@ export function useGameAnalysis<T extends Game>(
   // Core analysis update function
   const updateAnalysis = useCallback(async () => {
     const game = gameRef.current
-    console.log('🔬 ANALYSIS: updateAnalysis called - game:', !!game, 'wasmReady:', wasmReady)
+    logger.debug('ANALYSIS: updateAnalysis called - game:', !!game, 'wasmReady:', wasmReady)
     
     if (!game || !wasmReady) {
-      console.log('🔬 ANALYSIS: Skipping analysis - missing prerequisites')
+      logger.debug('ANALYSIS: Skipping analysis - missing prerequisites')
       return
     }
 
@@ -143,7 +144,7 @@ export function useGameAnalysis<T extends Game>(
       setIsAnalysisLoading(true)
       
       const moves = game.getMoves()
-      console.log('🔬 ANALYSIS: Analyzing moves:', moves)
+      logger.debug('ANALYSIS: Analyzing moves:', moves)
       
       // Use analysis request ID to prevent race conditions
       const analysisId = ++currentAnalysisIdRef.current
@@ -199,13 +200,13 @@ export function useGameAnalysis<T extends Game>(
 
   // Initialize analysis when game is available AND WASM is ready
   useEffect(() => {
-    console.log('🔬 ANALYSIS: Initialize check - game:', !!gameRef.current, 'wasmReady:', wasmReady, 'wasmError:', wasmError)
+    logger.debug('ANALYSIS: Initialize check - game:', !!gameRef.current, 'wasmReady:', wasmReady, 'wasmError:', wasmError)
     
     initializeAnalysisState()
     
     // Start analysis if everything is ready
     if (gameRef.current && wasmReady && !wasmError) {
-      console.log('🔬 ANALYSIS: Starting initial analysis with 100ms delay')
+      logger.performance('ANALYSIS: Starting initial analysis with 100ms delay')
       // Use a small delay to ensure everything is ready
       setTimeout(() => {
         updateAnalysis()
@@ -216,10 +217,10 @@ export function useGameAnalysis<T extends Game>(
   // Update analysis when game state changes (moves, navigation)
   useEffect(() => {
     const game = gameRef.current
-    console.log('🔬 ANALYSIS: Game state version changed:', gameStateVersion, 'game:', !!game, 'wasmReady:', wasmReady)
+    logger.performance('ANALYSIS: Game state version changed:', gameStateVersion, 'game:', !!game, 'wasmReady:', wasmReady)
     
     if (game && wasmReady) {
-      console.log('🔬 ANALYSIS: Triggering analysis due to game state change')
+      logger.performance('ANALYSIS: Triggering analysis due to game state change')
       // Update analysis asynchronously without blocking
       updateAnalysis()
     }
@@ -229,7 +230,7 @@ export function useGameAnalysis<T extends Game>(
   useEffect(() => {
     const game = gameRef.current
     if (game && wasmReady && !wasmError) {
-      console.log('🔬 ANALYSIS: WASM became ready, triggering analysis')
+      logger.performance('ANALYSIS: WASM became ready, triggering analysis')
       updateAnalysis()
     }
   }, [wasmReady, wasmError, updateAnalysis])

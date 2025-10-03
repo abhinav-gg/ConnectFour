@@ -5,11 +5,12 @@ import type { ReactElement } from "react"
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { logger, printl } from '@/utils/logger'
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { maskEmail } from '@shared/utils/masks'
-import { myConfig } from "@/config/env"
+import { authApi } from "@/utils/apiClient"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 
 export function VerifyEmailForm(): ReactElement {
@@ -96,28 +97,26 @@ export function VerifyEmailForm(): ReactElement {
 
     setIsLoading(true)
 
-    // TODO: ADD RECAPTCHA)
-    const resp = await fetch(`${myConfig.BACKEND_URL}/auth/verify-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: fullOtp, token: jwt, recaptchaToken: await getRecaptchaToken() }),
-      credentials: 'include', // allow cookies to be set
+    if (!jwt) {
+      setOtpError("Invalid verification link. Please try again.");
+      return;
+    }
+
+    const response = await authApi.post<{ user: any; sessionToken: string }>('/verify-email', { 
+      jwt: jwt, 
+      code: fullOtp, 
+      recaptchaToken: await getRecaptchaToken() 
     });
 
     setIsLoading(false)
 
-    if (!resp.ok) {
-      // Error: show backend error message if available
-      let msg = "Invalid verification code. Please try again.";
-      try {
-        const data = await resp.json();
-        console.error("Verification error:", data);
-        msg = data.message || data.error || msg;
-      } catch {}
-      setOtpError(msg);
+    if (!response.success) {
+      logger.auth('Email verification failed:', response.error);
+      setOtpError(response.error || "Invalid verification code. Please try again.");
     } else {
+      logger.auth('Email verification successful:', response.data);
       // Success: backend sets sessionToken cookie, redirect to profile or home
-      console.log("Email verified successfully");
+      logger.auth("Email verified successfully");
       router.push("/profile");
       return;
     }

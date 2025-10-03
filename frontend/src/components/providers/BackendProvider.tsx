@@ -4,6 +4,7 @@ import { UserProfile } from '@shared/types/users';
 import { useSocketContext } from './SocketProvider';
 import { useError } from './ErrorProvider';
 import { authApi } from '@/utils/apiClient';
+import { logger, printl } from '@/utils/logger';
 import React, {
   createContext,
   useContext,
@@ -161,7 +162,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
   // System maintenance event handlers (from userProvider)
   useEffect(() => {
     onPrefixedMessage('system', (event, data) => {
-      console.log(`[BackendProvider] System event: ${event}`, data);
+      logger.socket(`System event: ${event}`, data);
       
       switch (event) {
         case 'maintenance':
@@ -189,7 +190,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
           break;
           
         default:
-          console.log(`[BackendProvider] Unknown system event: ${event}`, data);
+          logger.socket(`Unknown system event: ${event}`, data);
       }
     });
 
@@ -214,11 +215,11 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     if (fetchingRef.current) return;
 
     fetchingRef.current = true;
-    console.log('Fetching user data...');
+    logger.auth('Fetching user data...');
     try {
-      const response = await authApi.me();
+      const response = await authApi.get<{ user: any }>('/me');
       
-      console.log('🔐 User data response:', response);
+      logger.auth('User data response:', response);
       
       if (response.success && response.data?.user?.username) {
         const userData: LocalUser = {
@@ -272,7 +273,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
   // Game session management (existing logic preserved)
   const leaveGame = useCallback(() => {
     if (currentShortcodeRef.current && !hasLeftRef.current && connected) {
-      console.log("🔌 BACKEND: Leaving game:", currentShortcodeRef.current);
+      logger.game('BACKEND: Leaving game:', currentShortcodeRef.current);
       sendJson("matchmaking:leave", { shortcode: currentShortcodeRef.current });
       unsubscribePrefixedMessage("matchmaking");
       unsubscribePrefixedMessage("game");
@@ -294,14 +295,14 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     setShowReturnPopup(false);
     setReturnGameShortcode(null);
     
-    console.log("🔌 BACKEND: Joining game:", shortcode);
+    logger.game('BACKEND: Joining game:', shortcode);
     sendJson("matchmaking:join", { shortcode });
     
     forceUpdate({});
   }, [sendJson, leaveGame]);
 
   const leaveGameEntirely = useCallback(() => {
-    console.log("🔌 BACKEND: Leaving game entirely");
+    logger.game('BACKEND: Leaving game entirely');
     leaveGame();
     setShowReturnPopup(false);
     setReturnGameShortcode(null);
@@ -315,7 +316,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
   }, [returnGameShortcode, router]);
 
   const handleDismissPopup = useCallback(() => {
-    console.log("🔌 BACKEND: User dismissed return popup - leaving game entirely");
+    logger.game('BACKEND: User dismissed return popup - leaving game entirely');
     setShowReturnPopup(false);
     setReturnGameShortcode(null);
     leaveGame();
@@ -339,11 +340,11 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
   // Route change detection for game sessions
   useEffect(() => {
     if (prevPathnameRef.current !== pathname) {
-      console.log("🔌 BACKEND: Route change detected:", prevPathnameRef.current, "->", pathname);
+      logger.info('BACKEND: Route change detected:', prevPathnameRef.current, '->', pathname);
 
       if (prevPathnameRef.current?.includes("/game") && !pathname.includes("/game")) {
         if (currentShortcodeRef.current && isInGameRef.current) {
-          console.log("🔌 BACKEND: Showing return popup for shortcode:", currentShortcodeRef.current);
+                    logger.ui('BACKEND: Showing return popup for shortcode:', currentShortcodeRef.current);
           setReturnGameShortcode(currentShortcodeRef.current);
           setShowReturnPopup(true);
         }

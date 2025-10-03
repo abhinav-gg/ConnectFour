@@ -12,6 +12,7 @@ import { GameControls } from "@/components/game/utility/game-controls"
 import { GameActions } from "@/components/game/utility/game-actions"
 import { PlayerData } from "@shared/types/users"
 import { TimedStandardGame } from "@shared/utils/Games/timed-game"
+import { logger, printl } from '@/utils/logger'
 
 export interface LiveGameRef {
   addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
@@ -107,7 +108,7 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
   const botAvatar = opponentRef?.current?.pfp
   
   const handleMessageSent = (message: ChatMessage) => {
-    console.log("Message sent via chat component:", message)
+    logger.ui("Message sent via chat component:", message)
     onMessageSent?.(message)
   }
 
@@ -120,50 +121,50 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
   useImperativeHandle(ref, () => ({
     addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => {
       if (isBotMode) {
-        console.log("🤖 BOT: Chat message ignored in bot mode:", message)
+        logger.bot("Chat message ignored in bot mode:", message)
         return
       }
       chatRef.current?.sendMessage(message, username, type, color)
     },
     addSystemMessage: (message: string, username?: string) => {
       if (isBotMode) {
-        console.log("🤖 BOT: System message ignored in bot mode:", message)
+        logger.bot("System message ignored in bot mode:", message)
         return
       }
       chatRef.current?.addSystemMessage(message, username)
     },
     addReceivedMessage: (message: string, username: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => {
       if (isBotMode) {
-        console.log("🤖 BOT: Received message ignored in bot mode:", message)
+        logger.bot("Received message ignored in bot mode:", message)
         return
       }
       chatRef.current?.addReceivedMessage(message, username, type, color)
     },
     clearChat: () => {
       if (isBotMode) {
-        console.log("🤖 BOT: Clear chat ignored in bot mode")
+        logger.bot('BOT: Clear chat ignored in bot mode')
         return
       }
       chatRef.current?.clearMessages()
     },
     sendBotMessage: (message: string) => {
-      console.log("🤖 BOT: Sending bot message:", message)
+      logger.bot("Sending bot message:", message)
       // This could be extended to manage bot messages if needed
     }
   }), [isBotMode])
 
   const handleResign = () => {
-    console.log("Player resigned")
+    logger.game('Player resigned')
     onResign?.()
   }
 
   const handleOfferDraw = () => {
-    console.log("Draw offered")
+    logger.game('Draw offered')
     onOfferDraw?.()
   }
 
   const handleHint = () => {
-    console.log("🤖 BOT: Hint requested")
+    logger.bot('BOT: Hint requested')
     onHint?.()
   }
 
@@ -175,12 +176,12 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
   }
 
   const handleSettingsClick = () => {
-    console.log("Settings clicked")
+    logger.ui('Settings clicked')
     onSettingsClick?.()
   }
 
   const handleMoveClick = (moveIndex: number) => {
-    console.log("Move clicked:", moveIndex)
+    logger.game('Move clicked:', moveIndex)
     onMoveClick?.(moveIndex)
   }
 

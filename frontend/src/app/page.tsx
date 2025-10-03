@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { useInView } from "react-intersection-observer"
 import { FallingCirclesBackground } from "@/components/bganimation"
+import { logger } from "@/utils/logger"
 
 
 export default function Component() {
@@ -18,7 +19,7 @@ export default function Component() {
     threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
-      if (inView) console.log("Hero section came entirely into view")
+      if (inView) logger.ui('Hero section came entirely into view')
     }
   })
 
@@ -26,7 +27,7 @@ export default function Component() {
     threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
-      if (inView) console.log("Puzzles section came entirely into view")
+      if (inView) logger.ui('Puzzles section came entirely into view')
     }
   })
 
@@ -34,7 +35,7 @@ export default function Component() {
     threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
-      if (inView) console.log("Watch section came entirely into view")
+      if (inView) logger.ui('Watch section came entirely into view')
     }
   })
 
@@ -42,7 +43,7 @@ export default function Component() {
     threshold: 0.45, // Component must be entirely in view
     triggerOnce: true,
     onChange: (inView) => {
-      if (inView) console.log("Learn section came entirely into view")
+      if (inView) logger.ui('Learn section came entirely into view')
     }
   })
 

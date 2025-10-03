@@ -31,7 +31,7 @@
 //         }
 //     );
 //     const data = await res.json() as leaderboardPlayer[];
-//     console.log(data);
+//     printl(data);
 //     setPlayersData(data);
 //   }
 

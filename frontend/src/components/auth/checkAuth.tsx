@@ -1,6 +1,7 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import Loading from '../loading';
-import { authApi } from '@/utils/apiClient';
+import { api } from '@/utils/apiClient';
+import { logger, printl } from '@/utils/logger';
 
 interface CheckAuthProps {
   children: ReactNode; // Define children prop
@@ -19,15 +20,15 @@ export default function AuthPage({ children, onAuthFail, onAuthSuccess }: CheckA
 
     setLoading(true);
 
-    const response = await authApi.protectedRoute();
+    const response = await api.get<{ user: any }>('/api/auth/protected-route');
 
     if (!response.success) {
-      console.log('🔐 Auth check failed:', response.error);
+      logger.authError('Auth check failed', response.error);
       if (onAuthFail) {
         onAuthFail();
       }
     } else {
-      console.log('🔐 Auth check successful');
+      logger.auth('Auth check successful');
       setVerified(true);
       if (onAuthSuccess) {
         onAuthSuccess();

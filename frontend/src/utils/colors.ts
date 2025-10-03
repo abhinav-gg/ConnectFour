@@ -1,3 +1,5 @@
+import { logger, printl } from './logger';
+
 /**
  * Evaluation color utilities for Connect 4 analysis
  * Handles mapping evaluation numbers to colors and display text
@@ -17,7 +19,7 @@ export type EvaluationColor = "red" | "yellow" | "gray"
  * @returns Color type for the evaluation
  */
 export function getEvaluationColor(evaluation: number): EvaluationColor {
-  console.log("Evaluation:", evaluation);
+  logger.debug("Evaluation:", evaluation);
   if (evaluation === -1000 || Math.abs(evaluation) === 9999) {
     return "gray" // Full column or invalid
   } else if (evaluation === 0) {

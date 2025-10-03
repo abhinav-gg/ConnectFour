@@ -7,6 +7,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { AllGameModes } from "@shared/constants/allgamemodes"
 import { gameApi } from "@/utils/apiClient"
+import { logger, printl } from '@/utils/logger'
 
 type PlayerColor = "red" | "random" | "yellow"
 
@@ -18,9 +19,9 @@ export default function LiveGamePage() {
     setIsLoading(true)
     
     try {
-      console.log('🤖 Creating bot game:', { selectedBot, playerColor });
+      logger.bot('Creating bot game:', { selectedBot, playerColor });
       
-      const response = await gameApi.createGame({
+      const response = await gameApi.post<{ gameLink: string }>('/request', {
         gamemode: AllGameModes.STANDARD_BOT_MATCH,
         time_control: {
           base_time: 300000, // 5 minutes
@@ -32,7 +33,7 @@ export default function LiveGamePage() {
       });
 
       if (response.success && response.data) {
-        console.log('🤖 Bot game created successfully:', response.data);
+        logger.bot('Bot game created successfully:', response.data);
         router.push(response.data.gameLink)
       } else {
         console.error('🤖 Failed to create bot game:', response.error)

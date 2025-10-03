@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useSocketContext } from '@/components/providers/SocketProvider';
 import { usePathname } from 'next/navigation';
+import { logger, printl } from './logger';
 
 interface PageSessionConfig {
   sessionId: string | null;
@@ -30,7 +31,7 @@ export function usePageSession(config: PageSessionConfig): PageSessionHook {
   // Simple leave function with minimal dependencies
   const leaveSession = useCallback(() => {
     if (sessionRef.current && !hasLeftRef.current && connected) {
-      console.log(`🔌 PAGE SESSION: Leaving ${config.leaveEvent}:`, sessionRef.current);
+      logger.socket(`PAGE SESSION: Leaving ${config.leaveEvent}:`, sessionRef.current);
       
       // Send leave event with session data
       const leaveData = {
@@ -67,7 +68,7 @@ export function usePageSession(config: PageSessionConfig): PageSessionHook {
     isInSessionRef.current = true;
     hasLeftRef.current = false;
     
-    console.log(`🔌 PAGE SESSION: Joining ${config.leaveEvent}:`, sessionId);
+    logger.socket(`PAGE SESSION: Joining ${config.leaveEvent}:`, sessionId);
     
     // You can customize join logic here if needed
     // For now, this is mainly for tracking
@@ -78,7 +79,7 @@ export function usePageSession(config: PageSessionConfig): PageSessionHook {
     if (config.targetPath && !pathname.includes(config.targetPath) && isInSessionRef.current) {
       if (config.shouldShowReturnOption) {
         // Don't leave immediately, let parent handle return option
-        console.log(`🔌 PAGE SESSION: Navigated away from ${config.targetPath}, session preserved for return`);
+        logger.socket(`PAGE SESSION: Navigated away from ${config.targetPath}, session preserved for return`);
       } else {
         // Leave immediately
         leaveSession();

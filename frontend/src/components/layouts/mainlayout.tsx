@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { Footer } from "../footer"
 import { Menu } from "lucide-react"
 import { motion } from "framer-motion"
+import { logger } from "@/utils/logger"
 
 interface LayoutProps {
   children: React.ReactNode
@@ -21,7 +22,7 @@ export function Layout({ children }: LayoutProps) {
 
   // Check if mobile on mount and resize
   useEffect(() => {
-    console.log(isMobile, sidebarOpen, sidebarCollapsed, sidebarLeftPadding)
+    logger.ui('Layout state:', { isMobile, sidebarOpen, sidebarCollapsed, sidebarLeftPadding })
 
     const checkMobile = () => {
 

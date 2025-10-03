@@ -26,7 +26,7 @@
 //         body: JSON.stringify({ position, description }),
 //       });
 
-//       console.log('Response:', response);
+//       printl('Response:', response);
 
 //       if (!response.ok) {
 //         throw new Error('Failed to add opening');

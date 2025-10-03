@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { authApi } from "@/utils/apiClient";
+import { logger, printl } from '@/utils/logger';
 
 export function LogoutUser() {
   const router = useRouter();
@@ -10,13 +11,13 @@ export function LogoutUser() {
   useEffect(() => {
     const logout = async () => {
       try {
-        console.log('🔐 Logging out user...');
-        const response = await authApi.logout();
+        logger.auth('Logging out user...');
+        const response = await authApi.post<{ message: string }>('/logout');
         
         if (!response.success) {
           console.error('🔐 Logout error:', response.error);
         } else {
-          console.log('🔐 Logout successful');
+          logger.auth('Logout successful');
         }
       } catch (e) {
         console.error('🔐 Logout failed:', e);

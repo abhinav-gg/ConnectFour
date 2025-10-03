@@ -36,6 +36,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { logger, printl } from '@/utils/logger'
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/full-sides/LiveGameUI"
 import { ChatMessage, JoinMetadata, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
@@ -111,7 +112,7 @@ export default function LiveGamePage() {
 
   // Mark board as ready 
   const handleBoardReady = () => {
-    console.log("🔄 BOARD: Board is ready")
+    logger.game('Board is ready')
   }
 
   // Initial meRef from user context
@@ -162,10 +163,10 @@ export default function LiveGamePage() {
   useEffect(() => {
     if (shouldActivateWASM && !isWASMActive) {
       activateWASM()
-      console.log("🔬 WASM: Auto-activated for analysis")
+      logger.performance('WASM: Auto-activated for analysis')
     } else if (!shouldActivateWASM && isWASMActive) {
       deactivateWASM()
-      console.log("🔬 WASM: Auto-deactivated")
+      logger.performance('WASM: Auto-deactivated')
     }
   }, [shouldActivateWASM, isWASMActive, activateWASM, deactivateWASM])
 
@@ -185,10 +186,10 @@ export default function LiveGamePage() {
 
   // Step 1: Register ALL socket handlers immediately on mount
   useEffect(() => {
-    console.log("🔌 WEBSOCKET: Registering event handlers immediately")
+    logger.socket("Registering event handlers immediately")
     
     onPrefixedMessage("matchmaking", (event, data) => {
-      console.log("📨 WEBSOCKET: Received matchmaking event:", event, "with data:", data)
+      logger.socket("Received matchmaking event:", event, "with data:", data)
       switch (event) {
         case "failed":
           console.warn("📨 WEBSOCKET: Failed to join matchmaking:", data)
@@ -200,21 +201,21 @@ export default function LiveGamePage() {
             
             switch (failureData.code) {
               case ErrorCode.GAME_NOT_FOUND:
-                console.log("🔄 MATCHMAKING: Game not found, redirecting to setup")
-                console.log("🔌 FRONTEND: Matchmaking failed - game not found, calling leaveGame")
+                logger.game('MATCHMAKING: Game not found, redirecting to setup')
+                logger.game('Matchmaking failed - game not found, calling leaveGame')
                 leaveGame()
                 router.push(`/play/setup?error=${ErrorCode.GAME_NOT_FOUND}`)
                 break
               case ErrorCode.GAME_FINISHED:
               case ErrorCode.BOT_GAME_ENDED:
-                console.log("🏁 MATCHMAKING: Game finished, redirecting to setup")
-                console.log("🔌 FRONTEND: Matchmaking failed - game finished, calling leaveGame")
+                logger.game('MATCHMAKING: Game finished, redirecting to setup')
+                logger.game('Matchmaking failed - game finished, calling leaveGame')
                 leaveGame()
                 router.push(`/play/setup?error=${failureData.code}`)
                 break
               case ErrorCode.ALREADY_IN_GAME:
               case ErrorCode.ALREADY_IN_QUEUE:
-                console.log("🎮 MATCHMAKING: Already in game/queue, redirecting")
+                logger.game('MATCHMAKING: Already in game/queue, redirecting')
                 if (failureData.redirect) {
                   router.push(`/game?r=${failureData.redirect}`)
                 } else {
@@ -222,7 +223,7 @@ export default function LiveGamePage() {
                 }
                 break
               default:
-                console.log("❌ MATCHMAKING: Unknown failure, redirecting to setup")
+                logger.game('MATCHMAKING: Unknown failure, redirecting to setup')
                 router.push(`/play/setup?error=${ErrorCode.UNKNOWN_ERROR}`)
                 break
             }
@@ -232,7 +233,7 @@ export default function LiveGamePage() {
           }
           break
         case "joined":
-          console.log("📨 WEBSOCKET: Successfully joined matchmaking with data:", JSON.stringify(data))
+          logger.socket("Successfully joined matchmaking with data:", JSON.stringify(data))
           const { shortcode, gameinfo, isSpectating, isP2Bot } = data as JoinMetadata
           const gi = gameinfo as GameInfo;
           gameInfoRef.current = gi; // Store GameInfo for later use
@@ -243,9 +244,9 @@ export default function LiveGamePage() {
           setGameMode(printGameMode(gi) || "Custom")
           setIsSpectating(isSpectating)
           setIsP2Bot(isP2Bot) // Enable bot state tracking
-          console.log("🤖 BOT MODE:", isP2Bot ? "ENABLED" : "DISABLED")
+          logger.bot("BOT MODE:", isP2Bot ? "ENABLED" : "DISABLED")
           setTimeControl(printTimeControl(gi.time_control))
-          console.log("🔬 WASM: Analysis conditions updated")
+          logger.performance('WASM: Analysis conditions updated')
           break
         case "error":
           console.error("📨 WEBSOCKET: Matchmaking error:", data)
@@ -256,7 +257,7 @@ export default function LiveGamePage() {
             
             if (errorData.code === ErrorCode.CANNOT_LEAVE_ACTIVE_GAME) {
               // User tried to leave queue while in active game
-              console.log("⚠️ ERROR: Cannot leave active game")
+              logger.error('Cannot leave active game')
               // Stay on current page but show error
             } else if (errorData.redirect) {
               router.push(errorData.redirect)
@@ -281,7 +282,7 @@ export default function LiveGamePage() {
           setShowStartPopup(true)
           setTimeout(() => {
             setShowStartPopup(false)
-            console.log("🎮 MATCHMAKING: Closed start popup after showing match found")
+            logger.game('MATCHMAKING: Closed start popup after showing match found')
           }, 3000)
 
           // play start sound
@@ -346,7 +347,7 @@ export default function LiveGamePage() {
             };
             myGame.current = new TimedStandardGame(spectateGameInfo)
             myGame.current.loadMoves(setupData.moves, [])
-            console.log(`🎮 SPECTATE: Set up game with ${setupData.moves.length} existing moves`)
+            logger.game(`SPECTATE: Set up game with ${setupData.moves.length} existing moves`)
             // Replay for spectators on initial mount
             setAnimateInit(setupData.moves.length > 0)
             setGameVersion((v) => v + 1)
@@ -376,7 +377,7 @@ export default function LiveGamePage() {
         }
         case "move": {
           const moveData = data as StandardGameMove
-          console.log("📨 WEBSOCKET: Received move data:", JSON.stringify(moveData))
+          logger.socket("Received move data:", JSON.stringify(moveData))
 
           // Clear draw offers when a move is made (backend cancels them)
           if (drawOfferedBy !== null) {
@@ -424,10 +425,10 @@ export default function LiveGamePage() {
             liveGameRef.current?.addSystemMessage("Draw agreed!")
           }
           
-          console.log("🏁 GAME: Game has ended", { result })
+          logger.game("Game has ended", { result })
           
           // 🔌 FRONTEND BUSINESS FLOW: Notify BackendProvider that game has ended
-          console.log("🔌 FRONTEND: Game ended, calling leaveGame to update game session state")
+          logger.game('Game ended, calling leaveGame to update game session state')
           leaveGame()
           
           // Ensure timers stop and UI updates
@@ -436,7 +437,7 @@ export default function LiveGamePage() {
         }
         case "disconnection": {
           const { player } = data
-          console.log("🏁 GAME: Player has disconnected", { player })
+          logger.game("Player has disconnected", { player })
           
           // Track which player disconnected
           if (player === 0) {
@@ -450,7 +451,7 @@ export default function LiveGamePage() {
         }
         case "reconnection": {
           const { player } = data
-          console.log("🔌 GAME: Player has reconnected", { player })
+          logger.game("Player has reconnected", { player })
           
           // Reset disconnect state for reconnected player
           if (player === 0) {
@@ -547,7 +548,7 @@ export default function LiveGamePage() {
         }
         case "draw": {
           const { player } = data
-          console.log("🤝 GAME: Draw offered by player", player)
+          logger.game("Draw offered by player", player)
           
           // Track who offered the draw
           setDrawOfferedBy(player)
@@ -574,20 +575,20 @@ export default function LiveGamePage() {
             
             switch (errorCode) {
               case ErrorCode.GAME_NOT_FOUND:
-                console.log("🔄 GAME ERROR: Game not found, redirecting to setup")
-                console.log("🔌 FRONTEND: Game not found, calling leaveGame to update session state")
+                logger.error('GAME ERROR: Game not found, redirecting to setup')
+                logger.game('Game not found, calling leaveGame to update session state')
                 leaveGame()
                 router.push(`/play/setup?error=${ErrorCode.GAME_NOT_FOUND}`)
                 break
               case ErrorCode.GAME_FINISHED:
               case ErrorCode.GAME_ENDED:
-                console.log("🏁 GAME ERROR: Game finished, redirecting to setup")
-                console.log("🔌 FRONTEND: Game finished, calling leaveGame to update session state")
+                logger.error('GAME ERROR: Game finished, redirecting to setup')
+                logger.game('Game finished, calling leaveGame to update session state')
                 leaveGame()
                 router.push(`/play/setup?error=${errorCode}`)
                 break
               case ErrorCode.ALREADY_IN_GAME:
-                console.log("🎮 GAME ERROR: Player in another game")
+                logger.error('GAME ERROR: Player in another game')
                 if (errorData.redirect) {
                   const redirectMatch = errorData.redirect.match(/\/game\?r=(.+)$/) || errorData.redirect.match(/\/game\?room=(.+)$/)
                   if (redirectMatch) {
@@ -623,7 +624,7 @@ export default function LiveGamePage() {
     const roomParam = searchParams.get('r')
     
     if (!roomParam || roomParam.trim() === "") {
-      console.log("🔌 REDIRECT: Empty or missing ?r parameter, redirecting to /play/setup")
+      logger.info('REDIRECT: Empty or missing ?r parameter, redirecting to /play/setup')
       router.push("/play/setup")
       return
     }
@@ -633,7 +634,7 @@ export default function LiveGamePage() {
     setGameUrl(`${window.location.origin}/game?r=${roomParam}`)
     setShowStartPopup(true)
     
-    console.log("🔌 GAME SESSION: Joined game via provider:", roomParam)
+    logger.game('GAME SESSION: Joined game via provider:', roomParam)
   }, [searchParams, router, joinGame])
 
   // 🚫 REMOVED: Let provider handle navigation cleanup and show return popup
@@ -641,7 +642,7 @@ export default function LiveGamePage() {
 
   // Board animation control
   const handleResetGame = () => {
-    console.log("🔄 RESET GAME clicked")
+    logger.game('RESET GAME clicked')
     setScoreRatio(0.5)
     isGameRunningRef.current = false
     
@@ -654,7 +655,7 @@ export default function LiveGamePage() {
     // Reset the game instance
     if (myGame.current) {
       myGame.current.reset()
-      console.log("🎮 GAME: Reset game instance")
+      logger.game('Reset game instance')
     }
 
     // Reset meRef to fallback user context data
@@ -678,9 +679,9 @@ export default function LiveGamePage() {
   }
 
   const handleColumnAttempt = (col: number) => {
-    console.log(`🎯 COLUMN ATTEMPT: Player attempted move in column ${col}`)
+    logger.game(`COLUMN ATTEMPT: Player attempted move in column ${col}`)
     if (isSpectating) {
-      console.log("👁️ SPECTATING: Player is spectating, move not sent")
+      logger.game('SPECTATING: Player is spectating, move not sent')
       return
     }
     if (connected) {
@@ -688,22 +689,22 @@ export default function LiveGamePage() {
         shortcode: currentShortcode, 
         move: col,
       })
-      console.log("📤 WEBSOCKET: Sending move to server:", col)
+      logger.socket("Sending move to server:", col)
     } else {
-      console.log("📤 WEBSOCKET: Not connected, move not sent:")
+      logger.socket('WEBSOCKET: Not connected, move not sent')
     }
   }
 
   // Chat Event Handlers
   const handleMessageSent = (message: ChatMessage) => {
     if (isSpectating) {
-      console.log("👁️ SPECTATING: Player is spectating, TODO: spectator only chat")
+      logger.game('SPECTATING: Player is spectating, TODO: spectator only chat')
       return
     }
     if (connected) {
       sendJson("game:chat", { shortcode: currentShortcode, message: message.message })
     } else {
-      console.log("📤 WEBSOCKET: Not connected, message not sent:", message.message)
+      logger.socket('WEBSOCKET: Not connected, message not sent:', message.message)
     }
   }
 
@@ -736,46 +737,46 @@ export default function LiveGamePage() {
   }
 
   const handleMoveClick = (moveIndex: number) => {
-    console.log(`📖 MOVE CLICKED: Move ${moveIndex}`)
+    logger.game(`MOVE CLICKED: Move ${moveIndex}`)
     bumpGame()
   }
 
   const handleFirstMove = () => {
-    console.log("⏮️ FIRST MOVE clicked")
+    logger.game('FIRST MOVE clicked')
     bumpGame()
   }
 
   const handlePreviousMove = () => {
-    console.log("⏪ PREVIOUS MOVE clicked")
+    logger.game('PREVIOUS MOVE clicked')
     bumpGame()
     
   }
 
   const handleNextMove = () => {
-    console.log("⏩ NEXT MOVE clicked")
+    logger.game('NEXT MOVE clicked')
     bumpGame()
   }
 
   const handleLastMove = () => {
-    console.log("⏭️ LAST MOVE clicked")
+    logger.game('LAST MOVE clicked')
     bumpGame()
   }
 
   // Game Control Event Handlers
   const handleResign = () => {
-    console.log("🏳️ RESIGN clicked")
+    logger.game('RESIGN clicked')
     sendJson("game:resign", { shortcode: currentShortcode })
   }
 
   const handleOfferDraw = () => {
-    console.log("🤝 OFFER DRAW clicked")
+    logger.game('OFFER DRAW clicked')
     // check the draw status first
     sendJson("game:draw_offer", { shortcode: currentShortcode })
   }
 
   // Bot-specific Event Handlers
   const handleHint = () => {
-    console.log("🤖 HINT requested")
+    logger.bot('HINT requested')
     // TODO: Implement bot hint logic
     // For now, just log the request
   }
@@ -786,55 +787,55 @@ export default function LiveGamePage() {
       console.error("no analysis during game")
       return
     }
-    console.log(`🔬 ANALYSIS TOGGLED: ${enabled ? 'ON' : 'OFF'}`)
+    logger.performance(`ANALYSIS TOGGLED: ${enabled ? 'ON' : 'OFF'}`)
   }
 
   const handleSettingsClick = () => {
-    console.log("⚙️ SETTINGS clicked")
+    logger.ui('SETTINGS clicked')
   }
 
   const handleCancelMatchmaking = () => {
-    console.log("🎮 START POPUP: Closing")
+    logger.ui('START POPUP: Closing')
     if (isGameRunningRef.current) {
       setShowStartPopup(false)
       return
     }
     if (connected && currentShortcode) {
       sendJson("matchmaking:leave", { shortcode: currentShortcode })
-      console.log("📤 WEBSOCKET: Sent leave matchmaking")
+      logger.socket('WEBSOCKET: Sent leave matchmaking')
     }
     router.push("/play/setup")
   }
 
   // Game End Modal Handlers
   const handleCloseEndPopup = () => {
-    console.log("🏁 END POPUP: Closed")
+    logger.ui('END POPUP: Closed')
     setShowEndPopup(false)
   }
 
   const handleReviewGame = () => {
-    console.log("📊 REVIEW GAME clicked")
+    logger.game('REVIEW GAME clicked')
     setShowEndPopup(false)
   }
 
   const handleNewGame = () => {
-    console.log("🆕 NEW GAME clicked") 
+    logger.game('NEW GAME clicked') 
     setShowEndPopup(false)
     router.push("/play/setup")
   }
 
   const handleRematch = () => {
-    console.log("🔄 REMATCH clicked")
+    logger.game('REMATCH clicked')
     setShowEndPopup(false)
   }
 
   const handleTimeUp = () => {
-    console.log("⏰ GAME: Time ran out")
+    logger.game('Time ran out')
     if (connected) {
       // first add a 0.1s delay to ensure the UI updates
       setTimeout(() => {
         sendJson("game:enquire", { shortcode: currentShortcode })
-        console.log("📤 WEBSOCKET: Sent timeup event for shortcode:", currentShortcode)
+        logger.socket('WEBSOCKET: Sent timeup event for shortcode:', currentShortcode)
       }, 100)
     }
   }

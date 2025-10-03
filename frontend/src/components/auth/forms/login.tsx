@@ -13,6 +13,7 @@ import { validateEmail, validateUsername } from "@shared/utils/validation"
 import { APIResponse } from "@shared/types/Responses"
 import { handleGoogleLogin } from "@/utils/googleSignin"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
+import { logger, printl } from '@/utils/logger'
 import { authApi } from "@/utils/apiClient"
 
 export function LoginForm() {
@@ -95,17 +96,17 @@ export function LoginForm() {
     setIsLoading(true)
     
     try {
-      const response = await authApi.login({ 
+      const response = await authApi.post<{ user: any; sessionToken: string }>('/login', {
         usernameEmail: email,
         password,
         recaptchaToken: recaptchaToken || undefined
       });
       
-      console.log('🔐 Login response:', response);
+      logger.auth('Login response:', response);
       setIsLoading(false)
       
       if (response.success) {
-        console.log("Login successful!")
+        logger.auth("Login successful!")
         // redirect to /profile
         window.location.href = "/profile"
       } else {

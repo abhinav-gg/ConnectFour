@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import type { PlayerData } from "@shared/types/users"
 import { GameInfo } from "@shared/types/game.types"
 import { CategoriseTime } from "@shared/utils/gamemodes"
+import { logger } from "@/utils/logger"
 
 interface GameStartModalProps {
   open: boolean
@@ -62,7 +63,7 @@ export function GameStartModal({
       setTimeControl("Bullet")
     }
     
-    console.log("GAME INFO:", gameinfo)
+    logger.game('GAME INFO:', gameinfo)
   }, [open, forceUpdateTrigger, gameinfo, propGameMode, propTimeControl])
 
 

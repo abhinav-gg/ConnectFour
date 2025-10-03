@@ -6,6 +6,7 @@ import { useImperativeHandle, forwardRef, useState, useEffect, useRef } from "re
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronDown } from "lucide-react"
 import useSound from "@/utils/useSound"
+import { logger, printl } from '@/utils/logger'
 
 // Color mapping for additional player tokens beyond red (0) and yellow (1)
 const PLAYER_COLORS = {
@@ -241,7 +242,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
     // Animate initial board state if animate_init is true
     useEffect(() => {
-      console.log("Animating initial board state:", animate_init, "with boardState:", boardState)
+      logger.debug("Animating initial board state:", animate_init, "with boardState:", boardState)
       if (!boardState) return
 
       if (!animate_init) return setInternalBoard(boardState)
@@ -416,7 +417,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         // Animation duration proportional to distance fallen
         const baseDuration = 0.15 // seconds per row
         const duration = baseDuration * (row + 1)
-        console.log("ACTUALLY PLAYING ANIMATIONS")
+        logger.debug("ACTUALLY PLAYING ANIMATIONS")
         // Play drop sound when a piece falls (not during animate_init)
         DropSound.play()
 
@@ -459,7 +460,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
                 return cell
               }),
             )
-            // console.log("BOARD UPDATE", row, col, player)
+            // printl("BOARD UPDATE", row, col, player)
             return newBoard
           })
           // Set last move highlight after the piece has landed (only if showLastMoveHighlight is true)
@@ -482,7 +483,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
 
       // New: reverse/lift animation for undo
       undoMoveAnimation(row, col, player, lastMoveHighlight = null) {
-        console.log(`🎮 BOARD: undoMoveAnimation called - AGGRESSIVE clearing`)
+        logger.debug(`BOARD: undoMoveAnimation called - AGGRESSIVE clearing`)
         
         // AGGRESSIVE: Clear ALL timeouts and animations
         clearAllTimeouts()
@@ -497,14 +498,14 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         
         // Use interim method: check if there's a piece in the current internal board at this position
         const currentPiece = internalBoard[row][col]
-        console.log(`🎮 BOARD: Current piece at (${row}, ${col}):`, currentPiece)
+        logger.game(`BOARD: Current piece at (${row}, ${col}):`, currentPiece)
         
         if (currentPiece === null) {
           console.warn(`🎮 BOARD: No piece found at (${row}, ${col}) for undo animation`)
           return
         }
         
-        console.log(`🎮 BOARD: Starting undo animation at (${row}, ${col}) for player ${player}`)
+        logger.game(`BOARD: Starting undo animation at (${row}, ${col}) for player ${player}`)
 
         // Compute duration to mirror drop timing
         const baseDuration = 0.15
@@ -531,7 +532,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
           },
         ])
 
-        console.log(`🎮 BOARD: Rising piece animation started with id=${riseId}, duration=${duration}`)
+        logger.game(`BOARD: Rising piece animation started with id=${riseId}, duration=${duration}`)
 
         // Clear any existing undo timeout before setting a new one
         if (undoTimeoutRef.current) {
@@ -541,14 +542,14 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         // After animation completes, set current player back to the undone player
         undoTimeoutRef.current = setTimeout(() => {
           setCurrentPlayer(player)
-          console.log(`🎮 BOARD: Undo animation completed, current player set to ${player}`)
+          logger.game(`BOARD: Undo animation completed, current player set to ${player}`)
           undoTimeoutRef.current = null
         }, duration * 1000)
       },
 
       // New: directly set the board state for animations without affecting game logic
       setBoard(newBoard: (number | null)[][]) {
-        console.log(`🎮 BOARD: setBoard called - AGGRESSIVE clearing`)
+        logger.debug(`BOARD: setBoard called - AGGRESSIVE clearing`)
         
         // AGGRESSIVE: Clear ALL timeouts and animations
         clearAllTimeouts()
@@ -559,7 +560,7 @@ const Board = forwardRef<BoardHandle, Connect4BoardProps>(
         setInternalBoard(newBoard)
         setLastMoveHighlightState(null)
         
-        console.log(`🎮 BOARD: Board state updated aggressively`)
+        logger.game('BOARD: Board state updated aggressively')
       },
 
       // New: create an arrow for analysis/hints

@@ -30,6 +30,7 @@ import { myConfig } from "@/config/env"
 import { useRecaptcha } from "../../providers/RecaptchaProvider"
 import { useError } from "../../providers/ErrorProvider"
 import { gameApi } from "@/utils/apiClient"
+import { logger, printl } from '@/utils/logger'
 
 type CommonModes = "standard" | "armageddon" | "friendly" | "casual"
 
@@ -246,9 +247,9 @@ export function LiveGameSelection() {
     }
 
     try {
-      console.log('🎮 Creating game:', { gamemode, time_control: tc });
+      logger.game('Creating game:', { gamemode, time_control: tc });
       
-      const response = await gameApi.createGame({
+      const response = await gameApi.post<{ gameLink: string }>('/request', {
         gamemode,
         time_control: tc,
         recaptchaToken: (await getRecaptchaToken()) ?? undefined,
@@ -270,7 +271,7 @@ export function LiveGameSelection() {
       }
 
       if (response.data?.gameLink) {
-        console.log('🎮 Game created successfully:', response.data.gameLink);
+        logger.game('Game created successfully:', response.data.gameLink);
         router.replace(response.data.gameLink);
       } else {
         console.error('🎮 Game creation response missing gameLink:', response.data);
@@ -284,7 +285,7 @@ export function LiveGameSelection() {
   }
 
   const handleCancelSearch = () => {
-    console.log("Game search cancelled by user");
+    logger.game("Game search cancelled by user");
     setIsStartingGame(false)
     setCooldownSeconds(0)
   }

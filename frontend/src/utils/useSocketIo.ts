@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
+import { logger, printl } from './logger';
 
 interface UseSocketIoOptions {
   onMessage?: (data: any) => void;
@@ -65,7 +66,7 @@ function useSocketIo(
 
   const connect = useCallback(() => {
     if (socketRef.current) return; // already connected or connecting
-    console.log("CONNECTING........")
+    logger.socket("Connecting to server...")
     const socket = io(url, {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -110,7 +111,7 @@ function useSocketIo(
     });
 
     socket.on('reconnect_attempt', (attempt) => {
-      console.log(`Reconnect attempt #${attempt}`);
+      logger.socket(`Reconnect attempt #${attempt}`);
     });
 
     socket.on('reconnect_error', (error) => {
@@ -158,7 +159,7 @@ function useSocketIo(
   }, []);
 
   const registerOnPrefixedMessage = useCallback((prefix: string, callback: (event: string, data: any) => void) => {
-    console.log(`[useSocketIO] Registering prefix handler for: ${prefix}`);
+    logger.socket(`Registering prefix handler for: ${prefix}`);
     onPrefixedMessageCallbacksRef.current.set(prefix, callback);
   }, []);
 
@@ -167,7 +168,7 @@ function useSocketIo(
   }, []);
 
   const unsubscribePrefixedMessage = useCallback((prefix: string) => {
-    console.log(`[useSocketIO] Unsubscribing prefix handler for: ${prefix}`);
+    logger.socket(`Unsubscribing prefix handler for: ${prefix}`);
     onPrefixedMessageCallbacksRef.current.delete(prefix);
   }, []);
 

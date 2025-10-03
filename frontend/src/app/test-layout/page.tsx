@@ -4,6 +4,7 @@ import React, { useRef, useState } from "react"
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import { StandardGame } from "@shared/utils/Games/game"
 import { PlayerData } from "@shared/types/users"
+import { logger } from "@/utils/logger"
 
 export default function TestLayoutPage() {
   const gameRef = useRef(new StandardGame())
@@ -32,7 +33,7 @@ export default function TestLayoutPage() {
   const handleColumnAttempt = (col: number) => {
     const result = gameRef.current.makeMove(col)
     if (result.success) {
-      console.log(`Move made in column ${col + 1}`)
+      logger.game(`Move made in column ${col + 1}`)
     }
   }
 
@@ -137,8 +138,8 @@ export default function TestLayoutPage() {
           headerText: headerText || undefined,
           contentRatio: contentRatio,
         }}
-        onTimeUp={() => console.log("Time up!")}
-        onBoardReady={() => console.log("Board ready!")}
+        onTimeUp={() => logger.game('Time up!')}
+        onBoardReady={() => logger.game('Board ready!')}
       >
         {/* Content Section */}
         <div className="flex flex-col h-full">

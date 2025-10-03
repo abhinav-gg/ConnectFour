@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, MutableRefObject } from "react"
 import { NavigableGame } from '@shared/types/game.types'
+import { logger } from '@/utils/logger'
 
 // Simple animation interface - just need the layout ref and update function
 export interface GameHistoryAnimations {
@@ -133,7 +134,7 @@ export function useGameHistory<T extends NavigableGame>(
 
   // Navigation handlers for MoveHistory component
   const handleMoveClick = useCallback((moveIndex: number): void => {
-    console.log(`🎮 HISTORY: handleMoveClick called with moveIndex=${moveIndex}`)
+    logger.game(`HISTORY: handleMoveClick called with moveIndex=${moveIndex}`)
     navigateToMove(moveIndex)
   }, [navigateToMove])
 

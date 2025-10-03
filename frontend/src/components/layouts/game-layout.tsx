@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { motion } from "framer-motion"
 import { Layout } from "./mainlayout"
+import { logger } from "@/utils/logger"
 import Board, { BoardHandle } from "../game/Board"
 import { ScoreBar } from "../game/score-bar"
 import { PlayerInfo } from "../game/player-info"
@@ -118,7 +119,7 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
   // Expose board methods through ref
   useImperativeHandle(ref, () => ({
     triggerMoveAnimation: (row: number, col: number, player: number) => {
-      console.log("🎮 UnifiedGameLayout: Triggering move animation:", { row, col, player })
+      logger.game('UnifiedGameLayout: Triggering move animation:', { row, col, player })
       boardRef.current?.triggerMoveAnimation(row, col, player)
     },
     setPremoveCell: (row: number, col: number, player: number) => {
@@ -128,7 +129,7 @@ export const UnifiedGameLayout = forwardRef<UnifiedGameLayoutRef, UnifiedGameLay
       boardRef.current?.clearPremove()
     },
     undoMoveAnimation: (row: number, col: number, player: number, lastMoveHighlight?: {row: number, col: number} | null) => {
-      console.log("🎮 UnifiedGameLayout: Triggering undomove animation:", { row, col, player })
+      logger.game('UnifiedGameLayout: Triggering undomove animation:', { row, col, player })
       boardRef.current?.undoMoveAnimation(row, col, player, lastMoveHighlight)
     },
     setBoard: (newBoard: (number | null)[][]) => {
