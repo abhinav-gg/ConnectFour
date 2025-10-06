@@ -36,7 +36,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/full-sides/LiveGameUI"
 import { ChatMessage, JoinMetadata, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
@@ -52,7 +52,9 @@ import { GameStartModal } from "@/components/game/game-start-popup"
 import { useWASM } from "@/components/providers/WASMProvider"
 import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types"
 import { TimedStandardGame } from "@shared/utils/Games/timed-game"
-import { CategoriseTime, printGameMode, printTimeControl, BotModes } from "@shared/utils/gamemodes"
+import { CategoriseTime, printGameMode, printTimeControl } from "@shared/utils/gamemodes"
+import { GameMode } from "@shared/constants/allgamemodes"
+import { useGameHistory } from "@/components/game/gameHistoryService"
 
 export default function LiveGamePage() {
   const router = useRouter()
@@ -90,6 +92,63 @@ export default function LiveGamePage() {
   // Board animation control
   const liveGameRef = useRef<LiveGameRef>(null)
   const unifiedLayoutRef = useRef<any>(null) // Reference to the unified layout for board control
+
+  // Game history service for move navigation (setup after refs are declared)
+  const gameHistoryAnimations = {
+    layoutRef: unifiedLayoutRef,
+    onBump: () => setGameVersion((v) => v + 1)
+  }
+  
+  // Safe wrapper functions for game history navigation that check for null game
+  const safeGameHistory = {
+    goToEnd: () => {
+      if (myGame.current) {
+        myGame.current.setMoveIndex(myGame.current.getAllMoves().length - 1)
+        gameHistoryAnimations.onBump()
+      }
+    },
+    handleMoveClick: (moveIndex: number) => {
+      if (myGame.current) {
+        myGame.current.setMoveIndex(moveIndex)
+        gameHistoryAnimations.onBump()
+        // TODO: Add animation logic similar to tools page
+      }
+    },
+    handleFirstMove: () => {
+      if (myGame.current) {
+        myGame.current.setMoveIndex(-1)
+        gameHistoryAnimations.onBump()
+      }
+    },
+    handlePreviousMove: () => {
+      if (myGame.current) {
+        const currentIndex = myGame.current.getCurrentMoveIndex()
+        if (currentIndex > -1) {
+          myGame.current.setMoveIndex(currentIndex - 1)
+          gameHistoryAnimations.onBump()
+        }
+      }
+    },
+    handleNextMove: () => {
+      if (myGame.current) {
+        const currentIndex = myGame.current.getCurrentMoveIndex()
+        const totalMoves = myGame.current.getAllMoves().length
+        if (currentIndex < totalMoves - 1) {
+          myGame.current.setMoveIndex(currentIndex + 1)
+          gameHistoryAnimations.onBump()
+        }
+      }
+    },
+    handleLastMove: () => {
+      if (myGame.current) {
+        const totalMoves = myGame.current.getAllMoves().length
+        if (totalMoves > 0) {
+          myGame.current.setMoveIndex(totalMoves - 1)
+          gameHistoryAnimations.onBump()
+        }
+      }
+    }
+  }
   
   // Disconnect state tracking
   const player1DisconnectedRef = useRef(false)
@@ -382,7 +441,7 @@ export default function LiveGamePage() {
           // Clear draw offers when a move is made (backend cancels them)
           if (drawOfferedBy !== null) {
             setDrawOfferedBy(null)
-            liveGameRef.current?.addSystemMessage("Draw offer cancelled by move")
+            liveGameRef.current?.addSystemMessage("Draw Declined")
           }
 
           // Animate on board immediately
@@ -393,9 +452,10 @@ export default function LiveGamePage() {
           // Commit to model immediately and sync UI
           try { 
             if (myGame.current) {
+              // Ensure we're at the latest move before adding the new move
+              safeGameHistory.goToEnd()
               myGame.current.makeMove(moveData.col)
             }
-            // Ensure we're viewing the latest move
           } catch (e) { 
             console.error("❌ GAME: Failed to commit move", moveData.col, e) 
           }
@@ -684,6 +744,10 @@ export default function LiveGamePage() {
       logger.game('SPECTATING: Player is spectating, move not sent')
       return
     }
+
+    // First, ensure we're at the latest move before making a new move
+    safeGameHistory.goToEnd()
+
     if (connected) {
       sendJson("game:move", { 
         shortcode: currentShortcode, 
@@ -708,58 +772,36 @@ export default function LiveGamePage() {
     }
   }
 
-  // Move History Event Handlers (go to move)
+  // Move History Event Handlers (using gameHistoryService)
   const bumpGame = () => setGameVersion((v) => v + 1)
-
-  // Helper to calculate which moves need undo/redo animations
-  const animateMoveTransition = (fromIndex: number, toIndex: number) => {
-    if (!myGame.current || !unifiedLayoutRef.current) return
-    
-    const moves = myGame.current.getMoves()
-
-    if (fromIndex > toIndex) {
-      // Going backwards - undo moves from current to target
-      for (let i = fromIndex; i > toIndex; i--) {
-        const move = moves[i - 1] // Get previous move
-        const row = myGame.current.getAvailableRow(move) // Already points to the correct row to remove from
-        const player = (i - 1) % 2 // Player alternates each move
-        unifiedLayoutRef.current.undoMoveAnimation(row, move, player)
-      }
-    } else {
-      // Going forwards - replay moves from current to target
-      for (let i = Math.max(1, fromIndex + 1); i <= toIndex; i++) {
-        const move = moves[i - 1]
-        const row = myGame.current.getAvailableRow(move)
-        const player = (i - 1) % 2
-        unifiedLayoutRef.current.triggerMoveAnimation(row, move, player)
-      }
-    }
-  }
 
   const handleMoveClick = (moveIndex: number) => {
     logger.game(`MOVE CLICKED: Move ${moveIndex}`)
-    bumpGame()
+    // First navigate to latest move, then to target
+    safeGameHistory.goToEnd() // Ensure we're at the latest move first
+    setTimeout(() => {
+      safeGameHistory.handleMoveClick(moveIndex)
+    }, 50)
   }
 
   const handleFirstMove = () => {
     logger.game('FIRST MOVE clicked')
-    bumpGame()
+    safeGameHistory.handleFirstMove()
   }
 
   const handlePreviousMove = () => {
     logger.game('PREVIOUS MOVE clicked')
-    bumpGame()
-    
+    safeGameHistory.handlePreviousMove()
   }
 
   const handleNextMove = () => {
     logger.game('NEXT MOVE clicked')
-    bumpGame()
+    safeGameHistory.handleNextMove()
   }
 
   const handleLastMove = () => {
     logger.game('LAST MOVE clicked')
-    bumpGame()
+    safeGameHistory.handleLastMove()
   }
 
   // Game Control Event Handlers
@@ -771,6 +813,12 @@ export default function LiveGamePage() {
   const handleOfferDraw = () => {
     logger.game('OFFER DRAW clicked')
     // check the draw status first
+    sendJson("game:draw_offer", { shortcode: currentShortcode })
+  }
+
+  const handleAcceptDraw = () => {
+    logger.game('ACCEPT DRAW clicked')
+    // Send draw offer from this player to accept the existing offer
     sendJson("game:draw_offer", { shortcode: currentShortcode })
   }
 
@@ -870,7 +918,7 @@ export default function LiveGamePage() {
       }}
       layout={{
         showScoreBar: true,
-        showTimers: currentGamemode !== null ? !BotModes.has(currentGamemode) : true, // BOT LOGIC: Hide timers for bot games
+        showTimers: currentGamemode !== null ? !(currentGamemode === GameMode.STANDARD_BOT_MATCH) : true, // BOT LOGIC: Hide timers for bot games
         showPlayerInfo: true,
         headerText: dynamicHeader, // Use dynamic header state
       }}
@@ -885,7 +933,7 @@ export default function LiveGamePage() {
         game={myGame.current || undefined}
         meRef={meRef}
         opponentRef={opponentRef}
-        currentMoveIndex={2}
+        currentMoveIndex={myGame.current?.getCurrentMoveIndex() ?? -1}
         onMessageSent={handleMessageSent}
         onMoveClick={handleMoveClick}
         onFirstMove={handleFirstMove}
@@ -894,6 +942,7 @@ export default function LiveGamePage() {
         onLastMove={handleLastMove}
         onResign={handleResign}
         onOfferDraw={handleOfferDraw}
+        onAcceptDraw={handleAcceptDraw}
         onHint={handleHint}
         onToggleAnalysis={handleToggleAnalysis}
         onSettingsClick={handleSettingsClick}

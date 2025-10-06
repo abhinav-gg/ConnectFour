@@ -1,5 +1,6 @@
 "use client"
-
+import { useRecaptcha } from '@/components/providers/RecaptchaProvider'
+import { useError } from '@/components/providers/ErrorProvider'
 import type React from "react"
 
 import { useEffect, useState } from "react"
@@ -12,8 +13,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { validateEmail, validateUsername } from "@shared/utils/validation"
 import { APIResponse } from "@shared/types/Responses"
 import { handleGoogleLogin } from "@/utils/googleSignin"
-import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 import { authApi } from "@/utils/apiClient"
 
 export function LoginForm() {
@@ -26,6 +26,7 @@ export function LoginForm() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [loginError, setLoginError] = useState<string | null>(null)
   const { getRecaptchaToken, activateRecaptcha, isRecaptchaActive } = useRecaptcha();
+  const { showWarning } = useError();
 
   // Validation states
   const [emailValid, setEmailValid] = useState(false)
@@ -85,7 +86,7 @@ export function LoginForm() {
 
     const recaptchaToken = await getRecaptchaToken('contact_form');
     if (!recaptchaToken || !isRecaptchaActive) {
-      alert('Recaptcha failed. Try again.');
+      showWarning('reCAPTCHA verification failed. Please try again.', 5);
       hasError = true
     }
 

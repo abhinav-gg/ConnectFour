@@ -3,7 +3,7 @@ import { redisOps } from "@/redis/ops";
 import { ServiceResponse } from "@/types/custom";
 import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types";
 import { PlayerData } from "@shared/types/users";
-import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes, BotModes } from "@shared/utils/gamemodes";
+import { CasualModes, CompetitiveModes, FriendlyModes, PublicStandardModes, StandardModes } from "@shared/utils/gamemodes";
 import { packGameInfo, packStandardGameData, uuidToBuffer } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
 import { FinishedGameStates } from "@shared/utils/gamestates";
@@ -18,6 +18,7 @@ import { ErrorCode, createErrorResponse } from "@shared/constants/errorCodes";
 import { RoomSchema } from "@/controllers/socket/socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
 import { liveGameService } from "./livegame.service";
+import { PlayAs } from "@shared/constants/game.constants";
 
 export const gameService = {
   
@@ -44,9 +45,9 @@ export const gameService = {
                 }
 
                 if (metadata.state === GameState.IN_PROGRESS) {
-                                        return { status: 409, message: ErrorCode.ALREADY_IN_GAME, redirect: metadata.shortcode || gameId };
+                    return { status: 409, message: ErrorCode.ALREADY_IN_GAME, redirect: metadata.shortcode || gameId };
                 } else if (metadata.state === GameState.SCHEDULED) {
-                                        return { status: 409, message: ErrorCode.ALREADY_IN_QUEUE, redirect: metadata.shortcode || gameId };
+                    return { status: 409, message: ErrorCode.ALREADY_IN_QUEUE, redirect: metadata.shortcode || gameId };
                 }
             } catch (error) {
                 console.error('Error getting game metadata:', error);
@@ -229,7 +230,7 @@ export const gameService = {
         }
 
         // BOT LOGIC: Prevent reconnection to bot games - they should have already ended on disconnect
-        if (BotModes.has(gameMeta.gamemode)) {
+        if (gameMeta.gamemode === GameMode.STANDARD_BOT_MATCH) {
             throw new Error('Reconnection not allowed in bot games');
         }
 
@@ -391,7 +392,7 @@ export const gameService = {
             console.log("Trying to join game with ID:", gameContext.gameId, "and metadata:", metadata);
             
             // BOT LOGIC: Prevent joining bot games if they exist - bot games should end immediately on disconnect
-            if (BotModes.has(metadata.gamemode)) {
+            if (metadata.gamemode === GameMode.STANDARD_BOT_MATCH) {
                 return { status: 404, message: ErrorCode.BOT_GAME_ENDED };
             }
             
@@ -526,12 +527,12 @@ export const gameService = {
         gamemode: t_GameMode,
         time_control: TimeControl,
         botId: string,
-        playerColor: 'red' | 'yellow' | 'random'
+        playerColor: PlayAs
     }): Promise<ServiceResponse> {
         const { gamemode, botId, playerColor } = botGameInfo;
         
         // Validate that this is a bot game mode
-        if (gamemode !== AllGameModes.STANDARD_BOT_MATCH && gamemode !== AllGameModes.STANDARD_ARMAGEDDON_BOT_MATCH) {
+        if (gamemode !== AllGameModes.STANDARD_BOT_MATCH) {
             return { status: 400, message: 'Invalid game mode for bot match' };
         }
 
@@ -547,29 +548,34 @@ export const gameService = {
         }
 
         try {
+            // Validate player color
+            if (!Object.values(PlayAs).includes(playerColor)) {
+                return { status: 400, message: 'Invalid player color' };
+            }
+
             // BOT LOGIC: Force time control to zero for bot games - no timers allowed
             const botTimeControl: TimeControl = {
                 base_time: 0,
                 increment: 0,
                 disadvantage: 0
             };
-            
+
             // Create the game with zero time control
             const gameMeta = await this.CreateGame({ gamemode, time_control: botTimeControl });
             const gameId = gameMeta.id;
-            
+
             // Create bot identity
             const botIdentity = makeBotIdentity(botId);
-            
+
             // Determine player order based on color choice
             let players: string[];
             let actualPlayerColor = playerColor;
-            
-            if (playerColor === 'random') {
-                actualPlayerColor = Math.random() < 0.5 ? 'red' : 'yellow';
+
+            if (playerColor === PlayAs.RANDOM) {
+                actualPlayerColor = Math.random() < 0.5 ? PlayAs.RED : PlayAs.YELLOW;
             }
-            
-            if (actualPlayerColor === 'red') {
+
+            if (actualPlayerColor === PlayAs.RED) {
                 // Human is red (player 0, goes first)
                 players = [gameContext.userId, botIdentity];
             } else {

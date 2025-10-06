@@ -1,20 +1,15 @@
 "use client"
 
-import { useState, useRef, useImperativeHandle, forwardRef, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { AnalysisHeader } from "@/components/game/utility/analysis-header"
-import { ColumnAnalysis } from "@/components/game/utility/column-analysis"
-import { MoveHistory } from "@/components/game/utility//move-history"
+import { useRef, useImperativeHandle, forwardRef, useEffect } from "react"
+import { BaseGameUI, BaseGameUIProps, GameUIRef } from "./BaseGameUI"
 import GameChat, { ChatRef } from "@/components/game/utility/chat"
 import { BotPlay } from "@/components/game/utility/bot-play"
 import { ChatMessage } from "@shared/types/Websocket"
-import { GameControls } from "@/components/game/utility/game-controls"
-import { GameActions } from "@/components/game/utility/game-actions"
 import { PlayerData } from "@shared/types/users"
 import { TimedStandardGame } from "@shared/utils/Games/timed-game"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 
-export interface LiveGameRef {
+export interface LiveGameRef extends GameUIRef {
   addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
   addSystemMessage: (message: string, username?: string) => void
   addReceivedMessage: (message: string, username: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => void
@@ -23,8 +18,8 @@ export interface LiveGameRef {
   sendBotMessage?: (message: string) => void
 }
 
-interface LiveGameWithAnalysisProps {
-  // Props that might be passed from GameBoardLayout
+interface LiveGameWithAnalysisProps extends Omit<BaseGameUIProps, 'children'> {
+  // Legacy props for backward compatibility (unused but kept for API compatibility)
   onStartGame?: () => void
   onPauseGame?: () => void
   onResetGame?: () => void
@@ -34,51 +29,31 @@ interface LiveGameWithAnalysisProps {
   scoreRatio?: number
   isGameRunning?: boolean
   
-  // Chat and Move History Props
+  // Chat-specific props
   initialChatMessages?: ChatMessage[]
-  game?: TimedStandardGame // Direct game integration
-  meRef?: React.MutableRefObject<PlayerData | undefined>
-  opponentRef?: React.MutableRefObject<PlayerData | undefined> // Added for bot mode
-  currentUser?: string
-  currentMoveIndex?: number
-  // Optional override for the move list to display (e.g., include pending animation)
-  movesOverride?: number[]
-  
-  // Event Handlers
   onMessageSent?: (message: ChatMessage) => void
-  onMoveClick?: (moveIndex: number) => void
-  onFirstMove?: () => void
-  onPreviousMove?: () => void
-  onNextMove?: () => void
-  onLastMove?: () => void
-  onResign?: () => void
-  onOfferDraw?: () => void
-  onHint?: () => void // Bot-specific hint handler
-  onToggleAnalysis?: (enabled: boolean) => void
-  onSettingsClick?: () => void
   
-  // Analysis Control
-  showAnalysisFeatures?: boolean // New prop to control analysis visibility
-  
-  // Bot Mode Control
-  isBotMode?: boolean // New prop to determine if we should show bot UI
-  
-  // Draw offer state
-  drawOfferedBy?: number | null // null, 0, or 1 for which player offered draw
-  isRedPlayer?: boolean // Whether the current user is the red player (player 0)
-  highlightOfferDraw?: boolean // Whether to highlight the offer draw button
+  // Bot-specific props (for backward compatibility when isBotMode=true)
+  onHint?: () => void
+  botName?: string
+  botAvatar?: string
 }
 
 const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>((props, ref) => {
   const {
-    initialChatMessages = [], // Default to empty array here instead of in JSX
-    game,
+    initialChatMessages = [],
+    onMessageSent,
+    onHint,
+    botName,
+    botAvatar,
+    isBotMode = false,
     meRef,
     opponentRef,
     currentUser = "You",
-    currentMoveIndex: propCurrentMoveIndex = 0,
+    // Extract base props to pass to BaseGameUI
+    game,
+    currentMoveIndex,
     movesOverride,
-    onMessageSent,
     onMoveClick,
     onFirstMove,
     onPreviousMove,
@@ -86,38 +61,41 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
     onLastMove,
     onResign,
     onOfferDraw,
-    onHint,
+    onAcceptDraw,
     onToggleAnalysis,
     onSettingsClick,
-    showAnalysisFeatures = true, // Default to true for backward compatibility
-    isBotMode = false, // Default to false
-    drawOfferedBy = null,
-    isRedPlayer = false,
-    highlightOfferDraw = false,
+    showAnalysisFeatures,
+    drawOfferedBy,
+    isRedPlayer,
+    highlightOfferDraw,
+    // Ignore legacy props that are no longer used
+    ...legacyProps
   } = props
 
-  const [isAnalysisEnabled, setIsAnalysisEnabled] = useState(true)
   const chatRef = useRef<ChatRef>(null)
   
   // Use refs for dynamic data or fallback to props
   const actualCurrentUser = meRef?.current?.username || currentUser
-  const actualTotalMoveCount = game ? game.getMoves().length : 0
   
   // Get bot info if in bot mode
-  const botName = opponentRef?.current?.username || "Bot"
-  const botAvatar = opponentRef?.current?.pfp
+  const actualBotName = botName || opponentRef?.current?.username || "Bot"
+  const actualBotAvatar = botAvatar || opponentRef?.current?.pfp
   
   const handleMessageSent = (message: ChatMessage) => {
     logger.ui("Message sent via chat component:", message)
     onMessageSent?.(message)
   }
 
+  const handleHint = () => {
+    logger.bot('BOT: Hint requested')
+    onHint?.()
+  }
+
   useEffect(() => {
-    
-    
+    // Any initialization logic can go here
   }, []);
 
-  // Expose chat functions to parent component
+  // Expose chat functions to parent component following the same API
   useImperativeHandle(ref, () => ({
     addChatMessage: (message: string, username?: string, type?: ChatMessage["type"], color?: ChatMessage["color"]) => {
       if (isBotMode) {
@@ -153,120 +131,48 @@ const LiveGameWithAnalysis = forwardRef<LiveGameRef, LiveGameWithAnalysisProps>(
     }
   }), [isBotMode])
 
-  const handleResign = () => {
-    logger.game('Player resigned')
-    onResign?.()
-  }
-
-  const handleOfferDraw = () => {
-    logger.game('Draw offered')
-    onOfferDraw?.()
-  }
-
-  const handleHint = () => {
-    logger.bot('BOT: Hint requested')
-    onHint?.()
-  }
-
-  const handleToggleAnalysis = (enabled: boolean) => {
-    if (showAnalysisFeatures) {
-      setIsAnalysisEnabled(enabled)
-      onToggleAnalysis?.(enabled)
-    }
-  }
-
-  const handleSettingsClick = () => {
-    logger.ui('Settings clicked')
-    onSettingsClick?.()
-  }
-
-  const handleMoveClick = (moveIndex: number) => {
-    logger.game('Move clicked:', moveIndex)
-    onMoveClick?.(moveIndex)
-  }
-
   return (
-    <div className="flex-1 flex flex-col text-white">
-      {/* Analysis Header - Fixed Height */}
-      <div className="flex-shrink-0">
-        <AnalysisHeader
-          isAnalysisEnabled={isAnalysisEnabled}
-          onToggleAnalysis={handleToggleAnalysis}
-          onSettingsClick={handleSettingsClick}
-          showAnalysisToggle={showAnalysisFeatures}
+    <BaseGameUI
+      game={game}
+      meRef={meRef}
+      opponentRef={opponentRef}
+      currentUser={currentUser}
+      currentMoveIndex={currentMoveIndex}
+      movesOverride={movesOverride}
+      onMoveClick={onMoveClick}
+      onFirstMove={onFirstMove}
+      onPreviousMove={onPreviousMove}
+      onNextMove={onNextMove}
+      onLastMove={onLastMove}
+      onResign={onResign}
+      onOfferDraw={onOfferDraw}
+      onAcceptDraw={onAcceptDraw}
+      onToggleAnalysis={onToggleAnalysis}
+      onSettingsClick={onSettingsClick}
+      showAnalysisFeatures={showAnalysisFeatures}
+      drawOfferedBy={drawOfferedBy}
+      isRedPlayer={isRedPlayer}
+      highlightOfferDraw={highlightOfferDraw}
+      isBotMode={isBotMode}
+    >
+      {/* Content slot - either chat or bot play */}
+      {isBotMode ? (
+        <BotPlay 
+          botName={actualBotName}
+          botAvatar={actualBotAvatar}
+          onHint={handleHint}
+          onResign={onResign}
+          className="h-full"
         />
-      </div>
-
-      {/* Column Analysis - Fixed Height when visible */}
-      <div className="flex-shrink-0">
-        <AnimatePresence>
-          {showAnalysisFeatures && isAnalysisEnabled && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <ColumnAnalysis />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Move History - Fixed Height */}
-      <div className="flex-shrink-0 h-[220px]">
-        {game ? (
-          <MoveHistory game={game} onMoveClick={onMoveClick} moves={movesOverride} />
-        ) : (
-          <div className="h-full flex items-center justify-center text-gray-500">
-            No game data available
-          </div>
-        )}
-      </div>
-
-      {/* Chat or Bot Play Section - Takes remaining space with fixed height */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {isBotMode ? (
-          <BotPlay 
-            botName={botName}
-            botAvatar={botAvatar}
-            onHint={handleHint}
-            onResign={handleResign}
-            className="h-full"
-          />
-        ) : (
-          <GameChat 
-            ref={chatRef}
-            initialMessages={initialChatMessages}
-            onMessageSent={handleMessageSent}
-            currentUser={actualCurrentUser} 
-          />
-        )}
-      </div>
-
-      {/* Game Controls - Fixed Height */}
-      <div className="flex-shrink-0 mt-4 space-y-4">
-        {!isBotMode && (
-          <GameActions
-            onResign={handleResign}
-            onOfferDraw={handleOfferDraw}
-            highlightOfferDraw={highlightOfferDraw}
-            isDrawOffered={drawOfferedBy !== null}
-            canResign={true}
-            canOfferDraw={drawOfferedBy === null}
-          />
-        )}
-        <GameControls
-          onFirstMove={onFirstMove}
-          onPreviousMove={onPreviousMove}
-          onNextMove={onNextMove}
-          onLastMove={onLastMove}
-          totalMoveCount={actualTotalMoveCount}
-          currentMoveIndex={propCurrentMoveIndex}
+      ) : (
+        <GameChat 
+          ref={chatRef}
+          initialMessages={initialChatMessages}
+          onMessageSent={handleMessageSent}
+          currentUser={actualCurrentUser} 
         />
-      </div>
-    </div>
+      )}
+    </BaseGameUI>
   )
 })
 

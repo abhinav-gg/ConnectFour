@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { authApi } from "@/utils/apiClient";
-import { logger, printl } from '@/utils/logger';
+import { logger } from '@/utils/logger';
 
 export function LogoutUser() {
   const router = useRouter();

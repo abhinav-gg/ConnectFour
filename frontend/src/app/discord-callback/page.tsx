@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Loading from '@/components/loading';
 import { eventsApi } from '@/utils/apiClient';
-import { logger, printl } from '@/utils/logger';
+import { logger } from '@/utils/logger';
 
 export default function DiscordCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');

@@ -13,7 +13,7 @@ import { validateEmail, validateUsername, validatePassword } from "@shared/utils
 import { jwtDecode } from "jwt-decode";
 import { UserAccountProvider } from "@shared/types/users"
 import { maskEmail } from "@shared/utils/masks"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 import { handleGoogleLogin } from "@/utils/googleSignin"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
 import { useRouter } from "next/navigation"

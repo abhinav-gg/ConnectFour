@@ -6,7 +6,7 @@ import { useImperativeHandle, forwardRef, useState, useEffect, useRef } from "re
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronDown } from "lucide-react"
 import useSound from "@/utils/useSound"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 
 // Color mapping for additional player tokens beyond red (0) and yellow (1)
 const PLAYER_COLORS = {

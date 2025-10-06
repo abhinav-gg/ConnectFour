@@ -7,23 +7,30 @@ import { useEffect, useState } from "react"
 interface GameActionsProps {
   onResign?: () => void
   onOfferDraw?: () => void
+  onAcceptDraw?: () => void
   highlightOfferDraw?: boolean
   isDrawOffered?: boolean
   canResign?: boolean
   canOfferDraw?: boolean
+  drawOfferedBy?: number | null
+  isRedPlayer?: boolean
 }
 
 export function GameActions({
   onResign,
   onOfferDraw,
+  onAcceptDraw,
   highlightOfferDraw = false,
   isDrawOffered = false,
   canResign = true,
   canOfferDraw = true,
+  drawOfferedBy = null,
+  isRedPlayer = false,
 }: GameActionsProps) {
   const [resignConfirmPending, setResignConfirmPending] = useState(false)
   const [resignCountdown, setResignCountdown] = useState(0)
   const [drawOfferConfirmPending, setDrawOfferConfirmPending] = useState(false)
+  const [acceptDrawConfirmPending, setAcceptDrawConfirmPending] = useState(false)
 
   // Reset resignation confirmation with countdown
   useEffect(() => {
@@ -52,12 +59,22 @@ export function GameActions({
     }
   }, [drawOfferConfirmPending])
 
+  useEffect(() => {
+    if (acceptDrawConfirmPending) {
+      const timer = setTimeout(() => setAcceptDrawConfirmPending(false), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [acceptDrawConfirmPending])
+
   // Reset draw confirmation if draw is no longer available
   useEffect(() => {
     if (!canOfferDraw) {
       setDrawOfferConfirmPending(false)
     }
-  }, [canOfferDraw])
+    if (!isDrawOffered) {
+      setAcceptDrawConfirmPending(false)
+    }
+  }, [canOfferDraw, isDrawOffered])
 
   const handleResignClick = () => {
     if (!canResign) return
@@ -81,6 +98,19 @@ export function GameActions({
     }
   }
 
+  const handleAcceptDrawClick = () => {
+    if (acceptDrawConfirmPending) {
+      onAcceptDraw?.()
+      setAcceptDrawConfirmPending(false)
+    } else {
+      setAcceptDrawConfirmPending(true)
+    }
+  }
+
+  // Determine if current player is receiving a draw offer
+  const isReceivingDrawOffer = drawOfferedBy !== null && drawOfferedBy !== (isRedPlayer ? 0 : 1)
+  const hasOfferedDraw = drawOfferedBy !== null && drawOfferedBy === (isRedPlayer ? 0 : 1)
+
   const gameActions = [
     { 
       icon: Flag, 
@@ -93,10 +123,21 @@ export function GameActions({
         : "bg-red-600/80 hover:bg-red-600 border-red-500/50",
       textColor: "text-white"
     },
-    { 
+    isReceivingDrawOffer ? {
+      icon: Users,
+      onClick: handleAcceptDrawClick,
+      label: acceptDrawConfirmPending ? "Accept Draw?" : "Accept Draw",
+      confirmPending: acceptDrawConfirmPending,
+      disabled: false,
+      highlighted: true,
+      className: acceptDrawConfirmPending
+        ? "bg-green-500 hover:bg-green-600 border-green-400"
+        : "bg-green-600/80 hover:bg-green-600 border-green-500/50",
+      textColor: "text-white"
+    } : { 
       icon: Users, 
       onClick: handleDrawOfferClick, 
-      label: isDrawOffered 
+      label: hasOfferedDraw
         ? "Draw Offered" 
         : drawOfferConfirmPending 
           ? "Confirm Draw?" 
@@ -104,7 +145,7 @@ export function GameActions({
       confirmPending: drawOfferConfirmPending,
       disabled: !canOfferDraw,
       highlighted: highlightOfferDraw,
-      className: isDrawOffered
+      className: hasOfferedDraw
         ? "bg-amber-600/80 hover:bg-amber-600 border-amber-500/50"
         : drawOfferConfirmPending 
           ? "bg-blue-500 hover:bg-blue-600 border-blue-400" 
@@ -131,14 +172,20 @@ export function GameActions({
           `}
           whileHover={action.disabled ? {} : { scale: 1.02 }}
           whileTap={action.disabled ? {} : { scale: 0.98 }}
-          animate={action.label === "Draw Offered" ? {
+          animate={(action.label === "Draw Offered" || action.label === "Accept Draw") ? {
             boxShadow: [
-              "0 0 0 0 rgba(245, 158, 11, 0.7)",
-              "0 0 0 8px rgba(245, 158, 11, 0)",
-              "0 0 0 0 rgba(245, 158, 11, 0.7)"
+              action.label === "Accept Draw" 
+                ? "0 0 0 0 rgba(34, 197, 94, 0.7)"
+                : "0 0 0 0 rgba(245, 158, 11, 0.7)",
+              action.label === "Accept Draw"
+                ? "0 0 0 8px rgba(34, 197, 94, 0)"
+                : "0 0 0 8px rgba(245, 158, 11, 0)",
+              action.label === "Accept Draw"
+                ? "0 0 0 0 rgba(34, 197, 94, 0.7)"
+                : "0 0 0 0 rgba(245, 158, 11, 0.7)"
             ]
           } : {}}
-          transition={action.label === "Draw Offered" ? {
+          transition={(action.label === "Draw Offered" || action.label === "Accept Draw") ? {
             boxShadow: {
               duration: 2,
               repeat: Infinity,

@@ -5,17 +5,16 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Bot, Star, Lock, Check } from "lucide-react"
 import { Bots, BotType, getBotAvatar } from "@shared/constants/botinfo"
-
-type PlayerColor = "red" | "random" | "yellow"
+import { PlayAs } from "@shared/constants/game.constants"
 
 interface BotSelectionUIProps {
-  onStartGame?: (selectedBot: string, playerColor: PlayerColor) => void
+  onStartGame?: (selectedBot: string, playerColor: PlayAs) => void
   isLoading?: boolean
 }
 
 export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionUIProps) {
   const [selectedBot, setSelectedBot] = useState<string>("adaptive")
-  const [selectedColor, setSelectedColor] = useState<PlayerColor>("red")
+  const [selectedColor, setSelectedColor] = useState<PlayAs>(PlayAs.RED)
 
   const selectedBotData = Bots.find((bot) => bot.id === selectedBot)
 
@@ -23,7 +22,7 @@ export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionU
     setSelectedBot(botId)
   }
 
-  const handleColorSelect = (color: PlayerColor) => {
+  const handleColorSelect = (color: PlayAs) => {
     setSelectedColor(color)
   }
 
@@ -245,37 +244,37 @@ export function BotSelectionUI({ onStartGame, isLoading = false }: BotSelectionU
         <h3 className="text-lg font-medium text-center">I play as:</h3>
         <div className="flex justify-center gap-3">
           <button
-            onClick={() => handleColorSelect("red")}
+            onClick={() => handleColorSelect(PlayAs.RED)}
             className={`
               w-12 h-12 rounded-full bg-brand-accent-red flex items-center justify-center
               transition-all duration-200 hover:scale-110
-              ${selectedColor === "red" ? "ring-3 ring-white/50" : ""}
+              ${selectedColor === PlayAs.RED ? "ring-3 ring-white/50" : ""}
             `}
           >
-            {selectedColor === "red" && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
+            {selectedColor === PlayAs.RED && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
           </button>
           <button
-            onClick={() => handleColorSelect("random")}
+            onClick={() => handleColorSelect(PlayAs.RANDOM)}
             className={`
               w-12 h-12 rounded-full flex items-center justify-center overflow-hidden
               transition-all duration-200 hover:scale-110
-              ${selectedColor === "random" ? "ring-3 ring-white/50" : ""}
+              ${selectedColor === PlayAs.RANDOM ? "ring-3 ring-white/50" : ""}
             `}
             style={{
               background: "linear-gradient(90deg, #E63946 50%, #eab308 50%)",
             }}
           >
-            {selectedColor === "random" && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
+            {selectedColor === PlayAs.RANDOM && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
           </button>
           <button
-            onClick={() => handleColorSelect("yellow")}
+            onClick={() => handleColorSelect(PlayAs.YELLOW)}
             className={`
               w-12 h-12 rounded-full bg-brand-accent-yellow flex items-center justify-center
               transition-all duration-200 hover:scale-110
-              ${selectedColor === "yellow" ? "ring-3 ring-white/50" : ""}
+              ${selectedColor === PlayAs.YELLOW ? "ring-3 ring-white/50" : ""}
             `}
           >
-            {selectedColor === "yellow" && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
+            {selectedColor === PlayAs.YELLOW && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
           </button>
         </div>
       </motion.div>

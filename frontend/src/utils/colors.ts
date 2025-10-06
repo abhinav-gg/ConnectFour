@@ -1,4 +1,4 @@
-import { logger, printl } from './logger';
+import { logger } from './logger';
 
 /**
  * Evaluation color utilities for Connect 4 analysis

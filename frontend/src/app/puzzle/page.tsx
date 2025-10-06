@@ -7,7 +7,7 @@ import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import { PuzzleUI } from "@/components/puzzles/puzzle-ui"
 import { PuzzleProgress } from "@/components/puzzles/puzzle-progress"
 import { useError } from "@/components/providers/ErrorProvider"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 
 // Example fixed puzzle string
 const puzzle = new Puzzle("45342133|4243543")

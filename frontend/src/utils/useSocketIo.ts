@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { logger, printl } from './logger';
+import { logger } from './logger';
 
 interface UseSocketIoOptions {
   onMessage?: (data: any) => void;

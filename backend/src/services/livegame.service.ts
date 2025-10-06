@@ -11,7 +11,7 @@ import { userService } from "./user.service";
 import { parseUser, isBotIdentity, getIdentity } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
-import { StandardModes, BotModes } from "@shared/utils/gamemodes";
+import { StandardModes } from "@shared/utils/gamemodes";
 import { getGameTimeoutQueue, getGameDisconnectionQueue } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { GameNotFound } from "@/types/miscErrors";
@@ -67,7 +67,7 @@ export const liveGameService = {
         const metadata = await gameContext.getMetadata();
         console.log(`[🤖 BOT DEBUG] Game metadata:`, { gameId: gameContext.gameId, gamemode: metadata?.gamemode, players: metadata?.players });
 
-        if (metadata && this.hasAnyBotPlayers(metadata.players)) {
+        if (metadata && metadata.players.some(p => isBotIdentity(p))) {
             console.log(`[🤖 BOT GAME] Player disconnected from game with bot players ${gameContext.gameId}, forcing resignation`);
             console.log(`[🤖 BOT GAME] Players in game:`, metadata.players.map(p => ({ id: p, isBot: isBotIdentity(p) })));
             
@@ -347,6 +347,13 @@ export const liveGameService = {
         }
 
         // After successful move, check if next player is a bot and trigger bot move (reusable across all game modes)
+        // TODO: Future proof this part for other game modes, events etc...
+        
+        if (!StandardModes.has(metadata.gamemode)) {
+            console.log(`[🤖 BOT DEBUG] Game mode ${metadata.gamemode} does not support bot moves, skipping bot check`)
+            return { status: 200, message: 'Move made successfully' };
+        }
+
         // We need to check the opponent after the current move
         const opponentUserId = await gameContext.get2PlayerOpponentUserId();
         
@@ -609,16 +616,6 @@ export const liveGameService = {
             console.error("Unsupported game mode for disconnection");
             return;
         }
-    },
-
-
-    /**
-     * Check if any players in the game are bots (reusable across all game modes)
-     */
-    hasAnyBotPlayers(players: string[]): boolean {
-        const result = players.some(player => isBotIdentity(player));
-        console.log(`[🤖 BOT DEBUG] Checking for bot players:`, players.map(p => ({ id: p, isBot: isBotIdentity(p) })), `Result: ${result}`);
-        return result;
     },
 
     async ManageBotMove(gameId: string): Promise<void> {

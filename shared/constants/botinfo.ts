@@ -1,5 +1,7 @@
+import { UUID } from "crypto"
+
 export interface BotType {
-  id: string
+  id: UUID
   name: string
   description: string
   detailedDescription: string
@@ -11,14 +13,14 @@ export interface BotType {
 /**
  * Get bot avatar with fallback to default
  */
-export function getBotAvatar(botId: string): string {
+export function getBotAvatar(botId: UUID): string {
   const bot = Bots.find(b => b.id === botId);
   return bot?.avatar || "/icons/bots/_.png";
 }
 
 export const Bots: BotType[] = [
     {
-        id: "random",
+        id: "550e8400-e29b-41d4-a716-446655440000" as UUID,
         name: "Random",
         description: "Makes random moves",
         detailedDescription:
@@ -27,7 +29,7 @@ export const Bots: BotType[] = [
         avatar: "/icons/bots/random-bot.png",
     },
     {
-        id: "adaptive",
+        id: "550e8400-e29b-41d4-a716-446655440001" as UUID,
         name: "Adaptive",
         description: "Learns from your moves",
         detailedDescription:
@@ -36,7 +38,7 @@ export const Bots: BotType[] = [
         avatar: "/icons/bots/adaptive-bot.png",
     },
     {
-        id: "expert",
+        id: "550e8400-e29b-41d4-a716-446655440002" as UUID,
         name: "Expert (pro)",
         description: "Advanced AI opponent",
         detailedDescription:
@@ -46,7 +48,7 @@ export const Bots: BotType[] = [
         isPro: true,
     },
     {
-        id: "victor",
+        id: "550e8400-e29b-41d4-a716-446655440003" as UUID,
         name: "Victor",
         description: "Competitive AI",
         detailedDescription:
@@ -55,7 +57,7 @@ export const Bots: BotType[] = [
         avatar: "/icons/bots/victor-bot.png",
     },
     {
-        id: "beginner",
+        id: "550e8400-e29b-41d4-a716-446655440004" as UUID,
         name: "Beginner",
         description: "Easy opponent for new players",
         detailedDescription:
@@ -64,7 +66,7 @@ export const Bots: BotType[] = [
         avatar: "/icons/bots/beginner-bot.png",
     },
     {
-        id: "intermediate",
+        id: "550e8400-e29b-41d4-a716-446655440005" as UUID,
         name: "Intermediate",
         description: "Balanced gameplay",
         detailedDescription:
@@ -73,7 +75,7 @@ export const Bots: BotType[] = [
         avatar: "/icons/bots/intermediate-bot.png",
     },
     {
-        id: "e92f1571-5196-48a4-b84f-0ed1c5840e03",
+        id: "550e8400-e29b-41d4-a716-446655440006" as UUID,
         name: "Magnus Goatson",
         description: "The Ultimate Player",
         detailedDescription:
@@ -82,4 +84,4 @@ export const Bots: BotType[] = [
         avatar: "/icons/bots/magnus-bot.png",
         isPro: true,
     },
-]
+];

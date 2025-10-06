@@ -1,7 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useSocketContext } from '@/components/providers/SocketProvider';
 import { usePathname } from 'next/navigation';
-import { logger, printl } from './logger';
+import { logger } from './logger';
 
 interface PageSessionConfig {
   sessionId: string | null;

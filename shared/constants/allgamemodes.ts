@@ -14,7 +14,6 @@ export const AllGameModes = {
   STANDARD_PUZZLE: 11,
   DAILY_PUZZLE: 12,
   STANDARD_BOT_MATCH: 13,
-  STANDARD_ARMAGEDDON_BOT_MATCH: 14,
   // Add new game modes above this line
 
   EVENT_GAMEMODES_ERROR: 0xFFFF,

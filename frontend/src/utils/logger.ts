@@ -135,19 +135,6 @@ export const logger = {
   },
 };
 
-/**
- * Simple printl function for backward compatibility
- * This maintains your current API while providing the enhanced functionality
- */
-export const printl = (...args: any[]) => logger.info(...args);
-
-/**
- * Conditional compilation helpers
- * These functions get completely removed in production builds via tree-shaking
- */
-export const isDev = myConfig.NODE_ENV === 'development';
-export const isProd = myConfig.NODE_ENV === 'production';
-
 // Export for configuration changes (useful for debugging)
 export const setLogLevel = (level: LogLevel) => {
   LOG_CONFIG.level = level;

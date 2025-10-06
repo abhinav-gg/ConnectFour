@@ -30,7 +30,7 @@ import { myConfig } from "@/config/env"
 import { useRecaptcha } from "../../providers/RecaptchaProvider"
 import { useError } from "../../providers/ErrorProvider"
 import { gameApi } from "@/utils/apiClient"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 
 type CommonModes = "standard" | "armageddon" | "friendly" | "casual"
 

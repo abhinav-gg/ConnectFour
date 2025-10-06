@@ -4,7 +4,7 @@ import { UserProfile } from '@shared/types/users';
 import { useSocketContext } from './SocketProvider';
 import { useError } from './ErrorProvider';
 import { authApi } from '@/utils/apiClient';
-import { logger, printl } from '@/utils/logger';
+import { logger } from '@/utils/logger';
 import React, {
   createContext,
   useContext,

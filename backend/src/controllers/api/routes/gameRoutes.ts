@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/middleware/auth.middleware';
 import { GameInfo, TimeControl } from '@shared/types/game.types';
-import { t_GameMode } from '@shared/constants/allgamemodes';
+import { GameMode, t_GameMode } from '@shared/constants/allgamemodes';
 import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode } from '@shared/utils/gamemodes';
 import { validateTimeControl } from '@shared/utils/validation';
 import { gameService } from '@/services/game.service';
@@ -13,6 +13,7 @@ import { getIdentityString } from '@/utils/validation';
 import { GameContext } from '@/utils/gameContext';
 import { maintenanceMiddleware } from '@/lib/middleware/maintenance.middleware';
 import { isValidBotId } from '@/tools/Bots';
+import { PlayAs } from '@shared/constants/game.constants';
 
 const gameRouter = Router();
 
@@ -59,15 +60,17 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
     let gamemode: t_GameMode;
     let time_control: TimeControl;
     let botId: string | undefined;
-    let playerColor: 'red' | 'yellow' | 'random' | undefined;
+    let playerColor: PlayAs;
     
     try {
         const body = req.body;
         gamemode = body.gamemode;
         time_control = body.time_control;
-        botId = body.botId; // Optional - indicates bot game
-        playerColor = body.playerColor; // Optional - player color for bot games
+        botId = body.botId; // Optional - flag for bot opponent game
+        playerColor = body.playerColor; // Optional
         
+        console.log('Game request data:', { userId, gamemode, time_control, botId, playerColor });
+
         if (!gamemode || !time_control || !userId) {
             throw new Error('Invalid Data');
         }
@@ -78,15 +81,22 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
 
         // If botId is provided, validate bot game parameters
         if (botId) {
+
+            if (gamemode !== GameMode.STANDARD_BOT_MATCH) {
+                throw new Error('Invalid game mode for bot game');
+            }
+
             if (!isValidBotId(botId)) {
                 throw new Error('Invalid bot ID');
             }
             
-            if (!playerColor || !['red', 'yellow', 'random'].includes(playerColor)) {
+            if (!(playerColor in PlayAs) || playerColor === PlayAs.NOTINGAME) {
                 throw new Error('Invalid or missing player color for bot game');
             }
+
         } else {
             // Regular game validation
+
             let modeFromTC: t_GameMode | undefined;
             if (gamemode in sRankedArmageddonModes) {
                 modeFromTC = getGameModeByTimeControl(time_control, 'armageddon');

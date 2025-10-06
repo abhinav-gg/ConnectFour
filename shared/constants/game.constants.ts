@@ -23,4 +23,12 @@ export enum MoveClassification {
     BRILLIANT
 }
 
+export enum PlayAs {
+    RED,
+    YELLOW,
+    RANDOM,
+    NOTINGAME
+}
+
+
 // Add inaccuracy and excellent classifications in the future when making monte carlo engine

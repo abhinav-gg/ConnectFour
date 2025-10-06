@@ -37,23 +37,16 @@ export const CasualModes = new Set([
   ...PublicStandardModes,
 ]);
 
-// BOT LOGIC: Define bot game modes for special handling
-export const BotModes = new Set([
-  GameMode.STANDARD_BOT_MATCH,
-  GameMode.STANDARD_ARMAGEDDON_BOT_MATCH,
-]);
-
 export const StandardModes = new Set([
   ...CompetitiveModes,
   ...CasualModes,
-  ...BotModes,
+  GameMode.STANDARD_BOT_MATCH,
 ]);
 
 export const ArmageddonModes = new Set([
   ...sRankedArmageddonModes,
   GameMode.STANDARD_ARMAGEDDON_FRIENDLY,
   GameMode.STANDARD_ARMAGEDDON_PUBLIC_CASUAL,
-  GameMode.STANDARD_ARMAGEDDON_BOT_MATCH,
 ]);
 
 
@@ -68,9 +61,8 @@ export function CategoriseTime(timeControl: TimeControl): TimeCategory {
     throw new Error("Invalid time control settings");
   }
 
-  const totalTime = (2 * timeControl.base_time) +
+  const totalTime: number = (2 * timeControl.base_time) +
     timeControl.disadvantage + (timeControl.increment * AvgGameLength);
-
 
   // Categorize based on total game time:
   // Hyper Bullet: ≤ 60 seconds

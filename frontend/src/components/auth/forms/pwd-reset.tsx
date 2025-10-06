@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { validateEmail } from "@/../../shared/utils/validation"

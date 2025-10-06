@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useRef, useCallback, useEffect, useState } from 'react'
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 
 // Analysis result interface
 interface AnalysisResult {
@@ -346,7 +346,7 @@ export function WASMProvider({
       // Add timeout to prevent hanging requests
       const timeoutId = setTimeout(() => {
         if (currentRequestRef.current && currentRequestRef.current.id === requestId) {
-          console.warn('🔧 WASM Provider: Request timeout:', requestId)
+          logger.warn('🔧 WASM Provider: Request timeout:', requestId)
           // Resolve with fake data instead of rejecting to avoid error state
           currentRequestRef.current.resolve({
             evaluation: 0,

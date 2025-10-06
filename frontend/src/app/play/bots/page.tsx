@@ -3,33 +3,50 @@
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import { FallingCirclesBackground } from "@/components/bganimation"
 import { BotSelectionUI } from "@/components/game/full-sides/BotSelector"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AllGameModes } from "@shared/constants/allgamemodes"
 import { gameApi } from "@/utils/apiClient"
-import { logger, printl } from '@/utils/logger'
-
-type PlayerColor = "red" | "random" | "yellow"
+import { logger } from '@/utils/logger'
+import { useError } from "@/components/providers/ErrorProvider"
+import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
+import { PlayAs } from "@shared/constants/game.constants"
+import { TimeControl } from "@shared/types/game.types"
 
 export default function LiveGamePage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { showWarning, showError } = useError()
+  const { getRecaptchaToken, activateRecaptcha, isRecaptchaActive } = useRecaptcha()
 
-  const handleStartGame = async (selectedBot: string, playerColor: PlayerColor) => {
+  useEffect(() => {
+    activateRecaptcha();
+  }, [activateRecaptcha]);
+
+  const handleStartGame = async (selectedBot: string, playerColor: PlayAs) => {
     setIsLoading(true)
     
     try {
       logger.bot('Creating bot game:', { selectedBot, playerColor });
       
+      // Get reCAPTCHA token for verification
+      const recaptchaToken = await getRecaptchaToken('bot_game_request');
+      if (!recaptchaToken || !isRecaptchaActive) {
+        showWarning('reCAPTCHA verification failed. Please try again.', 5);
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await gameApi.post<{ gameLink: string }>('/request', {
         gamemode: AllGameModes.STANDARD_BOT_MATCH,
         time_control: {
-          base_time: 300000, // 5 minutes
-          increment: 0,
-          disadvantage: 0
-        },
+          base_time: 180, // 3 minutes
+          increment: 2, // 2 seconds
+          disadvantage: 0 // 0 seconds
+        } as TimeControl,
         botId: selectedBot,
-        playerColor: playerColor
+        playerColor: playerColor,
+        recaptchaToken: recaptchaToken
       });
 
       if (response.success && response.data) {
@@ -37,12 +54,11 @@ export default function LiveGamePage() {
         router.push(response.data.gameLink)
       } else {
         console.error('🤖 Failed to create bot game:', response.error)
-        // TODO: Show user-friendly error message using toast or modal
-        alert(`Failed to create bot game: ${response.error}`)
+        showError(`Failed to create bot game: ${response.error}`, "error", 8000)
       }
     } catch (error) {
       console.error('🤖 Error creating bot game:', error)
-      alert('An unexpected error occurred while creating the bot game.')
+      showError('An unexpected error occurred while creating the bot game.', "error", 8000)
     } finally {
       setIsLoading(false)
     }

@@ -3,7 +3,7 @@ import { useWASM } from "@/components/providers/WASMProvider"
 import { getEvaluationText } from "@/utils/colors"
 import { fetchOpening, Opening, unknownOpening } from "@/utils/openingService"
 import { Game } from '@shared/types/game.types'
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 
 /**
  * Analysis state interface for components

@@ -6,7 +6,7 @@ import ToolUI from "@/components/game/full-sides/ToolUI"
 import { HistoryStandardGame } from "@shared/utils/Games/history-game"
 import { useGameHistory } from "@/components/game/gameHistoryService"
 import { useWASM } from "@/components/providers/WASMProvider"
-import { logger, printl } from '@/utils/logger'
+import { logger } from '@/utils/logger'
 
 export default function ToolsPage() {
   // Simple state management like SingleplayerBoardHandler

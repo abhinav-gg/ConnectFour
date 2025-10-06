@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import NotFound from '@/app/not-found'; // Import the NotFound component
 import Loading from '../loading';
 import { api } from '@/utils/apiClient';
-import { logger, printl } from '@/utils/logger';
+import { logger } from '@/utils/logger';
 
 interface CheckAdminProps {
   children: ReactNode; // Define children prop
