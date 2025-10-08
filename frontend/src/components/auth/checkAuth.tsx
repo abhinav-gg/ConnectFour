@@ -1,7 +1,7 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import Loading from '../loading';
 import { api } from '@/utils/apiClient';
-import { logger, printl } from '@/utils/logger';
+import { logger } from '@/utils/logger';
 
 interface CheckAuthProps {
   children: ReactNode; // Define children prop
