@@ -17,7 +17,6 @@ import { AllGameModes, GameMode, t_GameMode } from "@shared/constants/allgamemod
 import { ErrorCode, createErrorResponse } from "@shared/constants/errorCodes";
 import { RoomSchema } from "@/controllers/socket/socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
-import { liveGameService } from "./livegame.service";
 import { PlayAs } from "@shared/constants/game.constants";
 
 export const gameService = {
