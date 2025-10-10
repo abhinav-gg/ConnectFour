@@ -4,10 +4,10 @@ import { UUID } from 'crypto'
 
 export const makeUserIdentity = (u: UUID): string => `user:${u}`;
 export const makeAnonIdentity = (u: UUID): string => `anon:${u}`;
-export const makeBotIdentity = (b: string): string => `bot:${b}`;
+export const makeBotIdentity = (b: UUID): string => `bot:${b}`;
 
 
-export const parseUser = (u: string): UUID | null => {
+export const parseUser = (u: string | null): UUID | null => {
   // user is of the form user:UUID OR anon:
   // if anonymous, return null
   // otherwise get the UUID
@@ -32,7 +32,7 @@ export const getIdentity = (id: string): PlayerIdentity => {
     return { user: id.slice(5) as UUID }
   }
   else if (isBotIdentity(id)) {
-    return { bot: id.slice(4) }
+    return { bot: id.slice(4) as UUID }
   }
   return {}
 }

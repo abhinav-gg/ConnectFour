@@ -1,6 +1,6 @@
 
 import { UUID } from "crypto";
-import { TimeControl, TimeCategory, GameInfo } from "@shared/types/game.types";
+import { TimeControl, TimeCategory, GameInfo, PlayAs } from "@shared/types/game.types";
 import { EloChange } from "@shared/types/game.types";
 import { GameMetadata } from "@/redis/redisSchema";
 // Convert UUID string to Buffer (16 bytes)

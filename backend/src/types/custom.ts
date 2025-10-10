@@ -40,6 +40,6 @@ export type GoogleTokenResponse = {
 export interface PlayerIdentity {
   user?: UUID;
   anon?: UUID;
-  bot?: string;
+  bot?:  UUID;
 }
 

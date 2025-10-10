@@ -64,7 +64,7 @@ export function registerMatchmakingHandlers(soc: Socket) {
 
       // Create fresh GameContext at socket level
       const gameContext = await GameContext.fromShortcode(identity, shortCode);
-      const response = await gameService.tryJoinGame(gameContext);
+      const response = await gameService.requestGameData(gameContext);
       
       console.log('Matchmaking response:', response);
       if (response.status === 404) {

@@ -67,9 +67,11 @@ export const liveGameService = {
         const metadata = await gameContext.getMetadata();
         console.log(`[🤖 BOT DEBUG] Game metadata:`, { gameId: gameContext.gameId, gamemode: metadata?.gamemode, players: metadata?.players });
 
-        if (metadata && metadata.players.some(p => isBotIdentity(p))) {
+        if (metadata && metadata.players.some(p => {
+            if (!p) throw new Error("Player not found");
+            else return isBotIdentity(p);
+        })) {
             console.log(`[🤖 BOT GAME] Player disconnected from game with bot players ${gameContext.gameId}, forcing resignation`);
-            console.log(`[🤖 BOT GAME] Players in game:`, metadata.players.map(p => ({ id: p, isBot: isBotIdentity(p) })));
             
             // Get player index for resignation
             const playerIndex = await gameContext.getPlayerIndex();
@@ -512,15 +514,12 @@ export const liveGameService = {
         const cleanupPromises = metadata.players.map(async (player, index) => {
             try {
                 console.log(`[🔓 PLAYER CLEANUP] Freeing player ${index + 1}/${metadata.players.length}: ${player}`);
-                console.log(`[🔓 PLAYER CLEANUP] Player ${player} details:`, {
-                    isBot: isBotIdentity(player),
-                    gameId
-                });
-                
-                const playerContext = await GameContext.fromGameId(player, gameId);
-                await gameService.QuitPlayerQueue(playerContext);
-                
-                console.log(`[🔓 PLAYER CLEANUP] ✅ Successfully freed player ${player}`);
+                if (player !== null && !isBotIdentity(player)) {
+                    const playerContext = await GameContext.fromGameId(player, gameId);
+                    await gameService.QuitPlayerQueue(playerContext);
+
+                    console.log(`[🔓 PLAYER CLEANUP] ✅ Successfully freed player ${player}`);
+                }
             } catch (error) {
                 console.error(`[🔓 PLAYER CLEANUP ERROR] Failed to free player ${player}:`, error);
             }

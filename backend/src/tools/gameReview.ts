@@ -1,4 +1,4 @@
-import { MoveClassification } from "@shared/constants/game.constants";
+import { MoveClassification } from "@shared/types/game.types";
 import { SelfAnalysis } from "@shared/utils/analysis";
 import { StandardGame } from "@shared/utils/Games/game";
 import { getConnect4Solver, IConnect4Solver } from "@shared/WASM/con4Solver";

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const GameMetadataSchema = z.object({
   shortcode: z.string().length(8).nullable().optional(),
-  players: z.array(z.string()),
+  players: z.array(z.string().nullable()),
   startTimestamp: z.number().nullable(),
   gamemode: z.number(),
   base_time: z.number(),

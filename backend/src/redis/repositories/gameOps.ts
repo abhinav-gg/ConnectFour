@@ -114,11 +114,6 @@ export function GameOperations(redis: Redis) {
       await redis.call('JSON.SET', key, '$', JSON.stringify(updatedMeta));
     },
 
-    async addUserToGameMetadata(gameId: string, userId: string): Promise<void> {
-      const key = genRedisGameMeta(gameId);
-      await redisJson.arrappend(key, '$.players', userId);
-    },
-
     async updateGameMetadataState(gameId: string, newState: number): Promise<void> {
       const key = genRedisGameMeta(gameId);
       await redisJson.set(key, '$.state', newState);

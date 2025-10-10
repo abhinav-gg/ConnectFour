@@ -1,23 +1,21 @@
 // src/routes/authRoutes.ts
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/middleware/auth.middleware';
-import { GameInfo, TimeControl } from '@shared/types/game.types';
+import { GameInfo, GameSetupParams, TimeControl } from '@shared/types/game.types';
 import { GameMode, t_GameMode } from '@shared/constants/allgamemodes';
-import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode } from '@shared/utils/gamemodes';
+import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode, StandardModes } from '@shared/utils/gamemodes';
 import { validateTimeControl } from '@shared/utils/validation';
 import { gameService } from '@/services/game.service';
 import { rdsDBOps } from '@/db/rds/ops';
 import { userService } from '@/services/user.service';
-import { sendUserToGame } from '@/lib/middleware/game.middleware';
+import { sendUserToGameMiddleware } from '@/lib/middleware/game.middleware';
 import { getIdentityString } from '@/utils/validation';
 import { GameContext } from '@/utils/gameContext';
-import { maintenanceMiddleware } from '@/lib/middleware/maintenance.middleware';
 import { isValidBotId } from '@/tools/Bots';
-import { PlayAs } from '@shared/constants/game.constants';
+import { PlayAs } from "@shared/types/game.types";
 
 const gameRouter = Router();
 
-gameRouter.use(maintenanceMiddleware);
 
 gameRouter.post('/player', async (req: Request, res: Response) => {
     // get username from payload
@@ -48,7 +46,7 @@ gameRouter.post('/player', async (req: Request, res: Response) => {
 });
 
 // Create Game Route
-gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame, async (req: AuthenticatedRequest, res: Response) => {
+gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGameMiddleware, async (req: AuthenticatedRequest, res: Response) => {
     let userId: string;
     try {
         userId = getIdentityString(req.identity!);
@@ -66,8 +64,8 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
         const body = req.body;
         gamemode = body.gamemode;
         time_control = body.time_control;
-        botId = body.botId; // Optional - flag for bot opponent game
         playerColor = body.playerColor; // Optional
+        botId = body.botId; // Optional - flag for bot opponent game
         
         console.log('Game request data:', { userId, gamemode, time_control, botId, playerColor });
 
@@ -79,22 +77,24 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
             throw new Error('Invalid time control settings');
         }
 
+        // if playerColor is provided, validate it
+        if (
+            typeof playerColor !== 'number' ||
+            !Object.values(PlayAs).includes(playerColor) ||
+            playerColor === PlayAs.NOTINGAME
+        ) {
+            throw new Error('Invalid or missing player color for bot game');
+        }
+
         // If botId is provided, validate bot game parameters
-        if (botId) {
+        if (gamemode === GameMode.STANDARD_BOT_MATCH) {
 
-            if (gamemode !== GameMode.STANDARD_BOT_MATCH) {
-                throw new Error('Invalid game mode for bot game');
-            }
-
-            if (!isValidBotId(botId)) {
+            if (botId === undefined || !isValidBotId(botId)) {
                 throw new Error('Invalid bot ID');
             }
             
-            if (!(playerColor in PlayAs) || playerColor === PlayAs.NOTINGAME) {
-                throw new Error('Invalid or missing player color for bot game');
-            }
+        } else if (StandardModes.has(gamemode)) {
 
-        } else {
             // Regular game validation
 
             let modeFromTC: t_GameMode | undefined;
@@ -104,10 +104,8 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
                 modeFromTC = getGameModeByTimeControl(time_control, 'standard');
             }
 
-            if (modeFromTC) {
-                if (modeFromTC !== gamemode) {
-                    throw new Error('Game mode does not match time control');
-                }
+            if (!modeFromTC || modeFromTC !== gamemode) {
+                throw new Error('Game mode does not match time control');
             }
         }
     }
@@ -121,20 +119,14 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
         const gameContext = new GameContext(userId);
         let response;
         
-        if (botId && playerColor) {
-            // Bot game request
-            console.log(`Bot Game Request: User ${userId} requested game vs bot ${botId} as ${playerColor} player`);
-            response = await gameService.createBotGame(gameContext, {
-                gamemode,
-                time_control,
-                botId,
-                playerColor
-            });
-        } else {
-            // Regular multiplayer game request
-            console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
-            response = await gameService.joinGameQueue(gameContext, { gamemode, time_control });
-        }
+        
+        console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
+        response = await gameService.joinGameQueue(gameContext, { 
+            gamemode, 
+            time_control,
+            botId,
+            playerColor
+        } as GameSetupParams);
         
         res.status(response.status).json({ gameLink: `/game?r=${response.message}` });
     }
@@ -142,8 +134,6 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
         console.log('Failed to request game:', error);
         res.status(500).json({ error: 'Failed to request game' });
     }
-
-    console.log("Game Requested");
 });
 
 gameRouter.get('/test', async (req: Request, res: Response) => {
