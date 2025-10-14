@@ -2,7 +2,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { myConfig } from '@config/env';
-import { verifySocket, sendSocketUserToGame } from '@/lib/middleware/game.middleware';
+import { verifySocket } from '@/lib/middleware/game.middleware';
 import { initSocketIO } from '@/controllers/socket/index'
 import { registerSocketHandler } from '@/controllers/socket/handlers'
 import { bootstrapSocket } from './bootstrap';
@@ -15,7 +15,6 @@ const server = createServer(express());
 const io = initSocketIO(server)
 
 io.use(verifySocket);
-io.use(sendSocketUserToGame);
 
 // Handle connections
 io.on('connection', (socket) => {

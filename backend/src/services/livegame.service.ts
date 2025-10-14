@@ -15,7 +15,7 @@ import { StandardModes } from "@shared/utils/gamemodes";
 import { getGameTimeoutQueue, getGameDisconnectionQueue } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { GameNotFound } from "@/types/miscErrors";
-import { getBotById } from "@/tools/Bots";
+import { makeBotWithIDAndGame } from "@/tools/Bots";
 
 export const liveGameService = {
     
@@ -713,7 +713,7 @@ export const liveGameService = {
             // Get the bot implementation and make a move
             console.log(`[🤖 BOT MOVE] Getting bot implementation for ${botId}`);
             try {
-                const bot = getBotById(botId, Game);
+                const bot = makeBotWithIDAndGame(botId, Game);
                 console.log(`[🤖 BOT DEBUG] Bot ${botId} implementation loaded successfully`);
                 
                 const startTime = Date.now();

@@ -22,22 +22,7 @@ const allBots = [
   PerfectBot
 ]
 
-export const getBotById = (id: string, game: Game): BotBase => {
-  if (!id) throw new Error('Invalid bot ID');
 
-  const hasBot = Bots.some(bot => bot.id === id);
-  if (!hasBot) throw new BotNotFound();
-
-  const BotClass = allBots.find(bot => bot.id === id);
-  if (!BotClass) throw new BotNotFound();
-
-  return new BotClass(game);
-}
-
-// Bot utility functions
-export function getBotInfo(id: string): BotType | undefined {
-  return Bots.find(bot => bot.id === id);
-}
 
 export function getAllBotIds(): string[] {
   return Bots.map(bot => bot.id);
@@ -47,12 +32,17 @@ export function isValidBotId(id: string): boolean {
   return Bots.some(bot => bot.id === id);
 }
 
-export function getBotsByRatingRange(minRating: number, maxRating: number): BotType[] {
-  return Bots.filter(bot => bot.rating >= minRating && bot.rating <= maxRating);
-}
-
 export function getProBots(): BotType[] {
   return Bots.filter(bot => bot.isPro === true);
+}
+
+export const makeBotWithIDAndGame = (id: string, game: Game): BotBase => {
+  if (!isValidBotId(id)) throw new Error('Invalid bot ID');
+
+  const BotClass = allBots.find(bot => bot.id === id);
+  if (!BotClass) throw new BotNotFound();
+
+  return new BotClass(game);
 }
 
 export function getRegularBots(): BotType[] {

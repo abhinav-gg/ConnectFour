@@ -67,7 +67,7 @@ export class SelfAnalysis {
       let i = 0;
       while (i <= pos.length) {
           const anal = this.solver.analyzePosition(emptyPos)
-          console.log(emptyPos, pos[i], anal)
+          // console.log(emptyPos, pos[i], anal)
           emptyPos += pos[i]
           i++
       }

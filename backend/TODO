@@ -14,9 +14,12 @@ Assume 100% disconnection detection so no need for general game tracking
 
 restructure live game ui
 
+-BACKEND TESTS
+npx tsc -p .\tsconfig.json --noEmit
 
 
-
+npx ts-node -r tsconfig-paths/register ./tests/index.ts
+------------
 
 
 tsconfig include all

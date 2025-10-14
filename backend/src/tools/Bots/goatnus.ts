@@ -4,12 +4,11 @@ import { BotBase } from './bot';
 import { Game } from '@shared/types/game.types';
 
 export class GoatnusBot extends BotBase {
-  public static id = "e92f1571-5196-48a4-b84f-0ed1c5840e03"; // Magnus Goatson
-  private solver: SelfAnalysis | null = null;
+  // Matches `Magnus Goatson` (aka Goatnus) entry in shared/constants/botinfo.ts
+  public static id = "550e8400-e29b-41d4-a716-446655440006";
 
   constructor(game: Game) {
     super(game);
-    this.solver = null;
   }
 
   async chooseMove(): Promise<Move> {
@@ -36,7 +35,4 @@ export class GoatnusBot extends BotBase {
     throw new Error("failed to find a move???")
   }
 
-  reset(): void {
-    this.solver = null;
-  }
 }

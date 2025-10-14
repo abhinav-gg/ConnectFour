@@ -2,7 +2,8 @@ import { BotBase } from './bot';
 import { Move } from '@shared/types/game.types';
 
 export class AdaptiveBot extends BotBase {
-  public static id = "adaptive";
+  // Matches `Adaptive` entry in shared/constants/botinfo.ts
+  public static id = "550e8400-e29b-41d4-a716-446655440001";
   private opponentMoveHistory: Move[] = [];
 
   async chooseMove(): Promise<Move> {

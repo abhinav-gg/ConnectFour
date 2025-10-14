@@ -12,7 +12,7 @@ import { EmailDoesNotExist, EmailExists, UsernameExists } from '@/types/dbErrors
 import { APIResponse } from '@shared/types/Responses';
 import { RedisSchema } from '@/redis/redisSchema';
 import { userService } from '../../../services/user.service';
-import { sendUserToGame } from '@/lib/middleware/game.middleware';
+import { sendUserToGameMiddleware } from '@/lib/middleware/game.middleware';
 import { rdsDBOps } from '@/db/rds/ops';
 import { redisOps } from '@/redis/ops';
 
@@ -189,7 +189,7 @@ authRouter.post('/verify-email', requireUnauthenticated, verifyRecaptcha, async 
 });
 
 // Profile Route
-authRouter.get('/me', optionalAuth, sendUserToGame, async (req: AuthenticatedRequest, res: Response) => {
+authRouter.get('/me', optionalAuth, sendUserToGameMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   
   try {
     

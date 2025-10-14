@@ -4,12 +4,12 @@ import { Game } from '@shared/types/game.types';
 import { SelfAnalysis } from '@shared/utils/analysis';
 
 export class PerfectBot extends BotBase {
+  // No explicit Perfect entry in shared/constants/botinfo.ts — keep a stable UUID for PerfectBot
   public static id = "f8a2c4d6-1234-4567-8901-123456789abc"; // Perfect Solver
-  private solver: SelfAnalysis | null = null;
+  
 
   constructor(game: Game) {
     super(game);
-    this.solver = null;
   }
 
   async chooseMove(): Promise<Move> {

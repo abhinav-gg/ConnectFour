@@ -1,11 +1,14 @@
 import { UUID } from "crypto";
 import { Game } from "@shared/types/game.types";
 import { Move } from '@shared/types/game.types';
+import { SelfAnalysis } from "@shared/utils/analysis";
 
 export abstract class BotBase {
     public static id: string;
-    protected game: Game;
+    protected readonly game: Game;
 
+    protected solver: SelfAnalysis | null = null;
+    
     constructor(game: Game) {
         this.game = game;
     }
@@ -14,13 +17,16 @@ export abstract class BotBase {
      * Choose a move from a list of legal moves based on the game state.
      * Must be implemented by subclasses.
      */
-    abstract chooseMove(): Promise<Move>;
+    async chooseMove(): Promise<Move> {
+        // return ANY legal move by default
+        return this.game.getLegalMoves()[0];
+    }
 
     /**
      * Optional: Reset the bot between games.
      * Subclasses can override this to clear internal state.
      */
     reset(): void {
-        // Default: do nothing
+        this.solver = null;
     }
 }

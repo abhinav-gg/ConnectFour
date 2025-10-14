@@ -1,11 +1,11 @@
 import { BotBase } from './bot';
 
 export class RandomBot extends BotBase {
-  public static id = "random";
+  // Matches `Random` entry in shared/constants/botinfo.ts
+  public static id = "550e8400-e29b-41d4-a716-446655440000";
 
   async chooseMove() {
     const legalMoves = this.game.getLegalMoves();
-    console.log(legalMoves, this.game);
     const index = Math.floor(Math.random() * legalMoves.length);
     return legalMoves[index];
   }
