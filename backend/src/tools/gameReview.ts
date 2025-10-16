@@ -1,3 +1,4 @@
+import { COLS } from "@shared/constants/game.constants";
 import { MoveClassification } from "@shared/types/game.types";
 import { SelfAnalysis } from "@shared/utils/analysis";
 import { StandardGame } from "@shared/utils/Games/game";
@@ -15,95 +16,152 @@ export class GameReview extends SelfAnalysis {
         return new GameReview(game, solver);
     }
 
-    Classify = (pos: string, analysis: number[]): MoveClassification => {
+    /* Classify a single move given the position string */
+    Classify = (pos: string): MoveClassification => {
 
+        let analysis = this.solver.analyzePosition(pos.slice(0, -1)); // do not include last move
+        console.log(pos, analysis);
         const col = parseInt(pos[pos.length - 1], 10) - 1;
         const red = pos.length % 2 === 0;
         if (red) analysis = analysis.map(x => -x); // invert analysis for yellow player (last move)
+        
+        // Available parameters to use for classification:
+        
         const myChoice = analysis[col];
-        const hadWinning = analysis.some(x => x > 0);
-        const hadDrawing = analysis.some(x => x === 0);
         const bestMove = Math.max(...analysis);
         const worstMove = Math.min(...analysis.filter(x => Math.abs(x) !== 1000)); // ignore -1000 (the instant loss move)
-        const bestDiff = bestMove - myChoice;
-        const worstDiff = myChoice - worstMove;
-        const hadGreat = analysis.filter(x => x >= 0).length === 1;
-        // console.log(analysis, "isRed:", red, "myChoice:", myChoice, "bestMove:", bestMove, "worstMove:", worstMove, "bestDiff:", bestDiff, "worstDiff:", worstDiff, "hadGreat:", hadGreat);
+        
+        const bestDiff = bestMove - myChoice;                           // How much worse was my move than the best    
+        const worstDiff = myChoice - worstMove;                         // How much better was my move than the worst
+        
+        const mistakeThreshold = 10;                                    // Threshold for classifying a mistake
+        const greatThreshold = 10;                                      // Threshold for classifying a great move
+        const brilliantThreshold = 20;                                  // Threshold for classifying a brilliant move
+        
+        const drawMade = myChoice === 0;                                // Made a drawing move
+        const lossMade = myChoice < 0;                                  // Made a losing move
+        const bestMade = myChoice === bestMove;                         // Made the best move
+        const hadWinning = analysis.some(x => x > 0);                   // Had any winning move
+        const hadDrawing = analysis.some(x => x === 0);                 // Had any drawing move       
+        const hadGreat = analysis.filter(x => x >= 0).length === 1;     // Had exactly one winning or drawing move (a "great" move)
 
-        // add proper opening book check here
+        // Ignore openings:
         if (pos.length < 9) {
             return MoveClassification.BOOK;
         }
 
-        if (hadGreat) {
-            if (myChoice === bestMove) {
-                if (worstDiff > 20) {
-                    return MoveClassification.BRILLIANT;
-                } else if (worstDiff > 10) {
-                    return MoveClassification.GREAT;
-                } else {
-                    return MoveClassification.BEST;
-                }
-            } else {
-                return MoveClassification.MISS;
-            }
-        }
+        const classificationRules: {
+        condition: () => boolean,
+        result: MoveClassification
+        }[] = [
 
-        if (hadWinning) {
-            if (myChoice === 0) {
-                if (myChoice > 5) {
-                    return MoveClassification.MISTAKE;
-                } else {
-                    return MoveClassification.BLUNDER;
-                }
-            } else if (myChoice < 0) {
-                if (bestDiff > 10) {
-                    return MoveClassification.MISTAKE;
-                } else {
-                    return MoveClassification.BLUNDER;
-                }
-            } else {
-                if (myChoice === bestMove) {
-                    return MoveClassification.BEST;
-                } else {
-                    return MoveClassification.GOOD;
-                }
-            }
-        } else if (hadDrawing) {
-            // best move is 0, so we can classify it as a best move
-            if (myChoice === 0) {
-                return MoveClassification.BEST;
-            } else if (myChoice < 0) {
-                if (bestDiff > 10) {
-                    return MoveClassification.MISTAKE;
-                } else {
-                    return MoveClassification.BLUNDER;
-                }
-            } else { throw new Error ("unreachable code reached"); }
-        } else {
-            // all moves are negative so we classify the move based on bestDiff
-            if (myChoice === bestMove) {
-                return MoveClassification.BEST;
-            } else if (bestDiff > 10) {
-                return MoveClassification.MISTAKE;
-            } else {
-                return MoveClassification.GOOD;
+        // Great move detection (includes BRILLIANT, GREAT, BEST, MISS)
+        {
+            condition: () => hadGreat && bestMade && worstDiff > brilliantThreshold,
+            result: MoveClassification.BRILLIANT,
+        },
+        {
+            condition: () => hadGreat && bestMade && worstDiff > greatThreshold,
+            result: MoveClassification.GREAT,
+        },
+        {
+            condition: () => hadGreat && bestMade,
+            result: MoveClassification.BEST,
+        },
+        {
+            condition: () => hadGreat && !bestMade,
+            result: MoveClassification.MISS,
+        },
+
+        // Winning opportunities missed
+        {
+            condition: () => hadWinning && drawMade && bestDiff < mistakeThreshold,
+            result: MoveClassification.MISTAKE,
+        },
+        {
+            condition: () => hadWinning && drawMade,
+            result: MoveClassification.BLUNDER,
+        },
+        {
+            condition: () => hadWinning && lossMade && bestDiff > mistakeThreshold,
+            result: MoveClassification.MISTAKE,
+        },
+        {
+            condition: () => hadWinning && lossMade,
+            result: MoveClassification.BLUNDER,
+        },
+        {
+            condition: () => hadWinning && bestMade,
+            result: MoveClassification.BEST,
+        },
+        {
+            condition: () => hadWinning,
+            result: MoveClassification.GOOD,
+        },
+
+        // Drawing opportunities missed
+        {
+            condition: () => hadDrawing && drawMade,
+            result: MoveClassification.BEST,
+        },
+        {
+            condition: () => hadDrawing && lossMade && bestDiff > mistakeThreshold,
+            result: MoveClassification.MISTAKE,
+        },
+        {
+            condition: () => hadDrawing && lossMade,
+            result: MoveClassification.BLUNDER,
+        },
+
+        // Losing positions – pick the best loss
+        {
+            condition: () => !hadWinning && !hadDrawing && bestMade,
+            result: MoveClassification.BEST,
+        },
+        {
+            condition: () => !hadWinning && !hadDrawing && bestDiff > mistakeThreshold,
+            result: MoveClassification.MISTAKE,
+        },
+        {
+            condition: () => !hadWinning && !hadDrawing,
+            result: MoveClassification.GOOD,
+        },
+        ];
+
+        for (const rule of classificationRules) {
+            if (rule.condition()) {
+                return rule.result as MoveClassification;
             }
         }
+        return MoveClassification.UNCLASSIFIABLE; // Fallback (should not happen)
     }
 
-    classifyMoves (): Record<string, MoveClassification> {
+    classifyAllMovesInGame (): Record<string, MoveClassification> {
 
         const classifications: Record<string, MoveClassification> = {};
 
         for (const stringToAnalyse of this.gameState.cumulativeMoves()) {
             if (!stringToAnalyse) continue; // skip empty strings
-            const analysis = this.solver.analyzePosition(stringToAnalyse.slice(0, -1)); // do not include last move
-            const classification = this.Classify(stringToAnalyse, analysis);
+            const classification = this.Classify(stringToAnalyse);
             classifications[stringToAnalyse] = classification;
             console.log("Classified Move:", stringToAnalyse, "as", MoveClassification[classification]);
         }
 
         return classifications;
     }
+
+    classifyAllNextMoveOptions (): Record<string, MoveClassification> {
+
+        const classifications: Record<string, MoveClassification> = {};
+        const pos = this.gameState.exportMoves();
+        for (let col = 0; col < COLS; col++) {
+            const move = pos + col;
+            const classification = this.Classify(move);
+            classifications[move] = classification;
+        }
+
+        return classifications;
+    }
+
+
 }

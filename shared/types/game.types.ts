@@ -38,7 +38,8 @@ export enum MoveClassification {
   GOOD,
   BEST,
   GREAT,
-  BRILLIANT
+  BRILLIANT,
+  UNCLASSIFIABLE
 }
 
 export enum PlayAs {

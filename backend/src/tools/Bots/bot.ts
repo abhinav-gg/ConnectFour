@@ -1,13 +1,12 @@
 import { UUID } from "crypto";
-import { Game } from "@shared/types/game.types";
-import { Move } from '@shared/types/game.types';
-import { SelfAnalysis } from "@shared/utils/analysis";
+import { Game, Move, MoveClassification } from "@shared/types/game.types";
+import { GameReview } from "../gameReview";
 
 export abstract class BotBase {
     public static id: string;
     protected readonly game: Game;
 
-    protected solver: SelfAnalysis | null = null;
+    protected solver: GameReview | null = null;
     
     constructor(game: Game) {
         this.game = game;

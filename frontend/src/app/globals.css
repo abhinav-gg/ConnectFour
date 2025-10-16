@@ -89,9 +89,13 @@
 }
 
 body {
+  font-family: k2d, sans-serif;
+}
+
+html {
   color: var(--foreground);
   background: var(--background);
-  font-family: k2d, sans-serif;
+  scroll-behavior: smooth;
 }
 
 .w-64 {
@@ -132,4 +136,5 @@ body {
 .font-inter {
   font-family: 'Inter', sans-serif;
 }
+
 

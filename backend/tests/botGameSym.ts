@@ -6,7 +6,7 @@ import { makeBotWithIDAndGame } from "../src/tools/Bots";
 async function simulateBotGame() {
     console.log('Starting informal bot vs bot game simulation...');
     const game = new StandardGame("4543");
-    const bot1 = makeBotWithIDAndGame("550e8400-e29b-41d4-a716-446655440000", game); // RandomBot
+    const bot1 = makeBotWithIDAndGame("f8a2c4d6-1234-4567-8901-123456789abc", game); // RandomBot
     // const bot2 = makeBotWithIDAndGame("550e8400-e29b-41d4-a716-446655440001", game); // AdaptiveBot
 
     let move: Move = -1;

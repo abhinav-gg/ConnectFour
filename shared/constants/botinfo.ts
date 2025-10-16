@@ -7,7 +7,7 @@ export interface BotType {
   detailedDescription: string
   rating: number
   isPro?: boolean
-  avatar: string
+  avatar?: string
 }
 
 /**
@@ -46,16 +46,7 @@ export const Bots: BotType[] = [
         rating: 1800,
         avatar: "/icons/bots/expert-bot.png",
         isPro: true,
-    },
-    {
-        id: "550e8400-e29b-41d4-a716-446655440003" as UUID,
-        name: "Victor",
-        description: "Competitive AI",
-        detailedDescription:
-        "Victor is a competitive AI designed to play at tournament level. Expect no mercy from this opponent.",
-        rating: 1650,
-        avatar: "/icons/bots/victor-bot.png",
-    },
+    }, 
     {
         id: "550e8400-e29b-41d4-a716-446655440004" as UUID,
         name: "Beginner",
@@ -73,6 +64,14 @@ export const Bots: BotType[] = [
         "A well-balanced opponent that provides moderate challenge while still being approachable for most players.",
         rating: 1200,
         avatar: "/icons/bots/intermediate-bot.png",
+    },
+    {
+        id: "f8a2c4d6-1234-4567-8901-123456789abc" as UUID,
+        name: "Perfect",
+        description: "Unbeatable AI",
+        detailedDescription:
+        "A perfect AI that makes the best possible moves every time.",
+        rating: 9999,
     },
     {
         id: "550e8400-e29b-41d4-a716-446655440006" as UUID,

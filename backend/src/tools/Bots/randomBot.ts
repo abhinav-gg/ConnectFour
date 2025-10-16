@@ -12,5 +12,6 @@ export class RandomBot extends BotBase {
 
   reset(): void {
     console.log('RandomBot has been reset.');
+    super.reset();
   }
 }

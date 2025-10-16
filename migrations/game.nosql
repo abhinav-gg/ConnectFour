@@ -3,7 +3,7 @@ GAME:
 {
   "p": "<gameUUID>",                                // Game UUID as PK
   "c": "ABC123",                                    // Sort Key: Shortcode (nullable)
-  "u": ["user:1", "user:2"],                          // Ordered list of player IDENTITIES
+  "u": ["user:1", "user:2"],                        // Ordered list of player IDENTITIES
   "d": Buffer,                                      // Game data (binary/base64)
   "i": number,                                      // GameInfo ID (integer)
   "r": 3                                            // Result (4-bit number)
@@ -13,10 +13,13 @@ GAMEPLAYERS
 {
   "p": "<userUUID>",       // Partition Key: player UUIDS ( all assumed to be users here )
   "s": "<gameUUID>",       // Sort Key: game ID
-  "t": 1699852800,         // Local Sort Key: Timestamp (unix time)
-  "m": 3,                  // Local Sort Key: GameInfo ID (integer)
-  "e": 1090,               // Starting ELO
+  "t": 1699852800,         // LSI: Timestamp (unix time)
+  "m": 3,                  // LSI: GameInfo ID (integer)
+  "i": 0,                  // Player index 
+  "e": 1090,               // Starting ELO (optional)
   "d": 5                   // Delta ELO (optional)
+  "r": 0                   // Result (optional)
+  "a": 99.764              // Accuracy (optional)
 }
 
 

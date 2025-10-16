@@ -18,45 +18,45 @@ export class SelfAnalysis {
   }
 
   sortedBestMoves(arr: number[]): number[][] {
-      // Helper: assign rank/category to a value for sorting
-      const rank = (v: number) => (v > 0 ? 1 : v === 0 ? 2 : 3);
-      // Sort with a single compare function
-      const sorted = arr
-        .map((val, idx) => ({ val, idx }))
-        .sort((a, b) => {
-          const rA = rank(a.val);
-          const rB = rank(b.val);
-    
-          if (rA !== rB) return rA - rB;
-    
-          return rA === 1
-            ? a.val - b.val // positive ascending
-            : rA === 2
-            ? 0 // zeros equal
-            : Math.abs(b.val) - Math.abs(a.val); // negatives descending abs
-        });
-    
-      // Group by equal values using reduce
-      return sorted.reduce<number[][]>((groups, { val, idx }) => {
-        if (groups.length === 0 || arr[groups[groups.length - 1][0]] !== val) {
-          groups.push([idx]);
-        } else {
-          groups[groups.length - 1].push(idx);
-        }
-        return groups;
-      }, []);
+    // Helper: assign rank/category to a value for sorting
+    const rank = (v: number) => (v > 0 ? 1 : v === 0 ? 2 : 3);
+    // Sort with a single compare function
+    const sorted = arr
+      .map((val, idx) => ({ val, idx }))
+      .sort((a, b) => {
+        const rA = rank(a.val);
+        const rB = rank(b.val);
+  
+        if (rA !== rB) return rA - rB;
+  
+        return rA === 1
+          ? a.val - b.val // positive ascending
+          : rA === 2
+          ? 0 // zeros equal
+          : Math.abs(b.val) - Math.abs(a.val); // negatives descending abs
+      });
+  
+    // Group by equal values using reduce
+    return sorted.reduce<number[][]>((groups, { val, idx }) => {
+      if (groups.length === 0 || arr[groups[groups.length - 1][0]] !== val) {
+        groups.push([idx]);
+      } else {
+        groups[groups.length - 1].push(idx);
+      }
+      return groups;
+    }, []);
   }
   
 
   Eval() {
-      const pos = this.gameState.exportMoves();
-      return this.solver.solvePosition(pos);
+    const pos = this.gameState.exportMoves();
+    return this.solver.solvePosition(pos);
   }
 
   Analyze() {
-      const pos = this.gameState.exportMoves();
-      console.log("Final Analysis for position:", pos);
-      return this.solver.analyzePosition(pos);
+    const pos = this.gameState.exportMoves();
+    console.log("Final Analysis for position:", pos);
+    return this.solver.analyzePosition(pos);
   }
 
 
@@ -73,7 +73,7 @@ export class SelfAnalysis {
       }
   }
 
-
+  /* Function to calculate the accuracy of the last move made in the given position string */
   getLastMoveAcc(pos: string) {
     const alpha = 0.8; // WEIGHTING
 
