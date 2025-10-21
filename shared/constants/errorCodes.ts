@@ -3,6 +3,8 @@
  * These codes are used across frontend and backend to ensure consistent error handling
  */
 
+export const ShortcodeGameLink = (shortcode: string) => `/game?room=${shortcode}`;
+
 export enum ErrorCode {
   // Game-related errors
   GAME_NOT_FOUND = 'GAME_NOT_FOUND',

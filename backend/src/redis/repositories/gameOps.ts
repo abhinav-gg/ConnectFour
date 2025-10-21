@@ -212,26 +212,27 @@ export function GameOperations(redis: Redis) {
       await redis.del(key);
     },
 
-    async addOrUpdateUserGameQueue(userId: string, data: UserQueue, ttl?: number): Promise<void> {
+    async addOrUpdateUserGameQueue(
+      userId: string,
+      data: Partial<UserQueue>,
+      ttl?: number
+    ): Promise<void> {
       const key = genRedisUserKey(userId);
 
-      // Store the full JSON object at root path
-      await redisJson.set(key, '$', data);
+      const keyExists = await redisJson.exists(key);
+
+      if (!keyExists) {
+        // Key doesn't exist — create it from scratch
+        await redisJson.set(key, '$', data);
+      } else {
+        // Key exists — update only provided fields
+        console.log("Updating user queue for user:", userId, "with data:", data, key, keyExists);
+        for (const [field, value] of Object.entries(data)) {
+          await redisJson.set(key, `$.${field}`, value);
+        }
+      }
 
       await redis.expire(key, ttl || RedisSchema.user.queue.ttl);
-      
-    },
-
-    async assignUserToGameQueue(userId: string, gameId: string, elo?: number | null): Promise<void> {
-      const key = genRedisUserKey(userId);
-      
-      await redisJson.set(key, '$.gameId', gameId);
-      if (elo != null) {
-        await redisJson.set(key, '$.elo', elo);
-      } else {
-        await redisJson.del(key, '$.elo');
-      }
-      
     },
 
     async filterPotentialQueueMatches(gamemode: string, elo?: number | null, limit = 10): Promise<string[]> {

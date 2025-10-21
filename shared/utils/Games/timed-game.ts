@@ -212,5 +212,9 @@ export class TimedStandardGame implements NavigableGame {
     return this.game.getAllMoves();
   }
 
+  cumulativeMoves(): any {
+    return this.game.cumulativeMoves();
+  }
+
 
 }

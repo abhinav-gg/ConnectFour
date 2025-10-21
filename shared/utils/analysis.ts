@@ -1,18 +1,18 @@
-import { StandardGame } from "./Games/game";
 import { IConnect4Solver, getConnect4Solver } from "../WASM/con4Solver";
+import { Game } from "@shared/types/game.types";
 
 
 export class SelfAnalysis {
 
-  protected gameState: StandardGame;
+  protected gameState: Game;
   protected solver: IConnect4Solver;
 
-  protected constructor(game: StandardGame, solver: IConnect4Solver) { 
+  protected constructor(game: Game, solver: IConnect4Solver) { 
     this.gameState = game;
     this.solver = solver;
   }
 
-  static async load(game: StandardGame): Promise<SelfAnalysis> {
+  static async load(game: Game): Promise<SelfAnalysis> {
     const solver = await getConnect4Solver();
     return new SelfAnalysis(game, solver);
   }

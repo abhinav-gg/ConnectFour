@@ -83,8 +83,8 @@ export function createRedisJson(redis: Redis) {
     },
 
     async exists(key: string, path = '$'): Promise<boolean> {
-      const exists = await redis.call('JSON.TYPE', key, path) as string;
-      return exists !== 'null';
+      const result = await redis.call('JSON.GET', key, path);
+      return result !== null;
     },
 
     async arrappend(key: string, path: string, value: any): Promise<number> {

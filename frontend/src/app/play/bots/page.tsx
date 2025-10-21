@@ -10,8 +10,7 @@ import { gameApi } from "@/utils/apiClient"
 import { logger } from '@/utils/logger'
 import { useError } from "@/components/providers/ErrorProvider"
 import { useRecaptcha } from "@/components/providers/RecaptchaProvider"
-import { PlayAs } from "@shared/constants/game.constants"
-import { TimeControl } from "@shared/types/game.types"
+import { TimeControl, PlayAs } from "@shared/types/game.types"
 
 export default function LiveGamePage() {
   const [isLoading, setIsLoading] = useState(false)

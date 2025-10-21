@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Bot, Star, Lock, Check } from "lucide-react"
 import { Bots, BotType, getBotAvatar } from "@shared/constants/botinfo"
-import { PlayAs } from "@shared/constants/game.constants"
+import { PlayAs } from "@shared/types/game.types"
 
 interface BotSelectionUIProps {
   onStartGame?: (selectedBot: string, playerColor: PlayAs) => void

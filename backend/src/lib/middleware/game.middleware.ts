@@ -14,7 +14,7 @@ export const sendUserToGameMiddleware = async (req: AuthenticatedRequest, res: R
     const userId = getReqPlayerUUID(req);
     
     const context = new GameContext(userId);
-    const resp = await gameService.checkUserInGame(context);
+    const resp = await gameService.assertUserGame(context);
 
     if (resp.status === 200) {
       console.log(`[🎮 MIDDLEWARE] User ${userId} is in active game redirecting...`)

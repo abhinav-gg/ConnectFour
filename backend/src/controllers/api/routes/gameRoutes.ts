@@ -79,9 +79,9 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
 
         // if playerColor is provided, validate it
         if (
-            typeof playerColor !== 'number' ||
-            !Object.values(PlayAs).includes(playerColor) ||
-            playerColor === PlayAs.NOTINGAME
+            playerColor &&
+            (!Object.values(PlayAs).includes(playerColor) &&
+            playerColor !== PlayAs.NOTINGAME)
         ) {
             throw new Error('Invalid or missing player color for bot game');
         }
@@ -93,7 +93,7 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
                 throw new Error('Invalid bot ID');
             }
             
-        } else if (StandardModes.has(gamemode)) {
+        } else if (CompetitiveModes.has(gamemode)) {
 
             // Regular game validation
 
@@ -103,7 +103,7 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
             } else if (gamemode in sRankedModes) {
                 modeFromTC = getGameModeByTimeControl(time_control, 'standard');
             }
-
+            
             if (!modeFromTC || modeFromTC !== gamemode) {
                 throw new Error('Game mode does not match time control');
             }

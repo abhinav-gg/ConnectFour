@@ -77,7 +77,7 @@ app.get('/get/:key', async (req: Request, res: Response): Promise<void> => {
 app.get('/clearredis', async (req: Request, res: Response): Promise<void> => {
   
   const redis = await getRedisClient();
-  let message = {game: '', user: ''};
+  let message = {game: '', user: '', bull: ''};
   try {
     const { keys } = await scanKeysPaginated(redis, 'game:*'); // Adjust the pattern as needed
     if (keys.length > 0) {
@@ -97,6 +97,18 @@ app.get('/clearredis', async (req: Request, res: Response): Promise<void> => {
       message.user = 'Redis cache cleared successfully';
     } else {
       message.user = 'No keys found to clear';
+    }
+  } catch (error) {
+    console.error('Error clearing Redis cache:', error);
+    res.status(500).json({ error: 'Failed to clear Redis cache' });
+  }
+  try {
+    const { keys } = await scanKeysPaginated(redis, 'bull:*'); // Adjust the pattern as needed
+    if (keys.length > 0) {
+      await redis.del(...keys);
+      message.bull = 'Redis cache cleared successfully';
+    } else {
+      message.bull = 'No keys found to clear';
     }
   } catch (error) {
     console.error('Error clearing Redis cache:', error);

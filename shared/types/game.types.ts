@@ -31,15 +31,15 @@ export type GameInfo = {
 }
 
 export enum MoveClassification {
-  BOOK,
-  BLUNDER,
-  MISS,
-  MISTAKE,
-  GOOD,
-  BEST,
-  GREAT,
-  BRILLIANT,
-  UNCLASSIFIABLE
+  BOOK              = 0,         
+  BLUNDER           = 1,
+  MISS              = 2,
+  MISTAKE           = 3,
+  GOOD              = 4,
+  BEST              = 5,
+  GREAT             = 6,
+  BRILLIANT         = 7,
+  UNCLASSIFIABLE    = 8
 }
 
 export enum PlayAs {
@@ -66,6 +66,7 @@ export interface Game {
   getLegalMoves(): Move[];
   gameOver: boolean;
   currentPlayer: Player;
+  cumulativeMoves(): any;
 }
 // Extended interface for games that support move navigation
 
