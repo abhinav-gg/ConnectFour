@@ -87,3 +87,43 @@ export function gameinfoFromMeta(metadata: GameMetadata): GameInfo {
         },
     } as GameInfo;
 }
+
+
+export function addToPlayerList (playerList: (string | null)[], newPlayer: string, playerColor: PlayAs): (string | null)[] {
+    // Add the new player to the list
+    let playerListCopy = [...playerList];
+    if (playerColor !== PlayAs.FIT_IN) {
+        
+        // ensure all entries are null
+        if (playerList.some(p => p !== null)) {
+            throw new Error('Player list already has players assigned');
+        }
+        let idx = -1;
+        if (playerColor === PlayAs.RED) {
+            idx = 0;
+        } else if (playerColor === PlayAs.YELLOW) {
+            idx = 1;
+        } else if (playerColor === PlayAs.RANDOM) {
+            idx = Math.random() < 0.5 ? 0 : 1;
+        } else {
+            throw new Error('Invalid player color');
+        }
+
+        if (playerList[idx] !== null) {
+            throw new Error('Requested color already taken');
+        } 
+        playerList[idx] = newPlayer;
+
+    } else {
+        const emptySlotIndex = playerList.findIndex(playerId => playerId === null);
+        if (emptySlotIndex === -1) {
+            throw new Error('No available slot in player list');
+        }
+        playerList[emptySlotIndex] = newPlayer;
+    }
+
+    console.log(playerListCopy, playerColor, newPlayer, playerList);
+
+    return playerList;
+}
+

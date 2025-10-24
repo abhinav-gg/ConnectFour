@@ -1,111 +1,62 @@
+// src/jobs/index.ts
 import { Queue } from 'bullmq';
 import { setupEmailJobSet } from './sets/email';
 import { setupGameDisconnectJobSet } from './sets/game.disconnection';
 import { setupGameTimeoutJobSet } from './sets/game.timeout';
 import { JobKeys } from './jobKeys';
 
-// Process-wide singleton registry backed by globalThis to survive duplicate imports/HMR
-const GLOBAL_QUEUE_STORE = Symbol.for('cf.jobs.QueueStore');
-const GLOBAL_LOG_FLAG = Symbol.for('cf.jobs.LogFlag');
-
-type QueueMap = Map<string, Queue>;
-type QueueSetupFunction = () => Promise<Queue>;
-
-interface GlobalJobStore {
-  [GLOBAL_QUEUE_STORE]?: QueueMap;
-  [GLOBAL_LOG_FLAG]?: boolean;
-}
-
-const globalStore = globalThis as unknown as GlobalJobStore;
-
-const QueueStore: QueueMap = 
-  globalStore[GLOBAL_QUEUE_STORE] ?? 
-  (globalStore[GLOBAL_QUEUE_STORE] = new Map<string, Queue>());
-
-// Log once on initialization
-if (!globalStore[GLOBAL_LOG_FLAG]) {
-  globalStore[GLOBAL_LOG_FLAG] = true;
-  console.log('[Jobs] QueueStore initialized');
-}
-
 /**
- * Internal helper to register a queue in the global store
+ * Global singleton registry for queues.
+ * Ensures a single Queue instance per name, even across hot reloads.
  */
-function registerQueue(name: string, queue: Queue): void {
-  QueueStore.set(name, queue);
+const QUEUE_REGISTRY_KEY = Symbol.for('cf.jobs.QueueRegistry');
+type QueueRegistry = Map<string, Queue>;
+
+const globalStore = globalThis as Record<symbol, any>;
+const queueRegistry: QueueRegistry =
+  globalStore[QUEUE_REGISTRY_KEY] ?? (globalStore[QUEUE_REGISTRY_KEY] = new Map());
+
+if (!queueRegistry.has('__init__')) {
+  console.log('[Jobs] Queue registry initialized');
 }
 
-/**
- * Ensures a queue is initialized only once, using lazy initialization
- */
-async function ensureQueue(name: string, setup: QueueSetupFunction): Promise<Queue> {
-  const existing = QueueStore.get(name);
-  if (existing) return existing;
-  
-  const queue = await setup();
-  registerQueue(name, queue);
+/** Lazily registers or returns an existing queue */
+async function registerQueue(name: string, setupFn: () => Promise<Queue>): Promise<Queue> {
+  if (queueRegistry.has(name)) return queueRegistry.get(name)!;
+  const queue = await setupFn();
+  queueRegistry.set(name, queue);
   return queue;
 }
 
-/**
- * Generic queue getter with proper error messaging
- */
-function getQueue(queueName: string, queueType: string): Queue {
-  const queue = QueueStore.get(queueName);
-  if (!queue) {
-    throw new Error(`${queueType} queue not initialized. Call setupAll*Jobs() first.`);
-  }
-  return queue;
+/** Retrieves a queue with descriptive error if missing */
+function getQueue(name: string, label: string): Queue {
+  const q = queueRegistry.get(name);
+  if (!q) throw new Error(`[Jobs] ${label} queue not initialized?`);
+  return q;
 }
 
-// Public queue getters
-export function getEmailQueue(): Queue {
-  return getQueue(JobKeys.email.queueName, 'Email');
-}
+// ---- Public setup APIs ---- //
 
-export function getGameDisconnectionQueue(): Queue {
-  return getQueue(JobKeys.game_disconnect.queueName, 'Game disconnection');
-}
-
-export function getGameTimeoutQueue(): Queue {
-  return getQueue(JobKeys.game_timeout.queueName, 'Game timeout');
-}
-
-/**
- * Initialize job queues required by the API server
- * Currently includes: Email jobs
- */
 export async function setupAllAPIJobs(): Promise<void> {
-  await ensureQueue(JobKeys.email.queueName, setupEmailJobSet);
+  await registerQueue(JobKeys.email.queueName, setupEmailJobSet);
 }
 
-/**
- * Initialize job queues required by the Socket server
- * Currently includes: Game disconnection, Game timeout
- */
 export async function setupAllSocketJobs(): Promise<void> {
   await Promise.all([
-    ensureQueue(JobKeys.game_disconnect.queueName, setupGameDisconnectJobSet),
-    ensureQueue(JobKeys.game_timeout.queueName, setupGameTimeoutJobSet),
+    registerQueue(JobKeys.game_disconnect.queueName, setupGameDisconnectJobSet),
+    registerQueue(JobKeys.game_timeout.queueName, setupGameTimeoutJobSet),
   ]);
 }
 
-/**
- * Initialize all job queues (both API and Socket)
- * Use this when both servers run in the same process or for shared jobs
- */
-export async function setupAllJobs(): Promise<void> {
-  await Promise.all([
-    setupAllAPIJobs(),
-    setupAllSocketJobs(),
-  ]);
-}
+// ---- Public accessors ---- //
 
-// Diagnostic exports
 export const JobRegistry = {
-  getEmailQueue,
-  getGameDisconnectionQueue,
-  getGameTimeoutQueue,
-  getQueueCount: (): number => QueueStore.size,
-  getAllQueueNames: (): readonly string[] => Array.from(QueueStore.keys()),
+  getEmailQueue: () => getQueue(JobKeys.email.queueName, 'Email'),
+  getGameDisconnectionQueue: () =>
+    getQueue(JobKeys.game_disconnect.queueName, 'Game disconnection'),
+  getGameTimeoutQueue: () =>
+    getQueue(JobKeys.game_timeout.queueName, 'Game timeout'),
+  getQueueCount: () => queueRegistry.size - 1, // minus marker
+  getAllQueueNames: () =>
+    Array.from(queueRegistry.keys()).filter(k => k !== '__init__'),
 } as const;

@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import { myConfig } from '@config/env';
 import { PlayerIdentity } from '@/types/custom';
 import { authService } from '@/services/auth.service';
-import { Socket } from 'socket.io';
+import { RedisSchema } from '@/redis/redisSchema';
 
 
 export interface AuthenticatedRequest extends Request {
@@ -77,28 +77,38 @@ export const requireUnauthenticated = async (req: AuthenticatedRequest, res: Res
 export const authenticateSession = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
   const token = req.cookies.sessionToken; // Get the session token from the request cookies
-  if (!token) {
-    res.status(401).json({ error: 'Session token required' });
-    return; // Ensure we return here to avoid further execution
-  }
-
-  let id: PlayerIdentity = {}
-  try {
-    id = await authService.validateToken(token)
-  } catch {
-    res.status(403).json({ error: 'Error evaluating token' });
-    return
+  
+  const setAnonymous = async () => { // TODO: abstract somewhere else and remove duplication
+    const { token, anonId } = await authService.makeAnonymousSession();
+    res.cookie('sessionToken', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 1000 * RedisSchema.session.ttl, // in milliseconds
+    });
+    return anonId;
   }
   
-  if (id.anon) {
-    req.identity = id;
+  let id: PlayerIdentity = {}
+  try {
+    if (!token) {
+      throw new Error('No session token');
+    }
+
+    id = await authService.validateToken(token)
+    if (id.anon || id.user) {
+      req.identity = id;
+      return next();
+    } else {
+      throw new Error('Invalid token');
+    }
+
+  } catch {
+    const id = await setAnonymous();
+    req.identity = {
+      anon: id
+    };
     return next();
-  } else if (id.user) {
-    req.identity = id;
-    return next();
-  } // bots can't login
-  else {
-    res.status(403).json({ error: 'Invalid or expired token' });
   }
 };
 

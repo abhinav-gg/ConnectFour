@@ -1,15 +1,10 @@
-import express, { Router } from 'express';
-import { Request, Response } from 'express';
-import { createServer } from 'http';
+import { Router, Request, Response } from 'express';
 import { getRedisClient } from '@/redis/redisClient';
 import pool from '@/db/rds/rdsClient'; // Adjust the import based on your database setup
 import { dynamoDBOps } from '@/db/dynamodb/ops';
-import authRouter from '@/controllers/api/routes/authRoutes';
-import { sendEmailVerifyCode } from '@/lib/email/verifyCodes';
 import { rdsDBOps } from '@/db/rds/ops';
-import { redisOps } from '@/redis/ops';
 import { createRedisJson, scanKeysPaginated } from '@/redis/redisHelper';
-import { getEmailQueue } from '@/jobs';
+import { JobRegistry } from '@/jobs';
 import { JobKeys } from '@/jobs/jobKeys';
 import { enterMaintenanceMode, exitMaintenanceMode } from '@/lib/maintenance';
 
@@ -133,7 +128,7 @@ catch (error) {
 app.get('/test/email', async (req: Request, res: Response) => {
 try {
     console.log("attempt to send")
-    await getEmailQueue().add(
+    await JobRegistry.getEmailQueue().add(
       JobKeys.email.stringId("123543", Date.now().toString()),
       { subject: "hi", to: "agupta.cam7@gmail.com", html: "<h1>Test Email</h1>" }
     );

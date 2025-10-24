@@ -18,8 +18,6 @@ import { redisOps } from '@/redis/ops';
 
 const authRouter = Router();
 
-const UserSessionTTL = RedisSchema.session.ttl;
-
 // Registration Route
 authRouter.post('/register/start', requireUnauthenticated, verifyRecaptcha, async (req: Request, res: any) => {
 
@@ -143,7 +141,7 @@ authRouter.post('/login', requireUnauthenticated, verifyRecaptcha, async (req: R
         httpOnly: true,
         secure: true,
         sameSite: 'strict',
-        maxAge: 1000 * UserSessionTTL, // in milliseconds
+        maxAge: 1000 * RedisSchema.session.ttl, // in milliseconds
       });
       res.json({ status: 'Success' });
     }
@@ -182,28 +180,17 @@ authRouter.post('/verify-email', requireUnauthenticated, verifyRecaptcha, async 
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 1000 * UserSessionTTL, // in milliseconds
+      maxAge: 1000 * RedisSchema.session.ttl, // in milliseconds
     });
     res.json({ status: 'Success' });
   }
 });
 
 // Profile Route
-authRouter.get('/me', optionalAuth, sendUserToGameMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+authRouter.get('/me', authenticateSession, sendUserToGameMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   
   try {
-    
-    if (!req.identity) {
-
-      const sessionToken = await authService.makeAnonymousSession();
-      res.cookie('sessionToken', sessionToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        maxAge: 1000 * UserSessionTTL, // in milliseconds
-      });
-    } 
-    
+      
     const userId = req.identity?.user;
     const user = await userService.GetUserByID(userId ?? null);
 
@@ -376,7 +363,7 @@ authRouter.get("/google/callback", async (req: Request, res: Response): Promise<
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 1000 * UserSessionTTL, // in milliseconds
+      maxAge: 1000 * RedisSchema.session.ttl, // in milliseconds
     });
 
     res.setHeader('Content-Type', 'text/html');

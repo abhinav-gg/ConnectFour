@@ -16,6 +16,7 @@ import { getIdentity } from '@/utils/validation';
 import { PlayerIdentity } from '@/types/custom';
 import jwt from 'jsonwebtoken';
 import { myConfig } from '@config/env';
+import { UUID } from 'crypto';
 
 
 const disallowedUsernames = new Set(RESERVED_USERNAMES);
@@ -39,13 +40,13 @@ export const authService = {
     return sessionToken;
   },
 
-  async makeAnonymousSession(): Promise<string> {
+  async makeAnonymousSession(): Promise<{ token: string; anonId: UUID }> {
     const redisOp = await redisOps();
     const sessionToken = generateSessionToken();
     const userId = generateUUID();
     try {
       await redisOp.user.setSession(sessionToken, `anon:${userId}`);
-      return sessionToken;
+      return { token: sessionToken, anonId: userId };
     } catch (error) {
       console.error('Failed to create anonymous session:', error);
       throw new Error('Anonymous session creation failed');

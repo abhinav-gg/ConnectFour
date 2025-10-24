@@ -46,23 +46,23 @@ export async function scanKeysWithTTL(redis: Redis, pattern: string): Promise<{ 
   return results;
 }
 
-export async function checkRedisHealth(timeoutMs = 2000): Promise<boolean> {
-  try {
-    // Create a timeout promise to avoid hanging
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Redis health check timed out")), timeoutMs)
-    );
-
-    // Redis PING command returns "PONG" if healthy
-    const pingPromise = (await getRedisClient()).ping();
-
-    const result = await Promise.race([pingPromise, timeoutPromise]);
-
-    return result === "PONG";
-  } catch (err) {
-    console.error("Redis health check failed:", err);
-    return false;
+export async function checkRedisHealth(timeoutMs = 2000, retries = 5): Promise<boolean> {
+  for (let i = 1; i <= retries; i++) {
+    try {
+      const client = await getRedisClient();
+      const pong = await Promise.race([
+        client.ping(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Redis health check timed out')), timeoutMs)
+        ),
+      ]);
+      return pong === 'PONG';
+    } catch (err: any) {
+      console.warn(`[Redis Health] Attempt ${i}/${retries} failed: ${err.message}`);
+      await new Promise((res) => setTimeout(res, 500)); // small delay before retry
+    }
   }
+  return false;
 }
 
 export function createRedisJson(redis: Redis) {

@@ -12,7 +12,7 @@ import { parseUser, isBotIdentity, getIdentity } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
 import { StandardModes } from "@shared/utils/gamemodes";
-import { getGameTimeoutQueue, getGameDisconnectionQueue } from "@/jobs";
+import { JobRegistry } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { GameNotFound } from "@/types/miscErrors";
 import { makeBotWithIDAndGame } from "@/tools/Bots";
@@ -39,7 +39,7 @@ export const liveGameService = {
         await r.game.updateGameMetadataState(gameId, GameState.ABORTED);
 
         // free up the players of the game
-        await this.FreeGamePlayers(gameContext);
+        await gameService.FreeGamePlayers(gameContext);
 
     },
 
@@ -94,10 +94,11 @@ export const liveGameService = {
 
         const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
         // only add the job if it does not exist
-        const existingJob = await getGameDisconnectionQueue().getJob(jobId);
+        const q = JobRegistry.getGameDisconnectionQueue()
+        const existingJob = await q.getJob(jobId);
         if (!existingJob) {
             console.log("------- CREATED DISCONNECTION JOB -------");
-            await getGameDisconnectionQueue().add(
+            q.add(
                 "game_disconnect", // Job name (can be generic)
                 {
                     gameId: gameContext.gameId,
@@ -127,7 +128,7 @@ export const liveGameService = {
         }
 
         const jobId = JobKeys.game_disconnect.stringId(gameContext.userId, gameContext.gameId);
-        const job = await getGameDisconnectionQueue().getJob(jobId);
+        const job = await (JobRegistry.getGameDisconnectionQueue()).getJob(jobId);
         if (job) {
             console.log(`❌ Canceled game disconnection job with ID: ${jobId}`);
             await job.remove();
@@ -314,15 +315,6 @@ export const liveGameService = {
                 Game.getLastMoveTimestamp(),
             );
 
-            // set job for game timeout based on new current player time left
-            const delay = tl[cp] + 100
-            const jobId = JobKeys.game_timeout.stringId(gameContext.userId!, gameContext.gameId);
-            await getGameTimeoutQueue().add(
-                jobId, { userId: gameContext.userId, gameId: gameContext.gameId }, { delay });
-
-            gameContext.invalidateTimedata();
-
-            // broadcast the move to the game room
             const socket = getSocketIO();
             socket.to(RoomSchema.game.key(gameContext.shortcode!)).emit('game:move', {
                 col,
@@ -331,6 +323,23 @@ export const liveGameService = {
                 rTimes: Game.getTimeLeft(),
                 lMove: Game.getLastMoveTimestamp(),
             });
+
+
+            // set job for game timeout based on new current player time left
+            const delay = tl[cp] + 100
+            const q = JobRegistry.getGameTimeoutQueue()
+            const jobId = JobKeys.game_timeout.stringId(gameContext.userId!, gameContext.gameId);
+            await q.add(
+                jobId, { userId: gameContext.userId, gameId: gameContext.gameId }, { delay }
+            );
+            const job = await q.getJob(jobId);
+            if (job) {
+                await job.remove();
+                console.log(`🗑️ Removed job ${jobId}`);
+            }
+
+            gameContext.invalidateTimedata();
+            
         } else {
             // update the game times
             await r.game.updateGameTimedata(
@@ -437,7 +446,7 @@ export const liveGameService = {
 
         // Free the players of the game
         console.log(`[🏁 GAME END] Starting player cleanup`);
-        await this.FreeGamePlayers(gameContext);
+        await gameService.FreeGamePlayers(gameContext);
         console.log(`[🏁 GAME END] Player cleanup completed`);
 
         console.log(`[🏁 GAME END] === HandleGameOver completed ===`);
@@ -478,58 +487,6 @@ export const liveGameService = {
         }
         return Game;
     },
-
-
-
-    async FreeGamePlayers(gameContext: GameContext): Promise<void> {
-        console.log(`[🔓 PLAYER CLEANUP] === FreeGamePlayers started ===`);
-        
-        // Get fresh metadata to check game state
-        gameContext.invalidateMetadata();
-        const gameId = await gameContext.resolveGameId();
-        const metadata = await gameContext.getMetadata();
-        
-        console.log(`[🔓 PLAYER CLEANUP] Game data:`, {
-            gameId,
-            hasMetadata: !!metadata,
-            state: metadata?.state,
-            players: metadata?.players,
-            playerCount: metadata?.players?.length
-        });
-        
-        if (!metadata || !gameId) {
-            console.log(`[🔓 PLAYER CLEANUP] Missing metadata or gameId, skipping cleanup`);
-            return;
-        }
-
-        // if the game state is in progress then we can not free players
-        if (metadata.state === GameState.IN_PROGRESS) {
-            console.log(`[🔓 PLAYER CLEANUP] Game still in progress, skipping player cleanup`);
-            return;
-        }
-
-        console.log(`[🔓 PLAYER CLEANUP] Starting cleanup for ${metadata.players.length} players`);
-        
-        // free up the players of the game - use Promise.all to handle async operations properly
-        const cleanupPromises = metadata.players.map(async (player, index) => {
-            try {
-                console.log(`[🔓 PLAYER CLEANUP] Freeing player ${index + 1}/${metadata.players.length}: ${player}`);
-                if (player !== null && !isBotIdentity(player)) {
-                    const playerContext = await GameContext.fromGameId(player, gameId);
-                    await gameService.QuitPlayerQueue(playerContext);
-
-                    console.log(`[🔓 PLAYER CLEANUP] ✅ Successfully freed player ${player}`);
-                }
-            } catch (error) {
-                console.error(`[🔓 PLAYER CLEANUP ERROR] Failed to free player ${player}:`, error);
-            }
-        });
-        
-        await Promise.all(cleanupPromises);
-        console.log(`[🔓 PLAYER CLEANUP] === FreeGamePlayers completed ===`);
-
-    },
-
 
 
     async checkTimeOuts(gameContext: GameContext): Promise<ServiceResponse> {

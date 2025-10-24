@@ -6,10 +6,10 @@ import { CasualModes, CompetitiveModes, StandardModes } from "@shared/utils/game
 import { packGameInfo, packStandardGameData, uuidToBuffer } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
 import { FinishedGameStates } from "@shared/utils/gamestates";
-import { calculateEloChanges, gameinfoFromMeta } from "@/utils/game";
+import { addToPlayerList, calculateEloChanges, gameinfoFromMeta } from "@/utils/game";
 import { generateUUID } from "@/utils/auth";
 import { GameMetadata, GameMetadataSchema, UserQueue } from "@/redis/redisSchema";
-import { isUserIdentity, makeUserIdentity, parseUser, makeBotIdentity } from "@/utils/validation";
+import { isUserIdentity, makeUserIdentity, parseUser, makeBotIdentity, isBotIdentity } from "@/utils/validation";
 import { getSocketIO } from "@/controllers/socket";
 import { userService } from "./user.service";
 import { AllGameModes, GameMode, t_GameMode } from "@shared/constants/allgamemodes";
@@ -37,9 +37,7 @@ export const gameService = {
                     return { status: 500, message: 'Game Error - no metadata found' };
                 }
                 let redirect = '';
-                if (metadata.gamemode === GameMode.STANDARD_BOT_MATCH) {
-                    redirect = "/game?room=bot";
-                } else {
+                if (metadata.gamemode === GameMode.STANDARD_BOT_MATCH || StandardModes.has(metadata.gamemode)) {
                     redirect = ShortcodeGameLink(metadata.shortcode ?? "");
                 }
                 if (metadata.state === GameState.IN_PROGRESS) {
@@ -167,24 +165,20 @@ export const gameService = {
 
             // Create bot identity
             const botIdentity = makeBotIdentity(botId as UUID);
-            
-            // Assign human player to the game
-            // const newGameContext = await GameContext.fromGameId(gameContext.userId, gameId);
 
             await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
                 gameinfo: packGameInfo(gameInfo),
                 timeAdded: Date.now(),            
             } as UserQueue);
-            console.log(`User ${gameContext.userId} added to casual queue for game mode ${gamemode}`);
 
             // For friendly or casual games, we can directly create a game and return the shortcode
             const gameMeta = await this.CreateGame(gameInfo, true);
             
             // Create a new GameContext for the new game
             const newGameContext = await GameContext.fromGameId(gameContext.userId, gameMeta.id);
-            await this.AssignPlayerToGame(newGameContext, null); // called without elo for casual games
+            await this.AssignPlayerToGame(newGameContext, null, playerColor); // called without elo for casual games
 
-            const botPlayerList = this.addToPlayerList(gameMeta.players, botIdentity, undefined); // add bot to empty slot
+            const botPlayerList = addToPlayerList(gameMeta.players, botIdentity, PlayAs.FIT_IN); // add bot to empty slot
             await r.game.updateGameMetadata(gameMeta.id, { players: botPlayerList });
 
             return { status: 200, message: "Success!" };
@@ -415,6 +409,10 @@ export const gameService = {
 
     },
 
+
+    /**
+     * Assigns a player to a game by updating the game metadata and user queue.
+     */
     async AssignPlayerToGame (gameContext: GameContext, elo: number | null, playerColor?: PlayAs): Promise<void> {
 
         // check that the player is not already in a game and exists in the redis players list
@@ -446,10 +444,58 @@ export const gameService = {
             if (listToPass.length == 0) {
                 listToPass = [null, null];
             }
-            const playerList = this.addToPlayerList(listToPass, gameContext.userId, playerColor);
+            const playerList = addToPlayerList(listToPass, gameContext.userId, playerColor ?? PlayAs.FIT_IN);
             await r.game.updateGameMetadata(gameContext.gameId, { players: playerList });
             gameContext.invalidateMetadata();
         }
+    },
+
+    async FreeGamePlayers(gameContext: GameContext): Promise<void> {
+        console.log(`[🔓 PLAYER CLEANUP] === FreeGamePlayers started ===`);
+        
+        // Get fresh metadata to check game state
+        gameContext.invalidateMetadata();
+        const gameId = await gameContext.resolveGameId();
+        const metadata = await gameContext.getMetadata();
+        
+        console.log(`[🔓 PLAYER CLEANUP] Game data:`, {
+            gameId,
+            hasMetadata: !!metadata,
+            state: metadata?.state,
+            players: metadata?.players,
+            playerCount: metadata?.players?.length
+        });
+        
+        if (!metadata || !gameId) {
+            console.log(`[🔓 PLAYER CLEANUP] Missing metadata or gameId, skipping cleanup`);
+            return;
+        }
+
+        // if the game state is in progress then we can not free players
+        if (metadata.state === GameState.IN_PROGRESS) {
+            console.log(`[🔓 PLAYER CLEANUP] Game still in progress, skipping player cleanup`);
+            return;
+        }
+
+        console.log(`[🔓 PLAYER CLEANUP] Starting cleanup for ${metadata.players.length} players`);
+        
+        // free up the players of the game - use Promise.all to handle async operations properly
+        const cleanupPromises = metadata.players.map(async (player, index) => {
+            try {
+                console.log(`[🔓 PLAYER CLEANUP] Freeing player ${index + 1}/${metadata.players.length}: ${player}`);
+                if (player !== null && !isBotIdentity(player)) {
+                    const playerContext = await GameContext.fromGameId(player, gameId);
+                    await gameService.QuitPlayerQueue(playerContext);
+
+                    console.log(`[🔓 PLAYER CLEANUP] ✅ Successfully freed player ${player}`);
+                }
+            } catch (error) {
+                console.error(`[🔓 PLAYER CLEANUP ERROR] Failed to free player ${player}:`, error);
+            }
+        });
+        
+        await Promise.all(cleanupPromises);
+        console.log(`[🔓 PLAYER CLEANUP] === FreeGamePlayers completed ===`);
 
     },
 
@@ -604,42 +650,6 @@ export const gameService = {
     },
 
 
-    addToPlayerList (playerList: (string | null)[], newPlayer: string, playerColor: PlayAs | undefined): (string | null)[] {
-        // Add the new player to the list
-        let playerListCopy = [...playerList];
-        if (playerColor !== undefined) {
-            
-            // ensure all entries are null
-            if (playerList.some(p => p !== null)) {
-                throw new Error('Player list already has players assigned');
-            }
-            let idx = -1;
-            if (playerColor === PlayAs.RED) {
-                idx = 0;
-            } else if (playerColor === PlayAs.YELLOW) {
-                idx = 1;
-            } else if (playerColor === PlayAs.RANDOM) {
-                idx = Math.random() < 0.5 ? 0 : 1;
-            } else {
-                throw new Error('Invalid player color');
-            }
-
-            if (playerList[idx] !== null) {
-                throw new Error('Requested color already taken');
-            } 
-            playerList[idx] = newPlayer;
-
-        } else {
-            const emptySlotIndex = playerList.findIndex(playerId => playerId === null);
-            if (emptySlotIndex === -1) {
-                throw new Error('No available slot in player list');
-            }
-            playerList[emptySlotIndex] = newPlayer;
-        }
-
-        console.log(playerListCopy, playerColor, newPlayer, playerList);
-
-        return playerList;
-    },
+    
 
 }

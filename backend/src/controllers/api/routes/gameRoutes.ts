@@ -81,7 +81,7 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
         if (
             playerColor &&
             (!Object.values(PlayAs).includes(playerColor) &&
-            playerColor !== PlayAs.NOTINGAME)
+            playerColor !== PlayAs.FIT_IN)
         ) {
             throw new Error('Invalid or missing player color for bot game');
         }

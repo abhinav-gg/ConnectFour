@@ -1,5 +1,5 @@
 import argon2 from 'argon2';
-import { randomBytes } from 'crypto';
+import { randomBytes, UUID } from 'crypto';
 
 export function generateSessionToken(): string {
   // 16 bytes = 128 bits random
@@ -17,6 +17,6 @@ export const generateVerificationCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-export const generateUUID = (): string => {
+export const generateUUID = (): UUID => {
   return crypto.randomUUID();
 };
