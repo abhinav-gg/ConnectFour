@@ -5,8 +5,6 @@ import { BaseGameUI, BaseGameUIProps, GameUIRef } from "./BaseGameUI"
 import GameChat, { ChatRef } from "@/components/game/utility/chat"
 import { BotPlay } from "@/components/game/utility/bot-play"
 import { ChatMessage } from "@shared/types/Websocket"
-import { PlayerData } from "@shared/types/users"
-import { TimedStandardGame } from "@shared/utils/Games/timed-game"
 import { logger } from '@/utils/logger'
 
 export interface LiveGameRef extends GameUIRef {

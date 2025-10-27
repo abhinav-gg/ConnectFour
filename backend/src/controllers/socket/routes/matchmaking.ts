@@ -10,6 +10,7 @@ import { GameContext } from '@/utils/gameContext';
 import { GameInfo, TimeControl } from '@shared/types/game.types';
 import { GameState } from '@shared/constants/allgamestates';
 import { ErrorCode } from '@shared/constants/errorCodes';
+import { JoinMetadata } from '@shared/types/Websocket';
 
 async function handleDisconnectSocket(socket: Socket) {
   try {
@@ -117,29 +118,16 @@ export function registerMatchmakingHandlers(soc: Socket) {
           } as TimeControl
         } as GameInfo,
         isSpectating,
-        isP2Bot: isP2Bot || false
-      });
+        isBot: isP2Bot || false
+      } as JoinMetadata);
 
       // After player joins, check if this is a bot game and trigger bot move if needed
       if (!isSpectating && metadata && metadata.state === GameState.IN_PROGRESS) {
-        // Check if any player is a bot and if it's their turn
-        const timedata = await gameContext.getTimedata();
-        if (timedata && metadata.players.length === 2) {
-          const currentPlayerIndex = timedata.cTurn;
-          const currentPlayerId = metadata.players[currentPlayerIndex];
-          
-          if (currentPlayerId && isBotIdentity(currentPlayerId)) {
-            console.log("Bot's turn detected on player join, triggering bot move");
-            // Trigger bot move with a small delay to ensure socket connection is stable
-            setTimeout(async () => {
-              try {
-                await liveGameService.ManageBotMove(gameContext.gameId!);
-              } catch (error) {
-                console.error("Error triggering bot move on join:", error);
-              }
-            }, 500);
-          }
+        const gameId = await gameContext.resolveGameId();
+        if (!gameId) {
+          throw new Error('Game ID not found for active game');
         }
+        await liveGameService.ManageBotMove(gameId);
       }
 
     } catch (error) {

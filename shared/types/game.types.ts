@@ -23,6 +23,13 @@ export type TimeControl = {
   disadvantage: Seconds;
 }
 
+export enum PlayAs {
+  RED,
+  YELLOW,
+  RANDOM,
+  FIT_IN
+}
+
 export type TimeCategory = "hyper-bullet" | "bullet" | "blitz" | "rapid";
 
 export type GameInfo = {
@@ -41,14 +48,6 @@ export enum MoveClassification {
   BRILLIANT         = 7,
   UNCLASSIFIABLE    = 8
 }
-
-export enum PlayAs {
-  RED,
-  YELLOW,
-  RANDOM,
-  NOTINGAME
-}
-
 
 export type GameSetupParams = {
   gamemode: t_GameMode;

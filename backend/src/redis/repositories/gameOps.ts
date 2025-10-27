@@ -142,14 +142,14 @@ export function GameOperations(redis: Redis) {
       }
     },
 
-    async setInitialTimedata(gameId: string, ttl?: number): Promise<void> {
+    async setInitialTimedata(gameId: string, players: number, ttl?: number): Promise<void> {
       const key = genRedisGameTime(gameId);
       await redis.call('JSON.SET', key, '$', JSON.stringify({
         cTurn: 0,
         mTimes: [],
         rTimes: [],
         lMove: null,
-        drawOffer: [],
+        drawOffer: Array(players).fill(false),
       } as GameTimedata));
     },
 

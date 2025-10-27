@@ -2,7 +2,7 @@ import { dynamoDBOps } from "@/db/dynamodb/ops";
 import { redisOps } from "@/redis/ops";
 import { ServiceResponse } from "@/types/custom";
 import { EloChange, GameInfo, GameSetupParams, TimeControl } from "@shared/types/game.types";
-import { CasualModes, CompetitiveModes, StandardModes } from "@shared/utils/gamemodes";
+import { CasualModes, CompetitiveModes, StandardModes } from "@shared/utils/gameinfo";
 import { packGameInfo, packStandardGameData, uuidToBuffer } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
 import { FinishedGameStates } from "@shared/utils/gamestates";
@@ -18,6 +18,8 @@ import { RoomSchema } from "@/controllers/socket/socketRoomSchema";
 import { GameContext } from "@/utils/gameContext";
 import { PlayAs } from "@shared/types/game.types";
 import { UUID } from "crypto";
+import { StandardGameMetadata } from "@shared/types/Websocket";
+import { PlayerData } from "@shared/types/users";
 
 export const gameService = {
 
@@ -56,139 +58,70 @@ export const gameService = {
     },
   
     /**
-     * Function called to being matchmaking for a user. If a match is found, it will return the game ID. If not, user will be added to redis queue.
+     * Function called to begin matchmaking for a user. If a match is found, it will return the game ID. If not, user will be added to redis queue.
      */
     async joinGameQueue (gameContext: GameContext, gameparams: GameSetupParams): Promise<ServiceResponse> {
 
-        const { gamemode } = gameparams;
+        const { gamemode, time_control, botId, playerColor } = gameparams;
 
         // invariant, the user is NOT in a game or queue already - checked in middleware
+        // invariant, time_control is validated beforehand
 
         if (CompetitiveModes.has(gamemode)) {
-
             return { status: 404, message: 'Not Implemented Yet' };
             // const competitiveResult = await this.joinCompetitiveQueue(gameContext, gameInfo);
             // if (competitiveResult) {
             //     return competitiveResult;
             // }
-
-        } else if (CasualModes.has(gamemode)) {
-            return await this.joinCasualQueue(gameContext, gameparams);
-        } else if (gamemode === GameMode.STANDARD_BOT_MATCH) {
-            return await this.joinBotQueue(gameContext, gameparams);
-        } else {
-            return { status: 400, message: 'Invalid Game Mode' };
         }
-    },
 
-    /**
-     * Function called to create a casual/friendly/fun game and return the shortcode immediately.
-     */
-    async joinCasualQueue (gameContext: GameContext, gameparams: GameSetupParams): Promise<ServiceResponse> {
+        // Validate mode and prepare game info
+        const isBotGame = gamemode === GameMode.STANDARD_BOT_MATCH;
+        const isCasualGame = CasualModes.has(gamemode);
 
-        const { gamemode, time_control } = gameparams;
-        const gameInfo = { gamemode, time_control };
-
-        if (!CasualModes.has(gamemode)) {
+        if (!isBotGame && !isCasualGame) {
             return { status: 400, message: 'Invalid Game Mode' };
         }
 
-        const r = await redisOps();
-
-        await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
-            gameinfo: packGameInfo(gameInfo),
-            timeAdded: Date.now(),            
-        } as UserQueue);
-        console.log(`User ${gameContext.userId} added to casual queue for game mode ${gamemode}`);
-
-        // For friendly or casual games, we can directly create a game and return the shortcode
-        const gameMeta = await this.CreateGame(gameInfo, true);
-        
-        // Create a new GameContext for the new game
-        const newGameContext = await GameContext.fromGameId(gameContext.userId, gameMeta.id);
-        await this.AssignPlayerToGame(newGameContext, null); // called without elo for casual games
-        return { status: 200, message: gameMeta.shortcode || gameMeta.id };
-
-    },
-
-    /**
-     * Function called to create a bot game with the given parameters. The bot game will have no timers and the bot will play instantly.
-     */
-    async joinCompetitiveQueue (gameContext: GameContext, gameparams: GameSetupParams): Promise<ServiceResponse | null> {
-        // if the user is already in a game or already in a queue, throw an error
-        throw new Error('Not implemented yet');
-        const r = await redisOps();
-        const { gamemode, time_control } = gameparams;
-        const gameInfo = {
-            gamemode, time_control
-        }
-
-        // get user elo for the gamemode
-        const userElo = await userService.getOrSetPlayerElo(gameContext.userId, gamemode);
-        
-        // Add user to the competitive queue
-        await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
-            gameinfo: packGameInfo(gameInfo),
-            timeAdded: Date.now(),
-            elo: userElo,
-        } as UserQueue);
-        
-        console.log(`User ${gameContext.userId} added to competitive queue for game mode ${gamemode} with ELO ${userElo}`);
-        
-        // TODO: Implement actual matchmaking logic
-        // check redis game players with this gamemode and sort by elo AND time added
-        // if there is a good match, call create game to set up the game and return the string gameID
-        // if there is no match, user stays in queue
-        
-        // For now, just return null to indicate user was added to queue
-        return null;
-    },
-
-    /**
-     * Function called to create a bot game with the given parameters. The bot game will have no timers and the bot will play instantly.
-     */
-    async joinBotQueue(gameContext: GameContext, gameparams: GameSetupParams): Promise<ServiceResponse> {
-        const { gamemode, botId, playerColor } = gameparams;
-
-        const r = await redisOps();
-        
         try {
+            const r = await redisOps();
 
-            // BOT LOGIC: Force time control to zero for bot games - no timers allowed
-            const botTimeControl: TimeControl = {
-                base_time: 180,
-                increment: 2,
-                disadvantage: 10
-            };
+            // Determine time control based on game type
+            const effectiveTimeControl = isBotGame 
+                ? { base_time: 180, increment: 2, disadvantage: 10 }
+                : time_control!;
 
-            const gameInfo = { gamemode, time_control: botTimeControl };
+            const gameInfo = { gamemode, time_control: effectiveTimeControl };
 
-            // Create bot identity
-            const botIdentity = makeBotIdentity(botId as UUID);
-
+            // Add user to queue
             await r.game.addOrUpdateUserGameQueue(gameContext.userId, {
                 gameinfo: packGameInfo(gameInfo),
                 timeAdded: Date.now(),            
             } as UserQueue);
+            console.log(`User ${gameContext.userId} added to ${isBotGame ? 'bot' : 'casual'} queue for game mode ${gamemode}`);
 
-            // For friendly or casual games, we can directly create a game and return the shortcode
+            // Create game with shortcode
             const gameMeta = await this.CreateGame(gameInfo, true);
             
-            // Create a new GameContext for the new game
+            // Create new GameContext and assign player
             const newGameContext = await GameContext.fromGameId(gameContext.userId, gameMeta.id);
-            await this.AssignPlayerToGame(newGameContext, null, playerColor); // called without elo for casual games
+            await this.AssignPlayerToGame(newGameContext, null, playerColor);
 
-            const botPlayerList = addToPlayerList(gameMeta.players, botIdentity, PlayAs.FIT_IN); // add bot to empty slot
-            await r.game.updateGameMetadata(gameMeta.id, { players: botPlayerList });
+            // Bot-specific logic: add bot to empty slot
+            if (isBotGame) {
+                const botIdentity = makeBotIdentity(botId as UUID);
+                const players = (await newGameContext.getMetadata())!.players;
+                const botPlayerList = addToPlayerList(players, botIdentity, PlayAs.FIT_IN);
+                await r.game.updateGameMetadata(gameMeta.id, { players: botPlayerList });
+            }
 
-            return { status: 200, message: "Success!" };
+            return { status: 200, message: gameMeta.shortcode! };
             
         } catch (error) {
-            console.error('Error creating bot game:', error);
-            return { status: 500, message: 'Failed to create bot game' };
+            console.error(`Error creating ${isBotGame ? 'bot' : 'casual'} game:`, error);
+            return { status: 500, message: `Failed to create ${isBotGame ? 'bot' : 'casual'} game` };
         }
     },
-
 
     /**
      * Function called to quit the matchmaking queue for a user.
@@ -228,9 +161,14 @@ export const gameService = {
         const shortcode = needShortCode ? await dynamoDBOps.game.getUniqueShortcode() : null;
 
         const gameId = generateUUID();
+        let players: number = 2;
+        if (!StandardModes.has(gameinfo.gamemode)) {
+            throw new Error('Invalid game mode for now. help!');
+        }
+
         const gameMeta = GameMetadataSchema.parse({
             state: GameState.SCHEDULED,
-            players: [],
+            players: Array(players).fill(null),
             gamemode: gameinfo.gamemode,
             startTimestamp: Date.now(),
             base_time: gameinfo.time_control?.base_time,
@@ -241,7 +179,7 @@ export const gameService = {
 
         await r.game.setInitialMetadata(gameId,  gameMeta);
 
-        await r.game.setInitialTimedata(gameId);
+        await r.game.setInitialTimedata(gameId, players);
 
         return { id: gameId, ...gameMeta};
     },
@@ -285,67 +223,121 @@ export const gameService = {
             throw new Error('Game not found');
         }
 
-        // BOT LOGIC: Prevent reconnection to bot games - they should have already ended on disconnect
-        if (gameMeta.gamemode === GameMode.STANDARD_BOT_MATCH) {
-            
-
-            // 
-
-
-        } else if (StandardModes.has(gameMeta.gamemode)) {
-
-            const p1Id = parseUser(gameMeta.players[0]);
-            const p2Id = parseUser(gameMeta.players[1]);
-            const p1 = await userService.GetUserByID(p1Id);
-            const p2 = await userService.GetUserByID(p2Id);
-
-            const SettingUpData = {
-                moves: await gameContext.getMoves(),
-                shortcode: gameMeta.shortcode,
-                gamemode: gameMeta.gamemode,
-                rTimes: [1000 * gameMeta.base_time, 1000 * gameMeta.base_time + 1000 * gameMeta.disadvantage],
-                lTime: gTimes.lMove,
-                turn: 0
-            }
-
-            let p1EloChange, p2EloChange;
-            if (CompetitiveModes.has(gameMeta.gamemode)) {
-                
-                if (!p1Id || !p2Id) {
-                    throw new Error('Players not found in game metadata');
-                }
-
-                const allEloChanges = await this.getGameEloChanges(gameContext);
-                p1EloChange = allEloChanges.get(p1Id);
-                p2EloChange = allEloChanges.get(p2Id);
-
-            }
-
-            // each player needs to be send the game setup metadata
-            const io = getSocketIO();
-            if (!meOnly || gameContext.userId === gameMeta.players[0]) {
-                console.log("Sending setup to player 1:", p1);
-                io.to(RoomSchema.user.key(gameMeta.players[0] ?? "")).emit(RoomSchema.game.key("setup"), {
-                    ...SettingUpData,
-                    me: p1,
-                    opponent: p2,
-                    iRed: true,
-                    eloChanges: p1EloChange,
-                });
-            } 
-            if (!meOnly || gameContext.userId === gameMeta.players[1]) {
-                console.log("Sending setup to player 2:", p2);
-                io.to(RoomSchema.user.key(gameMeta.players[1] ?? "")).emit(RoomSchema.game.key("setup"), {
-                    ...SettingUpData,
-                    me: p2,
-                    opponent: p1,
-                    iRed: false,
-                    eloChanges: p2EloChange,
-                });
-            }
-        } else {
-            // Handle non-standard modes
+        if (!StandardModes.has(gameMeta.gamemode)) {
             throw new Error('Unimplemented gamemode for socket connection');
+        }
+
+        // Common setup data for all standard modes
+        const baseSetupData = {
+            moves: await gameContext.getMoves(),
+            shortcode: gameMeta.shortcode || '', // Ensure string type for StandardGameMetadata
+            gamemode: gameMeta.gamemode,
+            rTimes: [1000 * gameMeta.base_time, 1000 * gameMeta.base_time + 1000 * gameMeta.disadvantage] as [number, number],
+            lTime: gTimes.lMove || 0, // Ensure number type
+            turn: 0
+        };
+
+        const io = getSocketIO();
+        const isBotGame = gameMeta.gamemode === GameMode.STANDARD_BOT_MATCH;
+
+        // Get player profiles
+        const p1Id = parseUser(gameMeta.players[0]);
+        const p2Id = parseUser(gameMeta.players[1]);
+        
+        let p1Profile: PlayerData, p2Profile: PlayerData;
+        
+        if (isBotGame) {
+            // BOT LOGIC: Determine which player is human and which is bot
+            const humanIndex = gameMeta.players.findIndex(p => p !== null && !isBotIdentity(p));
+            const botIndex = 1 - humanIndex;
+            
+            if (humanIndex === -1) {
+                throw new Error('No human player found in bot game');
+            }
+
+            const humanPlayer = gameMeta.players[humanIndex];
+            const botPlayer = gameMeta.players[botIndex];
+
+            if (!humanPlayer || !botPlayer) {
+                throw new Error('Invalid player configuration in bot game');
+            }
+
+            const humanId = parseUser(humanPlayer);
+            const humanUserProfile = await userService.GetUserByID(humanId);
+            
+            // Convert to PlayerData by adding time field
+            const humanProfile: PlayerData = {
+                ...humanUserProfile,
+                time: 1000 * gameMeta.base_time,
+                elo: undefined,
+            };
+            
+            // Bot profile with required PlayerData fields (frontend will lookup full bot info)
+            const botProfile: PlayerData = { 
+                username: botPlayer, // Bot UUID - frontend will use this to lookup bot info
+                time: 1000 * gameMeta.base_time + 1000 * gameMeta.disadvantage,
+                elo: undefined, // Frontend will set from bot info
+            };
+
+            // Assign to correct positions (index 0 = red, index 1 = yellow)
+            p1Profile = humanIndex === 0 ? humanProfile : botProfile;
+            p2Profile = humanIndex === 0 ? botProfile : humanProfile;
+        } else {
+            // Regular player game - get both player profiles and convert to PlayerData
+            const p1UserProfile = await userService.GetUserByID(p1Id);
+            const p2UserProfile = await userService.GetUserByID(p2Id);
+            
+            p1Profile = {
+                ...p1UserProfile,
+                time: 1000 * gameMeta.base_time,
+                elo: undefined,
+            };
+            p2Profile = {
+                ...p2UserProfile,
+                time: 1000 * gameMeta.base_time + 1000 * gameMeta.disadvantage,
+                elo: undefined,
+            };
+        }
+
+        // Get elo changes for competitive modes (not for bot games)
+        let eloChanges: Map<string, EloChange> | null = null;
+        if (CompetitiveModes.has(gameMeta.gamemode) && !isBotGame) {
+            if (!p1Id || !p2Id) {
+                throw new Error('Players not found in game metadata for competitive mode');
+            }
+            eloChanges = await this.getGameEloChanges(gameContext);
+        }
+
+        // Helper function to send setup to a specific player
+        const sendSetupToPlayer = (playerIndex: 0 | 1) => {
+            const playerId = gameMeta.players[playerIndex];
+            if (!playerId) return;
+
+            // Skip if meOnly is true and this isn't the requesting player
+            if (meOnly && gameContext.userId !== playerId) return;
+
+            const playerUserId = parseUser(playerId);
+            const playerEloChange = eloChanges?.get(playerUserId!) || null;
+
+            const setupPayload: StandardGameMetadata = {
+                ...baseSetupData,
+                players: [p1Profile, p2Profile],
+                myPNum: playerIndex,
+                eloChanges: playerEloChange,
+            };
+
+            console.log(isBotGame 
+                ? `BOT LOGIC: Sending setup to player ${playerIndex + 1} (bot UUID: ${p2Profile.username})`
+                : `Sending setup to player ${playerIndex + 1}: ${playerUserId}`
+            );
+
+            io.to(RoomSchema.user.key(playerId)).emit(RoomSchema.game.key("setup"), setupPayload);
+        };
+
+        // Send setup to both players (or just one if meOnly is true)
+        sendSetupToPlayer(0);
+        if (!isBotGame) {
+            sendSetupToPlayer(1); // Don't send to bot in bot games
         }
     },
 
@@ -511,24 +503,17 @@ export const gameService = {
 
                 return { status: 404, message: ErrorCode.GAME_NOT_FOUND };
             }
-            console.log("Trying to join game with ID:", gameContext.gameId, "and metadata:", metadata);
-            
-            // BOT LOGIC: Prevent joining bot games if they exist - bot games should end immediately on disconnect
-            if (metadata.gamemode === GameMode.STANDARD_BOT_MATCH) {
-                return { status: 404, message: ErrorCode.BOT_GAME_ENDED };
-            }
             
             // Check if user is already in this game with fresh data
             gameContext.invalidatePlayerData();
             const isAlreadyPlayer = await gameContext.isPlayerInGame();
             if (isAlreadyPlayer) {
 
-                if (metadata.state === GameState.IN_PROGRESS) {
+                if (metadata.state === GameState.IN_PROGRESS || metadata.state === GameState.SCHEDULED) {
                     console.log("RECONNECTING SPECIFIC PLAYER");
-                    await this.ConnectPlayerSocket(gameContext, true);
-                    return { status: 200, message: 'Reconnected to game' };
-                } else if (metadata.state === GameState.SCHEDULED) {
-                    console.log("Already waiting for game to start");
+                    if (metadata.state !== GameState.SCHEDULED) {
+                        await this.ConnectPlayerSocket(gameContext, true);
+                    } // TODO - fix this logic....
                     return { status: 200, message: 'Already in the game' };
                 } else {
                     console.log("Game is in an unexpected state:", metadata.state);

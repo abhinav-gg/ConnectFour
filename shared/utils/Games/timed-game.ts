@@ -2,7 +2,7 @@ import { HistoryStandardGame } from './history-game';
 import { GameInfo, Move, Player, TimedMoveResult } from '../../types/game.types';
 import { GameState } from '@shared/constants/allgamestates';
 import { GameMode } from '@shared/constants/allgamemodes';
-import { ArmageddonModes, StandardModes } from '../gamemodes';
+import { ArmageddonModes, StandardModes } from '../gameinfo';
 import { NavigableGame } from '@shared/types/game.types';
 
 export class TimedStandardGame implements NavigableGame {

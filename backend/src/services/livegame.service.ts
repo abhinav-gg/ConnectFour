@@ -11,7 +11,7 @@ import { userService } from "./user.service";
 import { parseUser, isBotIdentity, getIdentity } from "@/utils/validation";
 import { GameContext } from "@/utils/gameContext";
 import { GameState } from "@shared/constants/allgamestates";
-import { StandardModes } from "@shared/utils/gamemodes";
+import { StandardModes } from "@shared/utils/gameinfo";
 import { JobRegistry } from "@/jobs";
 import { JobKeys } from "@/jobs/jobKeys";
 import { GameNotFound } from "@/types/miscErrors";
@@ -63,11 +63,22 @@ export const liveGameService = {
             return;
         }
 
+        
         // BOT LOGIC: Check if this game has any bot players - if so, immediately resign instead of allowing reconnection
         const metadata = await gameContext.getMetadata();
-        console.log(`[🤖 BOT DEBUG] Game metadata:`, { gameId: gameContext.gameId, gamemode: metadata?.gamemode, players: metadata?.players });
+        if (!metadata) {
+            throw new Error("Game metadata not found");
+        }
+        
+        // Check that the game is actually in progress, if not just abort the game
+        if (metadata.state !== GameState.IN_PROGRESS) {
+            // get the actual game moves and check every player has made at least one move... TODO
+            console.log(`[🤖 BOT DEBUG] Game ${gameContext.gameId} is not in progress, aborting`);
+            await this.AbortGame(gameContext);
+            return;
+        }
 
-        if (metadata && metadata.players.some(p => {
+        if (metadata.players.some(p => {
             if (!p) throw new Error("Player not found");
             else return isBotIdentity(p);
         })) {
@@ -83,6 +94,13 @@ export const liveGameService = {
                 );
                 console.log(`[🤖 BOT GAME] Resignation completed for game ${gameContext.gameId}`);
             }
+            // give them ten seconds to reconnect before ending the bot game
+
+
+            
+            // END THE BOT GAME!!!!
+
+
             return; // No reconnection allowed in games with bots
         }
 

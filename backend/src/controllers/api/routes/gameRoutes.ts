@@ -3,7 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/middleware/auth.middleware';
 import { GameInfo, GameSetupParams, TimeControl } from '@shared/types/game.types';
 import { GameMode, t_GameMode } from '@shared/constants/allgamemodes';
-import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode, StandardModes } from '@shared/utils/gamemodes';
+import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode, StandardModes } from '@shared/utils/gameinfo';
 import { validateTimeControl } from '@shared/utils/validation';
 import { gameService } from '@/services/game.service';
 import { rdsDBOps } from '@/db/rds/ops';

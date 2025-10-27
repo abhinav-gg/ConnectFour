@@ -23,7 +23,7 @@ import {
 import { cn } from "@/utils/cn"
 import { GameMode } from "@shared/constants/allgamemodes"
 import { validateTimeControl } from "@shared/utils/validation"
-import { getGameModeByTimeControl } from "@shared/utils/gamemodes"
+import { getGameModeByTimeControl } from "@shared/utils/gameinfo"
 import { ErrorCode, getErrorMessage } from "@shared/constants/errorCodes"
 import { parseApiError, handleApiError } from "@/utils/errorHandling"
 import { myConfig } from "@/config/env"

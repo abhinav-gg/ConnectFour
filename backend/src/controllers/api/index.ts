@@ -10,9 +10,6 @@ import { enterMaintenanceMode, exitMaintenanceMode } from '@/lib/maintenance';
 
 const app = Router();
 
-
-
-
 async function getRedisValue(key: string): Promise<string | null> {
   const redis = await getRedisClient();
   let resp;

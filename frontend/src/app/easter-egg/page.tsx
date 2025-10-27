@@ -1,9 +1,5 @@
 'use client';
-
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Home } from 'lucide-react'
-
 
 function TypewriterText({ text, delay = 50, className = "" }: { text: string, delay?: number, className?: string }) {
     const [displayedText, setDisplayedText] = useState('')
@@ -36,7 +32,7 @@ function TypewriterText({ text, delay = 50, className = "" }: { text: string, de
 const EasterEggPage = () => {
   const [text, setText] = useState('');
   const [countdown, setCountdown] = useState(10);
-  const fullText = "This product was inspired by RT and our countless games of connect four in college. I promised I'd make this tool for us back then and I'm sorry it took so long but hope you like it now!";
+  const fullText = "This project was inspired by our countless games of connect four in school. I said I'd make this tool for all of us back then and I wish it didn't take so long but hope you like it now!";
 
   useEffect(() => {
     // Typewriter effect

@@ -39,22 +39,23 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { logger } from '@/utils/logger'
 import { UnifiedGameLayout } from "@/components/layouts/game-layout"
 import LiveGameWithAnalysis, { LiveGameRef } from "@/components/game/full-sides/LiveGameUI"
-import { ChatMessage, JoinMetadata, StandardGameMove, StandardSpectatingMetadata } from "@shared/types/Websocket"
-import { ErrorCode, getErrorMessage } from "@shared/constants/errorCodes"
+import { ChatMessage, JoinMetadata, StandardGameMove } from "@shared/types/Websocket"
+import { ErrorCode } from "@shared/constants/errorCodes"
 import useSound from "@/utils/useSound"
 import { useSocketContext } from "@/components/providers/SocketProvider"
-import { useGameSession, useUser, useBackend } from "@/components/providers/BackendProvider"
+import { useGameSession, useUser } from "@/components/providers/BackendProvider"
 import { StandardGameMetadata } from "@shared/types/Websocket"
 import { PlayerData } from "@shared/types/users"
 import { GameState } from "@shared/constants/allgamestates"
 import { GameEndModal } from "@/components/game/game-end-popup"
 import { GameStartModal } from "@/components/game/game-start-popup"
 import { useWASM } from "@/components/providers/WASMProvider"
-import { EloChange, GameInfo, TimeControl } from "@shared/types/game.types"
+import { EloChange, GameInfo } from "@shared/types/game.types"
 import { TimedStandardGame } from "@shared/utils/Games/timed-game"
-import { CategoriseTime, printGameMode, printTimeControl } from "@shared/utils/gamemodes"
+import { printGameMode, printTimeControl } from "@shared/utils/gameinfo"
 import { GameMode } from "@shared/constants/allgamemodes"
-import { useGameHistory } from "@/components/game/gameHistoryService"
+import { Bots, getBotAvatar } from "@shared/constants/botinfo"
+import { UUID } from "crypto"
 
 export default function LiveGamePage() {
   const router = useRouter()
@@ -229,7 +230,7 @@ export default function LiveGamePage() {
     }
   }, [shouldActivateWASM, isWASMActive, activateWASM, deactivateWASM])
 
-  const [startSFX] = [useSound("/sounds/start.mp3")]
+  // const [startSFX] = [useSound("/sounds/start.mp3")]
 
   // Chat and Move History initial messages
   const [chatMessages] = useState<ChatMessage[]>([
@@ -293,7 +294,7 @@ export default function LiveGamePage() {
           break
         case "joined":
           logger.socket("Successfully joined matchmaking with data:", JSON.stringify(data))
-          const { shortcode, gameinfo, isSpectating, isP2Bot } = data as JoinMetadata
+          const { shortcode, gameinfo, isSpectating, isBot: isP2Bot } = data as JoinMetadata
           const gi = gameinfo as GameInfo;
           gameInfoRef.current = gi; // Store GameInfo for later use
           if (shortcode && currentShortcode && currentShortcode !== shortcode) {
@@ -335,26 +336,48 @@ export default function LiveGamePage() {
     onPrefixedMessage("game", (event, data) => {
       switch (event) {
         case "setup": {
+          console.log("📨 WEBSOCKET: Received game setup data:", data)
           const setupData = data as StandardGameMetadata
 
-          // Show (or re-show) the start popup, then close shortly after showing match found
-          setShowStartPopup(true)
-          setTimeout(() => {
-            setShowStartPopup(false)
-            logger.game('MATCHMAKING: Closed start popup after showing match found')
-          }, 3000)
+          // NEW STRUCTURE: Use players array and myPNum
+          const myPNum = setupData.myPNum ?? 0; // Default to 0 if not provided
+          const opponentPNum = myPNum === 0 ? 1 : 0;
+          
+          const myPlayerData = setupData.players[myPNum];
+          const opponentPlayerData = setupData.players[opponentPNum];
 
-          // play start sound
-
-          // Populate refs from server
+          // Populate my data from players array
           meRef.current = {
-            username: setupData.me.username,
-            pfp: setupData.me.pfp || meRef.current?.pfp || '/icons/user.svg',
-            time: setupData.me.time,
-            elo: setupData.me.elo,
+            username: myPlayerData.username,
+            pfp: myPlayerData.pfp || meRef.current?.pfp || '/icons/user.svg',
+            time: myPlayerData.time,
+            elo: myPlayerData.elo,
           }
-          opponentRef.current = setupData.opponent
-          isRedRef.current = setupData.iRed
+          
+          // BOT LOGIC: If bot game, lookup bot info using UUID from opponent.username
+          if (isP2Bot) {
+            const botUUID = opponentPlayerData.username; // Backend sends bot UUID as username
+            const botInfo = Bots.find(b => b.id === botUUID)
+            
+            if (botInfo) {
+              logger.bot('BOT: Found bot info for UUID', botUUID, ':', botInfo.name)
+              opponentRef.current = {
+                username: botInfo.name,
+                pfp: getBotAvatar(botInfo.id as UUID),
+                time: opponentPlayerData.time,
+                elo: botInfo.rating,
+              }
+            } else {
+              logger.bot('BOT: Bot UUID not found in botinfo.ts, using server data')
+              opponentRef.current = opponentPlayerData
+            }
+          } else {
+            // Regular player game - use server data as-is
+            opponentRef.current = opponentPlayerData
+          }
+          
+          // Determine if I'm red (index 0 = red, index 1 = yellow)
+          isRedRef.current = myPNum === 0
           lMoveRef.current = setupData.lTime
           pTimesRef.current = setupData.rTimes
           currentTurnRef.current = setupData.turn
@@ -380,11 +403,52 @@ export default function LiveGamePage() {
           // Bump versions so UI reads the new model and timers
           setGameVersion((v) => v + 1)
           setBoardKey(`board-setup-${Date.now()}`) // Force board re-render
+
+          // BOT LOGIC: For bot games, show match found immediately and proceed faster
+          // For player games, show waiting then match found animation
+          if (isP2Bot) {
+            logger.bot('BOT: Starting bot game immediately')
+            setShowStartPopup(true)
+            // Show match found animation briefly then close
+            setTimeout(() => {
+              setShowStartPopup(false)
+              logger.game('MATCHMAKING: Closed start popup for bot game')
+            }, 1500) // Shorter delay for bot games
+          } else {
+            // Show (or re-show) the start popup, then close shortly after showing match found
+            setShowStartPopup(true)
+            setTimeout(() => {
+              setShowStartPopup(false)
+              logger.game('MATCHMAKING: Closed start popup after showing match found')
+            }, 3000)
+          }
+
+          // play start sound
+
           break
         }
         case "spectate": {
-          const setupData = data as StandardSpectatingMetadata
+          const setupData = data as StandardGameMetadata
           setIsSpectating(true)
+
+          // NEW STRUCTURE: Populate player refs from players array for spectating
+          // For spectators, we just need to show both players
+          if (setupData.players && setupData.players.length >= 2) {
+            // Player at index 0 is red (opponent in UI top position)
+            opponentRef.current = {
+              username: setupData.players[0].username,
+              pfp: setupData.players[0].pfp || '/icons/user.svg',
+              time: setupData.players[0].time,
+              elo: setupData.players[0].elo,
+            }
+            // Player at index 1 is yellow (me in UI bottom position when spectating)
+            meRef.current = {
+              username: setupData.players[1].username,
+              pfp: setupData.players[1].pfp || '/icons/user.svg',
+              time: setupData.players[1].time,
+              elo: setupData.players[1].elo,
+            }
+          }
 
           lMoveRef.current = setupData.lTime
           pTimesRef.current = setupData.rTimes

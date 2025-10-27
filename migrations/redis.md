@@ -44,7 +44,7 @@ game:queue:{userId}          | JSON | 24 hours | User's current active game ID
 
 game:live:{gameId}:meta JSON:
 {
-  shortcode: "AWUIas7",               // shortcode
+  shortcode: "AWUIas7",               // shortcode (UNIQUE NEVER NULL)
   players: ["user1", "user2"],        // array of player IDs, order matters
   startTimestamp: 1724127387,         // Unix timestamp (ms) when game started
   gamemode: 241273872,                // game mode identifier (numeric)

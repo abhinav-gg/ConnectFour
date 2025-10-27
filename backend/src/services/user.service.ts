@@ -6,7 +6,7 @@ import { UUID } from 'crypto';
 import { t_GameMode } from '@shared/constants/allgamemodes';
 import { EloNotFound } from '@/types/dbErrors';
 import { StandardStartingElo } from '@shared/constants/game.constants';
-import { getEloGameMode, isEloGameMode } from '@shared/utils/gamemodes';
+import { getEloGameMode, isEloGameMode } from '@shared/utils/gameinfo';
 
 const userDbOps = rdsDBOps.user;
 

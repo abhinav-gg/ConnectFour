@@ -55,18 +55,6 @@ export function getGameTimeoutQueue(): Queue {
 }
 ```
 
-### Job Set Initialization
-```typescript
-export async function setupAllJobs(): Promise<void> {
-  await Promise.all([
-    setupEmailJobSet(),
-    setupGameTimeoutJobSet(),
-    setupGameDisconnectionJobSet(),
-    setupPfpValidationJobSet(),
-  ]);
-}
-```
-
 ### Environment-Specific Setup
 - **API Jobs**: Jobs that run alongside the API server
 - **Socket Jobs**: Jobs that run alongside the Socket server

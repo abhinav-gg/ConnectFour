@@ -16,11 +16,10 @@ export interface StandardGameMetadata {
   gamemode: number;
   rTimes: [number, number];
   lTime: number;
-  me: PlayerData;
-  opponent: PlayerData;
+  players: PlayerData[];
   eloChanges: EloChange | null;
   turn: number;
-  iRed: boolean;
+  myPNum?: number;
 }
 
 export interface StandardGameMove {
@@ -31,16 +30,6 @@ export interface StandardGameMove {
   lMove: number; // Last move timestamp
 }
 
-export interface StandardSpectatingMetadata {
-  moves: number[];
-  shortcode: string;
-  gamemode: number;
-  rTimes: [number, number];
-  lTime: number;
-  players: PlayerData[];
-  turn: number;
-}
-
 export interface PlayerDisconnection {
   playerNumber: number; // 0 for red, 1 for yellow
 }
@@ -49,6 +38,6 @@ export interface JoinMetadata {
   shortcode: string;
   gameinfo: GameInfo;
   isSpectating: boolean;
-  isP2Bot: boolean;
+  isBot: boolean;
 }
 

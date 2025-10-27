@@ -122,8 +122,6 @@ export function addToPlayerList (playerList: (string | null)[], newPlayer: strin
         playerList[emptySlotIndex] = newPlayer;
     }
 
-    console.log(playerListCopy, playerColor, newPlayer, playerList);
-
     return playerList;
 }
 

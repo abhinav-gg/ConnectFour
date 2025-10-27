@@ -8,7 +8,7 @@ import { TreePine, Rocket, Copy, Check, Swords, Clock, Zap } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import type { PlayerData } from "@shared/types/users"
 import { GameInfo } from "@shared/types/game.types"
-import { CategoriseTime } from "@shared/utils/gamemodes"
+import { CategoriseTime } from "@shared/utils/gameinfo"
 import { logger } from "@/utils/logger"
 
 interface GameStartModalProps {
@@ -63,7 +63,6 @@ export function GameStartModal({
       setTimeControl("Bullet")
     }
     
-    logger.game('GAME INFO:', gameinfo)
   }, [open, forceUpdateTrigger, gameinfo, propGameMode, propTimeControl])
 
 
