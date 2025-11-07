@@ -6,7 +6,6 @@
 
 # environment
 .env
-.env.*
 
 # logs
 npm-debug.log*
