@@ -1,21 +1,21 @@
 import { myConfig } from '@config/env';
 import { Pool, PoolClient } from 'pg';
 
+// TODO: UPDATE TO REDIS CLIENT SETUP WITH SINGLETON POOL AND EXPORT FUNCTION TO GET CLIENT
+
+
+
+
 // SSL config based on environment
-let ssl: boolean | object = false;
+let ssl: object | boolean = false;
 
 if (myConfig.NODE_ENV === 'production') {
   ssl = {
     ca: myConfig.RDS_CA_CERT,
     rejectUnauthorized: true,
   };
-} else {
-  ssl = {
-    rejectUnauthorized: false,
-    checkServerIdentity: () => undefined,
-  };
 }
-
+console.log('[RDS] SSL configuration:', ssl);
 // Create the pool with connection setup
 const pool = new Pool({
   host: myConfig.RDS_HOST,

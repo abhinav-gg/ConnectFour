@@ -44,21 +44,5 @@ services:
     env_file:
       - ./backend/.env
 
-  postgres:
-    image: postgres:latest
-    container_name: postgres-dev
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: defaultdevpassword
-      POSTGRES_DB: con4db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data/pgdata
-      - ./backend/migrations/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
-      # - ./backend/migrations/game.nosql:/docker-entrypoint-initdb.d/2-dummy-data.sql # TODO add dummy data later
-    restart: unless-stopped
-
 volumes:
   redis-data:
-  postgres-data: {}
