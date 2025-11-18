@@ -20,9 +20,11 @@ import { PlayAs } from "@shared/types/game.types";
 import { UUID } from "crypto";
 import { StandardGameMetadata } from "@shared/types/Websocket";
 import { PlayerData } from "@shared/types/users";
+import { STANDARD_MAX_PLAYERS } from "@shared/constants/game.constants";
 
 export const gameService = {
 
+    /* Function to assert that a user is not already in a game or queue */
     async assertUserGame (gameContext: GameContext): Promise<ServiceResponse> {
         const r = await redisOps();
 
@@ -66,19 +68,14 @@ export const gameService = {
 
         // invariant, the user is NOT in a game or queue already - checked in middleware
         // invariant, time_control is validated beforehand
-
-        if (CompetitiveModes.has(gamemode)) {
-            return { status: 404, message: 'Not Implemented Yet' };
-            // const competitiveResult = await this.joinCompetitiveQueue(gameContext, gameInfo);
-            // if (competitiveResult) {
-            //     return competitiveResult;
-            // }
-        }
-
+        
         // Validate mode and prepare game info
         const isBotGame = gamemode === GameMode.STANDARD_BOT_MATCH;
         const isCasualGame = CasualModes.has(gamemode);
-
+        
+        if (CompetitiveModes.has(gamemode)) {
+            return { status: 404, message: 'Not Implemented Yet' };
+        }
         if (!isBotGame && !isCasualGame) {
             return { status: 400, message: 'Invalid Game Mode' };
         }
@@ -88,7 +85,7 @@ export const gameService = {
 
             // Determine time control based on game type
             const effectiveTimeControl = isBotGame 
-                ? { base_time: 180, increment: 2, disadvantage: 10 }
+                ? { base_time: 180, increment: 2, disadvantage: 10 } // default time control for bot games for now
                 : time_control!;
 
             const gameInfo = { gamemode, time_control: effectiveTimeControl };
@@ -161,7 +158,7 @@ export const gameService = {
         const shortcode = needShortCode ? await dynamoDBOps.game.getUniqueShortcode() : null;
 
         const gameId = generateUUID();
-        let players: number = 2;
+        let players: number = STANDARD_MAX_PLAYERS;
         if (!StandardModes.has(gameinfo.gamemode)) {
             throw new Error('Invalid game mode for now. help!');
         }
@@ -214,6 +211,9 @@ export const gameService = {
 
     },
 
+    /**
+     * Function sends the game setup data to the player's socket. This includes player profiles, time controls, and elo changes if applicable.
+     */
     async ConnectPlayerSocket (gameContext: GameContext, meOnly: boolean = false): Promise<void> {
 
         gameContext.invalidateAll();
@@ -491,33 +491,46 @@ export const gameService = {
 
     },
 
+    /* This gets called when user joins game by link or reconnect (not "find game" button press) */
     async requestGameData(gameContext: GameContext): Promise<ServiceResponse> {
         try {
             // Get fresh metadata - don't rely on cached data for critical decisions
-            gameContext.invalidateMetadata();
+            gameContext.invalidateAll();
             const metadata = await gameContext.getMetadata();
             
             if (!metadata || !gameContext.resolveGameId()) {
 
-                // CALL NO SQL HERE
-
+                // CHECK GAME IN REDIS
+                // ELSE CALL NO SQL HERE
+                console.log("Redis or NOSQL would be called....");
                 return { status: 404, message: ErrorCode.GAME_NOT_FOUND };
             }
             
             // Check if user is already in this game with fresh data
-            gameContext.invalidatePlayerData();
             const isAlreadyPlayer = await gameContext.isPlayerInGame();
             if (isAlreadyPlayer) {
 
                 if (metadata.state === GameState.IN_PROGRESS || metadata.state === GameState.SCHEDULED) {
                     console.log("RECONNECTING SPECIFIC PLAYER");
-                    if (metadata.state !== GameState.SCHEDULED) {
-                        await this.ConnectPlayerSocket(gameContext, true);
-                    } // TODO - fix this logic....
+                    let connect = false;
+                    if (metadata.state === GameState.IN_PROGRESS) {
+                        connect = true;
+                    } 
+                    else { // scheduled games!!!! (2 moves not made yet)
+                        // if all players are present and scheduled then connect sockets
+                        if (metadata.gamemode === GameMode.STANDARD_BOT_MATCH) {
+                            connect = true;
+                        } else if (StandardModes.has(metadata.gamemode)) {
+                            if (metadata.players.every(p => p !== null)) {
+                                connect = true;
+                            }
+                        }
+                    }
+                    if (connect) await this.ConnectPlayerSocket(gameContext, true);
+                     
                     return { status: 200, message: 'Already in the game' };
                 } else {
                     console.log("Game is in an unexpected state:", metadata.state);
-                    // TODO LOAD GAME from REDIS
                     return { status: 410, message: ErrorCode.GAME_FINISHED };
                 }
             }
@@ -529,13 +542,13 @@ export const gameService = {
                 // assume no elo for now...
                 await this.AssignPlayerToGame(gameContext, null); // this could be a future issue
                 
-                if (StandardModes.has(metadata.gamemode)) {
+                if (StandardModes.has(metadata.gamemode)) { // link join 
                     // Refresh metadata after adding player
                     gameContext.invalidateMetadata();
                     const updatedMetadata = await gameContext.getMetadata();
                     if (updatedMetadata && updatedMetadata.state === GameState.SCHEDULED && 
                         updatedMetadata.players.every(p => p !== null) &&
-                        updatedMetadata.players.length === 2) {
+                        updatedMetadata.players.length === STANDARD_MAX_PLAYERS) {
                         // If the game is scheduled and now has 2 players, start the game
                         await this.StartStandardGame(gameContext);
                         return { status: 100, message: gameContext.gameId ?? "" };
@@ -564,13 +577,14 @@ export const gameService = {
             return false; // Player is already in the game
         }
 
+        // Casual mode checks for link based joining
         if (CasualModes.has(gameMeta.gamemode)) {
             if (gameMeta.state === GameState.IN_PROGRESS) {
                 return false; // spectating is allowed in casual games
-            } else if (gameMeta.players.length < 2 || 
+            } else if (gameMeta.players.length < STANDARD_MAX_PLAYERS || 
                        gameMeta.players.some(p => p === null)
             ) {
-                return true; // Player can join the game
+                return true;  // Player can join the game
             } else {
                 return false; // Game is full but scheduling or something
             }

@@ -1,6 +1,6 @@
 export const ROWS = 6;
 export const COLS = 7;
-
+export const STANDARD_MAX_PLAYERS = 2;
 
 export const AvgGameLength = 30; // idk what this is for
 
@@ -11,4 +11,3 @@ export const StandardReconnectionTime = 20 * 1000; // 15 seconds
 export const MaxBaseTime = 3 * 60 * 60; // 3 hours in seconds
 export const MaxIncrement = 3 * 60; // 3 minutes in seconds
 export const MaxDisadvantage = 3 * 60; // 3 minutes in seconds
-

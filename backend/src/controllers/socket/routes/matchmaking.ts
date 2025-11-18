@@ -124,10 +124,7 @@ export function registerMatchmakingHandlers(soc: Socket) {
       // After player joins, check if this is a bot game and trigger bot move if needed
       if (!isSpectating && metadata && metadata.state === GameState.IN_PROGRESS) {
         const gameId = await gameContext.resolveGameId();
-        if (!gameId) {
-          throw new Error('Game ID not found for active game');
-        }
-        await liveGameService.ManageBotMove(gameId);
+        await liveGameService.ManageBotMove(gameId!);
       }
 
     } catch (error) {
