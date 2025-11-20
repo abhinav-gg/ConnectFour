@@ -30,7 +30,7 @@ export const myConfig = {
     RDS_USER: process.env.RDS_USER || 'postgres',
     RDS_PASSWORD: process.env.RDS_PASSWORD || '',
     RDS_NAME: process.env.RDS_NAME || '',
-    RDS_CA_CERT: fs.readFileSync('./config/global-bundle.pem').toString(), // Path to the Amazon RDS root certificate
+    RDS_CA_CERT: process.env.RDS_CA_CERT ? fs.readFileSync(process.env.RDS_CA_CERT).toString() : '', // Path to the Amazon RDS root certificate
 
     REDIS_HOST: process.env.REDIS_HOST || 'redis',
     REDIS_PORT: process.env.REDIS_PORT || '6379',
