@@ -14,9 +14,9 @@ export interface StandardGameMetadata {
   shortcode: string;
   moves: number[];
   gamemode: number;
-  rTimes: [number, number];
-  lTime: number;
-  players: PlayerData[];
+  rTimes: [number, number];               // Remaining times for red and yellow players
+  lTime: number;                          // Last move time
+  players: PlayerData[];                  // Player data for both players
   eloChanges: EloChange | null;
   turn: number;
   myPNum?: number;
@@ -38,6 +38,5 @@ export interface JoinMetadata {
   shortcode: string;
   gameinfo: GameInfo;
   isSpectating: boolean;
-  isBot: boolean;
 }
 

@@ -1,7 +1,7 @@
 
 import { rdsDBOps } from '@/db/rds/ops';
 import { ServiceResponse } from '@/types/custom';
-import { UserProfile } from '@shared/types/users';
+import { UserProfile, UserAccountProvider } from '@shared/types/users';
 import { UUID } from 'crypto';
 import { t_GameMode } from '@shared/constants/allgamemodes';
 import { EloNotFound } from '@/types/dbErrors';
@@ -14,15 +14,18 @@ export const userService = {
 
   async GetUserByID(uuid: UUID | null): Promise<UserProfile> {
     if (!uuid) {
-      return { username: 'Anonymous' };
+      return { username: 'Anonymous', isAnonymous: true, isAuthenticated: false };
     }
     const user = await userDbOps.getUserByID(uuid);
     if (!user) {
-      return { username: 'Anonymous' };
+      return { username: 'Anonymous', isAnonymous: true, isAuthenticated: false };
     }
     return {
       username: user.username,
       pfp: user.profile_pic || undefined,
+      isAnonymous: false,
+      isAuthenticated: true,
+      provider: user.mail_provider as UserAccountProvider,
     };
   },
 

@@ -33,6 +33,8 @@ interface GameSessionContextType {
 interface BackendContextValue extends GameSessionContextType {
   user: LocalUser | null;
   isAnonymous: boolean;
+  isAuthenticated: boolean;
+  isFetchingUser: boolean;
   isMaintenanceMode: boolean;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -141,6 +143,7 @@ interface BackendProviderProps {
 export const BackendProvider = ({ children }: BackendProviderProps) => {
   // User state
   const [user, setUser] = useState<LocalUser | null>(null);
+  const [isFetchingUser, setIsFetchingUser] = useState(true);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const fetchingRef = useRef(false);
 
@@ -215,6 +218,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     if (fetchingRef.current) return;
 
     fetchingRef.current = true;
+    setIsFetchingUser(true);
     logger.auth('Fetching user data...');
     try {
       const response = await authApi.get<{ user: any }>('/me');
@@ -222,9 +226,13 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
       logger.auth('User data response:', response);
       
       if (response.success && response.data?.user?.username) {
+        const u = response.data.user || response.data;
         const userData: LocalUser = {
-          username: response.data.user.username,
-          pfp: response.data.user.pfp || '/icons/user.svg',
+          username: u.username,
+          pfp: u.pfp || '/icons/user.svg',
+          isAnonymous: u.isAnonymous,
+          isAuthenticated: u.isAuthenticated,
+          provider: u.provider,
           cachedAt: Date.now(),
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(userData));
@@ -240,6 +248,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
       localStorage.removeItem(CACHE_KEY);
     } finally {
       fetchingRef.current = false;
+      setIsFetchingUser(false);
     }
   }, [showError]);
 
@@ -260,6 +269,7 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
         const isValid = Date.now() - parsed.cachedAt < CACHE_TTL;
         if (isValid) {
           setUser(parsed);
+          setIsFetchingUser(false);
         } else {
           localStorage.removeItem(CACHE_KEY);
         }
@@ -364,12 +374,15 @@ export const BackendProvider = ({ children }: BackendProviderProps) => {
     localStorage.removeItem(CACHE_KEY);
   };
 
-  const isAnonymous = user?.username === 'Anonymous';
+  const isAnonymous = user?.isAnonymous ?? true;
+  const isAuthenticated = user?.isAuthenticated ?? false;
 
   const value: BackendContextValue = {
     // User context
     user,
     isAnonymous,
+    isAuthenticated,
+    isFetchingUser,
     isMaintenanceMode,
     logout,
     refreshUser: fetchAndSetUser,
@@ -408,8 +421,8 @@ export const useBackend = (): BackendContextValue => {
 
 // Export legacy hooks for backward compatibility
 export const useUser = () => {
-  const { user, isAnonymous, isMaintenanceMode, logout, refreshUser } = useBackend();
-  return { user, isAnonymous, isMaintenanceMode, logout, refreshUser };
+  const { user, isAnonymous, isAuthenticated, isFetchingUser, isMaintenanceMode, logout, refreshUser } = useBackend();
+  return { user, isAnonymous, isAuthenticated, isFetchingUser, isMaintenanceMode, logout, refreshUser };
 };
 
 export const useGameSession = () => {

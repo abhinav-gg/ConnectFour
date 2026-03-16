@@ -15,6 +15,7 @@ services:
       --dir /data
       --loadmodule /opt/redis-stack/lib/redisearch.so
       --loadmodule /opt/redis-stack/lib/rejson.so
+      --loglevel warning
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a defaultdevpassword ping"]
       interval: 5s

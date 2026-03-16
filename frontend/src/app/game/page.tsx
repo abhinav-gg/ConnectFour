@@ -52,7 +52,7 @@ import { GameStartModal } from "@/components/game/game-start-popup"
 import { useWASM } from "@/components/providers/WASMProvider"
 import { EloChange, GameInfo } from "@shared/types/game.types"
 import { TimedStandardGame } from "@shared/utils/Games/timed-game"
-import { printGameMode, printTimeControl } from "@shared/utils/gameinfo"
+import { BotModes, printGameMode, printTimeControl } from "@shared/utils/gameinfo"
 import { GameMode } from "@shared/constants/allgamemodes"
 import { Bots, getBotAvatar } from "@shared/constants/botinfo"
 import { UUID } from "crypto"
@@ -294,7 +294,8 @@ export default function LiveGamePage() {
           break
         case "joined":
           logger.socket("Successfully joined matchmaking with data:", JSON.stringify(data))
-          const { shortcode, gameinfo, isSpectating, isBot: isP2Bot } = data as JoinMetadata
+          const { shortcode, gameinfo, isSpectating } = data as JoinMetadata
+          const isP2Bot = BotModes.has(gameinfo.gamemode)
           const gi = gameinfo as GameInfo;
           gameInfoRef.current = gi; // Store GameInfo for later use
           if (shortcode && currentShortcode && currentShortcode !== shortcode) {
@@ -336,8 +337,9 @@ export default function LiveGamePage() {
     onPrefixedMessage("game", (event, data) => {
       switch (event) {
         case "setup": {
-          console.log("📨 WEBSOCKET: Received game setup data:", data)
-          const setupData = data as StandardGameMetadata
+
+          const setupData = data as StandardGameMetadata          
+          console.log("📨 WEBSOCKET: parsed:", setupData)
 
           // NEW STRUCTURE: Use players array and myPNum
           const myPNum = setupData.myPNum ?? 0; // Default to 0 if not provided

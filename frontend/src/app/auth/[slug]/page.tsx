@@ -6,6 +6,7 @@ import { ResetPasswordForm } from '@/components/auth/forms/pwd-reset';
 import { VerifyEmailForm } from '@/components/auth/forms/verify-email';
 import { LogoutUser } from '@/components/auth/forms/logout';
 import { UnifiedGameLayout } from '@/components/layouts/game-layout';
+import { GuestGuard } from '@/components/auth/guards';
 
 const forms: Record<string, JSX.Element> = {
   'login': <LoginForm />,
@@ -30,6 +31,13 @@ export default async function AuthSlugPage({ params }: { params: Promise<{ slug:
 
   if (!form) return notFound()
 
+  // Do not redirect users who want to logout
+  const content = resolvedParams.slug === 'logout' ? form : (
+    <GuestGuard fallback={<p className="text-white text-center m-12">Loading...</p>}>
+      {form}
+    </GuestGuard>
+  );
+
   return (
     <UnifiedGameLayout
       layout={{
@@ -45,7 +53,7 @@ export default async function AuthSlugPage({ params }: { params: Promise<{ slug:
         animate_init: false,
       }}
     >
-      {form}
+      {content}
     </UnifiedGameLayout>
   )
 }

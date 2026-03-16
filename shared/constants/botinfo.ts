@@ -18,6 +18,11 @@ export function getBotAvatar(botId: UUID): string {
   return bot?.avatar || "/icons/bots/_.png";
 }
 
+export function getBotName(botId: UUID): string {
+    const bot = Bots.find(b => b.id === botId);
+    return bot?.name || "Unknown";
+}
+
 export const Bots: BotType[] = [
     {
         id: "550e8400-e29b-41d4-a716-446655440000" as UUID,

@@ -18,6 +18,7 @@ async function bootstrap() {
         throw new Error("No RDS :(")
 
     await setupGameMetaIndex(await getRedisClient()); // temporary, change to setup all redis schema indexes
+
 }
 
 export async function bootstrapAPI() {

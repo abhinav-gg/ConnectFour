@@ -49,6 +49,9 @@ export const ArmageddonModes = new Set([
   GameMode.STANDARD_ARMAGEDDON_PUBLIC_CASUAL,
 ]);
 
+export const BotModes = new Set([
+  GameMode.STANDARD_BOT_MATCH,
+]);
 
 // CategoriseTime takes a time control object and returns the game category
 // (TODO: define time control object, then function is done)

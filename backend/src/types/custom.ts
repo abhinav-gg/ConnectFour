@@ -5,6 +5,7 @@ export interface ServiceResponse {
   status: number;
   message: string;
   redirect?: string;
+  data?: any;
 }
 
 export interface DiscordUser {

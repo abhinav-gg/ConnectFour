@@ -264,12 +264,10 @@ export const liveGameService = {
     },
 
     async HandleGameMove(gameContext: GameContext, col: number): Promise<ServiceResponse> {
-        // Validate player is in the game room with fresh data
-        gameContext.invalidatePlayerData();
-        await gameContext.validatePlayerInRoom();
-        
+
         // Get all fresh game data - invalidate cache first for critical move validation
         gameContext.invalidateAll();
+        await gameContext.validatePlayerInRoom();
         const { metadata, timedata: gameTimes } = await gameContext.getAllGameData();
         
         if (!gameTimes || !metadata || !gameContext.gameId) {

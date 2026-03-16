@@ -3,7 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticateSession, verifyRecaptcha, AuthenticatedRequest, getReqPlayerUUID } from '@/lib/middleware/auth.middleware';
 import { GameInfo, GameSetupParams, TimeControl } from '@shared/types/game.types';
 import { GameMode, t_GameMode } from '@shared/constants/allgamemodes';
-import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode, StandardModes } from '@shared/utils/gameinfo';
+import { getGameModeByTimeControl, CompetitiveModes, sRankedArmageddonModes, sRankedModes, CasualModes, getEloGameMode, StandardModes, BotModes } from '@shared/utils/gameinfo';
 import { validateTimeControl } from '@shared/utils/validation';
 import { gameService } from '@/services/game.service';
 import { rdsDBOps } from '@/db/rds/ops';
@@ -87,7 +87,7 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
         }
 
         // If botId is provided, validate bot game parameters
-        if (gamemode === GameMode.STANDARD_BOT_MATCH) {
+        if (BotModes.has(gamemode)) {
 
             if (botId === undefined || !isValidBotId(botId)) {
                 throw new Error('Invalid bot ID');
@@ -118,8 +118,7 @@ gameRouter.post('/request', authenticateSession, verifyRecaptcha, sendUserToGame
     try {
         const gameContext = new GameContext(userId);
         let response;
-        
-        
+                
         console.log(`Game Request: User ${userId} requested a game with mode ${gamemode} and time control ${time_control}`);
         response = await gameService.joinGameQueue(gameContext, { 
             gamemode, 

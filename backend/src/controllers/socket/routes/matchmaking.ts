@@ -105,8 +105,6 @@ export function registerMatchmakingHandlers(soc: Socket) {
       if (!metadata) {
         soc.emit('error', { message: 'Game metadata not found' });
       }
-      // Check if this is a bot game
-      const isP2Bot = metadata && metadata.players.some(playerId => playerId && isBotIdentity(playerId));
 
       socket.emit('joined', { shortcode: shortCode, 
         gameinfo: {
@@ -118,7 +116,6 @@ export function registerMatchmakingHandlers(soc: Socket) {
           } as TimeControl
         } as GameInfo,
         isSpectating,
-        isBot: isP2Bot || false
       } as JoinMetadata);
 
       // After player joins, check if this is a bot game and trigger bot move if needed

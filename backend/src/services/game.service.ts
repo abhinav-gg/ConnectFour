@@ -2,7 +2,7 @@ import { dynamoDBOps } from "@/db/dynamodb/ops";
 import { redisOps } from "@/redis/ops";
 import { ServiceResponse } from "@/types/custom";
 import { EloChange, GameInfo, GameSetupParams, TimeControl } from "@shared/types/game.types";
-import { CasualModes, CompetitiveModes, StandardModes } from "@shared/utils/gameinfo";
+import { BotModes, CasualModes, CompetitiveModes, StandardModes } from "@shared/utils/gameinfo";
 import { packGameInfo, packStandardGameData, uuidToBuffer } from "@/utils/binary";
 import { GameState } from "@shared/constants/allgamestates";
 import { FinishedGameStates } from "@shared/utils/gamestates";
@@ -10,7 +10,6 @@ import { addToPlayerList, calculateEloChanges, gameinfoFromMeta } from "@/utils/
 import { generateUUID } from "@/utils/auth";
 import { GameMetadata, GameMetadataSchema, UserQueue } from "@/redis/redisSchema";
 import { isUserIdentity, makeUserIdentity, parseUser, makeBotIdentity, isBotIdentity } from "@/utils/validation";
-import { getSocketIO } from "@/controllers/socket";
 import { userService } from "./user.service";
 import { AllGameModes, GameMode, t_GameMode } from "@shared/constants/allgamemodes";
 import { ErrorCode, ShortcodeGameLink, createErrorResponse } from "@shared/constants/errorCodes";
@@ -21,6 +20,7 @@ import { UUID } from "crypto";
 import { StandardGameMetadata } from "@shared/types/Websocket";
 import { PlayerData } from "@shared/types/users";
 import { STANDARD_MAX_PLAYERS } from "@shared/constants/game.constants";
+import { getRedisClient } from "@/redis/redisClient";
 
 export const gameService = {
 
@@ -60,6 +60,7 @@ export const gameService = {
     },
   
     /**
+     * Called by API
      * Function called to begin matchmaking for a user. If a match is found, it will return the game ID. If not, user will be added to redis queue.
      */
     async joinGameQueue (gameContext: GameContext, gameparams: GameSetupParams): Promise<ServiceResponse> {
@@ -106,7 +107,7 @@ export const gameService = {
 
             // Bot-specific logic: add bot to empty slot
             if (isBotGame) {
-                const botIdentity = makeBotIdentity(botId as UUID);
+                const botIdentity = makeBotIdentity(botId as UUID); // marks UUID with bot: prefix
                 const players = (await newGameContext.getMetadata())!.players;
                 const botPlayerList = addToPlayerList(players, botIdentity, PlayAs.FIT_IN);
                 await r.game.updateGameMetadata(gameMeta.id, { players: botPlayerList });
@@ -215,7 +216,7 @@ export const gameService = {
      * Function sends the game setup data to the player's socket. This includes player profiles, time controls, and elo changes if applicable.
      */
     async ConnectPlayerSocket (gameContext: GameContext, meOnly: boolean = false): Promise<void> {
-
+        console.log("<><><><><><>L Connecting player socket for game ID:", gameContext.gameId, meOnly);
         gameContext.invalidateAll();
         const gameMeta = await gameContext.getMetadata();
         const gTimes = await gameContext.getTimedata();
@@ -237,8 +238,7 @@ export const gameService = {
             turn: 0
         };
 
-        const io = getSocketIO();
-        const isBotGame = gameMeta.gamemode === GameMode.STANDARD_BOT_MATCH;
+        const isBotGame = BotModes.has(gameMeta.gamemode);
 
         // Get player profiles
         const p1Id = parseUser(gameMeta.players[0]);
@@ -274,7 +274,9 @@ export const gameService = {
             
             // Bot profile with required PlayerData fields (frontend will lookup full bot info)
             const botProfile: PlayerData = { 
-                username: botPlayer, // Bot UUID - frontend will use this to lookup bot info
+                
+                username: botPlayer, // This is the bot identity string, frontend will resolve to bot name
+
                 time: 1000 * gameMeta.base_time + 1000 * gameMeta.disadvantage,
                 elo: undefined, // Frontend will set from bot info
             };
@@ -312,7 +314,8 @@ export const gameService = {
         const sendSetupToPlayer = (playerIndex: 0 | 1) => {
             const playerId = gameMeta.players[playerIndex];
             if (!playerId) return;
-
+            console.log(`Preparing to send game setup to player ${playerIndex + 1} with ID: ${playerId}`);
+            
             // Skip if meOnly is true and this isn't the requesting player
             if (meOnly && gameContext.userId !== playerId) return;
 
@@ -327,7 +330,7 @@ export const gameService = {
             };
 
             console.log(isBotGame 
-                ? `BOT LOGIC: Sending setup to player ${playerIndex + 1} (bot UUID: ${p2Profile.username})`
+                ? `BOT LOGIC: Sending setup to player ${playerIndex + 1} {${playerUserId}} {setupPayload: ${JSON.stringify(setupPayload)}}`
                 : `Sending setup to player ${playerIndex + 1}: ${playerUserId}`
             );
 
@@ -336,9 +339,7 @@ export const gameService = {
 
         // Send setup to both players (or just one if meOnly is true)
         sendSetupToPlayer(0);
-        if (!isBotGame) {
-            sendSetupToPlayer(1); // Don't send to bot in bot games
-        }
+        sendSetupToPlayer(1);
     },
 
     /**
@@ -491,7 +492,10 @@ export const gameService = {
 
     },
 
-    /* This gets called when user joins game by link or reconnect (not "find game" button press) */
+    /**
+     * Called by SOCKET join
+     * Function called when a player attempts to join a game. This can be either through matchmaking or link-based joining. It checks if the player can join, assigns them to the game, and sends the appropriate game setup data to their socket. If the game is already in progress, it will allow them to spectate instead.
+     */
     async requestGameData(gameContext: GameContext): Promise<ServiceResponse> {
         try {
             // Get fresh metadata - don't rely on cached data for critical decisions
@@ -506,33 +510,40 @@ export const gameService = {
                 return { status: 404, message: ErrorCode.GAME_NOT_FOUND };
             }
             
+            /////////////////////////////////////////////////////////////////////////////////////////////////////
+
             // Check if user is already in this game with fresh data
             const isAlreadyPlayer = await gameContext.isPlayerInGame();
             if (isAlreadyPlayer) {
 
                 if (metadata.state === GameState.IN_PROGRESS || metadata.state === GameState.SCHEDULED) {
                     console.log("RECONNECTING SPECIFIC PLAYER");
-                    let connect = false;
+                    let reconnect = false;
                     if (metadata.state === GameState.IN_PROGRESS) {
-                        connect = true;
+                        reconnect = true;
                     } 
                     else { // scheduled games!!!! (2 moves not made yet)
                         // if all players are present and scheduled then connect sockets
                         if (metadata.gamemode === GameMode.STANDARD_BOT_MATCH) {
-                            connect = true;
+                            reconnect = true;
+                            await (await redisOps()).game.updateGameMetadataState(gameContext.gameId!, GameState.IN_PROGRESS);
+
                         } else if (StandardModes.has(metadata.gamemode)) {
                             if (metadata.players.every(p => p !== null)) {
-                                connect = true;
+                                reconnect = true;
                             }
                         }
                     }
-                    if (connect) await this.ConnectPlayerSocket(gameContext, true);
+                    if (reconnect) await this.ConnectPlayerSocket(gameContext, true);
                      
                     return { status: 200, message: 'Already in the game' };
                 } else {
                     console.log("Game is in an unexpected state:", metadata.state);
                     return { status: 410, message: ErrorCode.GAME_FINISHED };
                 }
+
+                /////////////////////////////////////////////////////////////////////////////////////////////////////
+
             }
             
             // Link based joining - check if the game is joinable

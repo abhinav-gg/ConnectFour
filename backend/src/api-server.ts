@@ -9,6 +9,7 @@ import { devTestRoutes } from './controllers/api/index';
 import { myConfig } from '@config/env';
 import { bootstrapAPI } from './bootstrap';
 import { API_VERSION } from './versions';
+import { enterMaintenanceMode } from './lib/maintenance';
 
 const port = myConfig.API_PORT || 3001;
 const app = express();
@@ -58,12 +59,14 @@ async function startAPI() {
   });
 }
 
+console.log("PID:", process.pid);
+
 startAPI().catch((err) => {
   console.error('Startup failed:', err);
   process.exit(1); // ! Exit with error so host/service restarts
 });
 
-process.on('SIGTERM', async () => {
+const shutdown = async () => {
   console.log('SIGTERM received: closing DB pool...');
   try {
     await pool.end();
@@ -72,10 +75,12 @@ process.on('SIGTERM', async () => {
     console.error('Error closing DB pool:', err);
   }
 
-  try {
-    // await closeAllClients();
-  } catch (err) {
-    console.error('Error disconnecting Redis client:', err);
-  }
+  enterMaintenanceMode(); // Stop accepting new requests immediately
+  
   process.exit(0);
-});
+}
+
+
+process.on("SIGINT", () => shutdown());   // Ctrl+C
+process.on("SIGTERM", () => shutdown()); // Docker stop
+
